@@ -102,6 +102,128 @@ const ATLAS_MODELS: Array<Omit<Model, 'provider'>> = [
   { id: 'google/nano-banana-2/text-to-image', name: 'Nano Banana 2 (文生图)', modes: ['text-to-image'], mediaType: 'image' },
 ]
 
+// ==================== Image size mapping (issue #18) ====================
+
+/** Ratio tiers accepted by Atlas video APIs and nano-banana's aspect_ratio field */
+const RATIO_TIERS: ReadonlyArray<[string, number]> = [
+  ['16:9', 16 / 9],
+  ['4:3', 4 / 3],
+  ['1:1', 1],
+  ['3:4', 3 / 4],
+  ['9:16', 9 / 16],
+  ['21:9', 21 / 9],
+]
+
+/** Pick the ratio-tier name closest to width/height */
+function nearestRatio(width: number, height: number): string {
+  const target = width / height
+  let best = RATIO_TIERS[0]
+  for (const c of RATIO_TIERS) {
+    if (Math.abs(c[1] - target) < Math.abs(best[1] - target)) best = c
+  }
+  return best[0]
+}
+
+/**
+ * Seedream v5 accepts ONLY these preset sizes, written with a `*` separator.
+ * Free-form sizes are rejected (total pixels must also stay in [3.68M, 10.4M],
+ * which rules out plain 1080x1920). 2K-tier presets are enough for video assets;
+ * pricing is per request, so the smaller tier is strictly faster at equal cost.
+ */
+const SEEDREAM_V5_PRESETS: ReadonlyArray<[number, number]> = [
+  [2048, 2048],
+  [2304, 1728],
+  [1728, 2304],
+  [2848, 1600],
+  [1600, 2848],
+  [2496, 1664],
+  [1664, 2496],
+  [3136, 1344],
+]
+
+function gcd(a: number, b: number): number {
+  return b === 0 ? a : gcd(b, a % b)
+}
+
+/** Documented hard cap for gpt-image-2 dimensions (max supported is 3840x2160) */
+const GPT_IMAGE_MAX_SIDE = 3840
+
+/**
+ * gpt-image-2 accepts free-form "WxH" but both sides must be divisible by 16.
+ * Prefer a size that keeps the requested aspect ratio EXACT while satisfying /16:
+ * scale the reduced ratio a:b to the smallest /16-compatible base, then pick the
+ * multiple nearest to the request. The common defaults land on OpenAI's own
+ * standard sizes (1080x1920 -> 1152x2048, 1920x1080 -> 2048x1152), so composited
+ * assets never get ratio distortion. Irrational-ish ratios fall back to plain
+ * nearest-multiple-of-16 snapping (arbitrary /16 sizes are documented as valid).
+ */
+function gptImageSize(width: number, height: number): string {
+  const snap16 = (v: number) =>
+    Math.min(GPT_IMAGE_MAX_SIDE, Math.max(16, Math.round(v / 16) * 16))
+
+  const g = gcd(width, height)
+  const a = width / g
+  const b = height / g
+  // base = smallest W:H pair with the exact ratio where both sides are /16
+  const s = lcm16(a, b)
+  const baseW = a * s
+  const baseH = b * s
+  if (baseW > GPT_IMAGE_MAX_SIDE || baseH > GPT_IMAGE_MAX_SIDE) {
+    // ratio terms too large to keep exact — fall back to per-side snapping
+    return `${snap16(width)}x${snap16(height)}`
+  }
+  let k = Math.max(1, Math.round(width / baseW))
+  // clamp to the documented maximum resolution
+  k = Math.min(k, Math.floor(GPT_IMAGE_MAX_SIDE / Math.max(baseW, baseH)))
+  return `${baseW * k}x${baseH * k}`
+}
+
+/** Smallest multiplier making both a*s and b*s divisible by 16 */
+function lcm16(a: number, b: number): number {
+  const sa = 16 / gcd(a, 16)
+  const sb = 16 / gcd(b, 16)
+  // lcm of the two per-side requirements
+  return (sa * sb) / gcd(sa, sb)
+}
+
+/**
+ * Build the per-model size params for Atlas image generation (issue #18).
+ * Image models on Atlas disagree on how output dimensions are expressed:
+ * - gpt-image-2 (t2i/edit): free-form "WxH" but both sides MUST be divisible by 16 —
+ *   the raw 1080x1920 passthrough was rejected server-side AFTER billing;
+ * - seedream v5: fixed preset list with a `*` separator;
+ * - nano-banana: no size field at all, expects aspect_ratio + resolution;
+ * - unknown/custom models: keep the legacy "WxH" passthrough unchanged.
+ */
+export function buildImageSizeParams(
+  modelId: string,
+  width?: number,
+  height?: number
+): Record<string, string> {
+  if (!width || !height) return {}
+
+  if (/gpt-image/i.test(modelId)) {
+    return { size: gptImageSize(width, height) }
+  }
+
+  if (/seedream/i.test(modelId)) {
+    const target = width / height
+    let best = SEEDREAM_V5_PRESETS[0]
+    for (const p of SEEDREAM_V5_PRESETS) {
+      if (Math.abs(p[0] / p[1] - target) < Math.abs(best[0] / best[1] - target)) best = p
+    }
+    return { size: `${best[0]}*${best[1]}` }
+  }
+
+  if (/nano-banana/i.test(modelId)) {
+    const minSide = Math.min(width, height)
+    const resolution = minSide > 2048 ? '4k' : minSide > 1024 ? '2k' : '1k'
+    return { aspect_ratio: nearestRatio(width, height), resolution }
+  }
+
+  return { size: `${width}x${height}` }
+}
+
 // ==================== Provider implementation ====================
 
 export class AtlasCloudProvider extends BaseProvider {
@@ -122,10 +244,9 @@ export class AtlasCloudProvider extends BaseProvider {
     const body = {
       model: options.modelId,
       prompt: options.prompt,
-      // Atlas Cloud uses a "widthxheight" string for dimensions
-      ...(options.width && options.height && {
-        size: `${options.width}x${options.height}`,
-      }),
+      // per-model size contract: gpt-image-2 needs /16 sizes, seedream needs `*` presets,
+      // nano-banana needs aspect_ratio + resolution (issue #18)
+      ...buildImageSizeParams(options.modelId, options.width, options.height),
       ...(options.negativePrompt && { negative_prompt: options.negativePrompt }),
       ...(options.seed !== undefined && { seed: options.seed }),
       // image-to-image / edit mode (e.g. openai/gpt-image-2/edit) passes the reference image as an images array
@@ -393,19 +514,6 @@ export class AtlasCloudProvider extends BaseProvider {
 
   /** Map width/height to the nearest ratio tier */
   private mapRatio(width: number, height: number): string {
-    const candidates: Array<[string, number]> = [
-      ['16:9', 16 / 9],
-      ['4:3', 4 / 3],
-      ['1:1', 1],
-      ['3:4', 3 / 4],
-      ['9:16', 9 / 16],
-      ['21:9', 21 / 9],
-    ]
-    const target = width / height
-    let best = candidates[0]
-    for (const c of candidates) {
-      if (Math.abs(c[1] - target) < Math.abs(best[1] - target)) best = c
-    }
-    return best[0]
+    return nearestRatio(width, height)
   }
 }
