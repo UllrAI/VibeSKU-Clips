@@ -6,7 +6,7 @@
  * Pure function, unit-testable, zero external keys, decoupled from the compose pipeline.
  */
 
-export type AdViolationCategory = "绝对化用语" | "医疗/虚假功效" | "需认证宣称";
+export type AdViolationCategory = "绝对化用语" | "医疗/虚假功效" | "需认证宣称" | "虚假紧迫";
 
 export interface AdViolation {
   term: string;
@@ -25,11 +25,14 @@ interface Rule {
 // Conservative term selection — only include terms that are almost certainly illegal in an e-commerce context, to minimize false positives (this is a warning tool, not a hard block).
 const RULES: Rule[] = [
   {
-    // Advertising Law Article 9: prohibits absolute superlatives such as "national level", "highest grade", "best"
+    // Advertising Law Article 9: prohibits absolute superlatives such as "national level", "highest grade", "best".
+    // Price absolutes ("lowest price ever") are the top e-commerce enforcement target in 2026-07 platform rules.
+    // Longest-match dedup below collapses e.g. "全网最低价" → one hit instead of three overlapping ones.
     terms: [
       "最佳", "最好", "最优", "最强", "最高级", "国家级", "世界级", "顶级", "顶尖", "极致",
       "100%", "百分百", "绝对", "万能", "史上最", "无敌", "销量第一", "全网第一", "排名第一",
       "行业第一", "独一无二", "领导品牌", "王牌", "首选品牌",
+      "最低价", "全网最低", "全网最低价", "史上最低", "历史最低", "销量冠军", "第一品牌",
     ],
     category: "绝对化用语",
     severity: "high",
@@ -51,6 +54,15 @@ const RULES: Rule[] = [
     category: "需认证宣称",
     severity: "med",
     suggestion: "「纯天然 / 有机 / 零添加」需权威认证或检测依据，无依据请删除",
+  },
+  {
+    // False-urgency marketing: Douyin's e-commerce rules treat fake limited-time/limited-stock claims as
+    // 违规营销 (throttling + penalties). These phrases are legal only when the promotion is real and provable,
+    // so this stays a med-severity warning — the user confirms authenticity instead of being hard-blocked.
+    terms: ["最后一天", "仅此一天", "错过不再有", "马上涨价", "明天恢复原价", "最后几件", "最后几单"],
+    category: "虚假紧迫",
+    severity: "med",
+    suggestion: "虚假限时限量属平台违规营销（限流+处罚）；若非真实可举证的活动请删除，真实活动请保留凭证",
   },
 ];
 

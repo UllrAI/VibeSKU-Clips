@@ -134,6 +134,8 @@ export const compositions = sqliteTable("compositions", {
   bgmPath: text("bgm_path"),
   ttsEnabled: integer("tts_enabled", { mode: "boolean" }).default(false),
   subtitleStyle: text("subtitle_style", { mode: "json" }).$type<SubtitleStyle>(),
+  // Whether the visible "内容由 AI 生成" badge was burned in (read back by the release gate's AIGC-label check)
+  aigcBadge: integer("aigc_badge", { mode: "boolean" }),
   status: text("status", { enum: ["pending", "composing", "done", "failed"] }).notNull().default("pending"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });

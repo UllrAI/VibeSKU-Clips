@@ -40,3 +40,66 @@ export const PLATFORM_SPECS: Record<string, PlatformSpec> = {
 export function getPlatformSpec(platform: string): PlatformSpec | undefined {
   return PLATFORM_SPECS[platform];
 }
+
+/**
+ * Off-site-diversion (QR code) risk policy per platform. Burning a scannable shop QR into the video
+ * counts as "站外导流" on Chinese platforms. Douyin's 2026-07 e-commerce enforcement (media-reported):
+ * ANY QR/contact info in the video → first offense closes the shop window for 7 days, second offense
+ * permanently revokes commerce rights and freezes commissions — so we refuse by default there.
+ * Other domestic platforms punish off-site diversion too, but with softer/less-publicized penalties → warn.
+ * Overseas destinations (TikTok Shop/Reels/Shorts) have no comparable scan-to-buy enforcement → ok.
+ */
+export type OffSiteQrLevel = "block" | "warn" | "ok";
+
+export interface OffSiteQrPolicy {
+  level: OffSiteQrLevel;
+  reason: { zh: string; en: string };
+}
+
+const QR_BLOCK_DOUYIN: OffSiteQrPolicy = {
+  level: "block",
+  reason: {
+    zh: "抖音 2026-07 起严打站外导流：成片内出现二维码/联系方式，首违关闭橱窗 7 天，二违永久收回带货权限并冻结佣金。默认拒绝烧录，确认自担风险可用 force 强制",
+    en: "Douyin's 2026-07 enforcement treats any in-video QR/contact info as off-site diversion: 1st offense closes the shop window for 7 days, 2nd permanently revokes commerce rights and freezes commissions. Refused by default; pass force to proceed at your own risk",
+  },
+};
+
+const QR_WARN_DOMESTIC: OffSiteQrPolicy = {
+  level: "warn",
+  reason: {
+    zh: "国内平台普遍处罚站外导流，成片内二维码有限流/处罚风险，建议仅在私域分发（微信群/朋友圈）使用带码版本",
+    en: "Chinese platforms generally punish off-site diversion; an in-video QR risks throttling/penalties. Use the QR version only for private-channel distribution (WeChat groups/Moments)",
+  },
+};
+
+const QR_OK: OffSiteQrPolicy = {
+  level: "ok",
+  reason: { zh: "该平台无站外导流处罚风险记录", en: "No known off-site-diversion enforcement on this platform" },
+};
+
+const OFFSITE_QR_POLICIES: Record<string, OffSiteQrPolicy> = {
+  douyin: QR_BLOCK_DOUYIN,
+  kuaishou: QR_WARN_DOMESTIC,
+  xiaohongshu: QR_WARN_DOMESTIC,
+  shipinhao: QR_WARN_DOMESTIC,
+  tiktok: QR_OK,
+  reels: QR_OK,
+  shorts: QR_OK,
+};
+
+/**
+ * QR burn-in policy for a target platform. Unknown/absent platform → warn (the video may end up on a
+ * domestic platform where the QR is risky, so surface the caveat instead of staying silent).
+ */
+export function getOffSiteQrPolicy(platform?: string | null): OffSiteQrPolicy {
+  if (!platform) {
+    return {
+      level: "warn",
+      reason: {
+        zh: "未指定目标平台：若发抖音等国内平台，成片内二维码属站外导流（抖音首违关橱窗 7 天）。发国内平台请传 platform 以便按平台把关",
+        en: "No target platform given: on Chinese platforms an in-video QR counts as off-site diversion (Douyin: 1st offense closes the shop window for 7 days). Pass platform so the risk can be gated per platform",
+      },
+    };
+  }
+  return OFFSITE_QR_POLICIES[platform] ?? QR_WARN_DOMESTIC;
+}

@@ -57,6 +57,13 @@
       "when": 1784873148423,
       "tag": "0007_add_ai_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1785311997467,
+      "tag": "0008_add_aigc_badge",
+      "breakpoints": true
     }
   ]
 }

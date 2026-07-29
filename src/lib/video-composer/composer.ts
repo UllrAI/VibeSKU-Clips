@@ -346,10 +346,10 @@ export interface ComposeConfig {
     /** karaoke per-character subtitles (opt-in): providing a pre-built ASS file path switches to libass burn-in instead of per-sentence drawtext */
     karaokeAssPath?: string;
   };
-  /** text overlays: price tag / selling-point tag / title tag, placed in the upper portion of the frame (common e-commerce style) */
+  /** text overlays: price tag / selling-point tag / title tag placed in the upper frame (common e-commerce style), plus the small "badge" corner label (AIGC compliance mark) */
   overlays?: {
     text: string;
-    style: "title" | "highlight" | "price";
+    style: "title" | "highlight" | "price" | "badge";
     startTime: number;
     endTime: number;
   }[];
@@ -630,11 +630,14 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
   if (config.overlays?.length) {
     const ovFont = config.subtitle?.fontFile ?? resolveChineseFontFile();
     // per-style parameters: font size, text colour, background box colour, vertical position (upper frame)
-    const styleOf = (style: "title" | "highlight" | "price") => {
+    const styleOf = (style: "title" | "highlight" | "price" | "badge") => {
       if (style === "price")
         return { size: Math.round(width * 0.075), color: "white", box: "red@0.85", y: "h*0.12" };
       if (style === "highlight")
         return { size: Math.round(width * 0.058), color: "#1a1a1a", box: "yellow@0.9", y: "h*0.2" };
+      if (style === "badge")
+        // small top-left corner label (AIGC compliance mark) — must stay legible but unobtrusive
+        return { size: Math.round(width * 0.032), color: "white", box: "black@0.55", y: "h*0.025" };
       return { size: Math.round(width * 0.06), color: "white", box: "black@0.5", y: "h*0.06" }; // title style
     };
     const drawOverlays = config.overlays
@@ -647,6 +650,8 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
         // line, rendered identically to before). lineH clears the chunky per-line box padding.
         const lines = wrapCaption(o.text, s.size, width).split("\n");
         const lineH = Math.round(s.size * 1.9);
+        // badge sits in the top-left corner (platform-standard AI-mark position); banner styles stay centered
+        const xPos = o.style === "badge" ? `w*0.03` : "(w-text_w)/2";
         return lines
           .map((line, i) =>
             buildDrawtext({
@@ -656,7 +661,7 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
               fontColor: s.color,
               borderW: 2,
               box: { color: s.box, borderW: bb },
-              x: "(w-text_w)/2",
+              x: xPos,
               y: `${s.y}+${i * lineH}`,
               enable: `enable='between(t,${o.startTime},${o.endTime})'`,
             }),

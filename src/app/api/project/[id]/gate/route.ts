@@ -43,6 +43,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!proj) return apiError(req, "项目不存在", "Project not found", 404);
 
   try {
+    // Fetch the composition first (or the explicitly requested one): the readiness check below
+    // reads its aigcBadge flag to verify the visible AI-content label was actually burned in
+    const compositionId =
+      typeof body.compositionId === "string" && SAFE_ID.test(body.compositionId) ? body.compositionId : undefined;
+    const [comp] = await db
+      .select()
+      .from(compositions)
+      .where(
+        compositionId
+          ? and(eq(compositions.projectId, id), eq(compositions.id, compositionId))
+          : and(eq(compositions.projectId, id), eq(compositions.status, "done"))
+      )
+      .orderBy(desc(compositions.createdAt))
+      .limit(1);
+
     // 1) script readiness — prefer the selected script (what actually got composed), else the latest version
     const [selected] = await db
       .select()
@@ -64,25 +79,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const total = latest.totalDuration ?? shots.reduce((s, x) => s + (x.duration || 0), 0);
       // product early-reveal rule only applies to commerce projects
       const productName = proj.contentType === "product" ? (proj.productName ?? undefined) : undefined;
+      // aigcBadge tri-state: composition rows predating the column stay null → the check is skipped
+      const aigcLabel = comp?.status === "done" && typeof comp.aigcBadge === "boolean" ? comp.aigcBadge : undefined;
       // the checker returns single-locale strings — run per locale on identical input and zip
-      const zh = checkPublishReadiness(shots, total, { productName, locale: "zh" });
-      const en = checkPublishReadiness(shots, total, { productName, locale: "en" });
+      const zh = checkPublishReadiness(shots, total, { productName, aigcLabel, locale: "zh" });
+      const en = checkPublishReadiness(shots, total, { productName, aigcLabel, locale: "en" });
       readinessItem = gateItemFromReadiness(zh, en);
     }
 
-    // 2) composed-video QC — latest successful composition (or the explicitly requested one)
-    const compositionId =
-      typeof body.compositionId === "string" && SAFE_ID.test(body.compositionId) ? body.compositionId : undefined;
-    const [comp] = await db
-      .select()
-      .from(compositions)
-      .where(
-        compositionId
-          ? and(eq(compositions.projectId, id), eq(compositions.id, compositionId))
-          : and(eq(compositions.projectId, id), eq(compositions.status, "done"))
-      )
-      .orderBy(desc(compositions.createdAt))
-      .limit(1);
+    // 2) composed-video QC — latest successful composition (from the shared query above)
     let qc: QcReport | null = null;
     if (comp?.outputPath && comp.status === "done") {
       const videoPath = existsSync(comp.outputPath) ? comp.outputPath : join(getDataDir(), comp.outputPath);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PLATFORM_SPECS, getPlatformSpec } from "@/lib/platform-specs";
+import { PLATFORM_SPECS, getPlatformSpec, getOffSiteQrPolicy } from "@/lib/platform-specs";
 
 describe("platform-specs（多平台导出规格）", () => {
   it("含国内外带货平台（域内含视频号；海外含 TikTok / Reels / Shorts）", () => {
@@ -35,5 +35,32 @@ describe("platform-specs（多平台导出规格）", () => {
 
   it("未知平台返回 undefined", () => {
     expect(getPlatformSpec("weibo")).toBeUndefined();
+  });
+});
+
+describe("getOffSiteQrPolicy（成片内二维码站外导流风险策略）", () => {
+  it("抖音 = block（2026-07 站外导流处罚：首违关橱窗 7 天）", () => {
+    const p = getOffSiteQrPolicy("douyin");
+    expect(p.level).toBe("block");
+    expect(p.reason.zh).toContain("橱窗");
+    expect(p.reason.en.length).toBeGreaterThan(0);
+  });
+
+  it("快手/小红书/视频号 = warn（域内平台普遍处罚站外导流）", () => {
+    for (const plat of ["kuaishou", "xiaohongshu", "shipinhao"]) {
+      expect(getOffSiteQrPolicy(plat).level).toBe("warn");
+    }
+  });
+
+  it("海外平台（tiktok/reels/shorts）= ok", () => {
+    for (const plat of ["tiktok", "reels", "shorts"]) {
+      expect(getOffSiteQrPolicy(plat).level).toBe("ok");
+    }
+  });
+
+  it("未指定平台 → warn 并提示传 platform；未知平台按域内 warn 兜底", () => {
+    expect(getOffSiteQrPolicy(undefined).level).toBe("warn");
+    expect(getOffSiteQrPolicy(undefined).reason.zh).toContain("platform");
+    expect(getOffSiteQrPolicy("bilibili").level).toBe("warn");
   });
 });

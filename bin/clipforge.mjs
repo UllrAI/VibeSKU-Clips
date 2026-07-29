@@ -95,7 +95,9 @@ export function composeBodyFromFlags(flags) {
   if (flags.karaoke === true) body.karaoke = true;
   if (CAPTION_PRESETS.includes(flags.caption)) body.captionPreset = flags.caption;
   if (flags["product-card"] === true) body.productCard = true;
-  if (flags["ai-disclosure"] === true) body.aiDisclosure = true;
+  // AIGC visible badge is ON by default (2026-07 platform labeling rules); --no-ai-badge opts out.
+  // --ai-disclosure is kept as an accepted no-op for backward compatibility (it used to opt in).
+  if (flags["no-ai-badge"] === true) body.aigcBadge = false;
   if (typeof flags.cta === "string" && flags.cta.trim()) body.ctaText = flags.cta.trim();
   return body;
 }
@@ -348,6 +350,7 @@ async function cmdQr(flags) {
   const res = await api(`/api/project/${projectId}/shop-qr`, { method: "POST", body });
   step(`商品二维码已生成：${res.qr}`);
   if (res.shopLink) step(`追踪链接：${res.shopLink}`);
+  if (res.warning?.zh) step(`⚠️ ${res.warning.zh}`);
   return { ok: true, projectId, qr: res.qr, shopLink: res.shopLink };
 }
 
@@ -358,10 +361,13 @@ async function cmdEndcard(flags) {
   const body = {};
   if (typeof flags.url === "string" && flags.url.trim()) body.url = flags.url.trim();
   if (typeof flags.platform === "string" && flags.platform.trim()) body.platform = flags.platform.trim();
+  // --force overrides the douyin off-site-diversion refusal (in-video QR risks shop-window closure there)
+  if (flags.force === true) body.force = true;
   if (flags.seconds && Number.isFinite(Number(flags.seconds))) body.seconds = Number(flags.seconds);
   if (typeof flags.cta === "string" && flags.cta.trim()) body.ctaText = flags.cta.trim();
   const res = await api(`/api/project/${projectId}/end-card`, { method: "POST", body });
   step(`片尾扫码购买成片已生成：${res.video}`);
+  if (res.warning?.zh) step(`⚠️ ${res.warning.zh}`);
   return { ok: true, projectId, video: res.video, shopLink: res.shopLink };
 }
 

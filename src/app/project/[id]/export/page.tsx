@@ -127,7 +127,7 @@ export default function ExportPage() {
   // ---- "More outputs": surface the monetization/localization tools that were previously CLI/MCP-only
   // (cover / Xiaohongshu carousel / shop QR / scan-to-buy end-card / multi-language dub). Each calls an
   // existing route and shows its artifact; no new backend. ----
-  type ToolState = { loading?: boolean; error?: string; images?: string[]; video?: string; note?: string; shopLink?: string };
+  type ToolState = { loading?: boolean; error?: string; images?: string[]; video?: string; note?: string; shopLink?: string; warning?: string };
   const [more, setMore] = useState<Record<string, ToolState>>({});
   const setTool = (k: string, v: ToolState) => setMore((m) => ({ ...m, [k]: { ...m[k], ...v } }));
   const [coverTitle, setCoverTitle] = useState("");
@@ -160,7 +160,7 @@ export default function ExportPage() {
       const r = await fetch(`/api/project/${id}/shop-qr`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || t("moreFailed"));
-      setTool("qr", { loading: false, images: [d.qr], shopLink: d.shopLink });
+      setTool("qr", { loading: false, images: [d.qr], shopLink: d.shopLink, warning: d.warning ? (locale === "en" ? d.warning.en : d.warning.zh) : undefined });
     } catch (e) { setTool("qr", { loading: false, error: e instanceof Error ? e.message : t("moreFailed") }); }
   };
   const genEndCard = async () => {
@@ -169,7 +169,7 @@ export default function ExportPage() {
       const r = await fetch(`/api/project/${id}/end-card`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || t("moreFailed"));
-      setTool("endcard", { loading: false, video: d.video, shopLink: d.shopLink });
+      setTool("endcard", { loading: false, video: d.video, shopLink: d.shopLink, warning: d.warning ? (locale === "en" ? d.warning.en : d.warning.zh) : undefined });
     } catch (e) { setTool("endcard", { loading: false, error: e instanceof Error ? e.message : t("moreFailed") }); }
   };
   // composed-video quality check: black frames / silence / loudness / streams (bilingual report from the route)
@@ -969,6 +969,7 @@ export default function ExportPage() {
                 </div>
                 {!hasShopUrl && <p className="text-[11px] text-muted-foreground">{t("moreNeedShopUrl")}</p>}
                 {more.qr?.error && <p className="text-[11px] text-destructive">{more.qr.error}</p>}
+                {more.qr?.warning && <p className="text-[11px] text-amber-600 dark:text-amber-400">⚠️ {more.qr.warning}</p>}
                 {more.qr?.images?.[0] && (
                   <a href={`${more.qr.images[0]}?download=1`} download className="mt-1 block">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -986,6 +987,7 @@ export default function ExportPage() {
                 </div>
                 {!hasShopUrl && <p className="text-[11px] text-muted-foreground">{t("moreNeedShopUrl")}</p>}
                 {more.endcard?.error && <p className="text-[11px] text-destructive">{more.endcard.error}</p>}
+                {more.endcard?.warning && <p className="text-[11px] text-amber-600 dark:text-amber-400">⚠️ {more.endcard.warning}</p>}
                 {more.endcard?.video && (
                   <a href={`${more.endcard.video}?download=1`} download>
                     <Button size="sm" variant="outline" className="text-xs h-7 mt-1"><LuDownload className="w-3 h-3 mr-1" />{t("moreEndCardDownload")}</Button>

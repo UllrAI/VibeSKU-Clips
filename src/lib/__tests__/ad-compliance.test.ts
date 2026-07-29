@@ -64,3 +64,33 @@ describe("checkScriptCompliance（整条脚本扫描）", () => {
     expect(checkScriptCompliance([])).toEqual([]);
   });
 });
+
+describe("2026-07 增补词表（价格绝对化 + 虚假紧迫）", () => {
+  it("价格绝对化：全网最低价 只报最长命中一条（不重复报 全网最低/最低价）", () => {
+    const hits = checkAdCompliance("今天全网最低价，冲！");
+    const terms = hits.map((x) => x.term);
+    expect(terms).toEqual(["全网最低价"]);
+    expect(hits[0].category).toBe("绝对化用语");
+    expect(hits[0].severity).toBe("high");
+  });
+
+  it("史上最低/销量冠军 命中绝对化用语", () => {
+    const terms = checkAdCompliance("史上最低，销量冠军实至名归").map((x) => x.term);
+    expect(terms).toContain("史上最低");
+    expect(terms).toContain("销量冠军");
+  });
+
+  it("虚假紧迫：最后一天/马上涨价 → med 级警告并给可举证建议", () => {
+    const hits = checkAdCompliance("最后一天，明天马上涨价");
+    const urgency = hits.filter((x) => x.category === "虚假紧迫");
+    expect(urgency.map((x) => x.term)).toEqual(expect.arrayContaining(["最后一天", "马上涨价"]));
+    for (const u of urgency) {
+      expect(u.severity).toBe("med");
+      expect(u.suggestion).toContain("举证");
+    }
+  });
+
+  it("正常促销文案不误伤（相对表述/真实日期）", () => {
+    expect(checkAdCompliance("这款很受欢迎，活动到本周日结束")).toEqual([]);
+  });
+});

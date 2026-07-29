@@ -216,10 +216,15 @@ export async function POST(
       crf: profile.crf,
     };
 
+    // AIGC explicit badge (default ON): burned "内容由 AI 生成" corner label over the opening >=2s.
+    // 2026-07 platform rules require a visible AI mark (AI-synthesized audio alone also counts);
+    // opt out with body.aigcBadge=false — the release gate then reports the compliance risk.
+    const aigcBadge = body.aigcBadge !== false;
+
     // 立即建合成记录(composing)并返回；重活(TTS+FFmpeg)后台异步跑，前端轮询 GET 获取结果
     const [comp] = await db
       .insert(compositions)
-      .values({ projectId: id, resolution: outputCfg.resolution, aspectRatio: outputCfg.aspectRatio, status: "composing" })
+      .values({ projectId: id, resolution: outputCfg.resolution, aspectRatio: outputCfg.aspectRatio, aigcBadge, status: "composing" })
       .returning();
     await db.update(projects).set({ status: "composing", updatedAt: new Date() }).where(eq(projects.id, id));
 
@@ -316,15 +321,17 @@ export async function POST(
     );
     const subtitleTexts = timeline.cues;
     const karaokeLines = timeline.karaokeLines;
-    const overlays: { text: string; style: "title" | "highlight" | "price"; startTime: number; endTime: number }[] = [
+    const overlays: { text: string; style: "title" | "highlight" | "price" | "badge"; startTime: number; endTime: number }[] = [
       ...timeline.overlays,
     ];
 
-    // 可选叠加：片尾购买 CTA（带货转化），按 body 开关
+    // 可选叠加：片头 AIGC 合规角标（默认开）+ 片尾购买 CTA（带货转化），按 body 开关
     overlays.push(
       ...buildComplianceOverlays(
         {
           ctaText: typeof body.ctaText === "string" ? body.ctaText : undefined,
+          aigcBadge,
+          aigcBadgeText: typeof body.aigcBadgeText === "string" ? body.aigcBadgeText : undefined,
         },
         timeline.total
       )

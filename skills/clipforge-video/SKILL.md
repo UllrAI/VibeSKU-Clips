@@ -5,7 +5,7 @@ license: AGPL-3.0-only
 compatibility: Requires a running local ClipForge instance (Node 20+, FFmpeg). Designed for Claude Code and other local coding agents — web sandboxes cannot reach the local pipeline.
 metadata:
   {
-    "version": "0.8.55",
+    "version": "0.8.58",
     "homepage": "https://github.com/xixihhhh/clipforge",
     "keywords": "ai-video, faceless-video, text-to-video, tiktok, reels, shorts, 抖音, 快手, 小红书, product-video, tiktok-shop, ugc, ffmpeg, edge-tts",
     "openclaw":
@@ -86,7 +86,7 @@ For documentary or science content, search the keyless public-domain sources exp
 | `karaoke` | boolean | word-by-word highlighted subtitles |
 | `captionPreset` | `standard` / `bold` / `minimal` / `karaoke` | caption look: translucent-boxed / big heavy-outline no-box punch / small thin-stroke minimal / per-word karaoke |
 | `productCard` | boolean | corner product card (e-commerce projects) |
-| `aiDisclosure` | boolean | burn an "AI-generated" compliance label |
+| `aiDisclosure` | boolean, default `true` | visible "内容由 AI 生成" badge, top-left >=2s (2026-07 Douyin rules; AI voice-over alone also requires labeling). `false` opts out — the release gate then flags the risk |
 | `ctaText` | string | end-screen purchase CTA |
 
 ## Combining with footage-editing skills

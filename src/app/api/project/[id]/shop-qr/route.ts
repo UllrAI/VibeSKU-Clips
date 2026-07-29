@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { getDataDir } from "@/lib/paths";
 import { projects } from "@/lib/db/schema";
 import { generateShopQr } from "@/lib/shop-qr";
+import { getOffSiteQrPolicy } from "@/lib/platform-specs";
 import { apiError, errText } from "@/lib/api-error";
 
 const SAFE_ID = /^[a-zA-Z0-9\-]+$/;
@@ -44,5 +45,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : errText(req, "二维码生成失败", "QR code generation failed") }, { status: 500 });
   }
-  return NextResponse.json({ qr: `/api/files/${id}/${fileName}`, shopLink });
+  // Standalone QR PNGs are legitimate for private-channel use (WeChat groups/print), so never block here —
+  // but when a domestic video platform is named, pass along the off-site-diversion caveat for the video use case.
+  const qrPolicy = platform ? getOffSiteQrPolicy(platform) : undefined;
+  const warning = qrPolicy && qrPolicy.level !== "ok" ? qrPolicy.reason : undefined;
+  return NextResponse.json({ qr: `/api/files/${id}/${fileName}`, shopLink, ...(warning ? { warning } : {}) });
 }

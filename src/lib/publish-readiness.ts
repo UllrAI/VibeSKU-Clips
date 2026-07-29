@@ -189,11 +189,19 @@ export function checkPublishReadiness(
     }
   }
 
-  // 8) AIGC compliance label (only checked when the caller provides the toggle state)
+  // 8) AIGC compliance label (only checked when the caller provides the toggle state).
+  // 2026-07 Douyin rules: a visible AI mark at head/tail lasting >=2s; AI-synthesized AUDIO alone
+  // (e.g. TTS voice-over on real footage) also triggers the labeling requirement.
   if (opts.aigcLabel === true) {
-    push("aigc", "pass", en ? "AIGC compliance label is on" : "已开 AIGC 合规标签");
+    push("aigc", "pass", en ? "Visible AIGC label is burned in (>=2s opening badge)" : "已烧录 AIGC 显式角标（片头 ≥2 秒）");
   } else if (opts.aigcLabel === false) {
-    push("aigc", "warn", en ? "AIGC label is off — platforms may down-rank unlabeled AI content" : "未开 AIGC 合规标签——平台对未标注 AI 内容可能降权");
+    push(
+      "aigc",
+      "warn",
+      en
+        ? "Visible AIGC label is off — 2026-07 platform rules require a >=2s AI mark (AI voice-over alone counts too); unlabeled content risks throttling"
+        : "未烧录 AIGC 显式角标——2026-07 平台新规要求片头/片尾 ≥2 秒 AI 标识（仅 AI 配音也算须标注），未标注有限流风险"
+    );
   }
 
   const pass = items.filter((i) => i.status === "pass").length;

@@ -55,7 +55,7 @@ function composeBody(args) {
   if (args.karaoke === true) body.karaoke = true; // karaoke word-by-word captions
   if (CAPTION_PRESETS.includes(args.captionPreset)) body.captionPreset = args.captionPreset; // caption style preset
   if (args.productCard === true) body.productCard = true; // product card overlay (only applies when product image exists)
-  if (args.aiDisclosure === true) body.aiDisclosure = true; // AI compliance disclosure label
+  if (args.aiDisclosure === false) body.aigcBadge = false; // opt OUT of the default-on visible AIGC badge
   if (typeof args.ctaText === "string" && args.ctaText.trim()) body.ctaText = args.ctaText.trim(); // end-card purchase CTA
   return body;
 }
@@ -109,7 +109,8 @@ const OUTPUT_OPTION_PROPS = {
   },
   aiDisclosure: {
     type: "boolean",
-    description: "烧「AI 生成」合规标识（抖音/TikTok 对 AI 合成内容的要求；另含 GB45438 隐式文件元数据始终写入）。默认 false",
+    description:
+      "「内容由 AI 生成」显式角标（片头左上角 ≥2 秒，2026-07 抖音新规要求，仅 AI 配音也须标注）。默认 true（自动烧录）；设 false 关闭——发布门禁会提示限流风险。GB45438 隐式文件元数据始终写入，不受此开关影响",
   },
   ctaText: {
     type: "string",
@@ -376,7 +377,7 @@ const TOOLS = [
   {
     name: "clipforge_shop_qr",
     description:
-      "为某项目的商品链接生成「扫码购买」二维码 PNG（可放片尾引导转化）。编码的链接自动打 UTM 追踪参数（utm_source=平台、campaign=clipforge）。返回二维码 PNG 地址与实际编码的 shopLink。项目需已有商品链接（ingest 商品链接会自动保留），或用 url 传入。不需要 LLM。",
+      "为某项目的商品链接生成「扫码购买」二维码 PNG（适合私域分发：微信群/朋友圈/详情页）。编码的链接自动打 UTM 追踪参数（utm_source=平台、campaign=clipforge）。返回二维码 PNG 地址与实际编码的 shopLink；指定国内平台时返回 warning 提示站外导流风险（抖音等平台处罚成片内二维码，独立 PNG 不受影响）。项目需已有商品链接（ingest 商品链接会自动保留），或用 url 传入。不需要 LLM。",
     inputSchema: {
       type: "object",
       properties: {
@@ -391,13 +392,17 @@ const TOOLS = [
   {
     name: "clipforge_end_card",
     description:
-      "把「扫码购买」二维码烧进某项目最新成片的片尾最后几秒（后处理，不改合成管线），引导扫码转化。二维码编码项目商品链接（UTM 追踪）。返回处理后的新 mp4 地址与 shopLink（不覆盖原片）。需先合成过视频、且项目有商品链接（或用 url 传入）。CTA 文字默认关闭（易与视频自带贴片重叠），可 ctaText 开启。不需要 LLM。",
+      "把「扫码购买」二维码烧进某项目最新成片的片尾最后几秒（后处理，不改合成管线），引导扫码转化。⚠️ 站外导流风险：platform=douyin 默认拒绝（抖音 2026-07 起成片内二维码首违关橱窗 7 天、二违永久收回带货权限，force=true 可强制）；其他国内平台会生成但返回 warning；tiktok/reels/shorts 无此风险。二维码编码项目商品链接（UTM 追踪）。返回处理后的新 mp4 地址与 shopLink（不覆盖原片），必要时含 warning。需先合成过视频、且项目有商品链接（或用 url 传入）。CTA 文字默认关闭（易与视频自带贴片重叠），可 ctaText 开启。不需要 LLM。",
     inputSchema: {
       type: "object",
       properties: {
         projectId: PROJECT_ID_PROP,
         url: { type: "string", description: "商品链接（不填则用项目已存的 shopUrl）" },
-        platform: { type: "string", description: "投放平台（作为 utm_source）" },
+        platform: {
+          type: "string",
+          description: "目标平台（作为 utm_source 并触发平台风险把关）：douyin 默认拒绝烧码、kuaishou/xiaohongshu/shipinhao 带警告、tiktok/reels/shorts 无风险。不传则按「未知平台」附带提醒",
+        },
+        force: { type: "boolean", description: "true = 明知抖音站外导流处罚仍强制烧码（仅私域分发场景建议）。默认 false" },
         seconds: { type: "number", description: "片尾展示二维码的秒数，默认 3" },
         ctaText: { type: "string", description: "二维码上方 CTA 文字（可选，默认不加，避免与视频贴片重叠）" },
       },
@@ -825,7 +830,13 @@ async function handleShopQr(args) {
   if (typeof args.platform === "string" && args.platform.trim()) body.platform = args.platform.trim();
   if (Number.isFinite(args.size)) body.size = args.size;
   const res = await api(`/api/project/${projectId}/shop-qr`, { method: "POST", body });
-  return ok({ ok: true, projectId, qr: res.qr ? `${BASE_URL}${res.qr}` : null, shopLink: res.shopLink ?? null });
+  return ok({
+    ok: true,
+    projectId,
+    qr: res.qr ? `${BASE_URL}${res.qr}` : null,
+    shopLink: res.shopLink ?? null,
+    ...(res.warning ? { warning: res.warning } : {}),
+  });
 }
 
 // Burn a "scan to buy" QR onto the last few seconds of the composed video
@@ -835,10 +846,17 @@ async function handleEndCard(args) {
   const body = {};
   if (typeof args.url === "string" && args.url.trim()) body.url = args.url.trim();
   if (typeof args.platform === "string" && args.platform.trim()) body.platform = args.platform.trim();
+  if (args.force === true) body.force = true; // override the douyin off-site-diversion refusal
   if (Number.isFinite(args.seconds)) body.seconds = args.seconds;
   if (typeof args.ctaText === "string" && args.ctaText.trim()) body.ctaText = args.ctaText.trim();
   const res = await api(`/api/project/${projectId}/end-card`, { method: "POST", body });
-  return ok({ ok: true, projectId, video: res.video ? `${BASE_URL}${res.video}` : null, shopLink: res.shopLink ?? null });
+  return ok({
+    ok: true,
+    projectId,
+    video: res.video ? `${BASE_URL}${res.video}` : null,
+    shopLink: res.shopLink ?? null,
+    ...(res.warning ? { warning: res.warning } : {}),
+  });
 }
 
 // Automated quality check over the latest composed video (streams / black / silence / loudness / freeze)
