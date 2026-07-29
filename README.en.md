@@ -43,7 +43,7 @@ Want higher quality? Add one key: a single interface aggregates **7 platforms, 3
 docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 ```
 
-Open http://localhost:3000 — **render your first video with no key at all** (free stock + free voiceover). Local dev / desktop app / model setup: see [Quick start](#quick-start).
+Open `http://localhost:3000` — **render your first video with no key at all** (free stock + free voiceover). Local dev / desktop app / model setup: see [Quick start](#quick-start).
 
 ## UI preview
 
@@ -109,6 +109,20 @@ Using the sample "Soft Thick Facial Tissue":
 | **Cost** | Director + shoot + edit, thousands per video | API cost, cents to a few dollars per video |
 
 > 💡 The free path (free stock + free voiceover + local compositing) **costs $0**; you're only billed (a few dollars per video) when you opt into paid AI image/video models.
+
+### And against similar tools?
+
+| What you care about | **ClipForge** | Open-source peers (MoneyPrinterTurbo etc.) | Commercial AI video SaaS (Creatify / Topview etc.) | CapCut-style editors |
+|---|:---:|:---:|:---:|:---:|
+| **Product fidelity** (your real product, undistorted) | ✅ image-to-image lock | ❌ keyword-matched stock, product never appears | ⚠️ partial, model-dependent | ➖ paste it manually |
+| **Moving-shot quality** | ✅ i2v + seamless chained transitions + adjustable/redo-able camera | ❌ stills / stock clips stitched | ✅ mostly i2v | ➖ depends on your footage |
+| **Mini-drama + multi-voice cast** | ✅ ten styles, a free voice per character | ❌ single narrator | ⚠️ mostly avatar talking-heads | ❌ all manual |
+| **China-platform compliance** (AIGC label / ad-law scan / publish gate) | ✅ on by default | ❌ | ❌ (mostly overseas-focused) | ⚠️ partial labeling |
+| **Full video at $0** | ✅ key-free stock + voiceover | ✅ free paths exist | ❌ per-video / subscription | ⚠️ free base, paid pro |
+| **No watermark + data stays local** | ✅ open-source, self-hosted | ✅ | ❌ cloud upload, watermarked free tier | ❌ cloud processing |
+| **Agents / automation** (MCP · CLI · batch) | ✅ MCP + CLI + Skill + batch | ⚠️ some have APIs | ⚠️ some have APIs | ❌ |
+
+> Based on public materials as of 2026-07; features evolve with each product's releases. ClipForge is unaffiliated with all of the above — comparison for evaluation only.
 
 ---
 
