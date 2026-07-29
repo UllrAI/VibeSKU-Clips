@@ -23,6 +23,9 @@ import { searchWikimediaImages, searchWikimediaVideos, searchWikimediaAudio } fr
 import { scanLocalMaterials } from "./local-stock";
 import { searchNasaVideos, searchNasaImages } from "./nasa";
 import { searchArchiveVideos, searchArchiveImages } from "./archive";
+import { searchCoverrVideos } from "./coverr";
+import { searchJamendoTracks } from "./jamendo";
+import { searchFreesoundSounds } from "./freesound";
 import { TtlCache } from "@/lib/ttl-cache";
 
 export interface StockSearchOptions {
@@ -101,6 +104,21 @@ export async function searchStock(
       // Internet Archive public-domain footage (two-step retrieval, publicdomain license enforced); no audio
       if (mediaType === "audio") return [];
       return mediaType === "image" ? searchArchiveImages(query, { perPage }) : searchArchiveVideos(query, { perPage });
+
+    case "coverr":
+      // Coverr curated free videos (video only; attribution auto-recorded in credits)
+      if (mediaType !== "video") return [];
+      return searchCoverrVideos(query, { apiKey: key, perPage, orientation, minSec, maxSec });
+
+    case "jamendo":
+      // Jamendo CC music for BGM (audio only; pure CC-BY enforced — see provider licensing note)
+      if (mediaType !== "audio") return [];
+      return searchJamendoTracks(query, { clientId: key, perPage, minSec, maxSec });
+
+    case "freesound":
+      // Freesound CC sound effects (audio only; CC0/CC-BY enforced, HQ mp3 preview direct link)
+      if (mediaType !== "audio") return [];
+      return searchFreesoundSounds(query, { apiKey: key, perPage, minSec, maxSec });
 
     default:
       return [];

@@ -15,9 +15,10 @@
 import type { QcReport } from "@/lib/video-composer/qc";
 import type { CreditsManifest } from "@/lib/asset-credits";
 import type { ReadinessReport } from "@/lib/publish-readiness";
+import type { AiCommerceWarning } from "@/lib/ai-commerce-compliance";
 
 export type GateStatus = "pass" | "warn" | "fail";
-export type GateItemId = "readiness" | "qc" | "credits";
+export type GateItemId = "readiness" | "qc" | "credits" | "aiPolicy";
 
 export interface GateItem {
   id: GateItemId;
@@ -186,6 +187,34 @@ export function gateItemFromCredits(m: CreditsManifest | null): GateItem {
     status: "pass",
     message: { zh: "素材授权可商用，无需署名", en: "Assets are commercial-safe, no attribution required" },
     problems: [],
+  };
+}
+
+/**
+ * AI-commerce policy warnings → gate item. Always warn, never fail: these are platform-policy
+ * judgment calls (Douyin's AI-content rules), and per product direction every feature stays
+ * available — the user decides after seeing the risk.
+ */
+export function gateItemFromAiPolicy(warnings: AiCommerceWarning[]): GateItem {
+  if (warnings.length === 0) {
+    return {
+      id: "aiPolicy",
+      status: "pass",
+      message: {
+        zh: "AI 带货平台规则检查通过（测评形态/数字人类目/亲测宣称）",
+        en: "AI-commerce platform-policy checks passed (review form / digital-human category / testimony claims)",
+      },
+      problems: [],
+    };
+  }
+  return {
+    id: "aiPolicy",
+    status: "warn",
+    message: {
+      zh: `AI 带货平台规则有 ${warnings.length} 项风险提示（抖音 2026-07 规则，功能不受限，人工确认后发布）`,
+      en: `AI-commerce platform policy raised ${warnings.length} risk warning(s) (Douyin 2026-07 rules; nothing is blocked — review before publishing)`,
+    },
+    problems: warnings.map((w) => w.message),
   };
 }
 

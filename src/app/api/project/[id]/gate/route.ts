@@ -11,10 +11,12 @@ import { buildCreditsManifest, type BgmCredit, type CreditsManifest } from "@/li
 import { checkPublishReadiness } from "@/lib/publish-readiness";
 import {
   buildGateReport,
+  gateItemFromAiPolicy,
   gateItemFromCredits,
   gateItemFromQc,
   gateItemFromReadiness,
 } from "@/lib/release-gate";
+import { checkAiCommerceCompliance } from "@/lib/ai-commerce-compliance";
 import { apiError, errText } from "@/lib/api-error";
 import type { Shot } from "@/lib/db/schema";
 
@@ -138,7 +140,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       );
     }
 
-    const report = buildGateReport([readinessItem, gateItemFromQc(qc), gateItemFromCredits(credits)]);
+    // 4) AI-commerce platform policy (Douyin 2026-07 rules) — warn-only, nothing gets blocked
+    const gateShots = latest && Array.isArray(latest.shots) ? (latest.shots as Shot[]) : [];
+    const scriptCast = Array.isArray(latest?.characters) ? latest.characters : [];
+    const hasAiPerson =
+      gateShots.some((s) => !!s.characterId) || scriptCast.length > 0 || !!proj.characterId;
+    const aiPolicyWarnings = checkAiCommerceCompliance({
+      styleType: latest?.styleType,
+      hasAiPerson,
+      productText: [proj.productName, proj.productCategory].filter(Boolean).join(" "),
+      dialogueText: gateShots.map((s) => s.voiceover || "").join(" \n "),
+    });
+
+    const report = buildGateReport([
+      readinessItem,
+      gateItemFromQc(qc),
+      gateItemFromCredits(credits),
+      gateItemFromAiPolicy(aiPolicyWarnings),
+    ]);
     return NextResponse.json({
       projectId: id,
       compositionId: comp?.status === "done" ? comp.id : null,

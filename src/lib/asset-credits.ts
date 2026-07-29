@@ -84,6 +84,8 @@ export function classifyLicense(license?: string | null): { risk: CreditRisk; re
   }
   // platform licenses: free commercial use, attribution appreciated but not required
   if (l === "pexels" || l === "pixabay") return { risk: "ok", requiresAttribution: false };
+  // Coverr: free commercial use, but content fetched via the API requires Coverr attribution
+  if (l === "coverr") return { risk: "attribution", requiresAttribution: true };
   // CC BY / BY-SA family (openverse "by-2.0", wikimedia "CC BY-SA 4.0" …)
   if (/(^|[^a-z])by([^a-z]|$)|cc[- ]by/.test(l)) return { risk: "attribution", requiresAttribution: true };
   // anything else (GFDL, custom terms …) — surface for a human decision

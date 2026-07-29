@@ -8,7 +8,8 @@ import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { getUploadsDir } from "@/lib/paths";
 import { searchWikimediaAudio } from "@/lib/providers/wikimedia";
-import { downloadStockFile } from "@/lib/providers/stock-types";
+import { searchJamendoTracks } from "@/lib/providers/jamendo";
+import { downloadStockFile, type StockCandidate } from "@/lib/providers/stock-types";
 
 export interface FreeBgmResult {
   /** Absolute local path of the downloaded file (passed directly as the composer's bgmPath) */
@@ -59,9 +60,22 @@ export async function fetchFreeBgm(
   query = "ambient background music"
 ): Promise<FreeBgmResult | null> {
   try {
-    // Use Wikimedia Commons audio: CC/PD, direct download links from upload.wikimedia.org work without auth
+    // Prefer Jamendo when a client_id is configured: it is an actual music library (searchable by
+    // mood/genre, commerce-safe pure CC-BY enforced by the provider), so BGM relevance beats
+    // Wikimedia's mixed audio corpus. Failures fall through to Wikimedia — never block composition.
+    let candidates: StockCandidate[] = [];
+    if (process.env.JAMENDO_CLIENT_ID) {
+      try {
+        candidates = await searchJamendoTracks(query, { clientId: process.env.JAMENDO_CLIENT_ID, perPage: 10 });
+      } catch {
+        /* fall back to Wikimedia below */
+      }
+    }
+    // Wikimedia Commons audio fallback: CC/PD, direct download links from upload.wikimedia.org work without auth
     // (Openverse audio often routes through Freesound, which requires authentication and returns 401).
-    const candidates = await searchWikimediaAudio(query, { perPage: 10 });
+    if (candidates.length === 0) {
+      candidates = await searchWikimediaAudio(query, { perPage: 10 });
+    }
     // Prefer tracks >= 8 s (shorter ones produce noticeable loop artifacts); try downloading each in order,
     // skip any that fail, and use the first one that succeeds.
     const longEnough = candidates.filter((c) => (c.durationSec ?? 0) >= 8);

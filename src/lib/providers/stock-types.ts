@@ -7,7 +7,17 @@
  */
 
 /** IDs of integrated stock sources (local = project-bundled B-roll pool; nasa/archive = public-domain archive footage, must be selected explicitly) */
-export type StockSourceId = "pexels" | "pixabay" | "openverse" | "wikimedia" | "local" | "nasa" | "archive";
+export type StockSourceId =
+  | "pexels"
+  | "pixabay"
+  | "openverse"
+  | "wikimedia"
+  | "local"
+  | "nasa"
+  | "archive"
+  | "coverr"
+  | "jamendo"
+  | "freesound";
 
 export type StockMediaType = "video" | "image" | "audio";
 export type StockOrientation = "portrait" | "landscape" | "square";
@@ -100,6 +110,33 @@ export const STOCK_SOURCES: StockSourceMeta[] = [
     signupUrl: "https://pixabay.com/api/docs/",
     envKey: "PIXABAY_API_KEY",
     note: "免费 Key，视频+图片，带货实拍主力补充源",
+  },
+  {
+    id: "coverr",
+    label: "Coverr",
+    keyless: false,
+    mediaTypes: ["video"],
+    signupUrl: "https://coverr.co/developers",
+    envKey: "COVERR_API_KEY",
+    note: "免费 Key（2000 次/时），精选实拍视频、比传统图库少「素材感」；API 内容需署名 Coverr（自动进授权清单）",
+  },
+  {
+    id: "jamendo",
+    label: "Jamendo 音乐",
+    keyless: false,
+    mediaTypes: ["audio"],
+    signupUrl: "https://devportal.jamendo.com/",
+    envKey: "JAMENDO_CLIENT_ID",
+    note: "免费 Key，海量 CC 音乐 BGM；已强制过滤为可商用纯 CC-BY（NC/ND/SA 全排除，署名自动进清单）",
+  },
+  {
+    id: "freesound",
+    label: "Freesound 音效",
+    keyless: false,
+    mediaTypes: ["audio"],
+    signupUrl: "https://freesound.org/apiv2/apply/",
+    envKey: "FREESOUND_API_KEY",
+    note: "免费 Key，50 万+音效库（开箱/按键/环境声）；已强制过滤 CC0/CC-BY 可商用，取 128kbps 高清预览直链",
   },
   {
     id: "local",

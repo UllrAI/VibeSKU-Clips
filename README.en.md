@@ -67,6 +67,7 @@ Chinese platforms (Douyin / Kuaishou / Xiaohongshu) **silently throttle unlabele
 - **Pre-publish self-check**: ad-law risk terms / opening hook / duration sweet-spot / subtitle readability / call-to-action / e-commerce 3-act structure / AIGC-label status, each flagged ✓⚠✗ with a **concrete fix** (no fake score) — spot throttling risk before you render.
 - **Ad-law banned-term scan**: absolute-superlative wording (Ad Law art. 9, incl. price absolutes like "lowest price ever") / medical or false-efficacy claims / claims needing certification / **false urgency** ("last day", "price goes up tomorrow") are highlighted instantly with compliant rewrite hints — **never overstate**.
 - **In-video QR off-site-diversion gate**: since 2026-07 Douyin treats any in-video QR as off-site diversion (1st offense: shop window closed 7 days; 2nd: commerce rights permanently revoked) — the scan-to-buy end-card **refuses `platform=douyin` by default** (`force` overrides, private-channel distribution only), warns on other Chinese platforms, and passes clean for TikTok / Reels / Shorts.
+- **AI-commerce policy guardrail 🆕 (warn-only, nothing removed)**: the publish gate raises three Douyin-2026-07 risk warnings — ① comparison/unboxing review styles are exactly the "AI-generated review content" form Douyin forbids (styles stay fully available; prefer talking-head/drama for Douyin) ② digital-human banned categories (medical / finance / beauty-efficacy / health-efficacy / education-outcome) flagged from product text ③ AI-character "personally tested" claims edge into the fabricated-usage-results red line, with recommendation-style rewrites suggested. All warn-level for human review — no style or feature is restricted.
 - **Product-fidelity**: image-to-image locks the product itself — you can swap background / lighting without altering the product, which is both the conversion linchpin and a guard against "not-as-advertised" compliance/returns risk.
 
 > When going overseas to TikTok / Reels / Shorts, scripts also carry the platform compliance reminder to "label AI-generated content and avoid exaggerated / unproven efficacy claims."
@@ -195,14 +196,19 @@ One English search term pulls video/image/music from multiple **free commercial-
 | **Wikimedia Commons** | ✅ | image / **video** / audio | CC/public-domain, the **only key-free video source** (takes ≤720p webm, transcoded) + free BGM source, direct-downloadable |
 | **Pixabay** | free key | video / image | Main real-footage B-roll supplement |
 | **Pexels** | free key | video / image | High-quality, commercial-use |
+| **Coverr** 🆕 | free key | video | Curated real footage with less "stocky" feel (2000 req/h); attribution flows into the credits manifest automatically |
+| **Jamendo** 🆕 | free key | music BGM | Huge CC music library, **hard-filtered to pure CC-BY** (NC/ND/SA all excluded — syncing music into video is an adaptation, so this is the commerce-safe subset) |
+| **Freesound** 🆕 | free key | SFX | 500k+ sound effects (unboxing rustles / clicks / ambience), hard-filtered to CC0/CC-BY, 128kbps HQ preview direct links |
+| **Local pool** | ✅ | video / image | Upload your own B-roll; auto-fill prefers **your** footage first, free stock fills the gaps |
 
 - Unified `/api/stock/search`: `source` for a single source or `all` for **aggregated search** (prefers the requested media type, key-free sources, and portrait orientation)
 - **Key-free real-footage B-roll** via Wikimedia Commons — fill shots with motion video **without any key** (`footage:"auto"` does "video first, image if missing" per shot)
-- **Free background music**: optionally add a CC track at compositing time (Wikimedia Commons audio), mixed under the narration and auto-ducked
+- **Free background music**: optionally add a CC track at compositing time (with a Jamendo key it searches a real music library by mood; key-free falls back to Wikimedia Commons audio), mixed under the narration and auto-ducked
 - Stores the source page / author / license for compliance (CC sources come with ready attribution); exports can generate credits; English search terms recall better
 - **Always has a fallback**: if a term returns nothing, it retries with broader fallback terms, so even niche topics never leave a shot blank
 - **Per-shot auto-fill** `/api/project/[id]/stock-fill`: after each shot produces an English search term, it pulls visuals from the free libraries shot by shot. The assets page has a one-click **"Auto-fill visuals (free stock)"**: always available for topic videos; for commerce projects it also fills B-roll (hooks, social proof) when no image model is configured, and **automatically skips product-image shots** (protecting product fidelity) — so even users without an AI key can ship.
-- Registry-style architecture; easy to add Coverr / NASA / Freesound later
+- Plus **NASA imagery / Internet Archive** — two key-free public-domain archive sources (documentary/science topics, opt-in, excluded from default aggregation)
+- Great API-less free sites (Mixkit / Videezy / Mazwai etc.) work via the "manual download → local pool" route: drop files into the project pool and they join auto-fill (verify each site's license per clip)
 
 ### 3b. One-sentence topic video 🆕 (no product, zero barrier)
 
