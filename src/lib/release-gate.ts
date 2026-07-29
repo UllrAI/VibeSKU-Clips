@@ -16,9 +16,10 @@ import type { QcReport } from "@/lib/video-composer/qc";
 import type { CreditsManifest } from "@/lib/asset-credits";
 import type { ReadinessReport } from "@/lib/publish-readiness";
 import type { AiCommerceWarning } from "@/lib/ai-commerce-compliance";
+import type { RealMixReport } from "@/lib/real-mix";
 
 export type GateStatus = "pass" | "warn" | "fail";
-export type GateItemId = "readiness" | "qc" | "credits" | "aiPolicy";
+export type GateItemId = "readiness" | "qc" | "credits" | "aiPolicy" | "realMix";
 
 export interface GateItem {
   id: GateItemId;
@@ -216,6 +217,26 @@ export function gateItemFromAiPolicy(warnings: AiCommerceWarning[]): GateItem {
     },
     problems: warnings.map((w) => w.message),
   };
+}
+
+/**
+ * Real/AI mix metering → gate item. Purely informative and ALWAYS pass: a labeled pure-AI video
+ * is publishable, so the mix ratio must never block a pipeline (or trip CLI --strict). It exists
+ * to make the Douyin hybrid-content traffic tilt visible and actionable.
+ */
+export function gateItemFromRealMix(mix: RealMixReport | null): GateItem {
+  if (!mix) {
+    return {
+      id: "realMix",
+      status: "pass",
+      message: {
+        zh: "无脚本/素材，实拍占比暂不可计算",
+        en: "No script/assets yet — real-footage share not computable",
+      },
+      problems: [],
+    };
+  }
+  return { id: "realMix", status: "pass", message: mix.message, problems: [] };
 }
 
 /** Aggregate gate items into the final report (worst status wins). Pure function. */

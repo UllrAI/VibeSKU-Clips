@@ -15,8 +15,10 @@ import {
   gateItemFromCredits,
   gateItemFromQc,
   gateItemFromReadiness,
+  gateItemFromRealMix,
 } from "@/lib/release-gate";
 import { checkAiCommerceCompliance } from "@/lib/ai-commerce-compliance";
+import { computeRealMix, shotReality } from "@/lib/real-mix";
 import { apiError, errText } from "@/lib/api-error";
 import type { Shot } from "@/lib/db/schema";
 
@@ -152,11 +154,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       dialogueText: gateShots.map((s) => s.voiceover || "").join(" \n "),
     });
 
+    // 5) real/AI mix metering — informative only (Douyin hybrid-content traffic tilt at ≥50% real)
+    const doneByShot = new Map(current.map((r) => [r.shotId, r]));
+    const realMix =
+      gateShots.length > 0
+        ? computeRealMix(
+            gateShots.map((s) => {
+              const row = doneByShot.get(s.shotId);
+              return {
+                duration: s.duration || 0,
+                reality: shotReality({ visualSource: s.visualSource, assetType: row?.type, done: !!row }),
+              };
+            })
+          )
+        : null;
+
     const report = buildGateReport([
       readinessItem,
       gateItemFromQc(qc),
       gateItemFromCredits(credits),
       gateItemFromAiPolicy(aiPolicyWarnings),
+      gateItemFromRealMix(realMix),
     ]);
     return NextResponse.json({
       projectId: id,

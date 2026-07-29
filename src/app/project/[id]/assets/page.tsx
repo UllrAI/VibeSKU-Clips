@@ -11,6 +11,7 @@ import { useSettingsStore } from "@/lib/stores/settings-store";
 import { mergeCustomModels, buildImageOptions, buildVideoOptions } from "@/lib/gen-params";
 import type { Shot } from "@/lib/db/schema";
 import { buildAssetRows, shouldOfferStockFill, needsImageModelWarning, nextChainKeyframe, type AssetItem } from "@/lib/assets-view";
+import { realMixFromRows, shotReality } from "@/lib/real-mix";
 import { buildMotionPrompt } from "@/lib/motion-prompt";
 import { realFaceLine } from "@/lib/presenters";
 import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
@@ -94,6 +95,8 @@ export default function AssetsPage() {
 
   const doneCount = assets.filter((a) => a.status === "done").length;
   const allDone = assets.length > 0 && doneCount === assets.length;
+  // real/AI mix metering (duration-weighted) — Douyin tilts traffic toward hybrid content at ≥50% real
+  const mix = realMixFromRows(assets);
   // when no image model is configured (modelTarget is null), offer key-free users a free stock fill entry point
   const offerStockFill = !loading && shouldOfferStockFill(assets, contentType, modelTarget !== null);
   // only show the "configure a model" warning when there are still AI shots that need generating (no warning once everything is ready, to avoid contradicting the "all done" state)
@@ -877,12 +880,32 @@ export default function AssetsPage() {
                   style={{ width: `${assets.length ? (doneCount / assets.length) * 100 : 0}%` }}
                 />
               </div>
+              {/* real/AI mix meter — Douyin tilts traffic toward hybrid content at ≥50% real (duration-weighted) */}
+              {mix.realRatio != null && (
+                <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground" title={t("mixTiltTip")}>
+                  <span className="shrink-0">{t("mixLabel")}</span>
+                  <div className="h-1.5 w-32 rounded-full overflow-hidden bg-muted/30 flex shrink-0">
+                    <div className="h-full bg-emerald-500/80" style={{ width: `${Math.round(mix.realRatio * 100)}%` }} />
+                    <div className="h-full bg-violet-500/60" style={{ width: `${100 - Math.round(mix.realRatio * 100)}%` }} />
+                  </div>
+                  <span className="shrink-0 tabular-nums">
+                    {t("mixReal")} {Math.round(mix.realRatio * 100)}% · {t("mixAi")} {100 - Math.round(mix.realRatio * 100)}%
+                  </span>
+                  {mix.tiltEligible && <span className="text-emerald-500 truncate">✓ {t("mixTiltOk")}</span>}
+                </div>
+              )}
             </div>
 
             {/* asset list */}
             <div className="space-y-4">
               {assets.map((asset) => {
                 const typeInfo = shotTypeLabels[asset.type];
+                // per-shot real/AI chip (same classification as the mix meter above)
+                const reality = shotReality({
+                  visualSource: asset.visualSource,
+                  assetType: asset.assetType,
+                  done: asset.status === "done",
+                });
                 return (
                   <Card key={asset.shotId} className="glass-card overflow-hidden">
                     <CardContent className="p-0">
@@ -896,6 +919,17 @@ export default function AssetsPage() {
                             {t(typeInfo.key)}
                           </Badge>
                           <span className="text-[10px] text-muted-foreground mt-1">{asset.duration}s</span>
+                          {reality && (
+                            <span
+                              className={`text-[9px] mt-1 px-1 rounded ${
+                                reality === "real"
+                                  ? "bg-emerald-500/15 text-emerald-600"
+                                  : "bg-violet-500/15 text-violet-600"
+                              }`}
+                            >
+                              {reality === "real" ? t("badgeReal") : t("badgeAi")}
+                            </span>
+                          )}
                         </div>
 
                         {/* center content */}
