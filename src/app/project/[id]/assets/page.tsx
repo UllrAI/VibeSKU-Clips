@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { mergeCustomModels, buildImageOptions, buildVideoOptions } from "@/lib/gen-params";
 import type { Shot } from "@/lib/db/schema";
-import { buildAssetRows, shouldOfferStockFill, needsImageModelWarning, type AssetItem } from "@/lib/assets-view";
+import { buildAssetRows, shouldOfferStockFill, needsImageModelWarning, nextChainKeyframe, type AssetItem } from "@/lib/assets-view";
+import { buildMotionPrompt } from "@/lib/motion-prompt";
+import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
 import { useT } from "@/lib/i18n";
 import { LanguageToggle } from "@/components/language-toggle";
 import { ProjectStepper } from "@/components/project-stepper";
@@ -392,9 +394,12 @@ export default function AssetsPage() {
     [providers, assets, saveVideoAsset, reloadPendingTasks, t]
   );
 
-  // convert to motion shot: use the already-generated image for this shot as the first frame, call the image-to-video model, and save the result as the shot's asset (video)
+  // convert to motion shot: use the already-generated image for this shot as the first frame, call the image-to-video model, and save the result as the shot's asset (video).
+  // Keyframe chaining (Dreamina-style): when the next shot's static keyframe exists and the model
+  // supports a pinned last frame, the clip ends by flowing into the next scene — the transition is
+  // generated inside the clip, and the composer's hard concat becomes seamless.
   const generateMotion = useCallback(
-    async (shotId: number, firstFrameOverride?: string) => {
+    async (shotId: number, firstFrameOverride?: string, lastFrameOverride?: string | null) => {
       const asset = assets.find((a) => a.shotId === shotId);
       // prefer the freshly passed URL for the first frame: during auto-chaining React state hasn't updated yet, so the thumbnailUrl in the closure is stale
       const firstFrame = firstFrameOverride || asset?.thumbnailUrl;
@@ -405,7 +410,28 @@ export default function AssetsPage() {
         );
         return;
       }
+      // chain target: explicit override wins (null = explicitly no chain); otherwise the next shot's static keyframe
+      const chainFrame =
+        lastFrameOverride === null || !modelSupportsLastFrame(videoModelTarget.model)
+          ? undefined
+          : lastFrameOverride ?? nextChainKeyframe(assets, shotId);
       setMotionShots((prev) => new Set(prev).add(shotId));
+      // Motion prompt, not the static image prompt: the first frame already fixes the
+      // composition — the text's job is camera path + subject action + fidelity constraints
+      const motionPrompt = buildMotionPrompt({
+        shotType: asset?.type,
+        camera: asset?.camera,
+        description: asset?.description,
+        productShot: asset?.visualSource === "product_image" || PRODUCT_SHOT_TYPES.has(asset?.type ?? ""),
+        chainToNext: !!chainFrame,
+      });
+      // per-shot duration: the composer's slot follows the script duration (voice-fitted), and the
+      // composer trims overshoot from the TAIL — which would cut a chained ending. Round to the
+      // model's supported range instead of always sending the global 5s default.
+      const videoOptions = buildVideoOptions(videoParams);
+      if (asset?.duration) {
+        videoOptions.duration = Math.min(15, Math.max(4, Math.round(asset.duration)));
+      }
       try {
         const res = await fetch("/api/ai/video", {
           method: "POST",
@@ -416,14 +442,15 @@ export default function AssetsPage() {
             apiKey: videoModelTarget.apiKey,
             baseUrl: videoModelTarget.baseUrl,
             mode: "image-to-video",
-            prompt: asset?.prompt || asset?.description,
+            prompt: motionPrompt,
             imageUrl: firstFrame,
+            ...(chainFrame && { lastImageUrl: chainFrame }),
             // issue #16: identify the task server-side so the paid task ID is persisted
             // against this project/shot and stays recoverable after timeout or restart
             projectId: id,
             shotId,
             // user-defined video parameters (aspect ratio / resolution / duration / frame rate / motion / seed / negative prompt)
-            options: buildVideoOptions(videoParams),
+            options: videoOptions,
           }),
         });
         const data = await res.json();
@@ -440,8 +467,9 @@ export default function AssetsPage() {
         }
         const url = data.videoUrls?.[0];
         if (!url) throw new Error(t("errorEmptyResult"));
-        // save as this shot's asset (video will be downloaded locally); compose processes it as a video clip (including native audio track detection)
-        await saveVideoAsset(shotId, url, asset?.prompt, videoModelTarget.provider, data.modelId || videoModelTarget.model);
+        // save as this shot's asset (video will be downloaded locally); compose processes it as a video clip (including native audio track detection).
+        // Persist the motion prompt actually sent — asset provenance should record what generated the video
+        await saveVideoAsset(shotId, url, motionPrompt, videoModelTarget.provider, data.modelId || videoModelTarget.model);
       } catch (e) {
         setAssets((prev) =>
           prev.map((a) => (a.shotId === shotId ? { ...a, error: e instanceof Error ? e.message : t("errorImageToVideoFailed") } : a))
@@ -457,11 +485,12 @@ export default function AssetsPage() {
     [assets, videoModelTarget, id, videoParams, saveVideoAsset, reloadPendingTasks, t]
   );
 
-  // actually generate a single asset
+  // actually generate a single asset. Returns the saved static keyframe URL (undefined on failure) so
+  // the batch flow can run a second keyframe-chained motion pass without re-reading stale React state.
   const generateOne = useCallback(
-    async (shotId: number) => {
+    async (shotId: number, opts?: { skipMotion?: boolean }): Promise<string | undefined> => {
       const asset = assets.find((a) => a.shotId === shotId);
-      if (!asset) return;
+      if (!asset) return undefined;
 
       // product image shot: use the product photo directly, no AI call needed (persisted for the composer to read)
       if (asset.visualSource === "product_image") {
@@ -477,9 +506,9 @@ export default function AssetsPage() {
             body: JSON.stringify({ shotId, type: "product_image", sourceUrl: productImages[0] }),
           }).catch(() => {});
           // auto motion: use the product image as the first frame and run image-to-video (bring the real product to life); falls back to a static image on failure
-          if (autoMotion && videoModelTarget) await generateMotion(shotId, productImages[0]);
+          if (!opts?.skipMotion && autoMotion && videoModelTarget) await generateMotion(shotId, productImages[0]);
         }
-        return;
+        return productImages[0];
       }
 
       // AI-generated shot: requires a default image model to be configured
@@ -491,7 +520,7 @@ export default function AssetsPage() {
               : a
           )
         );
-        return;
+        return undefined;
       }
 
       setAssets((prev) => prev.map((a) => (a.shotId === shotId ? { ...a, status: "generating", error: undefined } : a)));
@@ -548,28 +577,52 @@ export default function AssetsPage() {
           prev.map((a) => (a.shotId === shotId ? { ...a, status: "done", thumbnailUrl: savedUrl } : a))
         );
         // auto motion: use the freshly generated image as the first frame and run image-to-video (real camera moves replace fake Ken-Burns); falls back to static image on failure
-        if (autoMotion && videoModelTarget) await generateMotion(shotId, savedUrl);
+        if (!opts?.skipMotion && autoMotion && videoModelTarget) await generateMotion(shotId, savedUrl);
+        return savedUrl;
       } catch (e) {
         setAssets((prev) =>
           prev.map((a) =>
             a.shotId === shotId ? { ...a, status: "failed", error: e instanceof Error ? e.message : t("errorGenerateFailed") } : a
           )
         );
+        return undefined;
       }
     },
     [assets, modelTarget, productImages, productSafe, imageParams, autoMotion, videoModelTarget, generateMotion]
   );
 
-  // generate all in one click (sequential, to avoid hitting platform rate limits with concurrent requests)
+  // generate all in one click (sequential, to avoid hitting platform rate limits with concurrent requests).
+  // With auto-motion on, this runs TWO passes: (1) every static keyframe, (2) keyframe-chained i2v per shot —
+  // chaining needs the NEXT shot's keyframe to exist, which a single interleaved pass can't provide.
   const generateAll = useCallback(async () => {
     const pending = assets.filter((a) => a.status === "pending" || a.status === "failed");
     if (pending.length === 0) return;
     setIsBatchGenerating(true);
+    const chained = autoMotion && !!videoModelTarget;
+    // freshly saved keyframes by shot — React state in this closure is stale during the loop
+    const savedByShot = new Map<number, string>();
     for (const asset of pending) {
-      await generateOne(asset.shotId);
+      const url = await generateOne(asset.shotId, { skipMotion: chained });
+      if (url) savedByShot.set(asset.shotId, url);
+    }
+    if (chained) {
+      // pass 2: i2v in script order; each shot chains into the next shot's keyframe when available.
+      // Existing static keyframes (generated in earlier sessions) participate too.
+      const staticFrameOf = (a: AssetItem): string | undefined =>
+        savedByShot.get(a.shotId) ?? (a.status === "done" && !a.isVideo ? a.thumbnailUrl : undefined);
+      for (let i = 0; i < assets.length; i++) {
+        const row = assets[i];
+        if (row.isVideo) continue; // already a motion/stock video — don't re-bill
+        const firstFrame = staticFrameOf(row);
+        if (!firstFrame) continue;
+        const next = assets[i + 1];
+        const lastFrame = next ? staticFrameOf(next) : undefined;
+        // null = explicitly no chain (last shot / next frame unavailable)
+        await generateMotion(row.shotId, firstFrame, lastFrame ?? null);
+      }
     }
     setIsBatchGenerating(false);
-  }, [assets, generateOne]);
+  }, [assets, generateOne, generateMotion, autoMotion, videoModelTarget]);
 
   return (
     <div className="min-h-screen grid-bg">

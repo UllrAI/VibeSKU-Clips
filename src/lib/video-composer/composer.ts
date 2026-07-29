@@ -371,6 +371,12 @@ export interface ClipInput {
   hasAudio?: boolean;
   /** path to the TTS voice-over audio file for this clip; aligned to clip duration (padded with silence if shorter, trimmed if longer) */
   audioPath?: string;
+  /**
+   * Probed source media length in seconds (video clips only). Lets the composer speed-fit a
+   * slightly-too-long clip into its slot instead of trimming the tail — tail-trim would cut off
+   * a keyframe-chained ending (the in-clip transition into the next shot) and break the seam.
+   */
+  sourceDuration?: number;
 }
 
 // resolution mapping
@@ -387,6 +393,9 @@ const SEGMENT_NORM = "format=yuv420p,setsar=1,fps=30,settb=AVTB";
 
 /** cross-fade duration in seconds for ffmpeg_fade transitions. video xfade / audio acrossfade / subtitle timeline must all use this same value; otherwise audio, video, and subtitles drift out of sync */
 export const FADE_DURATION = 0.5;
+
+/** Max source/slot ratio the speed-fit will compress (silent video clips): beyond ~1.35x the time compression reads as fast-forward, so the composer falls back to tail-trim */
+export const SPEEDFIT_MAX_RATIO = 1.35;
 
 /** One ffmpeg `-i` input. loop/t reproduce the `-loop 1 [-t N]` flags used for still images / the product-card image. */
 interface InputSpec {
@@ -463,7 +472,16 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
       // clips shorter than the shot duration would leave a black tail and cause audio/subtitle desync if only trimmed —
       // use tpad to clone the last frame up to the target duration, then trim, so each video clip is always exactly clip.duration.
       inputs.push({ path: clip.filePath });
-      filterParts.push(`[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,fps=30,tpad=stop_mode=clone:stop_duration=${clip.duration},trim=duration=${clip.duration},setpts=PTS-STARTPTS,${SEGMENT_NORM}[v${i}]`);
+      // Speed-fit (silent clips only): a source moderately longer than its slot is time-compressed
+      // with setpts so BOTH endpoints survive — tail-trim would cut a keyframe-chained ending (the
+      // in-clip transition into the next shot). Beyond SPEEDFIT_MAX_RATIO the compression would look
+      // fast-forwarded, so fall back to the plain trim. Native-audio clips are never speed-fitted
+      // (their slot already follows the media length, and setpts would desync the audio track).
+      const src = clip.sourceDuration ?? 0;
+      const overshoot = src > 0 ? src / clip.duration : 0;
+      const speedFit = !clip.hasAudio && overshoot > 1.001 && overshoot <= SPEEDFIT_MAX_RATIO;
+      const fit = speedFit ? `setpts=PTS/${overshoot.toFixed(4)},` : "";
+      filterParts.push(`[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,fps=30,${fit}tpad=stop_mode=clone:stop_duration=${clip.duration},trim=duration=${clip.duration},setpts=PTS-STARTPTS,${SEGMENT_NORM}[v${i}]`);
     }
   });
 

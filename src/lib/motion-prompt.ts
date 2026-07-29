@@ -1,0 +1,121 @@
+/**
+ * Motion-prompt engine for image-to-video (i2v) generation — the quality lever of the i2v main path.
+ *
+ * Why this exists: the script engine already writes a per-shot `camera` movement description
+ * (推拉摇移 language), but the i2v call used to send the shot's STATIC image prompt instead —
+ * scene wording with zero motion language, which yields bland or unpredictable movement.
+ * i2v models (Seedance 2.0 family) take composition/subject from the first frame; the text
+ * prompt's job is to direct MOTION: camera path + subject micro-action + stability constraints.
+ *
+ * Rules encoded here (commerce-specific):
+ *  - Camera: prefer the script's own `camera` field; fall back to a per-shot-type default move.
+ *  - Subject micro-action per shot type: bring the frame alive WITHOUT re-imagining the scene.
+ *  - Product shots get hard fidelity constraints (i2v models notoriously warp printed text/logos).
+ *  - Always close with stability/artifact constraints — cheap wins against flicker & morphing.
+ *  - Bilingual: follows the script language (CJK → Chinese prompt, otherwise English), because
+ *    overseas projects generate English scripts and mixing languages degrades model adherence.
+ *
+ * Pure functions, unit-testable, no I/O.
+ */
+import type { Shot } from "@/lib/db/schema";
+
+export interface MotionPromptInput {
+  /** Shot type drives the default camera move + subject micro-action */
+  shotType?: Shot["type"] | string;
+  /** The script engine's camera movement description (e.g. "特写 + 缓慢推近"); preferred over defaults */
+  camera?: string;
+  /** Short scene description used as a semantic anchor (truncated; the first frame already fixes the scene) */
+  description?: string;
+  /** Apply product-fidelity constraints (product visible in frame — logo/text must not warp) */
+  productShot?: boolean;
+  /**
+   * Keyframe-chained generation (the Dreamina-style first/last-frame pattern): the clip's last
+   * frame is pinned to the NEXT shot's keyframe, so the shot ends by flowing into the next scene —
+   * the transition is generated inside the clip and the composer's hard concat becomes seamless.
+   */
+  chainToNext?: boolean;
+}
+
+/** True when the text contains CJK characters (used to pick the prompt language). */
+function hasCjk(s: string): boolean {
+  return /[一-鿿぀-ヿ가-힯]/.test(s);
+}
+
+/** Per-shot-type default camera move — used only when the script didn't provide one. */
+const CAMERA_DEFAULTS: Record<string, { zh: string; en: string }> = {
+  hook: { zh: "镜头快速推近主体，开场抓眼", en: "camera pushes in fast on the subject, punchy opening" },
+  pain_point: { zh: "镜头缓慢推近，带轻微手持感", en: "slow push-in with a subtle handheld feel" },
+  product_reveal: { zh: "镜头围绕商品缓慢环绕移动，高光沿商品表面流动", en: "camera orbits the product slowly, highlights sweeping across its surface" },
+  demo: { zh: "镜头平稳跟随演示动作，适时贴近特写细节", en: "camera smoothly follows the demonstration, moving in for close-up details" },
+  social_proof: { zh: "镜头缓慢横移扫过画面", en: "slow lateral tracking shot across the scene" },
+  cta: { zh: "镜头缓慢推近，聚焦主体", en: "slow push-in, focusing on the subject" },
+};
+
+const CAMERA_FALLBACK = { zh: "镜头缓慢推近主体", en: "slow push-in on the subject" };
+
+/** Per-shot-type subject micro-action — animates the still frame without re-imagining the scene. */
+const ACTION_DEFAULTS: Record<string, { zh: string; en: string }> = {
+  hook: { zh: "画面主体动态醒目、能量感强", en: "the subject moves eye-catchingly with high energy" },
+  pain_point: { zh: "人物与环境自然轻微动作，情绪真实", en: "people and surroundings move subtly and naturally, authentic mood" },
+  product_reveal: { zh: "商品保持静置不动，仅光影流动与镜头移动，突出材质质感", en: "the product itself stays still; only light and camera move, emphasizing material texture" },
+  demo: { zh: "手部演示动作自然连贯", en: "hands demonstrate naturally and continuously" },
+  social_proof: { zh: "画面元素自然微动，生活气息真实", en: "scene elements drift subtly, believable everyday atmosphere" },
+  cta: { zh: "主体稳定醒目，画面收束聚焦", en: "the subject stays prominent and stable as the frame settles" },
+};
+
+const ACTION_FALLBACK = { zh: "画面自然生动，主体动作连贯", en: "the scene comes alive naturally with coherent subject motion" };
+
+/** Product-fidelity constraint (printed text & logos are the first thing i2v models destroy). */
+const PRODUCT_CONSTRAINT = {
+  zh: "商品的外观、包装、颜色、logo 与文字必须保持完全不变，文字清晰不扭曲变形",
+  en: "the product's appearance, packaging, colors, logo and printed text must remain exactly unchanged, text stays sharp and undistorted",
+};
+
+/** Universal stability/artifact tail — cheap, consistent win against flicker and morphing. */
+const QUALITY_TAIL = {
+  zh: "画面稳定流畅，光影自然过渡，无闪烁、无变形、不出现新物体",
+  en: "stable smooth footage, natural lighting transitions, no flicker, no morphing, no new objects appearing",
+};
+
+/** Chained-clip guidance: direct the in-clip transition toward the pinned last frame. */
+const CHAIN_GUIDANCE = {
+  zh: "镜头在结尾自然运镜过渡到指定的尾帧画面，过渡连贯流畅、一气呵成，不跳切",
+  en: "the camera moves naturally into the specified last frame at the end, one continuous fluent transition, no jump cut",
+};
+
+/** Max chars of the scene description kept as a semantic anchor (the first frame already fixes composition). */
+const DESC_ANCHOR_MAX = 60;
+
+/**
+ * Build the i2v motion prompt for a shot. The camera line leads (motion is the message),
+ * followed by subject action, an optional short scene anchor, fidelity constraints for product
+ * shots, and the stability tail. Language follows the script (camera/description text).
+ */
+export function buildMotionPrompt(input: MotionPromptInput): string {
+  const probe = `${input.camera ?? ""}${input.description ?? ""}`;
+  // Empty inputs default to Chinese (domestic-first product)
+  const lang: "zh" | "en" = probe && !hasCjk(probe) ? "en" : "zh";
+  const type = String(input.shotType ?? "");
+
+  const camera = input.camera?.trim() || (CAMERA_DEFAULTS[type] ?? CAMERA_FALLBACK)[lang];
+  const action = (ACTION_DEFAULTS[type] ?? ACTION_FALLBACK)[lang];
+  const anchor = (input.description ?? "").trim().slice(0, DESC_ANCHOR_MAX);
+
+  const parts: string[] = [];
+  if (lang === "zh") {
+    parts.push(`运镜：${camera}`);
+    parts.push(`画面动态：${action}`);
+    if (anchor) parts.push(`场景：${anchor}`);
+    if (input.chainToNext) parts.push(CHAIN_GUIDANCE.zh);
+    if (input.productShot) parts.push(PRODUCT_CONSTRAINT.zh);
+    parts.push(QUALITY_TAIL.zh);
+    return parts.join("。") + "。";
+  }
+  parts.push(`Camera: ${camera}`);
+  parts.push(`Motion: ${action}`);
+  if (anchor) parts.push(`Scene: ${anchor}`);
+  if (input.chainToNext) parts.push(CHAIN_GUIDANCE.en);
+  if (input.productShot) parts.push(PRODUCT_CONSTRAINT.en);
+  parts.push(QUALITY_TAIL.en);
+  return parts.join(". ") + ".";
+}

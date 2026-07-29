@@ -13,7 +13,7 @@ import { recordAiTask, updateAiTask } from "@/lib/ai-tasks";
 // so the client can resume via /api/ai/video/task instead of paying again.
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { provider: providerName, model, prompt, imageUrl, mode, apiKey, baseUrl, options, projectId, shotId } = body;
+  const { provider: providerName, model, prompt, imageUrl, lastImageUrl, mode, apiKey, baseUrl, options, projectId, shotId } = body;
 
   if (!providerName || !model) {
     return apiError(req, "缺少必要参数", "Missing required parameters");
@@ -27,11 +27,15 @@ export async function POST(req: NextRequest) {
     const provider = createProvider({ name: providerName, apiKey, baseUrl });
 
     const firstFrameUrl = await toRemoteUsableImage(imageUrl);
+    // Keyframe chaining (Dreamina-style first/last frame): pin the clip's last frame to the next
+    // shot's keyframe so the transition is generated inside the clip (seamless on hard concat)
+    const lastFrameUrl = lastImageUrl ? await toRemoteUsableImage(lastImageUrl) : undefined;
     const videoOptions = {
       modelId: model,
       mode: mode || (imageUrl ? "image-to-video" : "text-to-video"),
       prompt: prompt || "",
       firstFrameUrl,
+      ...(lastFrameUrl && { lastFrameUrl }),
       ...options,
     };
 

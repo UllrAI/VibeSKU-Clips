@@ -261,13 +261,23 @@ export async function POST(
       // 3) otherwise → script duration.
       let duration = shot.duration || 3;
       let voiceSec: number | undefined;
+      // silent video clips also get probed: the composer speed-fits a moderately-too-long clip into
+      // its slot (preserving a keyframe-chained ending) and needs the real source length for that
+      let sourceDuration: number | undefined;
       if (audioPath) {
         const probed = await probeDuration(audioPath);
         voiceSec = probed > 0 ? probed : estimateSpeechSeconds(shot.voiceover ?? "");
         duration = Math.min(Math.max(voiceSec + VOICE_GAP, 1.5), 20);
+        if (isVideo) {
+          const mediaDur = await probeDuration(local);
+          if (mediaDur > 0) sourceDuration = mediaDur;
+        }
       } else if (nativeAudio) {
         const mediaDur = await probeDuration(local);
         if (mediaDur > 0) duration = Math.min(Math.max(mediaDur, 1.5), 20);
+      } else if (isVideo) {
+        const mediaDur = await probeDuration(local);
+        if (mediaDur > 0) sourceDuration = mediaDur;
       }
 
       const clip: ClipInput = {
@@ -276,6 +286,7 @@ export async function POST(
         duration,
         transition: shot.transition || "ai_start_end",
         ...(isVideo ? { hasAudio: nativeAudio } : { motion: defaultMotion(shot) }),
+        ...(sourceDuration && { sourceDuration }),
         ...(audioPath && { audioPath }),
       };
       rendered.push({ shot, clip, duration, voiceSec });

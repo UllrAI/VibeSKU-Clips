@@ -10,6 +10,8 @@ export interface AssetItem {
   duration: number;
   description: string;
   prompt: string;
+  /** Script camera movement description — feeds the i2v motion prompt (see motion-prompt.ts) */
+  camera?: string;
   visualSource: Shot["visualSource"];
   status: "pending" | "generating" | "done" | "failed";
   thumbnailUrl?: string;
@@ -63,6 +65,7 @@ export function buildAssetRows(
         duration: s.duration,
         description: s.description,
         prompt: s.prompt ?? "",
+        camera: s.camera || undefined,
         visualSource: s.visualSource,
         status: "done" as const,
         thumbnailUrl: isVideo && saved.thumbnailPath ? saved.thumbnailPath : saved.filePath,
@@ -76,11 +79,26 @@ export function buildAssetRows(
       duration: s.duration,
       description: s.description,
       prompt: s.prompt ?? "",
+      camera: s.camera || undefined,
       visualSource: s.visualSource,
       status: s.visualSource === "product_image" ? ("done" as const) : ("pending" as const),
       thumbnailUrl: s.visualSource === "product_image" ? firstProduct : undefined,
     };
   });
+}
+
+/**
+ * Keyframe chaining (Dreamina-style first/last frame): find the NEXT shot's static keyframe so an
+ * image-to-video call can pin its last frame to it — the clip then ends by flowing into the next
+ * scene, and the composer's hard concat becomes a seamless AI-generated transition.
+ * Returns undefined when the next shot has no usable static image (video assets can't be a frame).
+ */
+export function nextChainKeyframe(rows: AssetItem[], shotId: number): string | undefined {
+  const idx = rows.findIndex((r) => r.shotId === shotId);
+  if (idx < 0 || idx + 1 >= rows.length) return undefined;
+  const next = rows[idx + 1];
+  if (next.status === "done" && !next.isVideo && next.thumbnailUrl) return next.thumbnailUrl;
+  return undefined;
 }
 
 /** Number of shots still awaiting an asset (pending) */
