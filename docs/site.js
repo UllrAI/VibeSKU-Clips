@@ -4,6 +4,13 @@
 (function () {
   var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  /* --- make sure demo videos actually play (data-saver / strict autoplay fallback) --- */
+  document.querySelectorAll('.ph video').forEach(function (v) {
+    var kick = function () { var p = v.play(); if (p && p.catch) p.catch(function () {}); };
+    if (v.readyState >= 2) kick(); else v.addEventListener('loadeddata', kick, { once: true });
+    document.addEventListener('click', kick, { once: true });
+  });
+
   /* --- sound toggle on demo videos (independent of GSAP) --- */
   document.querySelectorAll('.ph').forEach(function (ph) {
     var v = ph.querySelector('video');
