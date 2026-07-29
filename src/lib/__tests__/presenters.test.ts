@@ -11,15 +11,15 @@ describe("内置主播库与真实人脸约束", () => {
     expect(new Set(PRESENTER_PRESETS.map((p) => p.id)).size).toBe(6);
     for (const p of PRESENTER_PRESETS) {
       expect(["female", "male"]).toContain(p.gender);
-      expect(p.appearance).toMatch(/普通|素颜|真实|毛孔|雀斑|痘印|皱纹|黑眼圈|粗糙|法令纹/);
+      expect(p.appearance).toMatch(/耐看|亲和|清爽|自然真实|温和|憨厚|端正/);
     }
   });
 
-  it("真实人脸约束中英都禁网红脸并要求真实肤质", () => {
+  it("真实人脸约束中英：禁网红脸也禁刻意丑化", () => {
     expect(REAL_FACE_CONSTRAINT.zh).toContain("网红脸");
-    expect(REAL_FACE_CONSTRAINT.zh).toContain("毛孔");
+    expect(REAL_FACE_CONSTRAINT.zh).toContain("刻意丑化");
     expect(REAL_FACE_CONSTRAINT.en).toContain("influencer");
-    expect(REAL_FACE_CONSTRAINT.en).toContain("pores");
+    expect(REAL_FACE_CONSTRAINT.en).toContain("deliberately unattractive");
   });
 
   it("realFaceLine 跟随上下文语言", () => {
