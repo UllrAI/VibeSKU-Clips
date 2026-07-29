@@ -143,11 +143,9 @@ Yes. ClipForge ships an **MCP Server** — one sentence in an MCP-capable client
 
 ### 2. AI asset generation (multi-model aggregation)
 
-> 🎬 **Image-to-video is the quality path**: with a video model configured, each generated image is **automatically turned into a real moving shot via image-to-video** (the product photo is the first frame, so it stays faithful), replacing the "still + fake pan" look for a big quality lift. A **motion-prompt engine** assembles the script's camera language, per-shot-type moves, product-fidelity constraints (logo/text must not warp) and stability constraints into i2v-specific prompts — in real A/B calls, the unconstrained prompt grew a hand out of nowhere and pushed the product out of frame, while the motion prompt kept the product locked throughout. **Batch generation runs keyframe-chained** (the Dreamina pattern): each clip's last frame is pinned to the next shot's keyframe so transitions are generated inside the clip and hard cuts become seamless (verified: a marble-vanity → living-room scene transition inside one 5s clip); the composer **speed-fits moderately-long AI clips** (≤1.35x) instead of tail-trimming so chained endings survive. Toggle it off anytime; it falls back to the still on failure. With no video model, it uses the 0-cost keyless stitching fallback.
+> 🎬 **Image-to-video is the quality path**: with a video model configured, each generated image is **automatically turned into a real moving shot via image-to-video** (the product photo is the first frame, so it stays faithful), replacing the "still + fake pan" look. The quality machinery is built in: a **motion-prompt engine** (script camera language + per-shot-type moves + product-fidelity and stability constraints — verified in real A/B calls: the unconstrained prompt grew a hand and pushed the product out of frame, the motion prompt kept it locked); **keyframe chaining** (the Dreamina pattern — each clip's last frame is pinned to the next shot's keyframe so transitions are generated inside the clip and hard cuts become seamless, with the composer speed-fitting moderately-long clips so chained endings survive); **three camera-intensity tiers** (soft / mid / bold, one click — the same keyframe can feel restrained or punchy); **per-shot motion redo** (keep the keyframe, re-run only the motion, never throw away the batch); and an **i2v prompt-engineering pack** (explicit single-take declaration against mid-clip cuts, an ambience-only sound line against gibberish speech, and a lint for self-contradictory camera directions). Toggle it off anytime; it falls back to the still on failure, and to the 0-cost keyless stitching path with no video model at all.
 >
-> 🎛 **Camera intensity & per-shot fallback** (v0.8.61): **three camera-intensity tiers** (soft / mid / bold, one-click on the assets page, remembered globally) give the same keyframe either a restrained or a punchy feel; **per-shot motion redo** — unhappy with one moving shot? Keep its keyframe image and re-run only the motion, without regenerating the image or touching the rest of the batch (i2v videos now **persist their source keyframe**, so keyframe chaining keeps working after a redo); an **i2v prompt-engineering pack** (per Seedance's official guide): every clip explicitly declares "one continuous single take" to stop mid-clip cuts, a sound line pins "natural ambience, no speech" so voice-less clips can't surface gibberish talking, and **conflicting camera directions are linted** (self-contradictory combos like "locked-off" + "orbit" fall back to the shot type's known-good move instead of producing jerky, indecisive motion).
->
-> 💰 **Paid-task safety** (v0.8.56, fixes [#16](https://github.com/xixihhhh/clipforge/issues/16)): every cloud video task is **persisted with its provider task ID the moment it is accepted** — a poll timeout, network drop, or restart can no longer lose a task you already paid for (the assets page offers "resume query" to retrieve it, preventing duplicate billing); task-creating requests are **never auto-retried** (only on an explicit 429 rejection); image-to-video requests are **validated and mapped to a true i2v model**, so "add motion" can never be billed as text-to-video again.
+> 💰 **Paid-task safety**: every cloud video task is **persisted with its provider task ID the moment it is accepted** — a poll timeout, network drop, or restart can no longer lose a task you already paid for (the assets page offers "resume query", preventing duplicate billing); task-creating requests are **never auto-retried**; image-to-video requests are **validated and mapped to a true i2v model**, so "add motion" can never be billed as text-to-video; image sizes are **auto-adapted to each model's protocol** (exact aspect ratios), eliminating "invalid size but already billed" failures.
 
 One interface aggregates 7 image/video platforms + OpenRouter LLMs and 30+ mainstream models:
 
@@ -204,15 +202,16 @@ New projects are tagged `contentType=topic` and share the second half of the com
 ### 5. Video compositing engine
 
 - **Professional FFmpeg pipeline**: H.264 High Profile, faststart, 256k AAC — real output
-- **Burned subtitles**: auto-detects a CJK font (a full CJK subtitle font is bundled so zh/ja/ko render consistently on every OS); two viral subtitle styles — **① rapid short-card flashes** (**cards break at punctuation into natural phrases** — never mid-word; punctuation-pause-weighted timing follows the voice; only punctuation-free lines fall back to even char/word splits, issue #14); **② karaoke per-character highlight** (sentence stays on screen, each character lights up as the voiceover "sings" past it, libass-rendered, aligned to TTS timing with no ASR). CJK by character, English by word — built for "80% watch on mute" retention
+- **Burned subtitles**: auto-detects a CJK font (a full CJK subtitle font is bundled so zh/ja/ko render consistently on every OS); two viral subtitle styles — **① rapid short-card flashes** (**cards break at punctuation into natural phrases** — never mid-word; punctuation-pause-weighted timing follows the voice; only punctuation-free lines fall back to even char/word splits); **② karaoke per-character highlight** (sentence stays on screen, each character lights up as the voiceover "sings" past it, libass-rendered, aligned to TTS timing with no ASR). CJK by character, English by word — built for "80% watch on mute" retention
 - **Caption style presets**: four one-click looks — **Standard boxed** (white on a translucent box) / **Bold punch** (big type, heavy outline, no box — the high-retention creator look) / **Minimal** (small, thin stroke, clean documentary feel) / **Karaoke**; selectable everywhere (video page, CLI `--caption`, MCP `captionPreset`), guarded by a pixel-level real-render regression test
 - **Style packs**: apply a whole finished-video look in one click (caption preset / BGM mood / ducking / quality / CTA / product card) — 4 built-in packs (Commerce Punch / Karaoke Viral / Clean Documentary / Standard) plus **import/export of JSON pack files** for team sharing; packs are **purely declarative data** (whitelist-validated, nothing executable) — the novice-safe way to "install an external skill"
 - **Contact sheet**: the whole finished video condensed into one PNG — an evenly-sampled filmstrip plus the audio waveform — so black frames, caption collisions, audio spikes and dead-air endings show at a glance; agents can call it via MCP and *look* at the image to self-check a render before delivering (export page / CLI `clipforge sheet` / MCP `clipforge_contact_sheet`)
 - **Smart transitions**: AI first/last-frame (Seedance 2.0 / Vidu) / AI reference (Kling) / crossfade / hard cut
 - **Ken Burns motion**: slow push / pan / depth drift — makes a static product image feel alive without altering the product
-- **Dual voiceover**: paid OpenAI-compatible TTS (more controllable), or **free Edge keyless TTS** (no key, multilingual voices with preview) as a zero-config fallback, generating per-shot narration and aligning subtitles to its timing; **narration is never cut mid-sentence** — text-based duration estimate backs up a failed probe, a natural breathing gap sits between segments, and fades only ever consume tail silence (issue #14)
+- **Dual voiceover**: paid OpenAI-compatible TTS (more controllable), or **free Edge keyless TTS** (no key, multilingual voices with preview) as a zero-config fallback, generating per-shot narration and aligning subtitles to its timing; **narration is never cut mid-sentence** — text-based duration estimate backs up a failed probe, a natural breathing gap sits between segments, and fades only ever consume tail silence
 - **Mixed-source normalization**: unifies pixel format / SAR / frame rate across sources so xfade/concat don't fail on mismatches
 - **Smart audio**: audio-capable models output narrated video directly; BGM is auto-mixed and ducked
+- **Optional motion elements** (opt-in): [remotion/](remotion/README.md) renders animated title cards / per-character kinetic captions — the smooth motion FFmpeg can't do; not part of the base install (`npm run render:element`)
 
 ### 6. E-commerce efficiency tools
 
@@ -432,29 +431,20 @@ pnpm dist       # .dmg installer
 
 ## Roadmap
 
-**Done (full commerce chain + infra)**
-- [x] AI script generation (5 categories × 4 styles + golden-3s + platform SEO)
-- [x] Multi-model aggregation (7 platforms, 30+ models, incl. Seedance 2.0 / GPT Image 2 / Kling 3.0)
-- [x] Asset generation on real models + **product fidelity** (image-to-image locking the subject)
-- [x] Video compositing engine (FFmpeg, real output + burned subtitles + motion + price overlay)
-- [x] Voiceover TTS (OpenAI-compatible) + BGM upload, mix & duck
-- [x] Multi-platform export with real re-encode (TikTok/Douyin 9:16 / Kuaishou / Xiaohongshu 3:4, blur fill)
-- [x] Batch rendering (concurrency pool) + publish-copy generation + viral templates
-- [x] **CI pipeline** (GitHub Actions: lint / test / build)
-- [x] **Multi-source free asset engine** (Openverse key-free / Pixabay / Pexels, aggregated search + compliance attribution)
+> Per-version history lives in [GitHub Releases](https://github.com/xixihhhh/clipforge/releases); usage details for each capability are in [Core features](#core-features) above.
 
-**In progress (generalization + desktop distribution)**
-- [x] **Rebrand to ClipForge + multilingual UI** (zero-dependency i18n, Chinese default / English one-click, full-site internationalization; any subject worldwide, not just commerce)
-- [x] No-product "one-sentence topic video" loop (topic → de-commercialized narration → English search terms → free stock auto-fill → FFmpeg vertical render)
-- [x] Free edge-tts voiceover fallback + voice preview (sound even at 0-key) — a self-built zero-dependency keyless Edge TTS client (Node WebSocket + Sec-MS-GEC token)
-- [x] **One-click Electron desktop app**: mac app verified to launch with DB routes 200 (better-sqlite3 on Electron ABI, data in userData, bundled ffmpeg). TODO: CI matrix .dmg/.exe to Releases + real-machine GUI test
-- [x] **Render-quality presets fast/standard/HD**: trade speed for clarity/size in one click, mapped to real FFmpeg encoding (resolution + x264 -preset + -crf, whitelisted against injection)
+**Done**
+- ✅ **Main pipeline**: AI scripts (5 categories × ten styles in four forms + golden-3s + platform SEO) → product-faithful assets (7 platforms, 30+ models) → i2v moving shots (motion-prompt engine / keyframe chaining / intensity tiers / per-shot redo) → FFmpeg compositing (viral captions / free multi-voice TTS / BGM / smart transitions / style recipes / quality presets) → multi-platform export (bitrate pinned under re-compression thresholds)
+- ✅ **Zero-cost loop**: key-free asset engine (Openverse / Wikimedia real footage / NASA / local asset pool, semantic matching + cross-shot dedup + same-source continuity) + free Edge TTS (self-built keyless client) + local compositing — a full video with no API key at all; one-sentence topic videos / bring-your-own-script / dubbing for going global
+- ✅ **Publish gatekeeping**: one-click publish gate (ad-law wordlist / video QC / asset license credits, `--strict` CI-ready) + AIGC labeling (explicit badge + implicit metadata per the Chinese national standard) + product-visible-in-3s precheck + off-site QR policy guard + anti-homogenization variant engine + native-feel post-processing + contact-sheet review image
+- ✅ **Scale & growth**: batch rendering / viral templates & remix / A/B variants / data flywheel (feed real conversion numbers back into script generation) / trending topics / cover images / Xiaohongshu card decks / preview GIFs / shop-link QR with UTM tracking
+- ✅ **Integrations & distribution**: MCP Server (one-sentence video for agents) / CLI / agent Skill / Docker image / Electron desktop app (mac verified; CI-built .dmg/.exe pending) / bilingual UI / CI pipeline
 
 **Planned (real AI editing)**
 - [ ] Auto subtitle ASR (whisper / transformers.js) → burned subtitles
 - [ ] Import existing video to edit + silence-trim
-- [ ] Cut long video into viral clips (real video analysis behind viral remix)
-- [ ] Digital-human lip-sync (fal.ai Lipsync) / timeline editing / multilingual dubbing for going global
+- [ ] Cut long video into viral clips — available today via [HotClip](https://github.com/xixihhhh/hotclip) by the same author
+- [ ] Digital-human lip-sync (fal.ai Lipsync) / timeline editing
 
 ---
 
