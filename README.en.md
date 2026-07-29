@@ -22,21 +22,42 @@
   <a href="https://skills.sh/xixihhhh/clipforge"><img src="https://skills.sh/b/xixihhhh/clipforge" alt="Agent Skill installs" /></a>
 </p>
 
-## 🛍️ Not just another AI video tool — **built for selling**
+## ✨ Highlights — 30 seconds on why this one
 
-There's no shortage of AI short-video tools, but most can't really sell: **they don't extract selling points, don't understand platform algorithms, and they distort your product beyond recognition.** ClipForge was designed for **conversion** from day one:
+| Exclusive | In one line |
+|---|---|
+| 🎯 **Product fidelity** | Swap the background / relight — the product itself stays pixel-identical, never "Photoshopped wrong" |
+| 🎬 **Real moving shots** | Image-to-video + seamless keyframe-chained transitions + adjustable camera intensity + per-shot redo — not a still-image slideshow |
+| 🎭 **Mini-drama selling** | Ten script styles (mini-drama / plot twist / street interview…), multi-character dialogue with a free dedicated voice per character |
+| 🆓 **A full video at $0** | Free stock + free AI voiceover (EN / 中 / 日 / 韩 / ES) + local compositing — no API key needed, open-source, no watermark |
+| 🚦 **Don't get throttled** | AIGC labeling + ad-law banned-term scan + publish gate — compliance on by default |
+| 📦 **Batch + viral remix** | 10 products rendered in one click, re-shoot a competitor's viral with your product, A/B cuts |
+| 🤖 **One sentence via agents** | MCP / CLI / Skill — tell Claude / Cursor *"make a 9:16 from this product link"* |
+| 💰 **Paid calls never wasted** | Cloud tasks persisted & recoverable, never auto-retried — every cent accounted for |
 
-- 🎯 **Product fidelity (the make-or-break for commerce)**: image-to-image locks your original product; you can swap the background or relight it **without altering the product itself** — your product never gets "Photoshopped wrong."
-- 🧲 **Scripts that sell**: 5 deep category templates × **10 selling styles across four forms** — drama forms (mini-drama with two-character conflict dialogue / plot twist / street interview / storyline), product forms (unboxing review / product POV where the product speaks / comparison review), talking-head forms (persona pitch / pain-point), scene form (scenario) + a **golden-3-seconds hook library**. Dialogue styles auto-cast characters, and compose gives **each character its own free TTS voice** (Edge-TTS multi-voice dialogue, zero cost) — not a dry spec readout.
-- 📈 **Algorithm-aware**: auto-generates hashtags / cover copy / engagement prompts tuned to **TikTok / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu** and their in-app shopping carts.
-- 📦 **Batch + viral remix**: pick 10 products and batch-render before a big sale, save winning scripts as templates, paste a competitor link to **re-shoot with your own product**, and A/B multiple cuts to test conversion.
+Want higher quality? Add one key: a single interface aggregates **7 platforms, 30+ models** (GPT Image 2 / Seedance 2.0 / Kling 3.0…). Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
 
-## 🆓 And it batches videos at zero cost
+## 🚀 Run it in 30 seconds
 
-- **Truly free, zero-key**: free stock assets (Openverse images + **Wikimedia real footage**) + free Microsoft Edge TTS voiceover (Chinese / English / Japanese / Korean / Spanish — native pronunciation for going global) + free background music + local FFmpeg compositing — **you can render a full video without any AI key.**
-- **No watermark · local & private**: self-hosted, open-source (AGPL-3.0). Your product images / projects / keys all stay on your own machine — nothing is uploaded to any cloud.
-- **Add a key for higher quality**: one interface aggregates **7** image/video platforms and 30+ models (GPT Image 2 / Seedance 2.0 / Kling 3.0 …).
-- **Callable by AI agents**: a built-in **MCP Server** (`clipforge_product_script` turns a **product link straight into a sales script** in one call) + a **CLI** (`clipforge product --url "…" --compose` goes link → finished video in one command) + an **agent Skill** ([skills/clipforge-video](skills/clipforge-video/SKILL.md) — teaches an assistant the whole pipeline; just say *"make a 9:16 from this product link"*; install via `npx skills add xixihhhh/clipforge`, or Claude Code's `/plugin marketplace add xixihhhh/clipforge` for skill + MCP in one, or **paste the one-line Setup prompt from [skills/README](skills/README.md) to your agent** and it installs everything itself); bilingual UI (中文 / English).
+```bash
+docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
+```
+
+Open http://localhost:3000 — **render your first video with no key at all** (free stock + free voiceover). Local dev / desktop app / model setup: see [Quick start](#quick-start).
+
+## UI preview
+
+| Home · one photo / one sentence | New project · paste a URL or upload | Script · 3 variants |
+|:---:|:---:|:---:|
+| ![Home](docs/screenshots/01-home.en.png) | ![New project](docs/screenshots/03-new.en.png) | ![Script](docs/screenshots/04-script.en.png) |
+| **Compose · voiceover/subtitles/BGM** | **Export · multi-platform** | **Batch production** |
+| ![Compose](docs/screenshots/04b-video.en.png) | ![Export](docs/screenshots/05-export.en.png) | ![Batch](docs/screenshots/06-batch.en.png) |
+
+<p align="center"><img src="docs/showcase-platforms.en.png" alt="ClipForge produces faceless vertical shopping videos for TikTok Shop, Reels, Shorts, Douyin, Kuaishou and Xiaohongshu — never showing a real face" width="820"/></p>
+
+---
+
+> 📚 **Detailed docs below**: [Compliance](#-compliance-first-by-default-ship-to-china-without-getting-throttled) · [What it can do](#-two-ways-to-use-it-commerce-first-but-any-subject-works) · [Core features](#core-features) · [Quick start](#quick-start) · [FAQ](#-faq) · [Roadmap](#roadmap)
 
 ## ✅ Compliance-first by default (ship to China without getting throttled)
 
@@ -73,18 +94,6 @@ Using the sample "Soft Thick Facial Tissue":
 > The whole thing is **fully automated, watermark-free**; before a big sale you can pick 10 products to **batch-render**, apply viral templates, and A/B multiple cuts.
 
 **Keywords**: AI shopping video · short-video ad maker · e-commerce short video · product-to-video · faceless UGC ads · TikTok Shop / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu · AI selling-point extraction · batch rendering · viral remix · product video generator · AI voiceover · open-source self-hosted · MCP · GPT Image 2 / Seedance 2.0
-
----
-
-## UI preview
-
-| Home · one photo / one sentence | New project · paste a URL or upload | Script · 3 variants |
-|:---:|:---:|:---:|
-| ![Home](docs/screenshots/01-home.en.png) | ![New project](docs/screenshots/03-new.en.png) | ![Script](docs/screenshots/04-script.en.png) |
-| **Compose · voiceover/subtitles/BGM** | **Export · multi-platform** | **Batch production** |
-| ![Compose](docs/screenshots/04b-video.en.png) | ![Export](docs/screenshots/05-export.en.png) | ![Batch](docs/screenshots/06-batch.en.png) |
-
-<p align="center"><img src="docs/showcase-platforms.en.png" alt="ClipForge produces faceless vertical shopping videos for TikTok Shop, Reels, Shorts, Douyin, Kuaishou and Xiaohongshu — never showing a real face" width="820"/></p>
 
 ---
 
@@ -127,7 +136,7 @@ Yes. The whole flow is automatic — AI writes the script, fills visuals, adds v
 One-click fit for TikTok / Reels / Shorts (9:16) / Douyin / Kuaishou / Xiaohongshu (3:4); the UI and docs support **中文 / English**, auto-switching by system language.
 
 **Can an AI assistant (Claude / Cursor) generate videos directly?**
-Yes. ClipForge ships an **MCP Server** — one sentence in an MCP-capable client drives a render. See [mcp/README.md](mcp/README.md).
+Yes. ClipForge ships an **MCP Server** (`clipforge_product_script` turns a product link straight into a sales script — see [mcp/README.md](mcp/README.md)) plus an **agent Skill** ([skills/clipforge-video](skills/clipforge-video/SKILL.md)) that teaches an assistant the whole pipeline. Install any way you like: `npx skills add xixihhhh/clipforge`; or `/plugin marketplace add xixihhhh/clipforge` in Claude Code for skill + MCP in one; or paste the Setup prompt from [skills/README](skills/README.md) to your agent and it installs itself.
 
 ---
 

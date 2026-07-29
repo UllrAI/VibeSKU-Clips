@@ -22,21 +22,44 @@
   <a href="https://skills.sh/xixihhhh/clipforge"><img src="https://skills.sh/b/xixihhhh/clipforge" alt="Agent Skill 安装量" /></a>
 </p>
 
-## 🛍️ 不是又一个 AI 视频工具——它**专为带货而生**
+## ✨ 亮点一览：30 秒看完为什么选它
 
-市面上 AI 短视频工具一抓一大把，但大多做不了真正的带货：**不会提炼卖点、不懂平台算法、还会把你的商品改得面目全非**。ClipForge 从第一天就是为**卖货转化**设计的：
+| 独家能力 | 一句话 |
+|---|---|
+| 🎯 **商品保真** | AI 换背景 / 打光，商品本体一个像素不改——产品绝不被 P 坏 |
+| 🎬 **真·动态镜头** | 图生视频 i2v + 链式无缝转场 + 运镜三档可调、不满意单镜重跑——不是静图 PPT |
+| 🎭 **短剧带货** | 情景短剧 / 反转剧场 / 街头采访等十种脚本风格，多角色对话自动各配免费音色 |
+| 🆓 **0 成本出整片** | 免费素材 + 免费 AI 配音（中英日韩西）+ 本地合成——没有任何 Key 也能出片，开源无水印 |
+| 🚦 **不被限流** | AIGC 标识（国标）+ 广告法违禁词扫描 + 发布门禁，合规默认开，国内平台放心发 |
+| 📦 **批量 + 爆款复刻** | 10 个商品一键全成片，竞品链接换品重拍，A/B 测转化 |
+| 🤖 **Agent 一句话出片** | MCP / CLI / Skill——在 Claude / Cursor 里说「用这个链接出条 9:16」即可 |
+| 💰 **付费安全** | 云端任务落库可恢复、绝不自动重试——付的每一分钱不白花 |
 
-- 🎯 **商品保真（带货命门）**：image-to-image 锁定商品原图，换背景 / 打光也**不改商品本体**——绝不把你的产品 P 坏。
-- 🧲 **会卖货的脚本**：5 大品类深度模板 × **10 种带货风格·四大形态**——剧情形（情景短剧·双角色冲突对话 / 反转剧场 / 街头采访 / 剧情故事）、物品形（开箱测评 / 物品拟人·商品第一人称 / 对比测评）、口播形（达人口播 / 痛点种草）、场景形（场景安利）+ **黄金 3 秒钩子库**。对话类风格自动生成角色设定，合成时**每个角色一个免费专属音色**（Edge-TTS 多音色对话，零成本），不是干巴巴念参数。
-- 📈 **平台算法适配**：自动产出话题标签 / 封面文案 / 互动引导，贴合**抖音 / 快手 / 小红书**算法与小黄车 / 小店转化。
-- 📦 **批量 + 爆款复刻**：大促前选 10 个商品一键批量出片、爆款脚本存模板一键套用、输入竞品链接**换品重拍**、A/B 多版本测转化。
+想更高画质再加 Key：一个接口聚合 **7 大平台 30+ 模型**（GPT Image 2 / Seedance 2.0 / Kling 3.0…）；自部署开源（AGPL-3.0），数据全在本机不上云。
 
-## 🆓 而且，0 成本就能批量出片
+## 🚀 30 秒跑起来
 
-- **真·免费、零 Key**：免费素材（Openverse 图 + **Wikimedia 实拍视频**）+ 免费微软 Edge TTS 配音（中 / 英 / 日 / 韩 / 西多语言，出海直接配外文原生发音）+ 免费背景音乐 + 本地 FFmpeg 合成——**没有任何 AI Key 也能出整片**。
-- **无水印 · 本地隐私**：自部署、开源（AGPL-3.0），商品图 / 项目 / Key 全在你自己机器，不上传任何云。
-- **想要更高画质再加 Key**：一个接口聚合 **7 大**生图/生视频平台、30+ 模型（GPT Image 2 / Seedance 2.0 / Kling 3.0 …）。
-- **能被 AI Agent 调用 / 命令行出片**：内置 **MCP Server**（Claude / Cursor 里一句话出片，`clipforge_product_script` **贴链接直接出带货脚本**）+ **命令行 CLI**（`clipforge product --url "…" --compose` 一条命令从链接到成片）+ **agent Skill**（[skills/clipforge-video](skills/clipforge-video/SKILL.md)，把整条出片流水线教给编程助手，一句话「用这个商品链接做条 9:16」即可；装法任选：`npx skills add xixihhhh/clipforge` 一条命令 / Claude Code `/plugin marketplace add xixihhhh/clipforge` 装 skill+MCP 二合一 / 把 [skills/README](skills/README.md) 里的 Setup prompt 原句贴给你的 agent 让它自装）；中英双语界面。
+```bash
+docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
+```
+
+打开 http://localhost:3000，**免 Key 就能出第一条片**（免费素材 + 免费配音）。本地开发 / 桌面版 / 配模型见 [快速开始](#快速开始)。
+
+## 界面预览
+
+| 首页·一句话/商品图成片 | 新建·粘贴链接或传图 | 分镜脚本·3 套方案 |
+|:---:|:---:|:---:|
+| ![首页](docs/screenshots/01-home.png) | ![新建](docs/screenshots/03-new.png) | ![脚本](docs/screenshots/04-script.png) |
+| **视频合成·配音/字幕/BGM** | **成片导出·多平台** | **批量出片** |
+| ![合成](docs/screenshots/04b-video.png) | ![导出](docs/screenshots/05-export.png) | ![批量](docs/screenshots/06-batch.png) |
+
+> 示例「云柔加厚抽纸」：真实商品图 + 运镜 + 中文字幕 + 价格贴 + 配音，一条带货短视频全自动生成。
+
+<p align="center"><img src="docs/showcase-platforms.png" alt="ClipForge 一键产出抖音 / 快手 / 小红书 / TikTok 竖屏带货短视频，全程不出真人脸" width="820"/></p>
+
+---
+
+> 📚 **以下是详细文档**：[合规默认开](#-合规默认开国内发布不踩坑) · [能做什么](#-两种玩法带货为主也能做任意题材) · [核心功能](#核心功能) · [快速开始](#快速开始) · [FAQ](#-常见问题-faq) · [Roadmap](#roadmap)
 
 ## ✅ 合规默认开：国内发布不踩坑
 
@@ -66,7 +89,7 @@
 
 ## 💡 带货实战：一张商品图 → 30 秒一条
 
-以示例「云柔加厚抽纸」为例（成片见下方 [界面预览](#界面预览)）：
+以示例「云柔加厚抽纸」为例（成片见上方 [界面预览](#界面预览)）：
 
 1. **传图填名** — 上传商品图、填「云柔加厚抽纸」、选投放平台（抖音 / 快手 / 小红书）。
 2. **AI 写脚本（~30s）** — 产出 3 套带货脚本（痛点种草 / 场景安利 / 对比测评），自带黄金 3 秒钩子、话题标签、封面文案、互动引导语。
@@ -76,21 +99,7 @@
 
 > 整条**全自动、无水印**；大促前还能选 10 个商品**批量出片**、套用爆款模板、A/B 多版本测转化。
 
-**关键词 / Keywords**: AI 带货短视频 · 带货视频制作 · 电商短视频 · 商品视频生成 · 种草视频 · 抖音小店 / 快手 / 小红书 / 视频号 / TikTok Shop 带货 · AI 卖点提炼 · 商品图转视频 · 批量出片 · 爆款复刻 · faceless UGC ads · product video generator · AI 配音 · 开源自部署 · MCP · GPT Image 2 / Seedance 2.0
-
----
-
-## 界面预览
-
-| 首页·一句话/商品图成片 | 新建·粘贴链接或传图 | 分镜脚本·3 套方案 |
-|:---:|:---:|:---:|
-| ![首页](docs/screenshots/01-home.png) | ![新建](docs/screenshots/03-new.png) | ![脚本](docs/screenshots/04-script.png) |
-| **视频合成·配音/字幕/BGM** | **成片导出·多平台** | **批量出片** |
-| ![合成](docs/screenshots/04b-video.png) | ![导出](docs/screenshots/05-export.png) | ![批量](docs/screenshots/06-batch.png) |
-
-> 示例「云柔加厚抽纸」：真实商品图 + 运镜 + 中文字幕 + 价格贴 + 配音，一条带货短视频全自动生成。
-
-<p align="center"><img src="docs/showcase-platforms.png" alt="ClipForge 一键产出抖音 / 快手 / 小红书 / TikTok 竖屏带货短视频，全程不出真人脸" width="820"/></p>
+**关键词 / Keywords**: AI 带货短视频 · 带货视频制作 · 电商短视频 · 商品视频生成 · 种草视频 · **短剧带货 / AI 剧情短视频** · **图生视频 i2v / AI 动态镜头 / 无缝转场** · 多角色 AI 配音 · 抖音小店 / 快手 / 小红书 / 视频号 / TikTok Shop 带货 · AI 卖点提炼 · 商品图转视频 · 批量出片 · 爆款复刻 · faceless UGC ads · product video generator · AI 配音 · 开源自部署 · MCP · GPT Image 2 / Seedance 2.0
 
 ---
 
@@ -133,7 +142,7 @@ ClipForge **开源、本地运行、无水印、免费路径零成本、数据�
 一键适配抖音 (9:16) / 快手 / 小红书 (3:4) / 视频号 / TikTok / Reels / Shorts；界面与文档支持**中文 / English**，按系统语言自动切换。
 
 **可以让 AI 助手（Claude / Cursor）直接生成视频吗？**
-可以。ClipForge 内置 **MCP Server**，在支持 MCP 的客户端里一句话即可驱动出片，详见 [mcp/README.md](mcp/README.md)。
+可以。ClipForge 内置 **MCP Server**（`clipforge_product_script` 贴商品链接直接出带货脚本，详见 [mcp/README.md](mcp/README.md)）+ **agent Skill**（[skills/clipforge-video](skills/clipforge-video/SKILL.md)，把整条出片流水线教给编程助手）。装法任选：`npx skills add xixihhhh/clipforge` 一条命令；Claude Code 里 `/plugin marketplace add xixihhhh/clipforge` 装 skill+MCP 二合一；或把 [skills/README](skills/README.md) 的 Setup prompt 贴给你的 agent 让它自装。
 
 **能在命令行里直接出片吗？**
 可以。内置 **命令行 CLI**：先启动实例，再设好 `CLIPFORGE_LLM_*` 环境变量，然后：
@@ -492,6 +501,6 @@ pnpm dist       # 出 .dmg 安装包
 
 ---
 
-<sub><b>关键词 / Keywords</b>：AI 短视频生成工具 · AI 带货短视频 · 一句话成片 · 文字转视频 · text to video · faceless video generator · AI short video maker · 抖音 / 快手 / 小红书 / TikTok / Reels / YouTube Shorts 制作 · AI UGC 电商广告 · AI 配音 / AI voiceover · 免费素材自动剪辑 · 开源 / 自部署视频工具 · AI 脚本生成 · MCP server · ClipForge（原带货剪手 / daihuo-jianshou）。</sub>
+<sub><b>关键词 / Keywords</b>：AI 短视频生成工具 · AI 带货短视频 · 短剧带货 / 剧情带货视频 · 图生视频 image-to-video · AI 运镜 / 无缝转场 · 一句话成片 · 文字转视频 · text to video · faceless video generator · AI short video maker · 抖音 / 快手 / 小红书 / TikTok / Reels / YouTube Shorts 制作 · AI UGC 电商广告 · AI 配音 / AI voiceover · 多角色多音色配音 · 免费素材自动剪辑 · 开源 / 自部署视频工具 · AI 脚本生成 · MCP server · ClipForge（原带货剪手 / daihuo-jianshou）。</sub>
 
 <sub>ClipForge 是独立开源项目，与抖音、快手、小红书、TikTok、YouTube、Shopify、Amazon、Microsoft、OpenAI 及任何模型供应商无官方关联；使用第三方模型与素材请遵守其各自条款。</sub>
