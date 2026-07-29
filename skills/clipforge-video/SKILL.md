@@ -60,6 +60,7 @@ Give a topic; ClipForge writes the narration, auto-fills free footage, voices it
 ### 2. Product / e-commerce video
 Paste a product URL (auto-extracts title/price/images) or upload a product image; ClipForge writes a selling script and keeps the product image faithful. It also folds in the performance flywheel — historical conversion data biases the script toward the style/hook that actually sells.
 - MCP (one shot): `clipforge_product_script { url: "https://...", styleType: "auto", durationSec: 30 }` → returns `projectId` + commerce scripts; then `clipforge_compose { projectId }`.
+- `styleType` spans four forms: drama (`drama` two-character conflict skit with free multi-voice dialogue / `reversal` / `interview` / `story`), product (`unboxing` / `product_pov` personified product / `comparison`), talking-head (`talking_head` / `pain_point`), scene (`scene`). Dialogue styles auto-cast characters and give each a distinct free TTS voice at compose time.
 - CLI (link → video in one line): `node bin/clipforge.mjs product --url "https://..." --compose --bgm`.
 - Low-level: `clipforge_ingest_product { url }` then generate a script and `clipforge_compose` separately.
 

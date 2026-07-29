@@ -15,7 +15,7 @@ import {
   type ScriptGenerationInput,
   type TopicScriptInput,
 } from "./prompts";
-import type { Shot } from "@/lib/db/schema";
+import type { Shot, ScriptCharacter } from "@/lib/db/schema";
 
 // ==================== Type definitions ====================
 
@@ -47,6 +47,8 @@ export interface GeneratedScript {
   totalDuration: number;
   /** Shot list */
   shots: Shot[];
+  /** Dialogue-script cast (drama style) — drives multi-voice TTS + visual-anchor prompts */
+  characters?: ScriptCharacter[];
 }
 
 /** Streaming output callbacks */
@@ -203,6 +205,30 @@ function validateShot(shot: Partial<Shot>, index: number): Shot {
 }
 
 /**
+ * Validate the dialogue-script cast (drama style). Drops malformed entries instead of failing the
+ * whole script; caps at 4 (the style asks for 2 — a runaway cast would break voice assignment).
+ */
+export function validateCharacters(raw: unknown): ScriptCharacter[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: ScriptCharacter[] = [];
+  for (const c of raw as Partial<ScriptCharacter>[]) {
+    if (!c || typeof c !== "object") continue;
+    const id = typeof c.id === "string" ? c.id.trim() : "";
+    const name = typeof c.name === "string" ? c.name.trim() : "";
+    if (!id || !name) continue;
+    out.push({
+      id,
+      name,
+      gender: c.gender === "male" ? "male" : "female",
+      ...(typeof c.persona === "string" && c.persona.trim() && { persona: c.persona.trim() }),
+      ...(typeof c.appearance === "string" && c.appearance.trim() && { appearance: c.appearance.trim() }),
+    });
+    if (out.length >= 4) break;
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+/**
  * Validate and correct a complete script object.
  */
 function validateScript(raw: Record<string, unknown>, fallbackStyleType: string): GeneratedScript {
@@ -214,11 +240,14 @@ function validateScript(raw: Record<string, unknown>, fallbackStyleType: string)
     ? raw.totalDuration
     : shots.reduce((sum, s) => sum + s.duration, 0);
 
+  const characters = validateCharacters(raw.characters);
+
   return {
     title: (raw.title as string) || "未命名脚本",
     styleType: (raw.styleType as string) || fallbackStyleType,
     totalDuration,
     shots,
+    ...(characters && { characters }),
   };
 }
 

@@ -34,7 +34,9 @@ export interface VariationSlot {
   durationOffset: number;
 }
 
-const STYLE_POOL = ["pain_point", "scene", "comparison", "story"] as const;
+// Narration-form styles only: auto-generated A/B variants must not silently switch a project into a
+// dialogue/cast format (drama/interview/product_pov invent characters — that is an explicit user choice)
+const STYLE_POOL = ["pain_point", "scene", "comparison", "story", "reversal", "unboxing", "talking_head"] as const;
 const MOOD_POOL = ["upbeat", "chill", "energetic", "emotional"] as const;
 const DURATION_OFFSETS = [0, 3, -3, 5] as const;
 

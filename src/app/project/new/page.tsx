@@ -44,11 +44,18 @@ const durationOptions = [
 ];
 
 // script style options (label/desc changed to i18n keys, converted via t() at render time)
+// Ordered by form (剧情形 → 物品形 → 口播形 → 场景形), smart-pick last — the full style system
 const styleOptions = [
+  { value: "drama", labelKey: "styleDramaLabel", descKey: "styleDramaDesc" },
+  { value: "reversal", labelKey: "styleReversalLabel", descKey: "styleReversalDesc" },
+  { value: "interview", labelKey: "styleInterviewLabel", descKey: "styleInterviewDesc" },
+  { value: "story", labelKey: "styleStoryLabel", descKey: "styleStoryDesc" },
+  { value: "unboxing", labelKey: "styleUnboxingLabel", descKey: "styleUnboxingDesc" },
+  { value: "product_pov", labelKey: "styleProductPovLabel", descKey: "styleProductPovDesc" },
+  { value: "comparison", labelKey: "styleComparisonLabel", descKey: "styleComparisonDesc" },
+  { value: "talking_head", labelKey: "styleTalkingHeadLabel", descKey: "styleTalkingHeadDesc" },
   { value: "pain-point", labelKey: "stylePainPointLabel", descKey: "stylePainPointDesc" },
   { value: "scenario", labelKey: "styleScenarioLabel", descKey: "styleScenarioDesc" },
-  { value: "comparison", labelKey: "styleComparisonLabel", descKey: "styleComparisonDesc" },
-  { value: "story", labelKey: "styleStoryLabel", descKey: "styleStoryDesc" },
   { value: "auto", labelKey: "styleAutoLabel", descKey: "styleAutoDesc" },
 ];
 

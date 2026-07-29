@@ -247,8 +247,9 @@ const TOOLS = [
         url: { type: "string", description: "商品页链接（http/https）" },
         styleType: {
           type: "string",
-          enum: ["pain_point", "scene", "comparison", "story", "auto"],
-          description: "脚本风格：痛点种草/场景安利/对比测评/剧情故事，默认 auto（按历史转化数据智能推荐）",
+          enum: ["pain_point", "scene", "comparison", "story", "drama", "reversal", "interview", "unboxing", "product_pov", "talking_head", "auto"],
+          description:
+            "脚本风格（四大形态）：剧情形 drama 情景短剧(双角色冲突对话+免费多音色)/reversal 反转剧场/interview 街头采访(主持人+路人)/story 剧情故事；物品形 unboxing 开箱测评/product_pov 物品拟人(商品第一人称)/comparison 对比测评；口播形 talking_head 达人口播/pain_point 痛点种草；场景形 scene 场景安利。默认 auto（按历史转化数据智能推荐）",
         },
         durationSec: { type: "number", description: "目标时长（秒），默认 30，建议 15-60" },
         category: {
@@ -731,7 +732,7 @@ async function handleProductScript(args) {
   if (!productName) throw new Error("未能解析出商品标题，无法生成带货脚本。请换一个带标准 OG/JSON-LD 标签的链接。");
 
   // Step 2: generate the commerce script from the ingested product data (LLM)
-  const styleType = ["pain_point", "scene", "comparison", "story", "auto"].includes(args.styleType) ? args.styleType : "auto";
+  const styleType = ["pain_point", "scene", "comparison", "story", "drama", "reversal", "interview", "unboxing", "product_pov", "talking_head", "auto"].includes(args.styleType) ? args.styleType : "auto";
   const targetDuration = Number.isFinite(args.durationSec) ? Number(args.durationSec) : 30;
   const scriptRes = await api("/api/llm/script", {
     method: "POST",

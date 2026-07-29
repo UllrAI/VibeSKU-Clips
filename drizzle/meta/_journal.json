@@ -64,6 +64,13 @@
       "when": 1785311997467,
       "tag": "0008_add_aigc_badge",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1785315498065,
+      "tag": "0009_add_script_characters",
+      "breakpoints": true
     }
   ]
 }

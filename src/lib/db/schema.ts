@@ -36,10 +36,14 @@ export const scripts = sqliteTable("scripts", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   version: integer("version").notNull().default(1),
-  styleType: text("style_type", { enum: ["pain_point", "scene", "comparison", "story", "custom"] }).notNull(),
+  styleType: text("style_type", {
+    enum: ["pain_point", "scene", "comparison", "story", "drama", "reversal", "interview", "unboxing", "product_pov", "talking_head", "custom"],
+  }).notNull(),
   title: text("title"),
   totalDuration: integer("total_duration"), // Total duration in seconds
   shots: text("shots", { mode: "json" }).$type<Shot[]>().default([]),
+  // Dialogue-script cast (drama style): drives per-character TTS voices + visual-anchor prompts
+  characters: text("characters", { mode: "json" }).$type<ScriptCharacter[]>(),
   selected: integer("selected", { mode: "boolean" }).default(false),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
@@ -212,6 +216,22 @@ export type VideoMode =
   | "graphic_montage"   // Graphic montage: product image + text cards + transition animations
   | "scene_demo"        // Scene demo: AI-generated usage scenario (no faces)
   | "live_presenter";   // Live presenter: on-screen character explains the product (requires a character or user-uploaded footage)
+
+/**
+ * Script-defined character for dialogue-driven scripts (drama style): the LLM invents the cast per
+ * script, so characters live inside the script row (NOT the global `characters` presenter library).
+ * `gender` drives free multi-voice TTS assignment; `appearance` is the visual anchor injected into
+ * every shot prompt featuring this character for cross-shot consistency.
+ */
+export interface ScriptCharacter {
+  id: string;
+  name: string;
+  gender: "female" | "male";
+  /** One-line persona, e.g. "毒舌闺蜜，嘴狠心软" */
+  persona?: string;
+  /** Visual anchor: hair + outfit color + age band, e.g. "黑色长直发、米色针织衫、25岁" */
+  appearance?: string;
+}
 
 export interface Shot {
   shotId: number;

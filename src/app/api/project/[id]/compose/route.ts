@@ -17,7 +17,8 @@ import { buildKaraokeAss } from "@/lib/video-composer/karaoke";
 import { isAudibleFromVolumedetect } from "@/lib/video-composer/audio-probe";
 import { buildComplianceOverlays } from "@/lib/compliance-overlays";
 import { fetchFreeBgm, moodQueryForCategory, moodQueryForMood } from "@/lib/free-bgm";
-import type { Shot } from "@/lib/db/schema";
+import type { Shot, ScriptCharacter } from "@/lib/db/schema";
+import { assignCharacterVoices } from "@/lib/character-voices";
 import { desc, and } from "drizzle-orm";
 
 // 获取该项目最新一条合成记录（导出页读取真实成片）
@@ -114,6 +115,15 @@ export async function POST(
       return NextResponse.json({ error: "尚未生成脚本，无法合成" }, { status: 400 });
     }
     const shots = selected.shots as Shot[];
+    // Dialogue-script cast (drama style): deterministic per-character Edge voices, free multi-voice
+    // dialogue. Narrator shots (no characterId) keep the default/free voice below.
+    const scriptCharacters = (selected.characters ?? []) as ScriptCharacter[];
+    const characterVoices = assignCharacterVoices(scriptCharacters);
+    if (characterVoices.size > 0) {
+      console.info(
+        `[compose] 剧情多音色：${scriptCharacters.map((c) => `${c.name}→${characterVoices.get(c.id)}`).join("、")}`
+      );
+    }
 
     // 已生成的素材（assets 表，按 shotId 索引）
     const assetRows = await db.select().from(assetsTable).where(eq(assetsTable.projectId, id));
@@ -171,14 +181,18 @@ export async function POST(
       }
     }
 
-    /** 为某分镜生成配音并落地为本地 mp3，返回绝对路径；失败返回 undefined（不阻断合成） */
-    async function buildVoiceover(shotId: number, text: string): Promise<string | undefined> {
+    /**
+     * 为某分镜生成配音并落地为本地 mp3，返回绝对路径；失败返回 undefined（不阻断合成）。
+     * characterVoice：剧情脚本中该镜说话角色的专属音色（仅免费 Edge 路径生效——付费 TTS 配置是
+     * 单音色的，保持旁白音色以免半路换声）。
+     */
+    async function buildVoiceover(shotId: number, text: string, characterVoice?: string): Promise<string | undefined> {
       if (!text || (!ttsConfig && !useFreeTts)) return undefined;
       try {
         // 付费 TTS 优先；否则走免费 Edge keyless TTS（速度映射：speed 倍率 → SSML 带符号百分比）
         const audio = ttsConfig
           ? await generateSpeech(text, ttsConfig)
-          : await generateSpeechFree(text, { voice: freeVoice, rate: freeRate });
+          : await generateSpeechFree(text, { voice: characterVoice || freeVoice, rate: freeRate });
         const file = join(ttsDir, `shot-${shotId}.mp3`);
         await writeFile(file, audio);
         return file;
@@ -251,7 +265,9 @@ export async function POST(
       const isVideo = /\.(mp4|webm|mov|m4v|ogv|ogg|mkv|avi)$/i.test(local);
       const nativeAudio = isVideo ? await videoHasAudio(local) : false;
       const audioPath =
-        shot.voiceover && !nativeAudio ? await buildVoiceover(shot.shotId, shot.voiceover) : undefined;
+        shot.voiceover && !nativeAudio
+          ? await buildVoiceover(shot.shotId, shot.voiceover, shot.characterId ? characterVoices.get(shot.characterId) : undefined)
+          : undefined;
 
       // Effective duration (core fix for issue #14 "next segment starts before speech ends"):
       // 1) TTS narration → actual audio length + breathing gap (clamped 1.5–20s); when the probe

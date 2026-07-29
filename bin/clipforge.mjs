@@ -240,7 +240,7 @@ async function cmdProduct(flags) {
   if (!productName) throw new Error("未能解析出商品标题，无法生成带货脚本，请换一个带标准 OG/JSON-LD 标签的链接。");
   step(`商品：${productName}${ingest.product?.priceText ? ` · ${ingest.product.priceText}` : ""} · 图 ${ingest.productImages?.length ?? 0} 张`);
 
-  const styleType = ["pain_point", "scene", "comparison", "story", "auto"].includes(flags.style) ? flags.style : "auto";
+  const styleType = ["pain_point", "scene", "comparison", "story", "drama", "reversal", "interview", "unboxing", "product_pov", "talking_head", "auto"].includes(flags.style) ? flags.style : "auto";
   const targetDuration = Number.isFinite(Number(flags.duration)) && flags.duration ? Number(flags.duration) : 30;
   step(`写带货脚本（${styleType} · ${targetDuration}s）…`);
   const scriptRes = await api("/api/llm/script", {
@@ -549,7 +549,7 @@ const HELP = `ClipForge CLI · 命令行一句话出片
                    [--footage auto|image|video] [--voice <id>] [--aspect 9:16|16:9|1:1]
                    [--quality fast|standard|hd] [--bgm] [--bgm-mood upbeat] [--karaoke] [--cta "..."] [--json]
                    [--caption standard|bold|minimal|karaoke]   字幕样式预设(标准底板/重击大字/极简/逐字高亮)
-  clipforge product --url "<商品链接>" [--style pain_point|scene|comparison|story|auto] [--duration 30]
+  clipforge product --url "<商品链接>" [--style pain_point|scene|comparison|story|drama|reversal|interview|unboxing|product_pov|talking_head|auto] [--duration 30]
                    [--category beauty|food|home|fashion|tech|other] [--compose 同款成片选项]   贴链接→带货脚本(加 --compose 直接出片)
   clipforge import --project <id> (--file <路径> | --text "你的脚本") [--title "..."]   自带脚本出片
   clipforge dub --project <id> --lang en                                              配音译制(换语种,出海)

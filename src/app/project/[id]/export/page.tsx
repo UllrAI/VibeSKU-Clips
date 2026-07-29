@@ -38,6 +38,12 @@ const styleLabelKeys: Record<string, string> = {
   scene: "styleScene",
   comparison: "styleComparison",
   story: "styleStory",
+  drama: "styleDrama",
+  reversal: "styleReversal",
+  interview: "styleInterview",
+  unboxing: "styleUnboxing",
+  product_pov: "styleProductPov",
+  talking_head: "styleTalkingHead",
   auto: "styleAuto",
 };
 

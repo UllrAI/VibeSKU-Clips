@@ -27,7 +27,7 @@
 There's no shortage of AI short-video tools, but most can't really sell: **they don't extract selling points, don't understand platform algorithms, and they distort your product beyond recognition.** ClipForge was designed for **conversion** from day one:
 
 - 🎯 **Product fidelity (the make-or-break for commerce)**: image-to-image locks your original product; you can swap the background or relight it **without altering the product itself** — your product never gets "Photoshopped wrong."
-- 🧲 **Scripts that sell**: 5 deep category templates × 4 selling styles (pain-point / scenario / comparison review / storyline) + a **golden-3-seconds hook library** — not a dry spec readout.
+- 🧲 **Scripts that sell**: 5 deep category templates × **10 selling styles across four forms** — drama forms (mini-drama with two-character conflict dialogue / plot twist / street interview / storyline), product forms (unboxing review / product POV where the product speaks / comparison review), talking-head forms (persona pitch / pain-point), scene form (scenario) + a **golden-3-seconds hook library**. Dialogue styles auto-cast characters, and compose gives **each character its own free TTS voice** (Edge-TTS multi-voice dialogue, zero cost) — not a dry spec readout.
 - 📈 **Algorithm-aware**: auto-generates hashtags / cover copy / engagement prompts tuned to **TikTok / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu** and their in-app shopping carts.
 - 📦 **Batch + viral remix**: pick 10 products and batch-render before a big sale, save winning scripts as templates, paste a competitor link to **re-shoot with your own product**, and A/B multiple cuts to test conversion.
 
@@ -136,7 +136,7 @@ Yes. ClipForge ships an **MCP Server** — one sentence in an MCP-capable client
 ### 1. AI sales-script generation
 
 - **5 deep category templates**: beauty & skincare / food & snacks / home & daily / fashion & apparel / digital & 3C
-- **4 script styles**: pain-point / scenario / comparison review / storyline
+- **10 script styles (four forms)**: drama (mini-drama / plot twist / street interview / storyline) · product (unboxing / product POV / comparison) · talking-head (persona pitch / pain-point) · scene (scenario); dialogue styles auto-cast characters with distinct free voices
 - **Golden-3-seconds library**: visual shock / suspense question / sharp contrast / benefit promise / emotional resonance
 - **Platform SEO**: auto-generates hashtags, cover copy, engagement prompts tuned to TikTok / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu algorithms
 - **Precise targeting**: set the target audience, price range, and platforms — the script matches automatically

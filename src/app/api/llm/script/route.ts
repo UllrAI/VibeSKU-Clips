@@ -13,7 +13,11 @@ import { apiError, errText } from "@/lib/api-error";
 import { topConvertingStyle, topConvertingHook, buildPerformanceHint, type MetricInput } from "@/lib/performance-insights";
 
 /** Allowed enum values for the styleType column in the scripts table */
-const VALID_SCRIPT_STYLE = new Set(["pain_point", "scene", "comparison", "story", "custom"]);
+const VALID_SCRIPT_STYLE = new Set([
+  "pain_point", "scene", "comparison", "story",
+  "drama", "reversal", "interview", "unboxing", "product_pov", "talking_head",
+  "custom",
+]);
 
 /** Convert a local image path to a base64 data URI for use with LLM vision models */
 async function imagePathToBase64(imagePath: string): Promise<string> {
@@ -71,6 +75,13 @@ function normalizeStyle(raw: unknown): ScriptStyleType {
     scenario: "scene", // frontend uses "scenario" for the "scene recommendation" style
     comparison: "comparison",
     story: "story",
+    // The four commerce-video forms (剧情形/物品形/口播形 additions)
+    drama: "drama", // dialogue-driven mini-drama (multi-character conflict)
+    reversal: "reversal", // expectation-subverting skit
+    interview: "interview", // street-interview (host + interviewee)
+    unboxing: "unboxing", // first-person immersive unboxing review
+    product_pov: "product_pov", // personified product speaking first-person
+    talking_head: "talking_head", // persona-driven direct-to-camera pitch
     custom: "custom",
     auto: "pain_point", // smart-recommend mode defaults to pain-point style
   };
@@ -216,10 +227,14 @@ export async function POST(req: NextRequest) {
               projectId,
               version: 1,
               styleType: (VALID_SCRIPT_STYLE.has(s.styleType) ? s.styleType : "custom") as
-                | "pain_point" | "scene" | "comparison" | "story" | "custom",
+                | "pain_point" | "scene" | "comparison" | "story"
+                | "drama" | "reversal" | "interview" | "unboxing" | "product_pov" | "talking_head"
+                | "custom",
               title: s.title,
               totalDuration: s.totalDuration,
               shots: s.shots,
+              // dialogue-script cast (drama style) — read back at compose time for multi-voice TTS
+              ...(s.characters?.length && { characters: s.characters }),
               selected: i === 0, // select the first script set by default
             }))
           )

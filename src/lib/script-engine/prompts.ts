@@ -39,7 +39,18 @@ export const SYSTEM_PROMPT = `你是一位顶级电商短视频编导，拥有�
 // ==================== Style Structure Templates ====================
 
 /** Script style type */
-export type ScriptStyleType = "pain_point" | "scene" | "comparison" | "story" | "custom";
+export type ScriptStyleType =
+  | "pain_point"
+  | "scene"
+  | "comparison"
+  | "story"
+  | "drama"
+  | "reversal"
+  | "interview"
+  | "unboxing"
+  | "product_pov"
+  | "talking_head"
+  | "custom";
 
 /** Display name mapping for script styles */
 export const styleNameMap: Record<ScriptStyleType, string> = {
@@ -47,8 +58,25 @@ export const styleNameMap: Record<ScriptStyleType, string> = {
   scene: "场景安利",
   comparison: "对比测评",
   story: "剧情故事",
+  drama: "情景短剧",
+  reversal: "反转剧场",
+  interview: "街头采访",
+  unboxing: "开箱测评",
+  product_pov: "物品拟人",
+  talking_head: "达人口播",
   custom: "自定义",
 };
+
+/**
+ * Style form groups (剧情形/物品形/口播形/场景形) — the four mainstream commerce-video forms.
+ * Used by pickers to present the style system by form instead of a flat list.
+ */
+export const styleFormGroups: { form: string; formEn: string; styles: ScriptStyleType[] }[] = [
+  { form: "剧情形", formEn: "Drama forms", styles: ["drama", "reversal", "interview", "story"] },
+  { form: "物品形", formEn: "Product forms", styles: ["unboxing", "product_pov", "comparison"] },
+  { form: "口播形", formEn: "Talking-head forms", styles: ["talking_head", "pain_point"] },
+  { form: "场景形", formEn: "Scene forms", styles: ["scene"] },
+];
 
 /** Structured prompt directives keyed by style */
 export const stylePrompts: Record<Exclude<ScriptStyleType, "custom">, string> = {
@@ -106,6 +134,106 @@ export const stylePrompts: Record<Exclude<ScriptStyleType, "custom">, string> = 
 6. 故事时长控制在15-25秒，不能拖沓
 
 情绪节奏：好奇 → 紧张/尴尬 → 转折惊喜 → 满足 → 种草 → 行动`,
+
+  drama: `
+【脚本风格：情景短剧型（多角色对话剧）】
+结构要求：冲突爆发 → 矛盾升级 → 商品作为转折道具登场 → 反转爽感 → 自然种草
+
+这不是旁白叙述片，是一部有角色、有台词、有戏剧冲突的迷你短剧（抖音剧情带货的主流形态）。
+
+人物要求（必须遵守）：
+1. 设计恰好 2 个角色（多了 15-30 秒讲不清），关系要自带冲突张力：闺蜜互怼 / 夫妻斗嘴 / 同事凡尔赛 / 婆媳过招 / 老板下属
+2. 在 characters 数组里输出角色设定：id（如 "char_a"）、name、gender、persona（一句话性格）、appearance（外观锚：发型+服装颜色+年龄段，用于跨镜头画面一致）
+3. 每个有角色说话的分镜：characterId 填说话人 id，voiceover 就是这个人的台词——口语化、带情绪、像真人吵架/互怼/阴阳怪气，禁止播音腔
+4. 旁白分镜（如结尾种草）不填 characterId
+
+戏剧要求：
+1. 前 3 秒台词必须把冲突炸出来：一句扎心的指责/凡尔赛/吐槽直接开场，不要铺垫
+   - 好的开场台词："你这纸巾一擦就破，还好意思招待客人？"
+   - 差的开场："今天给大家介绍一款纸巾"
+2. 冲突要升级一次（第二回合更狠），观众才有"接下来怎么办"的钩子
+3. 商品登场即转折：被怼的一方掏出商品当"反击武器"，一句台词点出核心卖点
+4. 反转要有爽感：之前占上风的一方哑口无言/真香打脸，爽点即种草点
+5. 结尾一镜旁白收束 + 行动号召，不破坏剧情沉浸感
+6. 画面 description 要写清：谁在画面里（用角色名）、动作、表情、场景；prompt 里带上该角色的 appearance 外观锚
+
+情绪节奏：冲突抓人 → 紧张升级 → 转折意外 → 打脸爽感 → 种草 → 行动`,
+
+  reversal: `
+【脚本风格：反转剧场型（预期违背）】
+结构要求：立 flag / 制造预期 → 加固预期 → 反转打脸 → 商品即反转原因 → 种草
+
+创作要点：
+1. 前 3 秒立一个观众会信的 flag："这种九块九的纸巾我从来不买" / "婆婆说网上买的都是智商税"
+2. 中段要加固预期（让观众更信 flag），铺垫越足反转越爽
+3. 反转必须和商品强绑定：打脸的原因就是商品的核心卖点，不能为反转而反转
+4. 反转后的"真香"要具体：说出被打脸的细节（"擦了三张才知道什么叫厚"），不能只喊真香
+5. 可单人叙述，也可设 1-2 个角色（此时输出 characters 数组并在对应分镜填 characterId）
+6. 结尾自嘲式种草最自然："打脸就打脸吧，好用是真的"
+
+情绪节奏：认同 flag → 加深认同 → 意外反转 → 恍然 → 真香 → 行动`,
+
+  interview: `
+【脚本风格：街头采访型（主持人 + 受访者）】
+结构要求：抛话题 → 受访者真实反应 → 试用/体验 → 受访者惊讶评价 → 收尾种草
+
+人物要求（必须遵守）：
+1. 恰好 2 个角色：主持人（抛问题、递商品、控节奏）+ 受访者（真实反应担当）；在 characters 数组输出两人设定（含 appearance 外观锚）
+2. 每个说话分镜 characterId 填说话人，voiceover 是台词——受访者的话要像随机路人：口语、犹豫词、真实感（"啊？这个多少钱？…不是，这也太划算了吧"）
+3. 主持人台词短平快，像综艺 VCR 的节奏
+
+创作要点：
+1. 开场话题要有争议性/好奇缺口："街头实测：十块钱的纸巾和三十块的差在哪？"
+2. 受访者第一反应要真实（可以先质疑、先嫌弃），可信度来自"不完美"
+3. 试用环节镜头怼细节，受访者的惊讶转折就是卖点展示
+4. 结尾主持人一句总结 + 行动号召，不拖沓
+
+情绪节奏：好奇 → 围观 → 质疑 → 亲测反转 → 信服 → 行动`,
+
+  unboxing: `
+【脚本风格：开箱测评型（第一人称沉浸式）】
+结构要求：悬念开箱 → 第一印象 → 上手实测（含挑刺） → 结论 → 种草
+
+创作要点：
+1. 开场即开箱动作 + 悬念："全网吹爆的这盒纸巾，今天拆给你们看值不值"
+2. 第一人称口语叙述，像拍给朋友看的 vlog，不打官腔
+3. 必须有"挑刺"环节：主动说一个无关痛痒的小缺点（"盒子设计一般"），换取核心卖点的可信度
+4. 实测要有可感知的动作：撕、拉、泡水、称重、对比手边旧物——画面 description 写清测试动作特写
+5. 结论给出"什么人适合买/什么人不用买"，克制反而促单
+6. 全程无需 characters 数组（单人第一人称，镜头以手部+商品特写为主，可不露脸）
+
+情绪节奏：好奇 → 围观 → 挑剔 → 被实测说服 → 信任 → 行动`,
+
+  product_pov: `
+【脚本风格：物品拟人型（商品第一人称自述）】
+结构要求：商品开口自我介绍 → 吐槽自己的"惨"/忙 → 亮绝活（卖点） → 傲娇式种草
+
+人物要求：
+1. 输出 characters 数组，且只有 1 个角色：商品自己（id 如 "char_product"，name 用商品昵称，gender 按商品气质选，persona 写拟人性格如"傲娇但实力过硬"）
+2. 所有说话分镜 characterId 都填商品角色，voiceover 是商品的第一人称台词
+
+创作要点：
+1. 开场自报家门要反差萌："大家好，我是你们抽了三张就扔的那盒纸"
+2. 用"吐槽自己命苦/太忙"带出使用场景："一天被抽 80 次，主人的鼻炎全靠我"
+3. 亮绝活时性格反转（傲娇变自信），卖点用第一人称说出来才不像广告
+4. 画面以商品特写/微距为主（description 写商品"动作"：被拿起、被抽出、被捏），不出现真人脸
+5. 结尾傲娇式号召："买不买随你，反正我卖得挺好的"
+
+情绪节奏：反差萌 → 好笑 → 心疼/共鸣 → 被绝活圈粉 → 会心一笑 → 行动`,
+
+  talking_head: `
+【脚本风格：达人口播型（人设化直给）】
+结构要求：人设开场暴击 → 抛核心结论 → 证据快节奏堆叠 → 拍板推荐 → 行动号召
+
+创作要点：
+1. 开场即人设 + 暴击式结论："做了五年纸品测评，这是我唯一回购过十次的纸巾"——先给结论再给理由
+2. 全程一个人对镜头说话的节奏感：短句、快切、每句都是信息点，禁止废话和长从句
+3. 证据堆叠三连：数字（克重/层数/价格）→ 对比（跟大牌同厂/同价买三倍）→ 场景（带娃/开车/办公室）
+4. 人设口头禅贯穿（"听我的"/"记住这句话"），强化记忆点
+5. 画面 description：说话人半身/怼脸机位为主，穿插商品特写做 B-roll；分镜切换快（2-4 秒一镜）
+6. 拍板要果断："闭眼入"前面必须已有三个以上具体理由支撑，不做无依据断言
+
+情绪节奏：被人设镇住 → 好奇理由 → 被证据说服 → 信任 → 果断下单`,
 };
 
 // ==================== Video Mode Directives ====================
@@ -377,6 +505,15 @@ export const OUTPUT_FORMAT_PROMPT = `
 {
   "title": "脚本标题（10字以内，抓人眼球）",
   "totalDuration": 25,
+  "characters": [
+    {
+      "id": "char_a",
+      "name": "角色名（如：小美）",
+      "gender": "female",
+      "persona": "一句话性格（如：毒舌闺蜜，嘴狠心软）",
+      "appearance": "外观锚：发型+服装颜色+年龄段（如：黑色长直发、米色针织衫、25岁）"
+    }
+  ],
   "shots": [
     {
       "shotId": 1,
@@ -413,6 +550,7 @@ export const OUTPUT_FORMAT_PROMPT = `
 - prompt: 英文 prompt，用于 AI 图像/视频生成，描述画面主体、风格、光线、构图等
 - searchTerms: 1-3 个英文检索词，描述该分镜画面主体（用于从免费素材库自动搜画面，无商品主题成片时尤其关键），如 ["coffee morning", "cozy cafe"]
 - characterId: 如果该分镜有人物出镜，填入人物ID；无人物的分镜省略此字段
+- characters: 仅剧情类脚本（情景短剧等有角色对话的风格）需要输出；gender 只能是 "female" | "male"；非剧情脚本省略此字段或输出空数组
 - seo.title: 包含商品名和核心卖点的短标题
 - seo.hashtags: 3-5个相关话题标签，第一个为品类大标签
 - seo.coverText: 封面上叠加的大字文案
@@ -476,7 +614,7 @@ export const PRODUCT_ANALYSIS_PROMPT = `你是一位专业的电商选品分析�
   "videoSuggestions": {
     "recommendedAngles": ["角度1", "角度2"],
     "keyVisuals": ["视觉元素1", "视觉元素2"],
-    "suggestedStyle": "pain_point|scene|comparison|story"
+    "suggestedStyle": "pain_point|scene|comparison|story|drama|reversal|interview|unboxing|product_pov|talking_head"
   }
 }`;
 

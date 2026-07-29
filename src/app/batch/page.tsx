@@ -38,6 +38,12 @@ const scriptStyleOptions = [
   { value: "scenario", labelKey: "styleScenario" },
   { value: "comparison", labelKey: "styleComparison" },
   { value: "story", labelKey: "styleStory" },
+  { value: "drama", labelKey: "styleDrama" },
+  { value: "reversal", labelKey: "styleReversal" },
+  { value: "interview", labelKey: "styleInterview" },
+  { value: "unboxing", labelKey: "styleUnboxing" },
+  { value: "product_pov", labelKey: "styleProductPov" },
+  { value: "talking_head", labelKey: "styleTalkingHead" },
   { value: "auto", labelKey: "styleAuto" },
 ];
 
@@ -64,6 +70,12 @@ const styleTypeMap: Record<string, string> = {
   scenario: "scene",
   comparison: "comparison",
   story: "story",
+  drama: "drama",
+  reversal: "reversal",
+  interview: "interview",
+  unboxing: "unboxing",
+  product_pov: "product_pov",
+  talking_head: "talking_head",
   auto: "auto",
 };
 
