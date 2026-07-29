@@ -5,6 +5,7 @@
 
 import { getTemplatesByCategory, categoryNameMap, type ProductCategory } from "./templates";
 import { buildHookGuidance } from "./hook-patterns";
+import { presenterPromptBlock } from "@/lib/presenters";
 
 // ==================== System Role Prompt ====================
 
@@ -143,7 +144,7 @@ export const stylePrompts: Record<Exclude<ScriptStyleType, "custom">, string> = 
 
 人物要求（必须遵守）：
 1. 设计恰好 2 个角色（多了 15-30 秒讲不清），关系要自带冲突张力：闺蜜互怼 / 夫妻斗嘴 / 同事凡尔赛 / 婆媳过招 / 老板下属
-2. 在 characters 数组里输出角色设定：id（如 "char_a"）、name、gender、persona（一句话性格）、appearance（外观锚：发型+服装颜色+年龄段，用于跨镜头画面一致）
+2. 在 characters 数组里输出角色设定：id（如 "char_a"）、name、gender、persona（一句话性格）、appearance（外观锚：发型+服装颜色+年龄段，用于跨镜头画面一致）。外观必须写成真实素人特征——五官有细微不对称、真实肤质带小瑕疵（雀斑/痘印/黑眼圈皆可）、日常妆发不精致，禁止网红脸/明星脸式描述
 3. 每个有角色说话的分镜：characterId 填说话人 id，voiceover 就是这个人的台词——口语化、带情绪、像真人吵架/互怼/阴阳怪气，禁止播音腔
 4. 旁白分镜（如结尾种草）不填 characterId
 
@@ -157,7 +158,9 @@ export const stylePrompts: Record<Exclude<ScriptStyleType, "custom">, string> = 
 5. 结尾一镜旁白收束 + 行动号召，不破坏剧情沉浸感
 6. 画面 description 要写清：谁在画面里（用角色名）、动作、表情、场景；prompt 里带上该角色的 appearance 外观锚
 
-情绪节奏：冲突抓人 → 紧张升级 → 转折意外 → 打脸爽感 → 种草 → 行动`,
+情绪节奏：冲突抓人 → 紧张升级 → 转折意外 → 打脸爽感 → 种草 → 行动
+
+${presenterPromptBlock()}`,
 
   reversal: `
 【脚本风格：反转剧场型（预期违背）】
@@ -178,7 +181,7 @@ export const stylePrompts: Record<Exclude<ScriptStyleType, "custom">, string> = 
 结构要求：抛话题 → 受访者真实反应 → 试用/体验 → 受访者惊讶评价 → 收尾种草
 
 人物要求（必须遵守）：
-1. 恰好 2 个角色：主持人（抛问题、递商品、控节奏）+ 受访者（真实反应担当）；在 characters 数组输出两人设定（含 appearance 外观锚）
+1. 恰好 2 个角色：主持人（抛问题、递商品、控节奏）+ 受访者（真实反应担当）；在 characters 数组输出两人设定（含 appearance 外观锚，外观必须写成真实素人特征——五官有细微不对称、真实肤质带小瑕疵（雀斑/痘印/黑眼圈皆可）、日常妆发不精致，禁止网红脸/明星脸式描述）
 2. 每个说话分镜 characterId 填说话人，voiceover 是台词——受访者的话要像随机路人：口语、犹豫词、真实感（"啊？这个多少钱？…不是，这也太划算了吧"）
 3. 主持人台词短平快，像综艺 VCR 的节奏
 
@@ -188,7 +191,9 @@ export const stylePrompts: Record<Exclude<ScriptStyleType, "custom">, string> = 
 3. 试用环节镜头怼细节，受访者的惊讶转折就是卖点展示
 4. 结尾主持人一句总结 + 行动号召，不拖沓
 
-情绪节奏：好奇 → 围观 → 质疑 → 亲测反转 → 信服 → 行动`,
+情绪节奏：好奇 → 围观 → 质疑 → 亲测反转 → 信服 → 行动
+
+${presenterPromptBlock()}`,
 
   unboxing: `
 【脚本风格：开箱测评型（第一人称沉浸式）】
@@ -231,9 +236,12 @@ export const stylePrompts: Record<Exclude<ScriptStyleType, "custom">, string> = 
 3. 证据堆叠三连：数字（克重/层数/价格）→ 对比（跟大牌同厂/同价买三倍）→ 场景（带娃/开车/办公室）
 4. 人设口头禅贯穿（"听我的"/"记住这句话"），强化记忆点
 5. 画面 description：说话人半身/怼脸机位为主，穿插商品特写做 B-roll；分镜切换快（2-4 秒一镜）
-6. 拍板要果断："闭眼入"前面必须已有三个以上具体理由支撑，不做无依据断言
+6. 说话人形象按真实素人写进 description/prompt（普通长相、真实肤质、日常妆发，非网红脸），可信度来自"像身边人"
+7. 拍板要果断："闭眼入"前面必须已有三个以上具体理由支撑，不做无依据断言
 
-情绪节奏：被人设镇住 → 好奇理由 → 被证据说服 → 信任 → 果断下单`,
+情绪节奏：被人设镇住 → 好奇理由 → 被证据说服 → 信任 → 果断下单
+
+${presenterPromptBlock()}`,
 };
 
 // ==================== Video Mode Directives ====================
@@ -511,7 +519,7 @@ export const OUTPUT_FORMAT_PROMPT = `
       "name": "角色名（如：小美）",
       "gender": "female",
       "persona": "一句话性格（如：毒舌闺蜜，嘴狠心软）",
-      "appearance": "外观锚：发型+服装颜色+年龄段（如：黑色长直发、米色针织衫、25岁）"
+      "appearance": "外观锚：真实素人特征+发型+服装+年龄段（如：32岁微胖圆脸、松散丸子头带碎发、素颜有黑眼圈、洗旧居家服）"
     }
   ],
   "shots": [

@@ -18,6 +18,7 @@
  * Pure functions, unit-testable, no I/O.
  */
 import type { Shot } from "@/lib/db/schema";
+import { REAL_FACE_CONSTRAINT } from "@/lib/presenters";
 
 /** Camera-movement amplitude tier (Kling-style enumerated intensity instead of free text). */
 export type MotionIntensity = "subtle" | "normal" | "strong";
@@ -39,6 +40,11 @@ export interface MotionPromptInput {
   chainToNext?: boolean;
   /** Camera amplitude tier; "normal" (default) keeps the baseline wording unchanged */
   intensity?: MotionIntensity;
+  /**
+   * A cast character is on camera in this shot: append the anti-"AI face" realism
+   * constraint so the model renders an ordinary person, not a polished influencer face.
+   */
+  personShot?: boolean;
 }
 
 /** True when the text contains CJK characters (used to pick the prompt language). */
@@ -164,6 +170,7 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
     // chained clip: CHAIN_GUIDANCE already demands one continuous move; SINGLE_SHOT's
     // "no scene changes" would contradict the transition into the next keyframe
     parts.push(input.chainToNext ? CHAIN_GUIDANCE.zh : SINGLE_SHOT.zh);
+    if (input.personShot) parts.push(REAL_FACE_CONSTRAINT.zh);
     if (input.productShot) parts.push(PRODUCT_CONSTRAINT.zh);
     parts.push(SOUND_DIRECTION.zh);
     parts.push(QUALITY_TAIL.zh);
@@ -174,6 +181,7 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
   parts.push(`Motion: ${action}`);
   if (anchor) parts.push(`Scene: ${anchor}`);
   parts.push(input.chainToNext ? CHAIN_GUIDANCE.en : SINGLE_SHOT.en);
+  if (input.personShot) parts.push(REAL_FACE_CONSTRAINT.en);
   if (input.productShot) parts.push(PRODUCT_CONSTRAINT.en);
   parts.push(SOUND_DIRECTION.en);
   parts.push(QUALITY_TAIL.en);

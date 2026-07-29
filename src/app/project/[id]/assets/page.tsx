@@ -12,6 +12,7 @@ import { mergeCustomModels, buildImageOptions, buildVideoOptions } from "@/lib/g
 import type { Shot } from "@/lib/db/schema";
 import { buildAssetRows, shouldOfferStockFill, needsImageModelWarning, nextChainKeyframe, type AssetItem } from "@/lib/assets-view";
 import { buildMotionPrompt } from "@/lib/motion-prompt";
+import { realFaceLine } from "@/lib/presenters";
 import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
 import { useT } from "@/lib/i18n";
 import { LanguageToggle } from "@/components/language-toggle";
@@ -436,6 +437,7 @@ export default function AssetsPage() {
         productShot: asset?.visualSource === "product_image" || PRODUCT_SHOT_TYPES.has(asset?.type ?? ""),
         chainToNext: !!chainFrame,
         intensity: motionIntensity,
+        personShot: !!asset?.characterId,
       });
       // per-shot duration: the composer's slot follows the script duration (voice-fitted), and the
       // composer trims overshoot from the TAIL — which would cut a chained ending. Round to the
@@ -543,9 +545,12 @@ export default function AssetsPage() {
       const genModel = useProductSafe ? toEditVariant(modelTarget.model) : modelTarget.model;
       const genMode = useProductSafe ? "image-to-image" : "text-to-image";
       const basePrompt = asset.prompt || asset.description;
+      // cast shots: pin the anti-"AI face" realism constraint onto the keyframe too,
+      // so the person is ordinary-looking from the very first frame the i2v runs on
+      const castSuffix = asset.characterId ? `。${realFaceLine(basePrompt)}` : "";
       const genPrompt = useProductSafe
-        ? `${basePrompt}。严格保持商品的外观、包装、颜色、logo 和文字完全不变，只重绘符合描述的场景、背景与光线。`
-        : basePrompt;
+        ? `${basePrompt}。严格保持商品的外观、包装、颜色、logo 和文字完全不变，只重绘符合描述的场景、背景与光线。${castSuffix}`
+        : `${basePrompt}${castSuffix}`;
 
       try {
         const res = await fetch("/api/ai/image", {

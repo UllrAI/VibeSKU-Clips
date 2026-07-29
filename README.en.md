@@ -28,7 +28,7 @@
 |---|---|
 | 🎯 **Product fidelity** | Swap the background / relight — the product itself stays pixel-identical, never "Photoshopped wrong" |
 | 🎬 **Real moving shots** | Image-to-video + seamless keyframe-chained transitions + adjustable camera intensity + per-shot redo — not a still-image slideshow |
-| 🎭 **Mini-drama selling** | Ten script styles (mini-drama / plot twist / street interview…), multi-character dialogue with a free dedicated voice per character |
+| 🎭 **Mini-drama selling** | Ten script styles with a free voice per character; **built-in ordinary-person presenter presets + a real-face constraint** so on-camera humans never look like polished AI influencers |
 | 🆓 **A full video at $0** | Free stock + free AI voiceover (EN / 中 / 日 / 韩 / ES) + local compositing — no API key needed, open-source, no watermark |
 | 🚦 **Don't get throttled** | AIGC labeling + ad-law banned-term scan + publish gate — compliance on by default |
 | 📦 **Batch + viral remix** | 10 products rendered in one click, re-shoot a competitor's viral with your product, A/B cuts |
@@ -160,6 +160,7 @@ Yes. ClipForge ships an **MCP Server** (`clipforge_product_script` turns a produ
 
 - **5 deep category templates**: beauty & skincare / food & snacks / home & daily / fashion & apparel / digital & 3C
 - **10 script styles (four forms)**: drama (mini-drama / plot twist / street interview / storyline) · product (unboxing / product POV / comparison) · talking-head (persona pitch / pain-point) · scene (scenario); dialogue styles auto-cast characters with distinct free voices
+- **Built-in ordinary-person presenters + real-face constraint**: six presenter presets (girl-next-door / commuter / tech bro / honest uncle…) whose looks bake in real-skin, subtly-asymmetric ordinary features; any shot with a cast character automatically appends an anti-influencer-face realism constraint to image and i2v prompts — the demo videos on the website are raw output of this mechanism
 - **Golden-3-seconds library**: visual shock / suspense question / sharp contrast / benefit promise / emotional resonance
 - **Platform SEO**: auto-generates hashtags, cover copy, engagement prompts tuned to TikTok / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu algorithms
 - **Precise targeting**: set the target audience, price range, and platforms — the script matches automatically
