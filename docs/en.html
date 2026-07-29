@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>ClipForge — Open-Source AI Product Video Generator: One Product Photo to Selling Short Videos</title>
-<meta name="description" content="ClipForge is a free, open-source AI e-commerce video generator: upload a product photo or paste a product link, AI extracts selling points, writes scripts, keeps your product photo-faithful, adds voiceover + captions + BGM — faceless UGC-style ads for TikTok Shop, Reels, Shorts, Douyin. Zero API keys needed, no watermark, batch mode.">
+<meta name="description" content="ClipForge is a free, open-source AI e-commerce video generator: upload a product photo or paste a product link, AI extracts selling points, writes mini-drama / talking-head scripts in ten styles, keeps your product photo-faithful, turns every shot into a real moving clip via image-to-video with seamless transitions, adds voiceover + captions + BGM — faceless UGC-style ads for TikTok Shop, Reels, Shorts, Douyin. Zero API keys needed, no watermark, batch mode.">
 <link rel="canonical" href="https://xixihhhh.github.io/clipforge/en.html">
 <link rel="alternate" hreflang="zh-CN" href="https://xixihhhh.github.io/clipforge/">
 <link rel="alternate" hreflang="en" href="https://xixihhhh.github.io/clipforge/en.html">
@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="site.css">
 <meta property="og:type" content="website">
 <meta property="og:title" content="ClipForge — Open-Source AI Product Video Generator">
-<meta property="og:description" content="One product photo → selling short videos. AI selling points, photo-faithful product shots, voiceover + captions. Free, zero keys, no watermark.">
+<meta property="og:description" content="One product photo → selling short videos. Mini-drama scripts in ten styles, photo-faithful product shots, real moving clips via image-to-video, voiceover + captions. Free, zero keys, no watermark.">
 <meta property="og:image" content="https://xixihhhh.github.io/clipforge/banner.en.png">
 <meta property="og:url" content="https://xixihhhh.github.io/clipforge/en.html">
 <meta name="twitter:card" content="summary_large_image">
@@ -24,7 +24,7 @@
   "operatingSystem": "Windows, macOS, Web (self-hosted)",
   "applicationCategory": "MultimediaApplication",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-  "description": "Free, open-source AI e-commerce video generator: turn a product photo or product link into faceless UGC-style selling videos with AI selling points, photo-faithful product shots, voiceover, captions and BGM. Zero API keys needed, no watermark, batch mode.",
+  "description": "Free, open-source AI e-commerce video generator: turn a product photo or product link into faceless UGC-style selling videos with AI selling points, ten script styles incl. mini-drama with multi-voice dialogue, photo-faithful product shots, real moving clips via image-to-video, voiceover, captions and BGM. Zero API keys needed, no watermark, batch mode.",
   "url": "https://xixihhhh.github.io/clipforge/en.html",
   "downloadUrl": "https://github.com/xixihhhh/clipforge/releases/latest",
   "screenshot": "https://xixihhhh.github.io/clipforge/screenshots/04-script.en.png",
@@ -39,6 +39,8 @@
   "mainEntity": [
     { "@type": "Question", "name": "Is ClipForge free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Open source (AGPL-3.0), no watermark, unlimited videos. Free stock assets + free Microsoft Edge TTS voiceover + free BGM + local FFmpeg compositing — a full video with zero AI keys. Bring your own key for premium visuals (30+ models: GPT Image 2, Seedance 2.0, Kling 3.0…)." } },
     { "@type": "Question", "name": "Will it distort my product photo?", "acceptedAnswer": { "@type": "Answer", "text": "No — this is ClipForge's core guarantee: image-to-image locks the original product, so backgrounds and lighting change but the product itself never does. What buyers see is what they get." } },
+    { "@type": "Question", "name": "Will the video look like an AI slideshow?", "acceptedAnswer": { "@type": "Answer", "text": "No. With a video model configured, every shot becomes a real moving clip via image-to-video: a motion-prompt engine keeps the product locked, keyframe chaining generates transitions inside the clip so cuts are seamless, camera intensity is adjustable, and any single shot can be re-run without touching the rest." } },
+    { "@type": "Question", "name": "How is it different from MoneyPrinterTurbo, CapCut or commercial AI video tools?", "acceptedAnswer": { "@type": "Answer", "text": "Open-source peers mostly stitch keyword-matched stock stills where your product never appears; commercial SaaS charges per video, uploads assets to the cloud and watermarks free tiers; CapCut is manual-first editing. ClipForge is free and open source with no watermark, photo-faithful products, real moving shots, mini-drama multi-voice dialogue, and compliance built in — all local." } },
     { "@type": "Question", "name": "Do I need to appear on camera?", "acceptedAnswer": { "@type": "Answer", "text": "No. Videos are composed from your product photo, AI visuals, free voiceover and captions — fully faceless. One person can ship dozens of videos a day." } },
     { "@type": "Question", "name": "Which platforms does it export for?", "acceptedAnswer": { "@type": "Answer", "text": "TikTok Shop / Reels / Shorts 9:16, Xiaohongshu 3:4, Douyin, Kuaishou and WeChat Channels — one-click format switching, plus auto-generated hashtags, cover copy and engagement prompts." } },
     { "@type": "Question", "name": "How do I run it?", "acceptedAnswer": { "@type": "Answer", "text": "Two ways: download the Windows / macOS desktop app, or self-host the open-source Next.js web app (Docker supported). It also ships an MCP server, a CLI and an agent skill, so Claude or Cursor can produce a video from a product link in one sentence." } }
@@ -47,175 +49,205 @@
 </script>
 </head>
 <body>
-<div class="forgeline"></div>
 <div class="container">
 
 <nav>
   <img src="logo.svg" alt="ClipForge logo">
   <span class="name">ClipForge<em>FORGE</em></span>
   <span class="spacer"></span>
+  <a class="plain" href="#features">Features</a>
   <a class="plain" href="#compare">Compare</a>
   <a class="plain" href="#faq">FAQ</a>
-  <a class="plain" href="index.html">中文</a>
-  <a class="plain" href="https://github.com/xixihhhh/clipforge">GitHub&nbsp;★</a>
+  <a class="plain keep" href="index.html">中文</a>
+  <a class="plain keep" href="https://github.com/xixihhhh/clipforge">GitHub</a>
+  <a class="btn btn-brand" href="https://github.com/xixihhhh/clipforge/releases/latest">Download</a>
 </nav>
 
 <header class="hero">
-  <p class="kicker"><span class="live">● LIVE</span> 1 product photo → 00:30 three scripts → 02:00 finished ad</p>
-  <h1>One product photo,<br>forged into <span class="hl">videos that sell</span></h1>
-  <p class="sub">Upload a product photo or paste a product link. AI extracts selling points, writes UGC-style scripts, keeps your product photo-faithful, adds voiceover + captions + BGM — ready for TikTok Shop, Reels, Shorts, Douyin, Kuaishou and Xiaohongshu.</p>
-  <div class="chips">
-    <span class="chip gold">Full video with zero AI keys</span>
-    <span class="chip">Open source AGPL-3.0 · self-hosted</span>
-    <span class="chip">No watermark</span>
-    <span class="chip">Photo-faithful product</span>
-    <span class="chip green">Compliance built in</span>
-  </div>
+  <p class="kicker">Open source · No watermark · Full videos with zero AI keys</p>
+  <h1>
+    <span class="line"><span>One product photo,</span></span>
+    <span class="line"><span><span class="hl">videos that sell</span></span></span>
+  </h1>
+  <p class="sub">Upload a product photo or paste a product link. AI extracts selling points, writes mini-drama and talking-head scripts, keeps your product photo-faithful, adds real moving shots + voiceover + captions + BGM — ready for TikTok Shop, Reels, Shorts, Douyin, Kuaishou and Xiaohongshu.</p>
   <div class="cta">
     <a class="btn btn-primary" href="https://github.com/xixihhhh/clipforge/releases/latest">Download free — Windows / macOS</a>
     <a class="btn btn-ghost" href="https://github.com/xixihhhh/clipforge">Star on GitHub</a>
   </div>
-  <p class="note">or self-host the web app · MCP + CLI built in — one sentence in Claude / Cursor</p>
+  <p class="trust">Open source <b>AGPL-3.0</b> · data stays on your machine · <b>Docker</b> self-hosting · built-in <b>MCP + CLI</b> — one sentence in Claude / Cursor</p>
 
-  <!-- Signature demo: the forge line — product in, three stations, a shoppable vertical ad out -->
-  <div class="demo" aria-hidden="true">
-    <div class="forge-console">
-      <div class="console-bar">
-        <span class="dots"><i></i><i></i><i></i></span>
-        <span class="file">soft_tissue_pack.jpg</span>
-        <span>SKU-0001</span>
-        <span class="scan">AI forging</span>
-      </div>
-      <div class="belt">
-        <span class="spark"></span>
-        <div class="sku">
-          <div class="pic"></div>
-          <div class="sku-name">Ultra-Soft Tissue</div>
-          <div class="sku-tag">ORIGINAL · UNTOUCHED</div>
-        </div>
-        <div class="station">
-          <span class="st-tag">01 POINTS</span>
-          <h4>Selling points</h4>
-          <p>4-ply thick / one sheet does two<br>baby-safe / family bulk pack<br><b>✓ 5 extracted</b></p>
-        </div>
-        <div class="station">
-          <span class="st-tag">02 SCRIPT</span>
-          <h4>3 UGC scripts</h4>
-          <p>pain-point / lifestyle / comparison<br>3-second hook + hashtags<br><b>✓ 0 claim risks</b></p>
-        </div>
-        <div class="station">
-          <span class="st-tag">03 COMPOSE</span>
-          <h4>Voice + captions + BGM</h4>
-          <p>free TTS / burned captions / price tag<br>real local FFmpeg render<br><b>✓ AI-content label written</b></p>
-        </div>
-      </div>
-      <div class="console-foot">
-        <span class="ok">✓ product untouched · pre-publish checks 6/6 passed</span>
-        <span>zero keys · no watermark · local render</span>
-      </div>
+  <div class="stage">
+    <span class="fbadge b1"><b class="ai">AI</b> Speech &amp; voices are model-generated</span>
+    <span class="fbadge b2"><b class="ok">✓</b> Ad-law banned terms: 0</span>
+    <span class="fbadge b3"><b class="ai">AI</b> AIGC label written</span>
+    <span class="fbadge b4"><b class="ok">✓</b> No human on camera</span>
+    <div class="phones">
+      <figure class="ph side l">
+        <video src="videos/demo-serum.mp4" autoplay muted loop playsinline preload="metadata"></video>
+        <figcaption>Beauty · talking-head</figcaption>
+        <button class="snd" type="button" aria-label="toggle sound">🔇</button>
+      </figure>
+      <figure class="ph main">
+        <video src="videos/demo-tissue.mp4" autoplay muted loop playsinline preload="metadata"></video>
+        <figcaption>Tissue · mini-drama</figcaption>
+        <button class="snd" type="button" aria-label="toggle sound">🔇</button>
+      </figure>
+      <figure class="ph side r">
+        <video src="videos/demo-snack.mp4" autoplay muted loop playsinline preload="metadata"></video>
+        <figcaption>Snack · taste test</figcaption>
+        <button class="snd" type="button" aria-label="toggle sound">🔇</button>
+      </figure>
     </div>
-    <div class="cut"><span>▶</span></div>
-    <div class="phone">
-      <div class="screen">
-        <span class="price">$5.99</span>
-        <span class="safe">AI LABELED</span>
-        <p class="hook">The tissue <em>everyone</em> hoards</p>
-        <div class="bottle"></div>
-        <p class="caption"><span>4-ply</span> <span>thick.</span> <span>One sheet,</span> <span>two jobs.</span></p>
-        <div class="goods">
-          <div class="g-pic"></div>
-          <div class="g-info">
-            <div class="g-name">Ultra-Soft Tissue · Bulk Pack</div>
-            <span class="g-buy">Tap to shop →</span>
-          </div>
-        </div>
-        <span class="fmt">9:16 · 1080P</span>
-      </div>
+    <p class="phones-note">↑ All three demos were generated in <b>a single Seedance 2.0 call</b> each (speech, voices and sound are native model output — tap 🔇 for audio; Chinese-language demos). This is the real output of ClipForge's video-model path.</p>
+  </div>
+
+  <div class="marquee" aria-hidden="true">
+    <div class="track">
+      <span>TikTok Shop</span><span>Reels</span><span>Shorts</span><span>Douyin</span><span>Kuaishou</span><span>Xiaohongshu</span><span>WeChat Channels</span><span>One-click specs</span>
+      <span>TikTok Shop</span><span>Reels</span><span>Shorts</span><span>Douyin</span><span>Kuaishou</span><span>Xiaohongshu</span><span>WeChat Channels</span><span>One-click specs</span>
     </div>
-    <p class="demo-cap">↑ Not a mockup — this is ClipForge's day job: selling points → script → photo-faithful visuals → voice &amp; captions → shoppable ad</p>
   </div>
 </header>
 
 <section id="how" class="reveal">
-  <div class="sec-head"><span class="no">01 / PIPELINE</span><h2>Three steps to a selling video</h2></div>
-  <div class="steps">
+  <div class="sec-head"><span class="no">01</span><span class="tag">HOW IT WORKS</span><h2>Three steps to a publish-ready video</h2></div>
+  <div class="steps stagger">
     <div class="step-card">
-      <span class="tc">T+00:00 · IMPORT</span>
+      <span class="tc">Photo / link</span>
       <h3>Drop the product in</h3>
-      <p>Upload a product photo, or paste a product link for one-click import (title / price / images auto-fetched). Pick your target platform.</p>
+      <p>Upload a product photo, or paste a product URL for one-click import (title / price / images auto-extracted). Pick your platforms: TikTok Shop, Reels, Shorts, Douyin.</p>
     </div>
     <div class="step-card">
-      <span class="tc">T+00:30 · SCRIPTS</span>
-      <h3>Three selling scripts to choose from</h3>
-      <p>AI extracts selling points, then writes 3 scripts from 5 category templates × 4 selling styles — each with a 3-second hook, hashtags, cover copy and engagement prompts. Not a spec sheet read aloud.</p>
+      <span class="tc">AI scripts · ~30s</span>
+      <h3>Three sales scripts to pick from</h3>
+      <p>AI extracts selling points and writes scripts across ten styles in four forms (mini-drama / plot twist / unboxing / talking-head…), with golden-3-second hooks, hashtags and cover copy built in.</p>
     </div>
     <div class="step-card">
-      <span class="tc">T+02:00 · EXPORT</span>
-      <h3>Composed, captioned, shoppable</h3>
-      <p>Photo-faithful product shots + free B-roll, auto voiceover, burned captions, price tag, product card, BGM. Switch 9:16 / 3:4 formats in one click, copy the caption pack and post.</p>
+      <span class="tc">Auto render · ~2min</span>
+      <h3>Voiceover, captions, export</h3>
+      <p>Photo-faithful product shots + real moving clips, auto voiceover, burned captions, price tag, product card, BGM; toggle 9:16 / 3:4 and copy the caption pack — ready to post.</p>
     </div>
   </div>
 </section>
 
 <section id="features" class="reveal">
-  <div class="sec-head"><span class="no">02 / WHY</span><h2>Not another AI video toy — <span class="hl">built to sell</span></h2></div>
-  <div class="bento">
-    <div class="card wide"><span class="tag red">FIDELITY</span><h3>Photo-faithful product, non-negotiable</h3><p>Image-to-image locks the original product: backgrounds and lighting change, the product never does. No AI-mangled products, no "not as advertised" disputes.</p></div>
-    <div class="card wide"><span class="tag">SCRIPTS</span><h3>Scripts that actually sell</h3><p>5 deep category templates × 4 selling styles (pain-point, lifestyle, comparison, story) + a 3-second hook library, with hashtags, cover copy and engagement prompts auto-generated.</p></div>
-    <div class="card wide"><span class="tag gold">ZERO-KEY</span><h3>A full video at zero cost</h3><p>Free stock assets (Openverse images + Wikimedia live-action video) + free Edge TTS voiceover (EN/ZH/JA/KO/ES) + free BGM + local FFmpeg — no AI key required. Add your own key for 30+ premium models.</p></div>
-    <div class="card wide"><span class="tag green">COMPLIANT</span><h3>Compliance on by default</h3><p>AI-content labels written into every export, pre-publish checks (claim risks / hook / duration / captions / CTA) with concrete fixes, and ad-claim scanning with rewrite suggestions.</p></div>
-    <div class="card"><span class="tag">BATCH</span><h3>Batch + winner cloning</h3><p>Queue 10 products before a sale; save winning scripts as templates, re-shoot them for a new product from a competitor link, A/B test variants.</p></div>
-    <div class="card"><span class="tag">GLOBAL</span><h3>One video, many markets</h3><p>One-click script translation + native-sounding free voices per language: post the Chinese cut on Douyin and the English cut on TikTok, same visuals.</p></div>
-    <div class="card"><span class="tag">FLYWHEEL</span><h3>A data flywheel that learns</h3><p>Log views / likes / sales per video and ClipForge learns which script style and hook sells in your category — and feeds it back into the next generation.</p></div>
-    <div class="card wide"><span class="tag">AGENT-NATIVE</span><h3>One sentence in your agent</h3><p>Built-in MCP server + CLI + agent skill: paste a product link in Claude / Cursor and get a selling script, or run clipforge product --url … --compose for link-to-video in one command.</p></div>
-    <div class="card wide"><span class="tag">FACELESS</span><h3>No camera, no crew</h3><p>Product photo + AI visuals + voiceover + captions, fully faceless UGC-style ads. One person ships dozens of videos a day.</p></div>
+  <div class="sec-head"><span class="no">02</span><span class="tag">WHY CLIPFORGE</span><h2>Every make-or-break for commerce video,<br>built as an <span class="hl">exclusive capability</span></h2></div>
+  <div class="bento stagger">
+    <div class="b-card big">
+      <figure class="ph mini">
+        <video src="videos/demo-tissue.mp4" autoplay muted loop playsinline preload="metadata"></video>
+        <figcaption>AI-generated</figcaption>
+        <button class="snd" type="button" aria-label="toggle sound">🔇</button>
+      </figure>
+      <div>
+        <div class="ico"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="13" height="12" rx="2"/><path d="M15.5 10.5L21 7v10l-5.5-3.5"/></svg></div>
+        <h3>Real moving shots, not a slideshow</h3>
+        <p>The image-to-video quality path: a <b>motion-prompt engine</b> locks the product, <b>keyframe chaining</b> generates transitions inside the clip so cuts are seamless; camera intensity switches soft / mid / bold, and an unsatisfying shot can be <b>re-run keeping its keyframe</b> — verified with real A/B calls, the product never warps or drifts.</p>
+      </div>
+    </div>
+    <div class="b-card">
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+      <h3>Product fidelity</h3>
+      <p>Image-to-image locks your original product — backgrounds and lighting change, the product itself never does.</p>
+    </div>
+    <div class="b-card">
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 4h11a2 2 0 012 2v5a2 2 0 01-2 2H9l-5 4V6a2 2 0 012-2z"/><path d="M19 9h1a2 2 0 012 2v9l-4-3h-5"/></svg></div>
+      <h3>Mini-drama selling</h3>
+      <p>Ten script styles: mini-drama / plot twist / street interview / unboxing / product POV… multi-character dialogue with a free dedicated voice per character.</p>
+    </div>
+    <div class="b-card">
+      <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="4" rx="1"/><rect x="5" y="12" width="14" height="9" rx="1"/><path d="M12 8v13M12 8c-2 0-4.5-1-4.5-3S10 2.6 12 8zm0 0c2 0 4.5-1 4.5-3S14 2.6 12 8z"/></svg></div>
+      <h3>A full video at $0</h3>
+      <p>Free stock + free AI voiceover (EN / 中 / 日 / 한 / ES) + free BGM + local compositing — no API key, no watermark, unlimited.</p>
+    </div>
+    <div class="b-card">
+      <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg></div>
+      <h3>Compliance built in</h3>
+      <p>AIGC labeling, pre-publish throttle self-check and an ad-law banned-term scan with rewrite hints — it ships compliant by default.</p>
+    </div>
+    <div class="b-card">
+      <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9l3 3-3 3"/><path d="M13 15h4"/></svg></div>
+      <h3>Agent-native + batch</h3>
+      <p>MCP + CLI + agent Skill: paste a product link in Claude / Cursor and get a video; batch-render 10 products and A/B the cuts.</p>
+    </div>
+  </div>
+</section>
+
+<section id="facts" class="reveal">
+  <div class="stats stagger">
+    <div class="stat"><b>10</b><span>script styles · four forms</span></div>
+    <div class="stat"><b>30+</b><span>models · 7 platforms, one interface</span></div>
+    <div class="stat"><b>0 Key</b><span>full video on the free path</span></div>
+    <div class="stat"><b>750+</b><span>unit tests · green CI releases</span></div>
   </div>
 </section>
 
 <section id="shots" class="reveal">
-  <div class="sec-head"><span class="no">03 / LOOK</span><h2>What it looks like</h2></div>
+  <div class="sec-head"><span class="no">03</span><span class="tag">THE PRODUCT</span><h2>Real UI, not mockups</h2></div>
+  <div class="stage">
+    <div class="window">
+      <div class="bar"><i></i><i></i><i></i><span>ClipForge — Compose</span></div>
+      <img src="screenshots/04b-video.en.png" alt="ClipForge compose view: voiceover, captions, BGM, transitions — real FFmpeg rendering" loading="lazy">
+    </div>
+  </div>
+  <div class="filmreel">
   <div class="filmstrip">
-    <figure class="frame"><img src="screenshots/04-script.en.png" alt="ClipForge storyboard scripts: 3 selling scripts with 3-second hooks and hashtags" loading="lazy"><figcaption><b>02</b>Scripts — 3 options, hooks / hashtags / cover copy included</figcaption></figure>
-    <figure class="frame"><img src="screenshots/03-new.en.png" alt="ClipForge new project: paste a product link or upload a photo" loading="lazy"><figcaption><b>01</b>New — paste a product link or upload a photo</figcaption></figure>
-    <figure class="frame"><img src="screenshots/04b-video.en.png" alt="ClipForge compositing: voiceover, captions, BGM" loading="lazy"><figcaption><b>03</b>Compose — voice / captions / BGM / price tag, real FFmpeg render</figcaption></figure>
-    <figure class="frame"><img src="screenshots/05-export.en.png" alt="ClipForge export: one-click multi-platform formats" loading="lazy"><figcaption><b>04</b>Export — 9:16 / 3:4 one-click switch + caption pack</figcaption></figure>
-    <figure class="frame"><img src="screenshots/06-batch.en.png" alt="ClipForge batch mode" loading="lazy"><figcaption><b>05</b>Batch — 10 products queued before the big sale</figcaption></figure>
-    <figure class="frame"><img src="screenshots/01-home.en.png" alt="ClipForge home: product video, one-line topic or your own script" loading="lazy"><figcaption><b>06</b>Home — product ads / one-line topics / your own script</figcaption></figure>
+    <figure class="frame"><img src="screenshots/04-script.en.png" alt="ClipForge script view: 3 sales scripts with hooks and hashtags" loading="lazy"><figcaption><b>01</b>Scripts — 3 variants with hooks / hashtags / cover copy</figcaption></figure>
+    <figure class="frame"><img src="screenshots/03-new.en.png" alt="ClipForge new project: paste a product URL or upload a photo" loading="lazy"><figcaption><b>02</b>New — paste a product link or upload a photo</figcaption></figure>
+    <figure class="frame"><img src="screenshots/04b-video.en.png" alt="ClipForge compose: voiceover, captions, BGM" loading="lazy"><figcaption><b>03</b>Compose — voiceover / captions / BGM / price tag</figcaption></figure>
+    <figure class="frame"><img src="screenshots/05-export.en.png" alt="ClipForge export: one-click multi-platform specs" loading="lazy"><figcaption><b>04</b>Export — 9:16 / 3:4 switch + caption pack</figcaption></figure>
+    <figure class="frame"><img src="screenshots/06-batch.en.png" alt="ClipForge batch production" loading="lazy"><figcaption><b>05</b>Batch — 10 products in one click</figcaption></figure>
+    <figure class="frame"><img src="screenshots/01-home.en.png" alt="ClipForge home: photo or one-sentence topic to video" loading="lazy"><figcaption><b>06</b>Home — commerce / topic / your own script</figcaption></figure>
+  </div>
   </div>
 </section>
 
 <section id="compare" class="reveal">
-  <div class="sec-head"><span class="no">04 / VS</span><h2>One product video: <span class="hl">agency vs ClipForge</span></h2></div>
+  <div class="sec-head"><span class="no">04</span><span class="tag">COMPARE</span><h2>Outsourcing &amp; other tools <span class="hl">vs ClipForge</span></h2></div>
   <div class="tablewrap">
     <table>
       <thead><tr><th>Stage</th><th>ClipForge</th><th>Traditional outsourcing</th></tr></thead>
       <tbody>
-        <tr><td>Script</td><td class="win">3 scripts in 30 seconds</td><td>1–2 hours of copywriting</td></tr>
-        <tr><td>Footage</td><td class="win">AI visuals + free stock, minutes</td><td>Shoot + retouch, 1–3 days</td></tr>
-        <tr><td>Editing</td><td class="win">Auto compose + transitions + captions + voice</td><td>2–4 hours of editing</td></tr>
-        <tr><td>Multi-platform</td><td class="win">TikTok / Reels / Shorts / Douyin / RED one-click</td><td>Manual reformatting</td></tr>
-        <tr><td>AI-content labeling</td><td class="win">Written automatically + pre-publish checks</td><td>Easy to forget, throttled reach</td></tr>
-        <tr><td>Cost</td><td class="win">Free, zero keys, no watermark, unlimited</td><td>Hundreds of dollars per video</td></tr>
+        <tr><td>Scriptwriting</td><td class="win">AI writes 3 scripts in 30s</td><td class="dim">Director, 1–2 hours</td></tr>
+        <tr><td>Asset creation</td><td class="win">AI images / moving shots + free stock, minutes</td><td class="dim">Shoot + retouch, 1–3 days</td></tr>
+        <tr><td>Editing</td><td class="win">Auto compositing + transitions + captions + voiceover</td><td class="dim">Editor, 2–4 hours</td></tr>
+        <tr><td>Multi-platform</td><td class="win">One-click TikTok / Reels / Shorts / Douyin export</td><td class="dim">Manual ratio / captions</td></tr>
+        <tr><td>Compliance</td><td class="win">AIGC label + self-check + banned-term scan, default on</td><td class="dim">Human memory, miss = throttled</td></tr>
+        <tr><td>Cost</td><td class="win">$0 on the free path, no watermark</td><td class="dim">Hundreds per video</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="aftertable">One person, dozens of videos a day.</p>
+  <div class="tablewrap">
+    <table>
+      <thead><tr><th>What you care about</th><th>ClipForge</th><th>OSS peers<br>(MoneyPrinterTurbo etc.)</th><th>Commercial AI video SaaS</th><th>CapCut-style editors</th></tr></thead>
+      <tbody>
+        <tr><td>Photo-faithful product</td><td class="win">✅ image lock</td><td class="na">❌ stock only, product absent</td><td class="dim">⚠️ partial</td><td class="dim">➖ manual</td></tr>
+        <tr><td>Moving-shot quality</td><td class="win">✅ i2v + seamless transitions</td><td class="na">❌ stills stitched</td><td class="win">✅ mostly i2v</td><td class="dim">➖ your footage</td></tr>
+        <tr><td>Mini-drama + multi-voice</td><td class="win">✅ ten styles, voice per character</td><td class="na">❌ single narrator</td><td class="dim">⚠️ avatar talking-heads</td><td class="na">❌ manual</td></tr>
+        <tr><td>China-platform compliance</td><td class="win">✅ default on</td><td class="na">❌</td><td class="na">❌ overseas-focused</td><td class="dim">⚠️ partial</td></tr>
+        <tr><td>$0 + no watermark + local</td><td class="win">✅ open source, self-hosted</td><td class="win">✅</td><td class="na">❌ paid / cloud / watermark</td><td class="dim">⚠️ paid pro, cloud</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="tbl-note">Based on public materials as of 2026-07; features evolve. ClipForge is unaffiliated with all products above — for evaluation only.</p>
 </section>
 
 <section id="faq" class="reveal">
-  <div class="sec-head"><span class="no">05 / FAQ</span><h2>FAQ</h2></div>
+  <div class="sec-head"><span class="no">05</span><span class="tag">FAQ</span><h2>Frequently asked</h2></div>
   <div class="faq-list">
-    <details open><summary>Is ClipForge free?</summary><p>Yes — open source (AGPL-3.0), no watermark, unlimited videos. Free assets + free Edge TTS voices + free BGM + local FFmpeg: a full video with zero AI keys. Bring your own key for premium visuals (30+ models: GPT Image 2, Seedance 2.0, Kling 3.0…).</p></details>
-    <details><summary>Will it distort my product photo?</summary><p>No — image-to-image locks the original product. Backgrounds and lighting change; the product itself never does. What buyers see is what they get.</p></details>
-    <details><summary>Do I need to appear on camera?</summary><p>No. Fully faceless: product photo + AI visuals + voiceover + captions. One person can ship dozens of videos a day.</p></details>
-    <details><summary>Which platforms does it export for?</summary><p>TikTok Shop / Reels / Shorts 9:16, Xiaohongshu 3:4, Douyin, Kuaishou, WeChat Channels — one-click switching, plus hashtags, cover copy and engagement prompts.</p></details>
-    <details><summary>How do I run it?</summary><p>Download the Windows / macOS desktop app, or self-host the open-source Next.js web app (Docker supported). MCP server + CLI + agent skill included — Claude / Cursor can go from product link to video in one sentence.</p></details>
+    <details open><summary>Is ClipForge free?</summary><p>Yes. Open source (AGPL-3.0), no watermark, unlimited videos. Free stock assets + free Microsoft Edge TTS voiceover + free BGM + local FFmpeg compositing — a full video with zero AI keys. Bring your own key for premium visuals (30+ models: GPT Image 2, Seedance 2.0, Kling 3.0…).</p></details>
+    <details><summary>Will it distort my product photo?</summary><p>No — this is the core guarantee: image-to-image locks the original product, so backgrounds and lighting change but the product itself never does. What buyers see is what they get.</p></details>
+    <details><summary>Will the video look like an AI slideshow?</summary><p>No. With a video model configured, every shot becomes a real moving clip via image-to-video: a motion-prompt engine keeps the product locked, keyframe chaining generates transitions inside the clip so cuts are seamless, camera intensity is adjustable, and any single shot can be re-run without touching the rest. The demos at the top of this page are raw Seedance 2.0 output.</p></details>
+    <details><summary>How is it different from MoneyPrinterTurbo, CapCut or commercial AI tools?</summary><p>Open-source peers mostly stitch keyword-matched stock stills where your product never appears; commercial SaaS charges per video, uploads assets to the cloud and watermarks free tiers; CapCut is manual-first editing. ClipForge is free and open source with no watermark, photo-faithful products, real moving shots, mini-drama multi-voice dialogue, and compliance built in — all local. See the comparison table above.</p></details>
+    <details><summary>Do I need to appear on camera?</summary><p>No. Videos are composed from your product photo, AI visuals, free voiceover and captions — fully faceless. One person can ship dozens of videos a day.</p></details>
+    <details><summary>Which platforms does it export for?</summary><p>TikTok Shop / Reels / Shorts 9:16, Xiaohongshu 3:4, Douyin, Kuaishou and WeChat Channels — one-click format switching, plus auto-generated hashtags, cover copy and engagement prompts.</p></details>
+    <details><summary>How do I run it?</summary><p>Two ways: download the Windows / macOS desktop app, or self-host the open-source Next.js web app (Docker supported). It also ships an MCP server, a CLI and an agent skill, so Claude or Cursor can produce a video from a product link in one sentence.</p></details>
   </div>
 </section>
 
 <div class="last-call reveal">
-  <h2>Your next <span class="hl">best-seller ad</span> starts from one photo</h2>
-  <p>Free · open source · no watermark — zero keys required.</p>
+  <h2>Your next best-seller starts with one product photo</h2>
+  <p>Free · open source · no watermark — full videos with zero AI keys.</p>
   <div class="cta">
     <a class="btn btn-primary" href="https://github.com/xixihhhh/clipforge/releases/latest">Download free — Windows / macOS</a>
     <a class="btn btn-ghost" href="https://github.com/xixihhhh/clipforge">Star on GitHub</a>
@@ -223,23 +255,14 @@
 </div>
 
 <footer>
-  <p>ClipForge · Open source (AGPL-3.0) · <a href="https://github.com/xixihhhh/clipforge">GitHub</a> · <a href="https://github.com/xixihhhh/clipforge/releases/latest">Download</a> · <a href="index.html">中文</a></p>
-  <p style="margin-top:8px">Follow each platform's advertising and AI-content labeling rules. You own what you publish.</p>
+  <p>ClipForge · Open source AGPL-3.0 · <a href="https://github.com/xixihhhh/clipforge">GitHub</a> · <a href="https://github.com/xixihhhh/clipforge/releases/latest">Download</a> · <a href="index.html">中文</a></p>
+  <p style="margin-top:8px">Follow each platform's advertising and AI-labeling rules; you are responsible for what you publish.</p>
 </footer>
 
 </div>
-<script>
-// Scroll-in reveal (respects prefers-reduced-motion)
-(function () {
-  var els = document.querySelectorAll('.reveal');
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) {
-    els.forEach(function (el) { el.classList.add('in'); }); return;
-  }
-  var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
-  }, { threshold: 0.12 });
-  els.forEach(function (el) { io.observe(el); });
-})();
-</script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.14/dist/lenis.min.js"></script>
+<script src="site.js"></script>
 </body>
 </html>
