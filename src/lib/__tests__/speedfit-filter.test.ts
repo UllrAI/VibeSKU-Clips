@@ -76,7 +76,7 @@ describe("链式首尾帧辅助函数", () => {
     expect(nextChainKeyframe(rows, 1)).toBe("/api/files/p/a2.png");
   });
 
-  it("nextChainKeyframe：下一镜是视频/未完成/不存在 → undefined", () => {
+  it("nextChainKeyframe：下一镜是无关键帧记录的视频/未完成/不存在 → undefined", () => {
     const rows = buildAssetRows(
       [shot(1), shot(2), shot(3)],
       [
@@ -85,9 +85,22 @@ describe("链式首尾帧辅助函数", () => {
       ],
       []
     );
-    expect(nextChainKeyframe(rows, 1)).toBeUndefined(); // next is a video
+    expect(nextChainKeyframe(rows, 1)).toBeUndefined(); // next is a video without a recorded keyframe
     expect(nextChainKeyframe(rows, 2)).toBeUndefined(); // next is pending
     expect(nextChainKeyframe(rows, 3)).toBeUndefined(); // last shot
+  });
+
+  it("nextChainKeyframe：下一镜已是视频但落库过来源关键帧 → 用关键帧接力链式（重跑不掉链）", () => {
+    const rows = buildAssetRows(
+      [shot(1), shot(2)],
+      [
+        { shotId: 1, filePath: "/api/files/p/a1.png", status: "done" },
+        { shotId: 2, filePath: "/api/files/p/a2.mp4", status: "done", thumbnailPath: "/api/files/p/kf2.png" },
+      ],
+      []
+    );
+    expect(rows[1].keyframeUrl).toBe("/api/files/p/kf2.png");
+    expect(nextChainKeyframe(rows, 1)).toBe("/api/files/p/kf2.png");
   });
 
   it("modelSupportsLastFrame：Seedance 2.0 家族与 ai_start_end 白名单支持，其他不支持", () => {

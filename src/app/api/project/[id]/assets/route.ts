@@ -94,6 +94,15 @@ export async function POST(
     };
     const assetType = typeMap[body.type] ?? "ai_generated";
 
+    // Static keyframe (first frame) accompanying an i2v video asset: serves as the assets-page
+    // thumbnail AND as the source frame for per-shot motion re-runs / keyframe chaining — the
+    // upsert below replaces the old keyframe row entirely, so without this column the frame is
+    // unrecoverable. Local persisted paths only (the keyframe was saved as an image asset earlier).
+    const thumbnailPath =
+      typeof body.thumbnailPath === "string" && body.thumbnailPath.startsWith("/api/files/")
+        ? body.thumbnailPath
+        : undefined;
+
     // 按 (projectId, shotId) upsert：先删旧再插
     await db.delete(assets).where(and(eq(assets.projectId, id), eq(assets.shotId, shotId)));
     const rows = await db
@@ -103,6 +112,7 @@ export async function POST(
         shotId,
         type: assetType,
         filePath,
+        thumbnailPath,
         provider: body.provider,
         model: body.model,
         prompt: body.prompt,

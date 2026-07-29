@@ -19,6 +19,9 @@
  */
 import type { Shot } from "@/lib/db/schema";
 
+/** Camera-movement amplitude tier (Kling-style enumerated intensity instead of free text). */
+export type MotionIntensity = "subtle" | "normal" | "strong";
+
 export interface MotionPromptInput {
   /** Shot type drives the default camera move + subject micro-action */
   shotType?: Shot["type"] | string;
@@ -34,6 +37,8 @@ export interface MotionPromptInput {
    * the transition is generated inside the clip and the composer's hard concat becomes seamless.
    */
   chainToNext?: boolean;
+  /** Camera amplitude tier; "normal" (default) keeps the baseline wording unchanged */
+  intensity?: MotionIntensity;
 }
 
 /** True when the text contains CJK characters (used to pick the prompt language). */
@@ -83,6 +88,50 @@ const CHAIN_GUIDANCE = {
   en: "the camera moves naturally into the specified last frame at the end, one continuous fluent transition, no jump cut",
 };
 
+/**
+ * Continuous-single-take declaration (Seedance official guidance: without it the model may cut
+ * mid-clip, which breaks per-shot semantics — each of our clips must be exactly one take).
+ * Mutually exclusive with CHAIN_GUIDANCE: a chained clip ends by transitioning INTO the next
+ * scene, so "no scene changes" would contradict the chain instruction.
+ */
+const SINGLE_SHOT = {
+  zh: "整段为连续单镜头拍摄，中途不切镜、不转场",
+  en: "one continuous single take throughout, no cuts, no scene changes",
+};
+
+/**
+ * Sound direction for audio-capable models (Seedance 2.0 generates audio; unspecified audio tends
+ * toward random speech). Speech always comes from our TTS voice-over — clip audio must stay
+ * ambient-only, since the composer surfaces native audio on shots WITHOUT a voice-over track.
+ */
+const SOUND_DIRECTION = {
+  zh: "音效：自然环境音与动作音效贴合画面，无人声说话",
+  en: "sound: natural ambient and action sound effects matching the scene, no speech",
+};
+
+/** Camera amplitude wording per intensity tier ("normal" keeps the baseline prompt unchanged). */
+const INTENSITY_LINES: Record<Exclude<MotionIntensity, "normal">, { zh: string; en: string }> = {
+  subtle: { zh: "运镜幅度轻微克制，移动缓慢平稳", en: "camera movement stays subtle and restrained, slow and steady" },
+  strong: { zh: "运镜幅度大胆明显，节奏利落有冲击力", en: "bold pronounced camera movement, brisk impactful pacing" },
+};
+
+/** Camera-hold keywords (a locked-off camera instruction). */
+const STATIC_CAMERA_RE = /固定|静止|锁定|不动|fixed|static|locked/i;
+/** Continuous camera-movement keywords. */
+const MOVING_CAMERA_RE =
+  /环绕|环拍|推近|推进|拉远|拉近|横移|平移|摇镜|摇臂|甩镜|跟随|跟拍|升降|俯冲|orbit|push[- ]?in|pull[- ]?back|dolly|pan|tilt|track|crane|zoom|whip/i;
+/** Sequencing markers that legitimise combining hold + move (e.g. "推近后固定" = push in, then hold). */
+const SEQUENCE_RE = /先|后|然后|随后|接着|再|最后|结尾|开场|开头|then|after|before|finally|ending|start/i;
+
+/**
+ * Conflict lint for scripted camera text (Seedance docs: contradictory instructions like
+ * "固定镜头" + "环绕" in one prompt produce jerky, indecisive motion). A hold + move combo is a
+ * conflict ONLY without a sequencing marker — "push in then hold" is valid direction.
+ */
+export function hasCameraConflict(camera: string): boolean {
+  return STATIC_CAMERA_RE.test(camera) && MOVING_CAMERA_RE.test(camera) && !SEQUENCE_RE.test(camera);
+}
+
 /** Max chars of the scene description kept as a semantic anchor (the first frame already fixes composition). */
 const DESC_ANCHOR_MAX = 60;
 
@@ -97,25 +146,36 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
   const lang: "zh" | "en" = probe && !hasCjk(probe) ? "en" : "zh";
   const type = String(input.shotType ?? "");
 
-  const camera = input.camera?.trim() || (CAMERA_DEFAULTS[type] ?? CAMERA_FALLBACK)[lang];
+  // Conflict lint: a self-contradictory scripted camera (hold + move, no sequencing) would yield
+  // jerky indecisive motion — fall back to the shot type's single known-good instruction instead
+  const scripted = input.camera?.trim();
+  const camera =
+    scripted && !hasCameraConflict(scripted) ? scripted : (CAMERA_DEFAULTS[type] ?? CAMERA_FALLBACK)[lang];
   const action = (ACTION_DEFAULTS[type] ?? ACTION_FALLBACK)[lang];
   const anchor = (input.description ?? "").trim().slice(0, DESC_ANCHOR_MAX);
+  const intensity = input.intensity && input.intensity !== "normal" ? INTENSITY_LINES[input.intensity][lang] : undefined;
 
   const parts: string[] = [];
   if (lang === "zh") {
     parts.push(`运镜：${camera}`);
+    if (intensity) parts.push(intensity);
     parts.push(`画面动态：${action}`);
     if (anchor) parts.push(`场景：${anchor}`);
-    if (input.chainToNext) parts.push(CHAIN_GUIDANCE.zh);
+    // chained clip: CHAIN_GUIDANCE already demands one continuous move; SINGLE_SHOT's
+    // "no scene changes" would contradict the transition into the next keyframe
+    parts.push(input.chainToNext ? CHAIN_GUIDANCE.zh : SINGLE_SHOT.zh);
     if (input.productShot) parts.push(PRODUCT_CONSTRAINT.zh);
+    parts.push(SOUND_DIRECTION.zh);
     parts.push(QUALITY_TAIL.zh);
     return parts.join("。") + "。";
   }
   parts.push(`Camera: ${camera}`);
+  if (intensity) parts.push(intensity);
   parts.push(`Motion: ${action}`);
   if (anchor) parts.push(`Scene: ${anchor}`);
-  if (input.chainToNext) parts.push(CHAIN_GUIDANCE.en);
+  parts.push(input.chainToNext ? CHAIN_GUIDANCE.en : SINGLE_SHOT.en);
   if (input.productShot) parts.push(PRODUCT_CONSTRAINT.en);
+  parts.push(SOUND_DIRECTION.en);
   parts.push(QUALITY_TAIL.en);
   return parts.join(". ") + ".";
 }

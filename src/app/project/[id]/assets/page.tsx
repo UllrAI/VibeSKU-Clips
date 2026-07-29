@@ -64,7 +64,7 @@ export default function AssetsPage() {
   const t = useT("assets");
   const tc = useT("common");
   const { id } = useParams<{ id: string }>();
-  const { providers, defaultImageModel, defaultVideoModel, customModels, imageParams, videoParams, llm } = useSettingsStore();
+  const { providers, defaultImageModel, defaultVideoModel, customModels, imageParams, videoParams, llm, motionIntensity, setMotionIntensity } = useSettingsStore();
 
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [productImages, setProductImages] = useState<string[]>([]);
@@ -325,13 +325,18 @@ export default function AssetsPage() {
     reloadPendingTasks();
   }, [reloadPendingTasks]);
 
-  // save a generated video as the shot's asset (shared by the normal flow and task recovery)
+  // save a generated video as the shot's asset (shared by the normal flow and task recovery).
+  // keyframeUrl = the static first frame the i2v ran from: persisted as thumbnailPath so the
+  // keyframe survives the upsert — it powers the per-shot motion re-run and keyframe chaining
   const saveVideoAsset = useCallback(
-    async (shotId: number, url: string, prompt: string | undefined, provider: string, model: string) => {
+    async (shotId: number, url: string, prompt: string | undefined, provider: string, model: string, keyframeUrl?: string) => {
       const saveRes = await fetch(`/api/project/${id}/assets`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shotId, type: "ai_generate", sourceUrl: url, prompt, provider, model }),
+        body: JSON.stringify({
+          shotId, type: "ai_generate", sourceUrl: url, prompt, provider, model,
+          ...(keyframeUrl && { thumbnailPath: keyframeUrl }),
+        }),
       });
       let savedUrl = url;
       if (saveRes.ok) {
@@ -339,7 +344,11 @@ export default function AssetsPage() {
         if (saved.filePath) savedUrl = saved.filePath;
       }
       setAssets((prev) =>
-        prev.map((a) => (a.shotId === shotId ? { ...a, status: "done", thumbnailUrl: savedUrl, isVideo: true, error: undefined } : a))
+        prev.map((a) =>
+          a.shotId === shotId
+            ? { ...a, status: "done", thumbnailUrl: keyframeUrl ?? savedUrl, isVideo: true, keyframeUrl, error: undefined }
+            : a
+        )
       );
     },
     [id]
@@ -372,7 +381,9 @@ export default function AssetsPage() {
         if (data.status === "completed" && data.videoUrls?.[0]) {
           if (task.shotId != null) {
             const asset = assets.find((a) => a.shotId === task.shotId);
-            await saveVideoAsset(task.shotId, data.videoUrls[0], asset?.prompt, task.provider, task.model);
+            // best-effort keyframe provenance: the task was submitted from the shot's static frame
+            const keyframe = asset && !asset.isVideo ? asset.thumbnailUrl : asset?.keyframeUrl;
+            await saveVideoAsset(task.shotId, data.videoUrls[0], asset?.prompt, task.provider, task.model, keyframe);
           }
           setTaskMsg(t("taskResumeDone"));
         } else if (data.status === "failed" || data.status === "cancelled") {
@@ -424,6 +435,7 @@ export default function AssetsPage() {
         description: asset?.description,
         productShot: asset?.visualSource === "product_image" || PRODUCT_SHOT_TYPES.has(asset?.type ?? ""),
         chainToNext: !!chainFrame,
+        intensity: motionIntensity,
       });
       // per-shot duration: the composer's slot follows the script duration (voice-fitted), and the
       // composer trims overshoot from the TAIL — which would cut a chained ending. Round to the
@@ -468,8 +480,8 @@ export default function AssetsPage() {
         const url = data.videoUrls?.[0];
         if (!url) throw new Error(t("errorEmptyResult"));
         // save as this shot's asset (video will be downloaded locally); compose processes it as a video clip (including native audio track detection).
-        // Persist the motion prompt actually sent — asset provenance should record what generated the video
-        await saveVideoAsset(shotId, url, motionPrompt, videoModelTarget.provider, data.modelId || videoModelTarget.model);
+        // Persist the motion prompt actually sent AND the source keyframe (provenance + re-run/chaining)
+        await saveVideoAsset(shotId, url, motionPrompt, videoModelTarget.provider, data.modelId || videoModelTarget.model, firstFrame);
       } catch (e) {
         setAssets((prev) =>
           prev.map((a) => (a.shotId === shotId ? { ...a, error: e instanceof Error ? e.message : t("errorImageToVideoFailed") } : a))
@@ -482,7 +494,7 @@ export default function AssetsPage() {
         });
       }
     },
-    [assets, videoModelTarget, id, videoParams, saveVideoAsset, reloadPendingTasks, t]
+    [assets, videoModelTarget, id, videoParams, motionIntensity, saveVideoAsset, reloadPendingTasks, t]
   );
 
   // actually generate a single asset. Returns the saved static keyframe URL (undefined on failure) so
@@ -684,6 +696,28 @@ export default function AssetsPage() {
                 <span className={`h-1.5 w-1.5 rounded-full ${productSafe ? "bg-primary" : "bg-muted-foreground/40"}`} />
                 {t("productSafe")}{productSafe ? t("on") : t("off")}
               </button>
+            )}
+            {videoModelTarget && (
+              <div
+                className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1 h-8"
+                title={t("motionIntensityTip")}
+              >
+                <span className="text-xs font-medium text-muted-foreground mr-1">{t("motionIntensity")}</span>
+                {(["subtle", "normal", "strong"] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setMotionIntensity(v)}
+                    className={`rounded-full px-2 h-6 text-xs font-medium transition-all ${
+                      motionIntensity === v
+                        ? "bg-primary/15 text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {t(`motionIntensity_${v}`)}
+                  </button>
+                ))}
+              </div>
             )}
             {videoModelTarget && (
               <button
@@ -958,6 +992,21 @@ export default function AssetsPage() {
                           )}
                           {asset.isVideo && (
                             <span className="text-[10px] text-primary">{t("motionDone")}</span>
+                          )}
+                          {/* per-shot fallback (commercial "regenerate one shot" mechanism): re-run ONLY
+                              the i2v from the preserved keyframe — never throws away the whole batch.
+                              Full keyframe+motion redo stays available via the regenerate button above */}
+                          {asset.isVideo && asset.keyframeUrl && videoModelTarget && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-xs w-24 text-muted-foreground hover:text-primary"
+                              disabled={motionShots.has(asset.shotId)}
+                              onClick={() => generateMotion(asset.shotId, asset.keyframeUrl)}
+                              title={`${t("redoMotionTip")}\n${videoModelTarget.provider} · ${videoModelTarget.model}`}
+                            >
+                              {motionShots.has(asset.shotId) ? t("btnConvertingMotion") : t("btnRedoMotion")}
+                            </Button>
                           )}
                           {asset.error && (
                             <span className="text-[10px] text-destructive max-w-24 text-center">{asset.error}</span>

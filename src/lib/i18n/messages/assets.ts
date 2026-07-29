@@ -72,6 +72,15 @@ export const assets: NamespaceMessages = {
     btnConvertingMotion: "转动态中...",
     btnConvertMotion: "🎬 转动态",
     motionDone: "✓ 动态镜头",
+    // 逐镜重生成兜底（关键帧不动，只重跑图生视频）
+    btnRedoMotion: "🔄 重跑动态",
+    redoMotionTip: "对这个分镜不满意？保持关键帧画面不变，只重新生成动态（会再次消耗视频模型额度）。想连画面一起换请用「重新生成」",
+    // 运镜强度三档（作用于运镜提示词的幅度措辞）
+    motionIntensity: "运镜",
+    motionIntensity_subtle: "轻",
+    motionIntensity_normal: "中",
+    motionIntensity_strong: "强",
+    motionIntensityTip: "运镜强度：轻=缓慢克制，中=自然默认，强=幅度大节奏快（对之后生成的动态镜头生效）",
     // 云端付费任务恢复（issue #16：轮询超时/重启后不丢已扣费任务）
     pendingTasksTitle: "有 {n} 个已提交的云端视频任务未取回结果",
     pendingTasksDesc: "任务已在云端创建（可能已计费）。恢复查询即可取回结果，请勿重复提交。",
@@ -155,6 +164,15 @@ export const assets: NamespaceMessages = {
     btnConvertingMotion: "Converting...",
     btnConvertMotion: "🎬 Add motion",
     motionDone: "✓ Motion shot",
+    // Per-shot motion re-run fallback (keyframe stays, only the i2v re-runs)
+    btnRedoMotion: "🔄 Redo motion",
+    redoMotionTip: "Not happy with this shot? Keep the keyframe image and re-run only the motion (uses video-model credits again). To change the image too, use Regenerate.",
+    // Camera intensity tiers (wording amplitude in the motion prompt)
+    motionIntensity: "Camera",
+    motionIntensity_subtle: "Soft",
+    motionIntensity_normal: "Mid",
+    motionIntensity_strong: "Bold",
+    motionIntensityTip: "Camera intensity: soft = slow & restrained, mid = natural default, bold = big moves & brisk pacing (applies to motion shots generated from now on)",
     nextCompose: "Next: compose video",
   },
 };

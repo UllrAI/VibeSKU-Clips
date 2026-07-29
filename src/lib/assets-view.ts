@@ -20,6 +20,12 @@ export interface AssetItem {
   isVideo?: boolean;
   /** Actual type of the persisted asset (e.g. stock_footage = automatically matched free-library footage) */
   assetType?: string;
+  /**
+   * The static keyframe an i2v video was generated FROM (persisted as thumbnailPath). Enables the
+   * per-shot fallback loop — re-run just the i2v while keeping the keyframe — and lets a preceding
+   * shot chain into this clip's first frame even after the shot has become a video.
+   */
+  keyframeUrl?: string;
 }
 
 /** Video asset file extensions (used to distinguish video vs. static image, determining thumbnail display and the "animate" entry point) */
@@ -71,6 +77,7 @@ export function buildAssetRows(
         thumbnailUrl: isVideo && saved.thumbnailPath ? saved.thumbnailPath : saved.filePath,
         isVideo: isVideo || undefined,
         assetType: saved.type ?? undefined,
+        keyframeUrl: isVideo && saved.thumbnailPath ? saved.thumbnailPath : undefined,
       };
     }
     return {
@@ -91,13 +98,16 @@ export function buildAssetRows(
  * Keyframe chaining (Dreamina-style first/last frame): find the NEXT shot's static keyframe so an
  * image-to-video call can pin its last frame to it — the clip then ends by flowing into the next
  * scene, and the composer's hard concat becomes a seamless AI-generated transition.
- * Returns undefined when the next shot has no usable static image (video assets can't be a frame).
+ * A next shot that is ALREADY a video still chains via its recorded source keyframe (its first
+ * frame). Returns undefined when no usable static frame exists.
  */
 export function nextChainKeyframe(rows: AssetItem[], shotId: number): string | undefined {
   const idx = rows.findIndex((r) => r.shotId === shotId);
   if (idx < 0 || idx + 1 >= rows.length) return undefined;
   const next = rows[idx + 1];
-  if (next.status === "done" && !next.isVideo && next.thumbnailUrl) return next.thumbnailUrl;
+  if (next.status !== "done") return undefined;
+  if (!next.isVideo && next.thumbnailUrl) return next.thumbnailUrl;
+  if (next.isVideo && next.keyframeUrl) return next.keyframeUrl;
   return undefined;
 }
 
