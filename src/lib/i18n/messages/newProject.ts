@@ -123,6 +123,7 @@ export const newProject: NamespaceMessages = {
     adTemplateDesc: "一键套用完整成片配方：脚本风格 + 运镜编排 + 画面 Look + 字幕 BGM 合成配置，选完仍可逐项修改",
     adTemplateNone: "不用成片模板",
     adTemplateNoneDesc: "逐项自己配",
+    adTemplateGoodMatch: "适合本类目",
     templateUsedCount: "已用 {n} 次",
     // 脚本风格
     stepStyleTitle: "选择脚本风格",
@@ -260,6 +261,7 @@ export const newProject: NamespaceMessages = {
     adTemplateDesc: "One click applies a full recipe: script style + camera plan + visual look + caption/BGM compose config — everything stays editable",
     adTemplateNone: "No ad template",
     adTemplateNoneDesc: "Configure manually",
+    adTemplateGoodMatch: "Category pick",
     templateUsedCount: "Used {n} times",
     // 脚本风格
     stepStyleTitle: "Choose a script style",

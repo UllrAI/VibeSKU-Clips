@@ -8,7 +8,7 @@ import { useTemplateStore } from "@/lib/stores/template-store";
 import { useProductLibraryStore, type ProductItem } from "@/lib/stores/product-library-store";
 import { getExampleProducts, type ExampleProduct } from "@/lib/examples";
 import { useSettingsStore } from "@/lib/stores/settings-store";
-import { AD_TEMPLATES, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey } from "@/lib/ad-templates";
+import { AD_TEMPLATE_GROUPS, listAdTemplates, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey, type AdTemplateGroupId, type AdTemplateCategory } from "@/lib/ad-templates";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -102,6 +102,7 @@ export default function NewProjectPage() {
   // injects the camera/look plan into script generation, and hands the compose recipe
   // to the video page via localStorage
   const [selectedAdTemplateId, setSelectedAdTemplateId] = useState<string>("");
+  const [adTemplateGroup, setAdTemplateGroup] = useState<AdTemplateGroupId | "all">("all");
   const pickAdTemplate = (id: string) => {
     setSelectedAdTemplateId(id);
     const tpl = getAdTemplate(id);
@@ -900,6 +901,25 @@ export default function NewProjectPage() {
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">{t("adTemplateDesc")}</p>
               </div>
+              {/* group filter chips — a large library needs a browse taxonomy, not one endless scroll row */}
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {[{ id: "all" as const, name: { zh: "全部", en: "All" } }, ...AD_TEMPLATE_GROUPS].map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => setAdTemplateGroup(g.id)}
+                    className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                      adTemplateGroup === g.id
+                        ? "border-primary bg-primary/10 text-primary font-medium"
+                        : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    {locale === "zh" ? g.name.zh : g.name.en}
+                    {g.id !== "all" && (
+                      <span className="ml-1 opacity-60">{listAdTemplates({ group: g.id }).length}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
               <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
                 <button
                   onClick={() => setSelectedAdTemplateId("")}
@@ -914,7 +934,7 @@ export default function NewProjectPage() {
                   </span>
                   <span className="text-[11px] text-muted-foreground mt-0.5">{t("adTemplateNoneDesc")}</span>
                 </button>
-                {AD_TEMPLATES.map((tpl) => (
+                {listAdTemplates({ group: adTemplateGroup, category }).map((tpl) => (
                   <button
                     key={tpl.id}
                     onClick={() => pickAdTemplate(tpl.id)}
@@ -926,6 +946,11 @@ export default function NewProjectPage() {
                   >
                     <span className={`text-sm font-medium ${selectedAdTemplateId === tpl.id ? "text-primary" : "text-foreground"}`}>
                       {tpl.emoji} {locale === "zh" ? tpl.name.zh : tpl.name.en}
+                      {category && tpl.goodFor?.includes(category as AdTemplateCategory) && (
+                        <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-primary/15 text-primary align-middle">
+                          {t("adTemplateGoodMatch")}
+                        </span>
+                      )}
                     </span>
                     <span className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
                       {locale === "zh" ? tpl.tagline.zh : tpl.tagline.en}
