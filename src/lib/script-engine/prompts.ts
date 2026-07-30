@@ -6,6 +6,7 @@
 import { getTemplatesByCategory, categoryNameMap, type ProductCategory } from "./templates";
 import { buildHookGuidance } from "./hook-patterns";
 import { presenterPromptBlock } from "@/lib/presenters";
+import { cameraPresetGuide } from "@/lib/camera-presets";
 
 // ==================== System Role Prompt ====================
 
@@ -528,7 +529,7 @@ export const OUTPUT_FORMAT_PROMPT = `
       "type": "hook",
       "duration": 3,
       "description": "画面描述：要足够具体，包含场景布置、人物动作、物品位置、光线氛围等细节",
-      "camera": "镜头运动描述：特写/中景/全景 + 推拉摇移跟升降等运动方式",
+      "camera": "镜头运动描述（从下方运镜词表中选择或微调，如：镜头围绕主体缓慢环绕半圈，高光沿表面流动）",
       "visualSource": "ai_generate",
       "transition": "direct_concat",
       "voiceover": "配音文案：口语化的播音文案，控制字数与duration匹配（约3字/秒）",
@@ -551,7 +552,7 @@ export const OUTPUT_FORMAT_PROMPT = `
 - type: 只能是 "hook" | "pain_point" | "product_reveal" | "demo" | "social_proof" | "cta" 之一
 - duration: 该分镜时长（秒），所有分镜 duration 之和应等于 totalDuration
 - description: 中文画面描述，要具体到可以直接拍摄或让AI生成
-- camera: 中文镜头运动描述
+- camera: ${cameraPresetGuide()}
 - visualSource: "ai_generate"（AI生成）| "product_image"（使用商品图）| "user_upload"（用户上传）
 - transition: "ai_start_end" | "ai_reference" | "direct_concat" | "ffmpeg_fade"
 - voiceover: 中文配音文案，字数约等于 duration x 3

@@ -65,6 +65,8 @@ interface SettingsState {
   videoParams: VideoGenParams;
   // i2v 运镜强度档位（轻/中/强，作用于 motion prompt 的运镜幅度措辞）
   motionIntensity: MotionIntensity;
+  // 全局画面风格 Look（look-presets.ts 预设 id，"none"=不加；同时注入生图 prompt 与 i2v 光线锚点）
+  visualLook: string;
   // 界面语言（首次按系统语言自动判定，可手动切换）
   locale: Locale;
   // 语言来源：auto=跟随系统语言自动判定，user=用户手动选过（不再自动覆盖）
@@ -86,6 +88,7 @@ interface SettingsState {
   setImageParams: (params: ImageGenParams) => void;
   setVideoParams: (params: VideoGenParams) => void;
   setMotionIntensity: (intensity: MotionIntensity) => void;
+  setVisualLook: (look: string) => void;
   /** 一个 Atlas Key 一键接入：脚本+看图+生图+生视频+配音全配好（不覆盖用户已选模型/已开的配音） */
   applyAtlasOneKey: (apiKey: string) => void;
 }
@@ -126,6 +129,7 @@ export const useSettingsStore = create<SettingsState>()(
       imageParams: DEFAULT_IMAGE_PARAMS,
       videoParams: DEFAULT_VIDEO_PARAMS,
       motionIntensity: "normal",
+      visualLook: "none",
       locale: DEFAULT_LOCALE,
       localeSource: "auto",
 
@@ -150,6 +154,7 @@ export const useSettingsStore = create<SettingsState>()(
       setImageParams: (params) => set({ imageParams: params }),
       setVideoParams: (params) => set({ videoParams: params }),
       setMotionIntensity: (intensity) => set({ motionIntensity: intensity }),
+      setVisualLook: (look) => set({ visualLook: look }),
       // 一个 Atlas Key 一键接入全套：LLM 脚本 + Vision 看图 + 生图 + 生视频 + Atlas 配音
       applyAtlasOneKey: (apiKey) =>
         set((state) => {

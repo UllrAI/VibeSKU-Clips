@@ -89,6 +89,17 @@ export const assets: NamespaceMessages = {
     motionIntensity_normal: "中",
     motionIntensity_strong: "强",
     motionIntensityTip: "运镜强度：轻=缓慢克制，中=自然默认，强=幅度大节奏快（对之后生成的动态镜头生效）",
+    // 每镜运镜预设选择器 + 内联编辑（Higgsfield 式命名运镜一键选）
+    cameraUnset: "未设置运镜（点击编辑）",
+    cameraEditTip: "点击编辑这一镜的运镜描述，回车保存（对下次生成的动态镜头生效）",
+    cameraPresetPick: "运镜预设",
+    cameraPresetTip: "从命名运镜预设中一键选择，写入分镜脚本，下次转动态/重跑动态时生效",
+    cameraRecommendGroup: "为此分镜推荐",
+    cameraSaveFailed: "运镜保存失败，请重试",
+    // 全局画面风格 Look（统一关键帧光线色调 + i2v 光线锚点）
+    lookLabel: "画面",
+    lookNone: "默认",
+    lookTip: "全局画面风格：统一每个分镜关键帧的光线与色调，并在图生视频时锁住光线不漂移（对之后的生成生效）",
     // 云端付费任务恢复（issue #16：轮询超时/重启后不丢已扣费任务）
     pendingTasksTitle: "有 {n} 个已提交的云端视频任务未取回结果",
     pendingTasksDesc: "任务已在云端创建（可能已计费）。恢复查询即可取回结果，请勿重复提交。",
@@ -188,6 +199,17 @@ export const assets: NamespaceMessages = {
     motionIntensity_normal: "Mid",
     motionIntensity_strong: "Bold",
     motionIntensityTip: "Camera intensity: soft = slow & restrained, mid = natural default, bold = big moves & brisk pacing (applies to motion shots generated from now on)",
+    // Per-shot camera preset picker + inline edit (Higgsfield-style named one-click moves)
+    cameraUnset: "No camera move (click to edit)",
+    cameraEditTip: "Click to edit this shot's camera move, Enter to save (applies to the next motion generation)",
+    cameraPresetPick: "Presets",
+    cameraPresetTip: "Pick a named camera-move preset — saved into the script, used on the next motion generation/redo",
+    cameraRecommendGroup: "Recommended for this shot",
+    cameraSaveFailed: "Failed to save camera move, please retry",
+    // Global visual look (unified keyframe lighting/palette + i2v lighting anchor)
+    lookLabel: "Look",
+    lookNone: "Default",
+    lookTip: "Global visual look: unifies lighting & palette across every keyframe and pins lighting through image-to-video so it doesn't drift (applies to future generations)",
     nextCompose: "Next: compose video",
   },
 };

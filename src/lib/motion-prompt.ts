@@ -45,6 +45,12 @@ export interface MotionPromptInput {
    * constraint so the model renders an ordinary person, not a polished influencer face.
    */
   personShot?: boolean;
+  /**
+   * Global visual-look lighting anchor (see look-presets.ts): a SHORT bilingual line that
+   * pins the lighting/palette through the i2v pass — i2v models drift lighting when
+   * unspecified, which breaks look consistency across chained shots.
+   */
+  look?: { zh: string; en: string };
 }
 
 /** True when the text contains CJK characters (used to pick the prompt language). */
@@ -167,6 +173,7 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
     if (intensity) parts.push(intensity);
     parts.push(`画面动态：${action}`);
     if (anchor) parts.push(`场景：${anchor}`);
+    if (input.look) parts.push(`光线：${input.look.zh}`);
     // chained clip: CHAIN_GUIDANCE already demands one continuous move; SINGLE_SHOT's
     // "no scene changes" would contradict the transition into the next keyframe
     parts.push(input.chainToNext ? CHAIN_GUIDANCE.zh : SINGLE_SHOT.zh);
@@ -180,6 +187,7 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
   if (intensity) parts.push(intensity);
   parts.push(`Motion: ${action}`);
   if (anchor) parts.push(`Scene: ${anchor}`);
+  if (input.look) parts.push(`Lighting: ${input.look.en}`);
   parts.push(input.chainToNext ? CHAIN_GUIDANCE.en : SINGLE_SHOT.en);
   if (input.personShot) parts.push(REAL_FACE_CONSTRAINT.en);
   if (input.productShot) parts.push(PRODUCT_CONSTRAINT.en);

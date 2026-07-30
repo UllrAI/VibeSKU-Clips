@@ -13,9 +13,18 @@ import type { Shot } from "@/lib/db/schema";
 import { buildAssetRows, shouldOfferStockFill, needsImageModelWarning, nextChainKeyframe, type AssetItem } from "@/lib/assets-view";
 import { realMixFromRows, shotReality } from "@/lib/real-mix";
 import { buildMotionPrompt } from "@/lib/motion-prompt";
+import {
+  CAMERA_PRESETS,
+  CAMERA_PRESET_CATEGORIES,
+  getCameraPreset,
+  cameraPresetPrompt,
+  recommendedPresets,
+  type CameraPresetCategory,
+} from "@/lib/camera-presets";
+import { LOOK_PRESETS, getLookPreset, lookImageSuffix } from "@/lib/look-presets";
 import { realFaceLine } from "@/lib/presenters";
 import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
-import { useT } from "@/lib/i18n";
+import { useT, useLocale } from "@/lib/i18n";
 import { LanguageToggle } from "@/components/language-toggle";
 import { ProjectStepper } from "@/components/project-stepper";
 
@@ -65,8 +74,9 @@ function toEditVariant(modelId: string): string {
 export default function AssetsPage() {
   const t = useT("assets");
   const tc = useT("common");
+  const locale = useLocale();
   const { id } = useParams<{ id: string }>();
-  const { providers, defaultImageModel, defaultVideoModel, customModels, imageParams, videoParams, llm, motionIntensity, setMotionIntensity } = useSettingsStore();
+  const { providers, defaultImageModel, defaultVideoModel, customModels, imageParams, videoParams, llm, motionIntensity, setMotionIntensity, visualLook, setVisualLook } = useSettingsStore();
 
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [productImages, setProductImages] = useState<string[]>([]);
@@ -92,6 +102,12 @@ export default function AssetsPage() {
   const [pendingTasks, setPendingTasks] = useState<PendingAiTask[]>([]);
   const [resumingTasks, setResumingTasks] = useState<Set<string>>(new Set());
   const [taskMsg, setTaskMsg] = useState<string | null>(null);
+  // per-shot camera editing (preset picker + inline free text): edits persist into the
+  // selected script's shots via the scripts PATCH, so the next (re)generation uses them
+  const [scriptId, setScriptId] = useState<string>("");
+  const [editingCameraShot, setEditingCameraShot] = useState<number | null>(null);
+  const [cameraDraft, setCameraDraft] = useState("");
+  const [savingCameraShot, setSavingCameraShot] = useState<number | null>(null);
 
   const doneCount = assets.filter((a) => a.status === "done").length;
   const allDone = assets.length > 0 && doneCount === assets.length;
@@ -137,6 +153,8 @@ export default function AssetsPage() {
           setLoadError(t("errorNoScript"));
           return;
         }
+        // remember which script row the view came from — camera edits PATCH back into it
+        setScriptId(typeof selected.id === "string" ? selected.id : "");
 
         // selected script shots + persisted assets → view rows (shared pure function used by "refresh after filling visuals")
         setAssets(buildAssetRows(selected.shots as Shot[], Array.isArray(savedAssets) ? savedAssets : [], imgs));
@@ -166,9 +184,52 @@ export default function AssetsPage() {
       ? scripts.find((s: { selected?: boolean }) => s.selected) ?? scripts[0]
       : null;
     if (selected && Array.isArray(selected.shots)) {
+      setScriptId(typeof selected.id === "string" ? selected.id : "");
       setAssets(buildAssetRows(selected.shots as Shot[], Array.isArray(savedAssets) ? savedAssets : [], imgs));
     }
   }, [id]);
+
+  // persist a per-shot camera edit into the selected script (scripts PATCH whitelists `camera`),
+  // then mirror it into the view rows so the next generateMotion call picks it up immediately
+  const saveCamera = useCallback(
+    async (shotId: number, text: string) => {
+      const trimmed = text.trim();
+      setEditingCameraShot(null);
+      const current = assets.find((a) => a.shotId === shotId);
+      if (!scriptId || trimmed === (current?.camera ?? "")) return;
+      setSavingCameraShot(shotId);
+      try {
+        const res = await fetch(`/api/project/${id}/scripts`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ scriptId, shotTexts: [{ shotId, camera: trimmed }] }),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.error || t("cameraSaveFailed"));
+        }
+        setAssets((prev) => prev.map((a) => (a.shotId === shotId ? { ...a, camera: trimmed || undefined } : a)));
+      } catch (e) {
+        setAssets((prev) =>
+          prev.map((a) => (a.shotId === shotId ? { ...a, error: e instanceof Error ? e.message : t("cameraSaveFailed") } : a))
+        );
+      } finally {
+        setSavingCameraShot(null);
+      }
+    },
+    [assets, scriptId, id, t]
+  );
+
+  // apply a named camera preset (Higgsfield-style one-click move) — sentence language follows the script
+  const applyCameraPreset = useCallback(
+    (shotId: number, presetId: string) => {
+      const preset = getCameraPreset(presetId);
+      const asset = assets.find((a) => a.shotId === shotId);
+      if (!preset || !asset) return;
+      void saveCamera(shotId, cameraPresetPrompt(preset, `${asset.camera ?? ""}${asset.description ?? ""}`));
+    },
+    [assets, saveCamera]
+  );
 
   // one-click "auto-fill visuals (free stock)": pull visuals from the free stock library (keyless Openverse images) shot-by-shot using search terms.
   // no image generation key required — this is the key step in the zero-barrier "one-sentence topic video" closed loop.
@@ -441,6 +502,8 @@ export default function AssetsPage() {
         chainToNext: !!chainFrame,
         intensity: motionIntensity,
         personShot: !!asset?.characterId,
+        // global look: short lighting anchor keeps the palette from drifting through the i2v pass
+        look: getLookPreset(visualLook)?.motion,
       });
       // per-shot duration: the composer's slot follows the script duration (voice-fitted), and the
       // composer trims overshoot from the TAIL — which would cut a chained ending. Round to the
@@ -499,7 +562,7 @@ export default function AssetsPage() {
         });
       }
     },
-    [assets, videoModelTarget, id, videoParams, motionIntensity, saveVideoAsset, reloadPendingTasks, t]
+    [assets, videoModelTarget, id, videoParams, motionIntensity, visualLook, saveVideoAsset, reloadPendingTasks, t]
   );
 
   // actually generate a single asset. Returns the saved static keyframe URL (undefined on failure) so
@@ -551,9 +614,13 @@ export default function AssetsPage() {
       // cast shots: pin the anti-"AI face" realism constraint onto the keyframe too,
       // so the person is ordinary-looking from the very first frame the i2v runs on
       const castSuffix = asset.characterId ? `。${realFaceLine(basePrompt)}` : "";
+      // global look: one lighting/palette block across every keyframe keeps shots in one video
+      // from drifting between styles (the LLM improvises style words per shot otherwise)
+      const lookText = lookImageSuffix(visualLook, basePrompt);
+      const lookSuffix = lookText ? `。${lookText}` : "";
       const genPrompt = useProductSafe
-        ? `${basePrompt}。严格保持商品的外观、包装、颜色、logo 和文字完全不变，只重绘符合描述的场景、背景与光线。${castSuffix}`
-        : `${basePrompt}${castSuffix}`;
+        ? `${basePrompt}。严格保持商品的外观、包装、颜色、logo 和文字完全不变，只重绘符合描述的场景、背景与光线。${castSuffix}${lookSuffix}`
+        : `${basePrompt}${castSuffix}${lookSuffix}`;
 
       try {
         const res = await fetch("/api/ai/image", {
@@ -608,7 +675,7 @@ export default function AssetsPage() {
         return undefined;
       }
     },
-    [assets, modelTarget, productImages, productSafe, imageParams, autoMotion, videoModelTarget, generateMotion]
+    [assets, modelTarget, productImages, productSafe, imageParams, autoMotion, videoModelTarget, visualLook, generateMotion]
   );
 
   // generate all in one click (sequential, to avoid hitting platform rate limits with concurrent requests).
@@ -705,6 +772,26 @@ export default function AssetsPage() {
                 {t("productSafe")}{productSafe ? t("on") : t("off")}
               </button>
             )}
+            {/* Visual-look picker (Higgsfield Cinema Studio-style enumerated lighting/palette
+                panel): applies to keyframe image prompts AND pins lighting through the i2v pass */}
+            <div
+              className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1.5 h-8"
+              title={t("lookTip")}
+            >
+              <span className="text-xs font-medium text-muted-foreground">{t("lookLabel")}</span>
+              <select
+                value={visualLook}
+                onChange={(e) => setVisualLook(e.target.value)}
+                className="bg-transparent text-xs outline-none h-6 max-w-28 text-foreground"
+              >
+                <option value="none">{t("lookNone")}</option>
+                {LOOK_PRESETS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {locale === "zh" ? p.name.zh : p.name.en}
+                  </option>
+                ))}
+              </select>
+            </div>
             {videoModelTarget && (
               <div
                 className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1 h-8"
@@ -935,6 +1022,66 @@ export default function AssetsPage() {
                         {/* center content */}
                         <div className="flex-1 p-4">
                           <p className="text-sm leading-relaxed mb-2">{asset.description}</p>
+                          {/* per-shot camera move: named-preset picker + inline free-text edit
+                              (Higgsfield "Click-to-Video": curated moves instead of prompt guessing).
+                              Edits persist into the script and apply on the next motion generation */}
+                          <div className="flex items-center gap-1.5 mb-2 text-xs min-w-0">
+                            <span className="shrink-0 text-muted-foreground/70">🎥</span>
+                            {editingCameraShot === asset.shotId ? (
+                              <input
+                                autoFocus
+                                value={cameraDraft}
+                                onChange={(e) => setCameraDraft(e.target.value)}
+                                onBlur={() => saveCamera(asset.shotId, cameraDraft)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveCamera(asset.shotId, cameraDraft);
+                                  if (e.key === "Escape") setEditingCameraShot(null);
+                                }}
+                                maxLength={200}
+                                className="flex-1 min-w-0 bg-muted/20 border border-border/60 rounded px-2 py-0.5 text-xs outline-none focus:border-primary"
+                              />
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingCameraShot(asset.shotId);
+                                  setCameraDraft(asset.camera ?? "");
+                                }}
+                                title={t("cameraEditTip")}
+                                className="min-w-0 truncate text-left text-muted-foreground hover:text-foreground underline decoration-dotted underline-offset-2"
+                              >
+                                {asset.camera || t("cameraUnset")}
+                              </button>
+                            )}
+                            {savingCameraShot === asset.shotId ? (
+                              <LuLoaderCircle className="w-3 h-3 animate-spin shrink-0 text-muted-foreground" />
+                            ) : (
+                              <select
+                                value=""
+                                onChange={(e) => e.target.value && applyCameraPreset(asset.shotId, e.target.value)}
+                                title={t("cameraPresetTip")}
+                                className="shrink-0 bg-muted/20 border border-border/60 rounded px-1 h-5 text-[11px] text-muted-foreground outline-none max-w-24"
+                              >
+                                <option value="">{t("cameraPresetPick")}</option>
+                                <optgroup label={t("cameraRecommendGroup")}>
+                                  {recommendedPresets(asset.type).map((p) => (
+                                    <option key={`rec-${p.id}`} value={p.id}>
+                                      {locale === "zh" ? p.name.zh : p.name.en}
+                                    </option>
+                                  ))}
+                                </optgroup>
+                                {(Object.keys(CAMERA_PRESET_CATEGORIES) as CameraPresetCategory[]).map((cat) => (
+                                  <optgroup key={cat} label={locale === "zh" ? CAMERA_PRESET_CATEGORIES[cat].zh : CAMERA_PRESET_CATEGORIES[cat].en}>
+                                    {CAMERA_PRESETS.filter((p) => p.category === cat).map((p) => (
+                                      <option key={p.id} value={p.id}>
+                                        {locale === "zh" ? p.name.zh : p.name.en}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                ))}
+                              </select>
+                            )}
+                          </div>
                           {asset.prompt && (
                             <p className="text-xs text-muted-foreground bg-muted/20 rounded px-2 py-1.5 mb-2 line-clamp-2">
                               {t("promptLabel", { prompt: asset.prompt })}
