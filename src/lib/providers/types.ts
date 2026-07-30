@@ -136,6 +136,10 @@ export interface VideoOptions {
   lastFrameUrl?: string
   /** Reference video URL (video-to-video mode) */
   referenceVideoUrl?: string
+  /** Reference video URLs (multimodal reference-to-video, e.g. Seedance 2.0: ≤3 videos, ≤15s total) */
+  referenceVideoUrls?: string[]
+  /** Reference image URLs (multimodal reference-to-video, e.g. Seedance 2.0: ≤9 images) */
+  referenceImageUrls?: string[]
   /** Motion strength; controls the magnitude of motion in the video */
   motionStrength?: number
   /** Guidance scale */
@@ -243,6 +247,14 @@ export interface AIProvider {
    * definitive terminal state (or persistent query failure) ends the wait.
    */
   waitForTask?(taskId: string, options?: { interval?: number; maxAttempts?: number }): Promise<TaskStatus>
+
+  /**
+   * Upload a local media file to the provider's temporary hosting and return a
+   * publicly reachable URL. Needed for inputs the provider won't take as Base64
+   * (e.g. Seedance reference videos accept URLs/asset refs only).
+   * Optional: only providers with an upload endpoint implement it.
+   */
+  uploadLocalMedia?(filePath: string): Promise<string>
 
   /**
    * Get the list of available models

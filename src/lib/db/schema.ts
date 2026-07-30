@@ -140,6 +140,8 @@ export const compositions = sqliteTable("compositions", {
   subtitleStyle: text("subtitle_style", { mode: "json" }).$type<SubtitleStyle>(),
   // Whether the visible "内容由 AI 生成" badge was burned in (read back by the release gate's AIGC-label check)
   aigcBadge: integer("aigc_badge", { mode: "boolean" }),
+  // Human-readable variant label (variant-matrix batch renders, e.g. "疑问钩子×卡拉OK×动感")
+  label: text("label"),
   status: text("status", { enum: ["pending", "composing", "done", "failed"] }).notNull().default("pending"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });

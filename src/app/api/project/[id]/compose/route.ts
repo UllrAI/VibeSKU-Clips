@@ -114,7 +114,23 @@ export async function POST(
     if (!selected || !Array.isArray(selected.shots) || selected.shots.length === 0) {
       return NextResponse.json({ error: "尚未生成脚本，无法合成" }, { status: 400 });
     }
-    const shots = selected.shots as Shot[];
+    let shots = selected.shots as Shot[];
+    // Variant-matrix voiceover overrides (Creatify-Batch-style hook A/B): applied IN MEMORY
+    // for this render only — the stored script stays untouched, so each variant compose can
+    // carry a different hook copy without mutating the project.
+    const voiceoverOverrides = body.voiceoverOverrides as Array<{ shotId: number; voiceover: string }> | undefined;
+    if (Array.isArray(voiceoverOverrides) && voiceoverOverrides.length > 0) {
+      const overrideByShot = new Map<number, string>();
+      for (const o of voiceoverOverrides) {
+        if (o && typeof o.shotId === "number" && typeof o.voiceover === "string") {
+          overrideByShot.set(o.shotId, o.voiceover.trim().slice(0, 500));
+        }
+      }
+      shots = shots.map((s) => {
+        const v = overrideByShot.get(s.shotId);
+        return v ? { ...s, voiceover: v } : s;
+      });
+    }
     // Dialogue-script cast (drama style): deterministic per-character Edge voices, free multi-voice
     // dialogue. Narrator shots (no characterId) keep the default/free voice below.
     const scriptCharacters = (selected.characters ?? []) as ScriptCharacter[];
@@ -235,10 +251,13 @@ export async function POST(
     // opt out with body.aigcBadge=false — the release gate then reports the compliance risk.
     const aigcBadge = body.aigcBadge !== false;
 
+    // Variant label (variant-matrix batch renders): surfaces on the export page's output list
+    const label = typeof body.label === "string" && body.label.trim() ? body.label.trim().slice(0, 60) : undefined;
+
     // 立即建合成记录(composing)并返回；重活(TTS+FFmpeg)后台异步跑，前端轮询 GET 获取结果
     const [comp] = await db
       .insert(compositions)
-      .values({ projectId: id, resolution: outputCfg.resolution, aspectRatio: outputCfg.aspectRatio, aigcBadge, status: "composing" })
+      .values({ projectId: id, resolution: outputCfg.resolution, aspectRatio: outputCfg.aspectRatio, aigcBadge, ...(label && { label }), status: "composing" })
       .returning();
     await db.update(projects).set({ status: "composing", updatedAt: new Date() }).where(eq(projects.id, id));
 

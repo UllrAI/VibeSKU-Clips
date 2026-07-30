@@ -29,6 +29,8 @@
 | 🎯 **Product fidelity** | Swap the background / relight — the product itself stays pixel-identical, never "Photoshopped wrong" |
 | 🎬 **Real moving shots** | Image-to-video + seamless keyframe-chained transitions + 18 named camera presets pickable per shot (with Mix two-preset overlays) + 8 one-click visual looks + per-shot redo — not a still-image slideshow |
 | 🎁 **Ad templates** | 8 end-to-end commerce recipes (Turntable Hero / Lifestyle Seeding / Presenter Talk / Drama Flip…) applied in one click: script style + camera plan + visual look + caption/BGM compose config pre-filled, everything still editable |
+| 🔁 **Viral replication** | Upload a reference video: ffmpeg detects real scene cuts into a rhythm skeleton and the generated script matches its shot count and durations; references ≤15s can also one-shot replicate via Seedance reference-to-video — keeping the reference's camera work and pacing while swapping in your product |
+| 🧪 **Variant matrix** | Same assets, hook copy × caption style × BGM mood combos batch-rendered as labeled outputs for A/B (compared in the export page's history list); compose-only reruns, zero AI-generation cost |
 | 🎭 **Mini-drama selling** | Ten script styles with a free voice per character; **built-in ordinary-person presenter presets + a real-face constraint** so on-camera humans never look like polished AI influencers |
 | 🆓 **A full video at $0** | Free stock + free AI voiceover (EN / 中 / 日 / 韩 / ES) + local compositing — no API key needed, open-source, no watermark |
 | 🚦 **Don't get throttled** | AIGC labeling + ad-law banned-term scan + publish gate — compliance on by default |

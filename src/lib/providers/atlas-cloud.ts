@@ -278,6 +278,32 @@ export class AtlasCloudProvider extends BaseProvider {
   }
 
   /**
+   * Upload a local media file to Atlas temporary hosting (multipart /model/uploadMedia)
+   * and return its public download URL. Required for reference VIDEOS: the video APIs
+   * take URLs/asset refs only (images may be Base64, videos may not).
+   */
+  async uploadLocalMedia(filePath: string): Promise<string> {
+    const { readFile } = await import('fs/promises')
+    const { basename } = await import('path')
+    const buf = await readFile(filePath)
+    const form = new FormData()
+    form.append('file', new Blob([new Uint8Array(buf)]), basename(filePath))
+    const res = await fetch(`${this.config.baseUrl}/model/uploadMedia`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${this.config.apiKey}` },
+      body: form,
+    })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new ProviderError(`参考素材上传失败: ${res.status} ${text.slice(0, 200)}`, 'UPLOAD_FAILED', this.name, res.status)
+    }
+    const data = (await res.json()) as { data?: { download_url?: string } }
+    const url = data.data?.download_url
+    if (!url) throw new ProviderError('参考素材上传成功但未返回地址', 'UPLOAD_FAILED', this.name)
+    return url
+  }
+
+  /**
    * Submit a video generation task without waiting for the result (two-phase mode).
    * Validates/remaps the model against the requested mode BEFORE any billable call,
    * and returns the provider task ID as soon as Atlas acknowledges the task so the
@@ -293,25 +319,43 @@ export class AtlasCloudProvider extends BaseProvider {
       prompt = `${options.prompt}. 旁白: "${options.voiceover}"`
     }
 
-    const body = {
-      model: modelId,
-      prompt,
-      // first frame for image-to-video mode
-      ...(options.firstFrameUrl && { image: options.firstFrameUrl }),
-      // last frame (Seedance 2.0 / Vidu start-end transition)
-      ...(options.lastFrameUrl && { last_image: options.lastFrameUrl }),
-      ...(options.duration && { duration: options.duration }),
-      // Atlas Cloud video API uses resolution + ratio instead of width/height
-      ...(options.width && options.height && {
-        resolution: this.mapResolution(options.width, options.height),
-        ratio: this.mapRatio(options.width, options.height),
-      }),
-      ...(options.seed !== undefined && { seed: options.seed }),
-      // audio toggle (Seedance 2.0 generates audio by default; explicitly disable when not enabled)
-      generate_audio: options.audioEnabled ?? false,
-      watermark: false,
-      ...options.extra,
-    }
+    const isReference = options.mode === 'video-to-video'
+    const body = isReference
+      ? {
+          // multimodal reference generation (Seedance 2.0 reference-to-video):
+          // reference_videos/reference_images arrays with ordinal prompt references
+          model: modelId,
+          prompt,
+          ...(options.referenceVideoUrls?.length && { reference_videos: options.referenceVideoUrls }),
+          ...(options.referenceImageUrls?.length && { reference_images: options.referenceImageUrls }),
+          ...(options.duration && { duration: options.duration }),
+          ...(options.width && options.height && {
+            resolution: this.mapResolution(options.width, options.height),
+            ratio: this.mapRatio(options.width, options.height),
+          }),
+          generate_audio: options.audioEnabled ?? false,
+          watermark: false,
+          ...options.extra,
+        }
+      : {
+          model: modelId,
+          prompt,
+          // first frame for image-to-video mode
+          ...(options.firstFrameUrl && { image: options.firstFrameUrl }),
+          // last frame (Seedance 2.0 / Vidu start-end transition)
+          ...(options.lastFrameUrl && { last_image: options.lastFrameUrl }),
+          ...(options.duration && { duration: options.duration }),
+          // Atlas Cloud video API uses resolution + ratio instead of width/height
+          ...(options.width && options.height && {
+            resolution: this.mapResolution(options.width, options.height),
+            ratio: this.mapRatio(options.width, options.height),
+          }),
+          ...(options.seed !== undefined && { seed: options.seed }),
+          // audio toggle (Seedance 2.0 generates audio by default; explicitly disable when not enabled)
+          generate_audio: options.audioEnabled ?? false,
+          watermark: false,
+          ...options.extra,
+        }
 
     // Task-creating POST: base.request() will NOT auto-retry it on timeout/network errors
     // (money safety, issue #16). Longer timeout than the 30s default — a slow acknowledge
@@ -425,6 +469,27 @@ export class AtlasCloudProvider extends BaseProvider {
     const { modelId, firstFrameUrl } = options
     const catalog = new Map(ATLAS_MODELS.map((m) => [m.id, m]))
     const entry = catalog.get(modelId)
+
+    // multimodal reference mode (Seedance reference-to-video): needs at least one
+    // reference input, and a reference-capable model (remap the family sibling when
+    // an image/text variant was configured) — all validated BEFORE any billable call
+    if (options.mode === 'video-to-video') {
+      if (!options.referenceVideoUrls?.length && !options.referenceImageUrls?.length) {
+        throw new ProviderError(
+          `参考生视频缺少参考素材：至少需要一条参考视频或一张参考图（模型 ${modelId} 未提交，未产生费用）`,
+          'MISSING_REFERENCE',
+          this.name
+        )
+      }
+      if (modelId.includes('/reference-to-video')) return modelId
+      const sibling = modelId.replace(/\/(?:text|image)-to-video$/, '/reference-to-video')
+      if (sibling !== modelId && catalog.has(sibling)) return sibling
+      throw new ProviderError(
+        `模型 ${modelId} 不支持参考生视频。请选择 Seedance 2.0 系列模型（任务未提交，未产生费用）`,
+        'MODEL_MODE_MISMATCH',
+        this.name
+      )
+    }
 
     // image-to-video was requested but no usable first frame reached the provider —
     // submitting anyway would bill a video unrelated to the user's image

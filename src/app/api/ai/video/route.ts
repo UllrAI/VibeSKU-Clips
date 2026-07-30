@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createProvider } from "@/lib/providers";
 import { ProviderError } from "@/lib/providers/base";
-import { toRemoteUsableImage } from "@/lib/remote-image";
+import { toRemoteUsableImage, resolveUploadFilePath } from "@/lib/remote-image";
 import { apiError, errText } from "@/lib/api-error";
 import { recordAiTask, updateAiTask } from "@/lib/ai-tasks";
 
@@ -13,7 +13,7 @@ import { recordAiTask, updateAiTask } from "@/lib/ai-tasks";
 // so the client can resume via /api/ai/video/task instead of paying again.
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { provider: providerName, model, prompt, imageUrl, lastImageUrl, mode, apiKey, baseUrl, options, projectId, shotId } = body;
+  const { provider: providerName, model, prompt, imageUrl, lastImageUrl, mode, apiKey, baseUrl, options, projectId, shotId, referenceVideoUrls, referenceImageUrls } = body;
 
   if (!providerName || !model) {
     return apiError(req, "缺少必要参数", "Missing required parameters");
@@ -30,12 +30,41 @@ export async function POST(req: NextRequest) {
     // Keyframe chaining (Dreamina-style first/last frame): pin the clip's last frame to the next
     // shot's keyframe so the transition is generated inside the clip (seamless on hard concat)
     const lastFrameUrl = lastImageUrl ? await toRemoteUsableImage(lastImageUrl) : undefined;
+
+    // Reference-to-video inputs (viral replication): reference IMAGES may travel as Base64
+    // like first frames, but reference VIDEOS must be real URLs — local /api/files paths
+    // are uploaded to the provider's temporary hosting first (Atlas /model/uploadMedia)
+    let refVideos: string[] | undefined;
+    let refImages: string[] | undefined;
+    if (Array.isArray(referenceVideoUrls) && referenceVideoUrls.length > 0) {
+      refVideos = [];
+      for (const ref of referenceVideoUrls as string[]) {
+        if (typeof ref !== "string" || !ref) continue;
+        if (ref.startsWith("http")) {
+          refVideos.push(ref);
+          continue;
+        }
+        const localPath = resolveUploadFilePath(ref);
+        if (!localPath || !provider.uploadLocalMedia) {
+          return apiError(req, "参考视频不可用：需要可访问的视频地址", "Reference video unavailable: a reachable video URL is required");
+        }
+        refVideos.push(await provider.uploadLocalMedia(localPath));
+      }
+    }
+    if (Array.isArray(referenceImageUrls) && referenceImageUrls.length > 0) {
+      refImages = (await Promise.all((referenceImageUrls as string[]).map(toRemoteUsableImage))).filter(
+        (u): u is string => !!u
+      );
+    }
+
     const videoOptions = {
       modelId: model,
       mode: mode || (imageUrl ? "image-to-video" : "text-to-video"),
       prompt: prompt || "",
       firstFrameUrl,
       ...(lastFrameUrl && { lastFrameUrl }),
+      ...(refVideos?.length && { referenceVideoUrls: refVideos }),
+      ...(refImages?.length && { referenceImageUrls: refImages }),
       ...options,
     };
 

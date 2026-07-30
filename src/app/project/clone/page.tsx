@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useSettingsStore } from "@/lib/stores/settings-store";
+import { mergeCustomModels, buildVideoOptions } from "@/lib/gen-params";
+import { referenceModelFor, buildReplicatePrompt, REPLICATE_MAX_REF_SEC, type ReplicateShot } from "@/lib/replicate-plan";
 import { useT } from "@/lib/i18n";
 import { LanguageToggle } from "@/components/language-toggle";
 
@@ -28,15 +30,37 @@ interface ProductImage {
   previewUrl: string;
 }
 
+/** real reference-video analysis result (from /api/replicate/analyze) */
+interface RefAnalysis {
+  path: string;
+  duration: number;
+  shots: ReplicateShot[];
+  referenceStructure: string;
+  modelTierEligible: boolean;
+}
+
+/** resolved provider target for the default video model (same pattern as the assets page) */
+interface VideoModelTarget {
+  provider: string;
+  model: string;
+  apiKey: string;
+  baseUrl?: string;
+}
+
 export default function ClonePage() {
   const t = useT("clone");
   const router = useRouter();
-  const { llm } = useSettingsStore();
+  const { llm, providers, defaultVideoModel, customModels, videoParams } = useSettingsStore();
 
   // video URL and analysis state
   const [videoUrl, setVideoUrl] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [storyboards, setStoryboards] = useState<StoryboardCard[]>([]);
+  // real reference-video analysis (rhythm skeleton + model-tier eligibility)
+  const [refVideoFile, setRefVideoFile] = useState<File | null>(null);
+  const [refAnalysis, setRefAnalysis] = useState<RefAnalysis | null>(null);
+  const [analyzeError, setAnalyzeError] = useState("");
+  const refVideoInputRef = useRef<HTMLInputElement>(null);
 
   // product information
   const [productImages, setProductImages] = useState<ProductImage[]>([]);
@@ -47,33 +71,193 @@ export default function ClonePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState("");
 
+  // model-tier one-shot replication state (Seedance reference-to-video)
+  const [videoModelTarget, setVideoModelTarget] = useState<VideoModelTarget | null>(null);
+  const [isReplicating, setIsReplicating] = useState(false);
+  const [replicateError, setReplicateError] = useState("");
+  const [replicateResult, setReplicateResult] = useState<{ url: string; projectId: string } | null>(null);
+
   // drag-and-drop upload state
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // resolve the provider for the default video model (drives the model-tier replicate button)
+  useEffect(() => {
+    let cancelled = false;
+    const enabled = Object.entries(providers)
+      .filter(([, p]) => p.enabled && p.apiKey)
+      .map(([name, p]) => ({ name, apiKey: p.apiKey, baseUrl: p.baseUrl }));
+    if (enabled.length === 0 || !defaultVideoModel) {
+      setVideoModelTarget(null);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch("/api/ai/models", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ providers: enabled, mediaType: "video" }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const merged = mergeCustomModels(data.models ?? [], customModels, "video", new Set(enabled.map((e) => e.name)));
+        const model = merged.find((m) => m.id === defaultVideoModel);
+        if (cancelled || !model) return;
+        const prov = enabled.find((e) => e.name === model.provider);
+        if (prov) setVideoModelTarget({ provider: prov.name, model: defaultVideoModel, apiKey: prov.apiKey, baseUrl: prov.baseUrl });
+      } catch {
+        // model-tier button simply stays disabled
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [providers, defaultVideoModel, customModels]);
+
   /**
-   * Load the generic viral video structure reference.
-   * Note: parsing specific video content is not yet supported (requires a video download + ASR pipeline).
-   * What is displayed here is the general shot structure of high-converting commerce videos; the AI will
-   * combine this structure with your product information to generate a real script when "Start Cloning" is clicked.
+   * Analyze the reference. With an uploaded video file this is REAL analysis:
+   * ffmpeg scene-cut detection returns the actual shot skeleton (count + durations),
+   * which later drives rhythm-matched script generation. With only a URL (platform
+   * pages can't be downloaded), it falls back to the generic high-conversion
+   * structure reference — labeled as such in the UI.
    */
   const handleAnalyze = useCallback(async () => {
-    if (!videoUrl.trim()) return;
+    if (!videoUrl.trim() && !refVideoFile) return;
     setIsAnalyzing(true);
     setStoryboards([]);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setStoryboards([
-      { id: 1, title: t("shot1Title"), description: t("shot1Desc"), duration: "0-3s" },
-      { id: 2, title: t("shot2Title"), description: t("shot2Desc"), duration: "3-8s" },
-      { id: 3, title: t("shot3Title"), description: t("shot3Desc"), duration: "8-15s" },
-      { id: 4, title: t("shot4Title"), description: t("shot4Desc"), duration: "15-25s" },
-      { id: 5, title: t("shot5Title"), description: t("shot5Desc"), duration: "25-35s" },
-      { id: 6, title: t("shot6Title"), description: t("shot6Desc"), duration: "35-40s" },
-    ]);
-    setIsAnalyzing(false);
-  }, [videoUrl, t]);
+    setRefAnalysis(null);
+    setAnalyzeError("");
+    try {
+      if (refVideoFile) {
+        const fd = new FormData();
+        fd.append("file", refVideoFile);
+        const res = await fetch("/api/replicate/analyze", { method: "POST", body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || t("analyzeFailed"));
+        setRefAnalysis(data as RefAnalysis);
+        setStoryboards(
+          (data.shots as ReplicateShot[]).map((s) => ({
+            id: s.index,
+            title: t("realShotTitle", { n: s.index }),
+            description: t("realShotDesc"),
+            duration: `${s.duration}s`,
+          }))
+        );
+        return;
+      }
+      // URL-only fallback: the generic structure reference (honest label in structureHint)
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      setStoryboards([
+        { id: 1, title: t("shot1Title"), description: t("shot1Desc"), duration: "0-3s" },
+        { id: 2, title: t("shot2Title"), description: t("shot2Desc"), duration: "3-8s" },
+        { id: 3, title: t("shot3Title"), description: t("shot3Desc"), duration: "8-15s" },
+        { id: 4, title: t("shot4Title"), description: t("shot4Desc"), duration: "15-25s" },
+        { id: 5, title: t("shot5Title"), description: t("shot5Desc"), duration: "25-35s" },
+        { id: 6, title: t("shot6Title"), description: t("shot6Desc"), duration: "35-40s" },
+      ]);
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : t("analyzeFailed"));
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [videoUrl, refVideoFile, t]);
 
-  /** start clone generation: create the clone project + generate a real script, then navigate */
+  /** shared step: create the clone project + upload product images, return { projectId, paths } */
+  const createCloneProject = useCallback(async (): Promise<{ projectId: string; paths: string[] }> => {
+    const projRes = await fetch("/api/project", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: t("projectNameSuffix", { name: productName }),
+        productName,
+        productDescription: productFeatures,
+        productImages: [],
+        sourceType: "clone",
+        ...(videoUrl.trim() && { sourceVideoUrl: videoUrl.trim() }),
+      }),
+    });
+    if (!projRes.ok) throw new Error(t("errorProjectCreate"));
+    const project = await projRes.json();
+
+    const formData = new FormData();
+    productImages.forEach((img) => formData.append("files", img.file));
+    formData.append("projectId", project.id);
+    const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
+    if (!uploadRes.ok) {
+      const e = await uploadRes.json().catch(() => ({}));
+      throw new Error(e.error || t("errorCloneFailed"));
+    }
+    const { paths } = await uploadRes.json();
+    await fetch(`/api/project/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ productImages: paths }),
+    });
+    return { projectId: project.id, paths };
+  }, [productName, productFeatures, productImages, videoUrl, t]);
+
+  /**
+   * Model-tier one-shot replication (Seedance 2.0 reference-to-video): the analyzed
+   * reference clip (≤15s) + product images go into ONE multimodal generation call;
+   * the result is saved as a finished composition on the export page.
+   */
+  const handleModelReplicate = useCallback(async () => {
+    if (isReplicating || !refAnalysis || !videoModelTarget) return;
+    const refModel = referenceModelFor(videoModelTarget.model);
+    if (!refModel) {
+      setReplicateError(t("modelTierNeedSeedance"));
+      return;
+    }
+    setIsReplicating(true);
+    setReplicateError("");
+    setReplicateResult(null);
+    try {
+      const { projectId, paths } = await createCloneProject();
+      const videoOptions = buildVideoOptions(videoParams);
+      videoOptions.duration = Math.min(15, Math.max(4, Math.round(refAnalysis.duration)));
+      const res = await fetch("/api/ai/video", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: videoModelTarget.provider,
+          model: refModel,
+          apiKey: videoModelTarget.apiKey,
+          baseUrl: videoModelTarget.baseUrl,
+          mode: "video-to-video",
+          prompt: buildReplicatePrompt({ productName, sellingPoints: productFeatures, imageCount: paths.length }),
+          referenceVideoUrls: [refAnalysis.path],
+          referenceImageUrls: paths,
+          projectId,
+          options: { ...videoOptions, audioEnabled: true },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t("modelTierFailed"));
+      const videoUrlOut = data.videoUrls?.[0];
+      if (!videoUrlOut) throw new Error(t("modelTierFailed"));
+      // persist as a finished composition (provider URLs expire) → export page
+      const saveRes = await fetch(`/api/project/${projectId}/replicate/save`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoUrl: videoUrlOut }),
+      });
+      const saved = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok) throw new Error(saved.error || t("modelTierFailed"));
+      setReplicateResult({ url: saved.url, projectId });
+    } catch (err) {
+      setReplicateError(err instanceof Error ? err.message : t("modelTierFailed"));
+    } finally {
+      setIsReplicating(false);
+    }
+  }, [isReplicating, refAnalysis, videoModelTarget, videoParams, productName, productFeatures, createCloneProject, t]);
+
+  /**
+   * Rhythm-tier clone: create the project + generate a script whose shot count and
+   * per-shot durations follow the ANALYZED reference skeleton (referenceStructure).
+   * Without a real analysis (URL-only), the script simply follows the generic
+   * high-conversion structure. (The old dead `referenceUrl` field is gone — it was
+   * never read by the script API.)
+   */
   const handleGenerate = useCallback(async () => {
     if (isGenerating) return;
     if (!llm.apiKey) {
@@ -83,53 +267,24 @@ export default function ClonePage() {
     setGenError("");
     setIsGenerating(true);
     try {
-      // 1) create the clone project (record the source video URL)
-      const projRes = await fetch("/api/project", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: t("projectNameSuffix", { name: productName }),
-          productName,
-          productDescription: productFeatures,
-          productImages: [],
-          sourceType: "clone",
-          sourceVideoUrl: videoUrl,
-        }),
-      });
-      if (!projRes.ok) throw new Error(t("errorProjectCreate"));
-      const project = await projRes.json();
+      const { projectId, paths } = await createCloneProject();
 
-      // 2) upload the user's product images (with projectId) — fix: previously hardcoded [] discarded all product images,
-      //    causing product_closeup shots to have no product visuals and the compose step to fail with "no available asset".
-      const formData = new FormData();
-      productImages.forEach((img) => formData.append("files", img.file));
-      formData.append("projectId", project.id);
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      if (!uploadRes.ok) {
-        const e = await uploadRes.json().catch(() => ({}));
-        throw new Error(e.error || t("errorCloneFailed"));
-      }
-      const { paths } = await uploadRes.json();
-      // 2.5) write back the product image paths to the project
-      await fetch(`/api/project/${project.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ productImages: paths }),
-      });
-
-      // 3) generate the script (based on the viral video structure + product info + uploaded product images)
+      // rhythm skeleton: total duration follows the reference when analyzed (15-40s clamp)
+      const targetDuration = refAnalysis
+        ? Math.min(40, Math.max(15, Math.round(refAnalysis.duration)))
+        : 40;
       const scriptRes = await fetch("/api/llm/script", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          projectId: project.id,
+          projectId,
           productName,
           productDescription: productFeatures,
-          targetDuration: 40,
+          targetDuration,
           styleType: "auto",
           videoMode: "product_closeup",
           productImages: paths,
-          referenceUrl: videoUrl,
+          ...(refAnalysis?.referenceStructure && { referenceStructure: refAnalysis.referenceStructure }),
           llmConfig: {
             baseUrl: llm.baseUrl,
             apiKey: llm.apiKey,
@@ -143,13 +298,12 @@ export default function ClonePage() {
         throw new Error(e.error || t("errorScriptGen"));
       }
 
-      // 4) navigate to the script page
-      router.push(`/project/${project.id}/script`);
+      router.push(`/project/${projectId}/script`);
     } catch (err) {
       setGenError(err instanceof Error ? err.message : t("errorCloneFailed"));
       setIsGenerating(false);
     }
-  }, [isGenerating, llm, productName, productFeatures, videoUrl, router, t]);
+  }, [isGenerating, llm, productName, productFeatures, refAnalysis, createCloneProject, router, t]);
 
   /** handle file selection / upload */
   const handleFiles = useCallback(
@@ -285,7 +439,38 @@ export default function ClonePage() {
 
           <Card className="glass-card card-hover">
             <CardContent className="p-6 space-y-5">
-              {/* video URL input */}
+              {/* reference video file upload — the REAL analysis path (scene-cut skeleton) */}
+              <div className="space-y-2">
+                <Label>{t("refVideoLabel")}</Label>
+                <input
+                  ref={refVideoInputRef}
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] ?? null;
+                    e.target.value = "";
+                    setRefVideoFile(f);
+                    setRefAnalysis(null);
+                    setStoryboards([]);
+                  }}
+                />
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() => refVideoInputRef.current?.click()}
+                  >
+                    {refVideoFile ? t("refVideoReplace") : t("refVideoBtn")}
+                  </Button>
+                  <span className="text-xs text-muted-foreground truncate">
+                    {refVideoFile ? t("refVideoSelected", { name: refVideoFile.name }) : t("refVideoHint")}
+                  </span>
+                </div>
+                <p className="text-xs text-amber-600/90">{t("copyrightNote")}</p>
+              </div>
+
+              {/* video URL input (record-only fallback; platform pages can't be downloaded) */}
               <div className="space-y-2">
                 <Label htmlFor="video-url">{t("videoUrlLabel")}</Label>
                 <div className="flex gap-3">
@@ -298,7 +483,7 @@ export default function ClonePage() {
                   />
                   <Button
                     className="brand-gradient text-white shrink-0"
-                    disabled={!videoUrl.trim() || isAnalyzing}
+                    disabled={(!videoUrl.trim() && !refVideoFile) || isAnalyzing}
                     onClick={handleAnalyze}
                   >
                     {isAnalyzing ? (
@@ -334,20 +519,23 @@ export default function ClonePage() {
                   {t("videoUrlHint")}
                 </p>
               </div>
+              {analyzeError && <p className="text-xs text-destructive">{analyzeError}</p>}
 
               {/* analysis results display area */}
               {hasAnalysis && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-medium text-foreground">
-                      {t("structureTitle")}
+                      {refAnalysis ? t("realStructureTitle") : t("structureTitle")}
                     </h3>
                     <Badge variant="secondary" className="text-xs">
                       {t("storyboardCount", { n: storyboards.length })}
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground -mt-1">
-                    {t("structureHint")}
+                    {refAnalysis
+                      ? t("realStructureHint", { sec: Math.round(refAnalysis.duration) })
+                      : t("structureHint")}
                   </p>
 
                   {/* storyboard card list */}
@@ -559,6 +747,63 @@ export default function ClonePage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* model-tier one-shot replication (Seedance reference-to-video, ≤15s references) */}
+        {refAnalysis && (
+          <div className="mb-10">
+            <Card className="glass-card">
+              <CardContent className="p-6 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold">⚡ {t("modelTierTitle")}</h3>
+                  {!refAnalysis.modelTierEligible && (
+                    <Badge variant="outline" className="text-xs text-amber-600">
+                      {t("modelTierTooLong", { max: REPLICATE_MAX_REF_SEC })}
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">{t("modelTierDesc")}</p>
+                {videoModelTarget && !referenceModelFor(videoModelTarget.model) && (
+                  <p className="text-xs text-amber-600/90">{t("modelTierNeedSeedance")}</p>
+                )}
+                {!videoModelTarget && <p className="text-xs text-amber-600/90">{t("modelTierNeedModel")}</p>}
+                {replicateError && <p className="text-xs text-destructive">{replicateError}</p>}
+                {replicateResult ? (
+                  <div className="space-y-2">
+                    <video src={replicateResult.url} controls className="w-full max-w-xs rounded-lg border border-border/50" />
+                    <div className="flex items-center gap-3 text-xs">
+                      <span className="text-emerald-600">✓ {t("modelTierDone")}</span>
+                      <Link href={`/project/${replicateResult.projectId}/export`} className="text-primary underline">
+                        {t("modelTierViewExport")}
+                      </Link>
+                    </div>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs border-primary/50 text-primary hover:bg-primary/10"
+                    disabled={
+                      isReplicating ||
+                      !refAnalysis.modelTierEligible ||
+                      !videoModelTarget ||
+                      !referenceModelFor(videoModelTarget.model) ||
+                      productImages.length === 0 ||
+                      !productName.trim()
+                    }
+                    onClick={handleModelReplicate}
+                    title={
+                      videoModelTarget
+                        ? `${videoModelTarget.provider} · ${referenceModelFor(videoModelTarget.model) ?? videoModelTarget.model}`
+                        : undefined
+                    }
+                  >
+                    {isReplicating ? t("modelTierRunning") : t("modelTierBtn")}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {/* bottom action buttons */}
         <div className="flex flex-col items-center pb-10 gap-3">

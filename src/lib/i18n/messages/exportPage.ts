@@ -28,6 +28,10 @@ export const exportPage: NamespaceMessages = {
     doneSubtitle: "你的带货视频已准备就绪，可以下载或分享",
     // 操作按钮
     downloadVideo: "下载视频",
+    // 历史成片列表（变体矩阵产物带组合标签）
+    historyTitle: "历史成片（{n} 条）",
+    historyUnlabeled: "常规合成",
+    historyView: "播放",
     copyShareLink: "复制视频链接",
     // 发布文案
     publishTitle: "发布文案",
@@ -170,6 +174,10 @@ export const exportPage: NamespaceMessages = {
     doneTitleAccent: "is ready",
     doneSubtitle: "Your commerce video is ready to download or share",
     downloadVideo: "Download video",
+    // Output history (variant-matrix renders carry their combo label)
+    historyTitle: "Output history ({n})",
+    historyUnlabeled: "Regular render",
+    historyView: "Play",
     copyShareLink: "Copy video link",
     publishTitle: "Publishing copy",
     publishGenerating: "Generating...",

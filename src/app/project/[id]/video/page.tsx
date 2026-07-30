@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { LuArrowLeft, LuPlay, LuChevronDown, LuArrowRight, LuLoaderCircle } from "react-icons/lu";
 import { useSettingsStore } from "@/lib/stores/settings-store";
@@ -15,6 +15,9 @@ import { useT, useLocale } from "@/lib/i18n";
 import { RENDER_PRESETS, DEFAULT_RENDER_PRESET, type RenderPreset } from "@/lib/compose-presets";
 import { BUILTIN_STYLE_PACKS, parseStylePack, serializeStylePack, STYLE_PACK_FORMAT, type StylePack } from "@/lib/style-packs";
 import { getAdTemplate, adTemplateStorageKey, adTemplateAppliedKey } from "@/lib/ad-templates";
+import { buildHookVariants } from "@/lib/script-engine/hook-variants";
+import type { ProductCategory } from "@/lib/script-engine/templates";
+import { CAPTION_PRESET_IDS } from "@/lib/caption-presets";
 import { LanguageToggle } from "@/components/language-toggle";
 import {
   Select,
@@ -209,7 +212,10 @@ export default function VideoPage() {
         const scripts = scriptsRes.ok ? await scriptsRes.json() : [];
         const assets = assetsRes.ok ? await assetsRes.json() : [];
         if (cancelled) return;
-        if (project) setProjectName(project.name ?? project.productName ?? "");
+        if (project) {
+          setProjectName(project.name ?? project.productName ?? "");
+          setProjectCategory(typeof project.productCategory === "string" ? project.productCategory : "");
+        }
         // 收集每个分镜已生成的画面，作时间线缩略图（已完成且有文件的才算）
         const thumbMap: Record<number, string> = {};
         for (const a of (Array.isArray(assets) ? assets : []) as DbAsset[]) {
@@ -225,6 +231,8 @@ export default function VideoPage() {
           setLoadError(t("errorNoScript"));
           setClips([]);
         } else {
+          // raw shots feed the variant matrix (hook rewrites need full Shot objects)
+          setScriptShots(selected.shots as Shot[]);
           setClips(
             (selected.shots as DbShot[]).map((s) => ({
               shotId: s.shotId,
@@ -331,6 +339,137 @@ export default function VideoPage() {
     a.download = "clipforge-style-pack.json";
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  // —— Variant matrix (Creatify-Batch / Higgsfield UGC Factory pattern): same assets,
+  // hook copy × caption preset × BGM mood combos rendered as separate labeled outputs
+  // for A/B testing. Zero extra AI-generation cost — only compose (FFmpeg + TTS) reruns. ——
+  const [scriptShots, setScriptShots] = useState<Shot[]>([]);
+  const [projectCategory, setProjectCategory] = useState("");
+  const [matrixOpen, setMatrixOpen] = useState(false);
+  const [matrixHooks, setMatrixHooks] = useState<Set<string>>(new Set(["base"]));
+  const [matrixCaptions, setMatrixCaptions] = useState<Set<string>>(new Set());
+  const [matrixBgms, setMatrixBgms] = useState<Set<string>>(new Set());
+  const [matrixRunning, setMatrixRunning] = useState(false);
+  const [matrixResults, setMatrixResults] = useState<Array<{ label: string; status: "composing" | "done" | "failed"; url?: string }>>([]);
+
+  /** Hard cap on one batch (compose is FFmpeg-heavy and runs sequentially). */
+  const MATRIX_MAX = 6;
+  const MATRIX_BGM_MOODS = ["upbeat", "chill", "energetic", "emotional"] as const;
+
+  // hook-pattern categories use the script-engine vocabulary; map the project's UI category in
+  const matrixCategory = (
+    ["beauty", "food", "home", "fashion", "tech"].includes(projectCategory)
+      ? projectCategory
+      : projectCategory === "digital"
+        ? "tech"
+        : "home"
+  ) as ProductCategory;
+
+  // zero-LLM hook rewrites from the validated pattern library (base + 2 alternatives)
+  const hookVariants = useMemo(
+    () => (scriptShots.length > 0 ? buildHookVariants({ shots: scriptShots }, matrixCategory, 2) : []),
+    [scriptShots, matrixCategory]
+  );
+
+  const matrixCombos = useMemo(() => {
+    const hooks = [...matrixHooks];
+    const captions = [...matrixCaptions];
+    const bgms = [...matrixBgms];
+    const combos: Array<{ hookKey: string; hookLabel: string; caption: string; bgm: string; label: string }> = [];
+    for (const h of hooks) {
+      const hookLabel = h === "base" ? t("matrixBaseHook") : hookVariants.find((v) => v.hookId === h)?.hookName ?? h;
+      for (const c of captions) {
+        for (const b of bgms) {
+          combos.push({ hookKey: h, hookLabel, caption: c, bgm: b, label: `${hookLabel}×${c}×${b}` });
+        }
+      }
+    }
+    return combos.slice(0, MATRIX_MAX);
+  }, [matrixHooks, matrixCaptions, matrixBgms, hookVariants, t]);
+
+  const toggleMatrixOpen = () => {
+    setMatrixOpen((open) => {
+      // seed caption/BGM dimensions from the current config on first open
+      if (!open) {
+        setMatrixCaptions((s) => (s.size === 0 ? new Set([config.captionPreset]) : s));
+        setMatrixBgms((s) => (s.size === 0 ? new Set([config.bgm !== "none" ? config.bgm : "upbeat"]) : s));
+      }
+      return !open;
+    });
+  };
+
+  const toggleInSet = (setter: React.Dispatch<React.SetStateAction<Set<string>>>, value: string) => {
+    setter((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
+
+  /** Run the matrix: sequential compose per combo, each polled by its own compositionId. */
+  const runMatrix = async () => {
+    if (matrixRunning || matrixCombos.length === 0) return;
+    setMatrixRunning(true);
+    setMatrixResults(matrixCombos.map((c) => ({ label: c.label, status: "composing" as const })));
+    for (let i = 0; i < matrixCombos.length; i++) {
+      const combo = matrixCombos[i];
+      try {
+        // hook variant: in-memory voiceover override for shot 1 (the stored script stays untouched)
+        const variant = combo.hookKey === "base" ? undefined : hookVariants.find((v) => v.hookId === combo.hookKey);
+        const hookShot = variant?.script.shots[0];
+        const res = await fetch(`/api/project/${id}/compose`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            resolution: config.resolution,
+            renderPreset: config.renderPreset,
+            aspectRatio: config.aspectRatio,
+            label: combo.label,
+            ...(hookShot && { voiceoverOverrides: [{ shotId: hookShot.shotId, voiceover: hookShot.voiceover ?? "" }] }),
+            ...(config.ctaEnabled && config.ctaText.trim() && { ctaText: config.ctaText.trim() }),
+            ...(config.productCard && { productCard: true }),
+            captionPreset: combo.caption,
+            ...(config.bgmDuck && { bgmDuck: true }),
+            // uploaded BGM stays fixed across combos; otherwise the mood dimension picks the free track
+            ...(bgm?.path ? { bgmPath: bgm.path } : { freeBgm: true, bgmMood: combo.bgm }),
+            ...(config.ttsEnabled && paidTtsReady && { ttsConfig: resolveTTSConfig(tts, providers) }),
+            ...(config.ttsEnabled && !paidTtsReady && { freeTts: { enabled: true, voice: config.freeVoice } }),
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.compositionId) throw new Error(data.error || "compose failed");
+        // poll THIS composition by id (avoids the latest-row race across sequential renders)
+        const url: string = await new Promise((resolve, reject) => {
+          const poll = setInterval(async () => {
+            try {
+              const r = await fetch(`/api/project/${id}/compose?compositionId=${data.compositionId}`);
+              const d = await r.json();
+              const c = d.composition;
+              if (!c) return;
+              if (c.status === "done" && c.url) {
+                clearInterval(poll);
+                resolve(c.url);
+              } else if (c.status === "failed") {
+                clearInterval(poll);
+                reject(new Error("failed"));
+              }
+            } catch {
+              // transient poll failure — keep trying until the outer timeout
+            }
+          }, 3000);
+          setTimeout(() => {
+            clearInterval(poll);
+            reject(new Error("timeout"));
+          }, 300000);
+        });
+        setMatrixResults((prev) => prev.map((r, idx) => (idx === i ? { ...r, status: "done", url } : r)));
+      } catch {
+        setMatrixResults((prev) => prev.map((r, idx) => (idx === i ? { ...r, status: "failed" } : r)));
+      }
+    }
+    setMatrixRunning(false);
   };
 
   // 真实合成：调用 compose API 跑 FFmpeg，配乐观进度动画，完成后拿到真实 mp4
@@ -917,6 +1056,126 @@ export default function VideoPage() {
                     </Button>
                   </Link>
                 </>
+              )}
+
+              {/* Variant matrix (Creatify-Batch pattern): hook × caption × BGM combos as
+                  labeled outputs — same assets, compose-only reruns, zero AI-gen cost */}
+              {clips.length > 0 && (
+                <div className="rounded-lg border border-border/50 bg-muted/10 p-3 space-y-2">
+                  <button
+                    type="button"
+                    onClick={toggleMatrixOpen}
+                    className="w-full flex items-center justify-between text-sm font-medium"
+                  >
+                    <span>🧪 {t("matrixTitle")}</span>
+                    <span className="text-xs text-muted-foreground">{matrixOpen ? "−" : "+"}</span>
+                  </button>
+                  {matrixOpen && (
+                    <div className="space-y-3 text-xs pt-1">
+                      <p className="text-muted-foreground leading-relaxed">{t("matrixDesc")}</p>
+                      <div>
+                        <p className="font-medium mb-1.5">{t("matrixHooks")}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {[{ key: "base", name: t("matrixBaseHook") }, ...hookVariants.map((v) => ({ key: v.hookId, name: v.hookName }))].map((h) => (
+                            <button
+                              key={h.key}
+                              type="button"
+                              onClick={() => toggleInSet(setMatrixHooks, h.key)}
+                              className={`rounded-full border px-2 py-0.5 transition-all ${
+                                matrixHooks.has(h.key)
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border/60 text-muted-foreground hover:border-primary/40"
+                              }`}
+                            >
+                              {h.name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="font-medium mb-1.5">{t("matrixCaptions")}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {CAPTION_PRESET_IDS.map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => toggleInSet(setMatrixCaptions, c)}
+                              className={`rounded-full border px-2 py-0.5 transition-all ${
+                                matrixCaptions.has(c)
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border/60 text-muted-foreground hover:border-primary/40"
+                              }`}
+                            >
+                              {c}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="font-medium mb-1.5">{t("matrixBgms")}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {MATRIX_BGM_MOODS.map((b) => (
+                            <button
+                              key={b}
+                              type="button"
+                              onClick={() => toggleInSet(setMatrixBgms, b)}
+                              className={`rounded-full border px-2 py-0.5 transition-all ${
+                                matrixBgms.has(b)
+                                  ? "border-primary bg-primary/10 text-primary"
+                                  : "border-border/60 text-muted-foreground hover:border-primary/40"
+                              }`}
+                            >
+                              {b}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-muted-foreground">{t("matrixCount", { n: matrixCombos.length, max: MATRIX_MAX })}</span>
+                        <Button
+                          size="sm"
+                          className="text-xs"
+                          disabled={matrixRunning || matrixCombos.length === 0 || isComposing}
+                          onClick={runMatrix}
+                        >
+                          {matrixRunning ? (
+                            <>
+                              <LuLoaderCircle className="animate-spin mr-1 h-3 w-3" />
+                              {t("matrixRunning", {
+                                done: matrixResults.filter((r) => r.status !== "composing").length,
+                                total: matrixResults.length,
+                              })}
+                            </>
+                          ) : (
+                            t("matrixRun", { n: matrixCombos.length })
+                          )}
+                        </Button>
+                      </div>
+                      {matrixResults.length > 0 && (
+                        <div className="space-y-1">
+                          {matrixResults.map((r) => (
+                            <div key={r.label} className="flex items-center gap-2 truncate">
+                              {r.status === "composing" ? (
+                                <LuLoaderCircle className="animate-spin h-3 w-3 shrink-0 text-muted-foreground" />
+                              ) : r.status === "done" ? (
+                                <span className="text-emerald-500 shrink-0">✓</span>
+                              ) : (
+                                <span className="text-destructive shrink-0">✗</span>
+                              )}
+                              <span className="truncate text-muted-foreground">{r.label}</span>
+                              {r.url && (
+                                <a href={r.url} target="_blank" rel="noreferrer" className="text-primary underline shrink-0">
+                                  {t("matrixView")}
+                                </a>
+                              )}
+                            </div>
+                          ))}
+                          <p className="text-[10px] text-muted-foreground pt-1">{t("matrixExportHint")}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </div>

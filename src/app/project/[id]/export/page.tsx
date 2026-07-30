@@ -70,6 +70,8 @@ export default function ExportPage() {
   const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState("");
   const [composition, setComposition] = useState<Composition | null>(null);
+  // full output history (variant-matrix renders carry a label) — the latest-only view hid variants
+  const [history, setHistory] = useState<Array<{ id: string; url: string | null; label?: string | null; createdAt?: string | number | null }>>([]);
   const [scriptInfo, setScriptInfo] = useState<ScriptInfo | null>(null);
   const [fileSize, setFileSize] = useState<string>("");
   // publish copy
@@ -343,6 +345,7 @@ export default function ExportPage() {
           const data = await compRes.json();
           const latestDone = Array.isArray(data.compositions) ? data.compositions[0] : null;
           if (!cancelled && latestDone) setComposition(latestDone);
+          if (!cancelled && Array.isArray(data.compositions)) setHistory(data.compositions.slice(0, 12));
         }
         if (scriptsRes.ok) {
           const arr = await scriptsRes.json();
@@ -563,6 +566,36 @@ export default function ExportPage() {
             {t("copyShareLink")}
           </Button>
         </div>
+
+        {/* output history: every successful render, newest first — variant-matrix outputs
+            show their combo label so A/B takes stay reachable after leaving the video page */}
+        {history.length > 1 && (
+          <Card className="glass-card mb-6">
+            <CardContent className="p-5">
+              <h3 className="text-sm font-semibold mb-3">🎞 {t("historyTitle", { n: history.length })}</h3>
+              <div className="space-y-1.5">
+                {history.map((h, i) => (
+                  <div key={h.id} className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground/60 shrink-0 tabular-nums">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="truncate flex-1 text-muted-foreground">
+                      {h.label || t("historyUnlabeled")}
+                    </span>
+                    {h.createdAt && (
+                      <span className="text-muted-foreground/60 shrink-0">
+                        {new Date(h.createdAt).toLocaleString(locale === "zh" ? "zh-CN" : "en-US", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                    {h.url && (
+                      <a href={h.url} target="_blank" rel="noreferrer" className="text-primary underline shrink-0">
+                        {t("historyView")}
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* publish copy (AI-generated title / hashtags / promotional caption) */}
         <Card className="glass-card mb-6">
