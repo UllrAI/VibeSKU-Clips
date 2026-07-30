@@ -19,6 +19,9 @@ import {
   getCameraPreset,
   cameraPresetPrompt,
   recommendedPresets,
+  findPresetByPrompt,
+  mixablePresets,
+  mixCameraPrompt,
   type CameraPresetCategory,
 } from "@/lib/camera-presets";
 import { LOOK_PRESETS, getLookPreset, lookImageSuffix } from "@/lib/look-presets";
@@ -227,6 +230,21 @@ export default function AssetsPage() {
       const asset = assets.find((a) => a.shotId === shotId);
       if (!preset || !asset) return;
       void saveCamera(shotId, cameraPresetPrompt(preset, `${asset.camera ?? ""}${asset.description ?? ""}`));
+    },
+    [assets, saveCamera]
+  );
+
+  // Higgsfield-Mix-style overlay: combine the currently applied preset with a second one.
+  // Only offered while the camera text exactly equals a preset sentence — after mixing it
+  // no longer does, which naturally caps the stack at two moves.
+  const applyCameraMix = useCallback(
+    (shotId: number, basePresetId: string, overlayPresetId: string) => {
+      const base = getCameraPreset(basePresetId);
+      const overlay = getCameraPreset(overlayPresetId);
+      const asset = assets.find((a) => a.shotId === shotId);
+      if (!base || !overlay || !asset) return;
+      const mixed = mixCameraPrompt(base, overlay, `${asset.camera ?? ""}${asset.description ?? ""}`);
+      if (mixed) void saveCamera(shotId, mixed);
     },
     [assets, saveCamera]
   );
@@ -1081,6 +1099,29 @@ export default function AssetsPage() {
                                 ))}
                               </select>
                             )}
+                            {/* Mix overlay (Higgsfield Mix): only while the text IS a preset sentence */}
+                            {savingCameraShot !== asset.shotId && editingCameraShot !== asset.shotId && (() => {
+                              const base = findPresetByPrompt(asset.camera);
+                              if (!base) return null;
+                              const sample = `${asset.camera ?? ""}${asset.description ?? ""}`;
+                              const candidates = mixablePresets(base, sample);
+                              if (candidates.length === 0) return null;
+                              return (
+                                <select
+                                  value=""
+                                  onChange={(e) => e.target.value && applyCameraMix(asset.shotId, base.id, e.target.value)}
+                                  title={t("cameraMixTip")}
+                                  className="shrink-0 bg-muted/20 border border-border/60 rounded px-1 h-5 text-[11px] text-muted-foreground outline-none max-w-20"
+                                >
+                                  <option value="">{t("cameraMixPick")}</option>
+                                  {candidates.map((p) => (
+                                    <option key={p.id} value={p.id}>
+                                      {locale === "zh" ? p.name.zh : p.name.en}
+                                    </option>
+                                  ))}
+                                </select>
+                              );
+                            })()}
                           </div>
                           {asset.prompt && (
                             <p className="text-xs text-muted-foreground bg-muted/20 rounded px-2 py-1.5 mb-2 line-clamp-2">

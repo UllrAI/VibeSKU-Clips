@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { useT } from "@/lib/i18n";
+import { useT, useLocale } from "@/lib/i18n";
 import { RENDER_PRESETS, DEFAULT_RENDER_PRESET, type RenderPreset } from "@/lib/compose-presets";
-import { BUILTIN_STYLE_PACKS, parseStylePack, serializeStylePack, type StylePack } from "@/lib/style-packs";
+import { BUILTIN_STYLE_PACKS, parseStylePack, serializeStylePack, STYLE_PACK_FORMAT, type StylePack } from "@/lib/style-packs";
+import { getAdTemplate, adTemplateStorageKey, adTemplateAppliedKey } from "@/lib/ad-templates";
 import { LanguageToggle } from "@/components/language-toggle";
 import {
   Select,
@@ -114,6 +115,7 @@ const isVideoPath = (p: string) => /\.(mp4|webm|mov|m4v)(\?|$)/i.test(p);
 
 export default function VideoPage() {
   const t = useT("video");
+  const locale = useLocale();
   const { id } = useParams<{ id: string }>();
   const { defaultResolution, defaultAspectRatio, tts, providers } = useSettingsStore();
   const [clips, setClips] = useState<VideoClipItem[]>([]);
@@ -279,6 +281,27 @@ export default function VideoPage() {
     }));
     setPackNotice(t("stylePackApplied").replace("{name}", pack.name));
   };
+
+  // Ad-template hand-off (set at project creation on the new-project page): apply the
+  // template's compose recipe ONCE per project, through the same whitelisted style-pack
+  // path — later manual tweaks are never overwritten on revisit.
+  useEffect(() => {
+    try {
+      const tplId = localStorage.getItem(adTemplateStorageKey(id));
+      if (!tplId || localStorage.getItem(adTemplateAppliedKey(id))) return;
+      const tpl = getAdTemplate(tplId);
+      if (!tpl) return;
+      applyStylePack({
+        format: STYLE_PACK_FORMAT,
+        name: locale === "zh" ? tpl.name.zh : tpl.name.en,
+        compose: tpl.compose,
+      });
+      localStorage.setItem(adTemplateAppliedKey(id), "1");
+    } catch {
+      // localStorage unavailable — the pre-fill is a convenience, never a blocker
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   const importStylePack = async (file: File) => {
     const pack = parseStylePack(await file.text());

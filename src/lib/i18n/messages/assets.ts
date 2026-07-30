@@ -96,6 +96,8 @@ export const assets: NamespaceMessages = {
     cameraPresetTip: "从命名运镜预设中一键选择，写入分镜脚本，下次转动态/重跑动态时生效",
     cameraRecommendGroup: "为此分镜推荐",
     cameraSaveFailed: "运镜保存失败，请重试",
+    cameraMixPick: "＋叠加",
+    cameraMixTip: "Mix 叠加：在当前预设上再叠一个运镜（如环绕+推近），合成复合机位路径；只列出不会互相冲突的组合，最多叠两层",
     // 全局画面风格 Look（统一关键帧光线色调 + i2v 光线锚点）
     lookLabel: "画面",
     lookNone: "默认",
@@ -206,6 +208,8 @@ export const assets: NamespaceMessages = {
     cameraPresetTip: "Pick a named camera-move preset — saved into the script, used on the next motion generation/redo",
     cameraRecommendGroup: "Recommended for this shot",
     cameraSaveFailed: "Failed to save camera move, please retry",
+    cameraMixPick: "+ Mix",
+    cameraMixTip: "Mix overlay: stack a second move onto the current preset (e.g. orbit + push-in) for a compound camera path; only conflict-free combinations are listed, two moves max",
     // Global visual look (unified keyframe lighting/palette + i2v lighting anchor)
     lookLabel: "Look",
     lookNone: "Default",

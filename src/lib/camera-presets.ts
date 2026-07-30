@@ -19,6 +19,7 @@
  * keys (same convention as BUILTIN_STYLE_PACKS / PRESENTER_PRESETS).
  */
 import type { Shot } from "@/lib/db/schema";
+import { hasCameraConflict } from "@/lib/motion-prompt";
 
 export type CameraPresetCategory =
   | "push_pull"
@@ -272,6 +273,35 @@ export function cameraPresetPrompt(preset: CameraPreset, sampleText: string): st
  */
 export function recommendedPresets(shotType: string): CameraPreset[] {
   return CAMERA_PRESETS.filter((p) => (p.goodFor as string[]).includes(shotType));
+}
+
+/**
+ * The preset whose sentence exactly equals the given camera text (zh or en), if any.
+ * Lets the UI detect "a preset is currently applied" — the gate for offering a Mix overlay.
+ */
+export function findPresetByPrompt(cameraText: string | undefined): CameraPreset | undefined {
+  const text = cameraText?.trim();
+  if (!text) return undefined;
+  return CAMERA_PRESETS.find((p) => p.prompt.zh === text || p.prompt.en === text);
+}
+
+/**
+ * Higgsfield-Mix-style two-move overlay: join two preset sentences into one combined
+ * instruction ("A，同时B" / "A, while B"). Returns null when the combination would trip
+ * the camera-conflict lint (e.g. a locked-off move over a moving one) — the UI only
+ * offers combinations this function accepts. Two moves max by design: once mixed, the
+ * text no longer equals any single preset, so the overlay entry point disappears.
+ */
+export function mixCameraPrompt(a: CameraPreset, b: CameraPreset, sampleText: string): string | null {
+  if (a.id === b.id) return null;
+  const zh = !sampleText || hasCjk(sampleText);
+  const combined = zh ? `${a.prompt.zh}，同时${b.prompt.zh}` : `${a.prompt.en}, while ${b.prompt.en}`;
+  return hasCameraConflict(combined) ? null : combined;
+}
+
+/** Presets that can overlay onto the given base preset (conflict-lint-safe combinations only). */
+export function mixablePresets(base: CameraPreset, sampleText: string): CameraPreset[] {
+  return CAMERA_PRESETS.filter((p) => mixCameraPrompt(base, p, sampleText) !== null);
 }
 
 /** Shot-type intent labels for the LLM vocabulary block (script-facing, Chinese prompt). */

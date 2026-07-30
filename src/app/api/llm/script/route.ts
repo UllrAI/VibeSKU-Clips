@@ -192,6 +192,9 @@ export async function POST(req: NextRequest) {
       usageAdvantage: body.usageAdvantage,
       targetAudience: body.targetAudience,
       referenceStructure: body.referenceStructure,
+      // ad-template creative direction (look + per-shot-type camera plan) and any other
+      // caller-supplied requirements — buildUserPrompt already injects this field
+      customRequirements: typeof body.customRequirements === "string" ? body.customRequirements.slice(0, 2000) : undefined,
       performanceHint: insights.hint,
       // anti-homogenization: batch rotation pins a different opening hook mechanism per video (validated against the pattern library)
       preferredHookId:

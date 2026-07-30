@@ -6,6 +6,9 @@ import {
   cameraPresetPrompt,
   recommendedPresets,
   cameraPresetGuide,
+  findPresetByPrompt,
+  mixCameraPrompt,
+  mixablePresets,
 } from "@/lib/camera-presets";
 import { hasCameraConflict, buildMotionPrompt } from "@/lib/motion-prompt";
 
@@ -61,6 +64,50 @@ describe("查找与语言选择", () => {
     expect(cameraPresetPrompt(p, "一段中文描述")).toBe(p.prompt.zh);
     expect(cameraPresetPrompt(p, "an english scene description")).toBe(p.prompt.en);
     expect(cameraPresetPrompt(p, "")).toBe(p.prompt.zh);
+  });
+});
+
+describe("Mix 双预设叠加", () => {
+  it("findPresetByPrompt 按 zh/en 预设句精确反查，非预设文本返回 undefined", () => {
+    const p = getCameraPreset("orbit_slow")!;
+    expect(findPresetByPrompt(p.prompt.zh)?.id).toBe("orbit_slow");
+    expect(findPresetByPrompt(p.prompt.en)?.id).toBe("orbit_slow");
+    expect(findPresetByPrompt("镜头随便动一动")).toBeUndefined();
+    expect(findPresetByPrompt(undefined)).toBeUndefined();
+  });
+
+  it("可混组合出「，同时」复合句且过冲突 lint；en 用 while 连接", () => {
+    const orbit = getCameraPreset("orbit_slow")!;
+    const push = getCameraPreset("slow_push")!;
+    const zh = mixCameraPrompt(orbit, push, "中文场景");
+    expect(zh).toBe(`${orbit.prompt.zh}，同时${push.prompt.zh}`);
+    expect(hasCameraConflict(zh!)).toBe(false);
+    const en = mixCameraPrompt(orbit, push, "english scene");
+    expect(en).toContain(", while ");
+  });
+
+  it("锁定机位类预设（转台/焦点转移）与运动类预设混合会触发冲突 → null", () => {
+    const lazy = getCameraPreset("lazy_susan")!;
+    const orbit = getCameraPreset("orbit_slow")!;
+    expect(mixCameraPrompt(lazy, orbit, "中文")).toBeNull();
+    expect(mixCameraPrompt(orbit, lazy, "中文")).toBeNull();
+  });
+
+  it("同预设不能与自己混合；mixablePresets 只列 lint 通过的候选", () => {
+    const orbit = getCameraPreset("orbit_slow")!;
+    expect(mixCameraPrompt(orbit, orbit, "中文")).toBeNull();
+    const candidates = mixablePresets(orbit, "中文");
+    expect(candidates.some((p) => p.id === "orbit_slow")).toBe(false);
+    expect(candidates.some((p) => p.id === "lazy_susan")).toBe(false);
+    expect(candidates.length).toBeGreaterThan(0);
+    for (const p of candidates) {
+      expect(hasCameraConflict(mixCameraPrompt(orbit, p, "中文")!)).toBe(false);
+    }
+  });
+
+  it("混合句真实流入 motion prompt 不被回退", () => {
+    const mixed = mixCameraPrompt(getCameraPreset("orbit_slow")!, getCameraPreset("slow_push")!, "中文")!;
+    expect(buildMotionPrompt({ shotType: "product_reveal", camera: mixed })).toContain(`运镜：${mixed}`);
   });
 });
 

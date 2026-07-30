@@ -8,6 +8,7 @@ import { useTemplateStore } from "@/lib/stores/template-store";
 import { useProductLibraryStore, type ProductItem } from "@/lib/stores/product-library-store";
 import { getExampleProducts, type ExampleProduct } from "@/lib/examples";
 import { useSettingsStore } from "@/lib/stores/settings-store";
+import { AD_TEMPLATES, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey } from "@/lib/ad-templates";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,7 +67,7 @@ export default function NewProjectPage() {
   const locale = useLocale();
 
   // check LLM API configuration status
-  const { llm, providers } = useSettingsStore();
+  const { llm, providers, setVisualLook } = useSettingsStore();
   const isLLMConfigured = llm.apiKey.length > 0;
   const hasProvider = Object.values(providers).some((p: { enabled: boolean; apiKey: string }) => p.enabled && p.apiKey.length > 0);
 
@@ -96,6 +97,20 @@ export default function NewProjectPage() {
   // template library
   const { templates, incrementUseCount } = useTemplateStore();
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+
+  // ad template (Higgsfield-Ads-style end-to-end recipe): pre-fills style/mode here,
+  // injects the camera/look plan into script generation, and hands the compose recipe
+  // to the video page via localStorage
+  const [selectedAdTemplateId, setSelectedAdTemplateId] = useState<string>("");
+  const pickAdTemplate = (id: string) => {
+    setSelectedAdTemplateId(id);
+    const tpl = getAdTemplate(id);
+    if (tpl) {
+      // visible pre-fill: the user sees (and can still override) what the template chose
+      setScriptStyle(tpl.styleType);
+      setVideoMode(tpl.videoMode);
+    }
+  };
 
   // character library
   const { characters } = useCharacterStore();
@@ -280,6 +295,18 @@ export default function NewProjectPage() {
       if (!projectRes.ok) throw new Error(t("errorCreateFailed"));
       const project = await projectRes.json();
 
+      // ad template: apply the global look now and hand the compose recipe to the
+      // video page (localStorage, same client-side convention as the template store)
+      const adTemplate = getAdTemplate(selectedAdTemplateId);
+      if (adTemplate) {
+        setVisualLook(adTemplate.look);
+        try {
+          localStorage.setItem(adTemplateStorageKey(project.id), adTemplate.id);
+        } catch {
+          // storage full/unavailable only loses the compose pre-fill, never the flow
+        }
+      }
+
       // step 2: upload images (with projectId)
       setProgress({ step: "uploading", percent: 35, message: t("progressUploading") });
       const formData = new FormData();
@@ -341,6 +368,8 @@ export default function NewProjectPage() {
           // pass the selected template ID + structure (so the AI genuinely follows the template rhythm)
           ...(selectedTemplateId && { templateId: selectedTemplateId }),
           ...(referenceStructure && { referenceStructure }),
+          // ad-template creative direction: look + per-shot-type camera plan for the script LLM
+          ...(adTemplate && { customRequirements: adTemplateScriptDirective(adTemplate) }),
           ...(selectedCharacter && {
             character: {
               id: selectedCharacter.id,
@@ -859,6 +888,53 @@ export default function NewProjectPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* ad templates (Higgsfield-Ads-style one-click finished-video recipes):
+              picking one pre-fills style/mode/look/camera-plan/compose across the pipeline */}
+          <Card className="glass-card">
+            <CardContent className="p-5">
+              <div className="mb-3">
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <LuZap className="w-4 h-4 text-primary" />
+                  {t("adTemplateTitle")}
+                </Label>
+                <p className="text-xs text-muted-foreground mt-1">{t("adTemplateDesc")}</p>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+                <button
+                  onClick={() => setSelectedAdTemplateId("")}
+                  className={`shrink-0 flex flex-col items-start p-3 rounded-lg border text-left transition-all min-w-[150px] ${
+                    selectedAdTemplateId === ""
+                      ? "border-primary bg-primary/10"
+                      : "border-border/50 bg-muted/20 hover:border-primary/40"
+                  }`}
+                >
+                  <span className={`text-sm font-medium ${selectedAdTemplateId === "" ? "text-primary" : "text-foreground"}`}>
+                    {t("adTemplateNone")}
+                  </span>
+                  <span className="text-[11px] text-muted-foreground mt-0.5">{t("adTemplateNoneDesc")}</span>
+                </button>
+                {AD_TEMPLATES.map((tpl) => (
+                  <button
+                    key={tpl.id}
+                    onClick={() => pickAdTemplate(tpl.id)}
+                    className={`shrink-0 flex flex-col items-start p-3 rounded-lg border text-left transition-all min-w-[150px] max-w-[190px] ${
+                      selectedAdTemplateId === tpl.id
+                        ? "border-primary bg-primary/10"
+                        : "border-border/50 bg-muted/20 hover:border-primary/40"
+                    }`}
+                  >
+                    <span className={`text-sm font-medium ${selectedAdTemplateId === tpl.id ? "text-primary" : "text-foreground"}`}>
+                      {tpl.emoji} {locale === "zh" ? tpl.name.zh : tpl.name.en}
+                    </span>
+                    <span className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                      {locale === "zh" ? tpl.tagline.zh : tpl.tagline.en}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
           {/* script style */}
           <Card className="glass-card">
