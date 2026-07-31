@@ -127,6 +127,29 @@ describe("recommendAdTemplates 商品感知推荐", () => {
       expect(recs.some((t) => t.id === expectedId), `「${text}」应推荐 ${expectedId}`).toBe(true);
     }
   });
+
+  it("新垂直信号命中对应模板（防漂移探针）", () => {
+    const probes: Array<[string, string]> = [
+      ["挑食猫的冻干主粮", "picky_judge"],
+      ["孕晚期待产包收纳袋", "hospital_bag"],
+      ["天然淡水珍珠项链", "wrist_sparkle"],
+      ["家用折叠跑步机", "method_1230"],
+      ["车载冰箱大容量", "trucker_rig"],
+      ["手帐胶带贴纸套装", "journal_asmr"],
+      ["缓震跑鞋透气", "step_test"],
+      ["大容量通勤双肩包", "max_load"],
+      ["静音破壁机低噪", "decibel_test"],
+      ["电动牙刷声波清洁", "plaque_test"],
+      ["中老年防滑舞鞋", "dance_squad"],
+      ["遮光睡眠眼罩助眠", "sleepmaxxing"],
+      ["社区团购新鲜水果", "group_buy_chain"],
+      ["本命年转运水晶手串", "lucky_charm"],
+    ];
+    for (const [text, expectedId] of probes) {
+      const recs = recommendAdTemplates({ productName: text }, 10);
+      expect(recs.some((t) => t.id === expectedId), `「${text}」应推荐 ${expectedId}`).toBe(true);
+    }
+  });
 });
 
 describe("sanitizeCustomAdTemplate AI 模板消毒", () => {
