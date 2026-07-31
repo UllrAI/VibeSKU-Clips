@@ -150,6 +150,33 @@ describe("recommendAdTemplates 商品感知推荐", () => {
       expect(recs.some((t) => t.id === expectedId), `「${text}」应推荐 ${expectedId}`).toBe(true);
     }
   });
+
+  it("391 库新垂直信号命中对应模板（v0.8.72 防漂移探针）", () => {
+    const probes: Array<[string, string]> = [
+      ["客制化机械键盘茶轴", "switch_sound"],
+      ["主动降噪蓝牙耳机", "anc_ab"],
+      ["氮化镓快充充电器", "charge_race"],
+      ["明前龙井春茶", "tea_grading"],
+      ["浅烘手冲咖啡豆", "pour_over_card"],
+      ["低度青梅果酒", "solo_buzz"],
+      ["加热即食预制菜", "timer_feast"],
+      ["无火香薰扩香套装", "scent_translate"],
+      ["全遮光窗帘", "blackout_noon"],
+      ["新中式马面裙", "ancient_recreate"],
+      ["凉感防晒衣冰袖", "uv_proof"],
+      ["偏光太阳镜驾驶专用", "polarized_proof"],
+      ["初学者入门尤克里里", "practice_arc"],
+      ["人体工学椅腰靠", "sit_marathon"],
+      ["穿戴甲美甲片套装", "nail_stress"],
+      ["临期进口零食折扣", "expiry_hunt"],
+      ["温泉度假酒店套票", "overnight_report"],
+      ["备婚伴手礼清单", "wedtok_diary"],
+    ];
+    for (const [text, expectedId] of probes) {
+      const recs = recommendAdTemplates({ productName: text }, 10);
+      expect(recs.some((t) => t.id === expectedId), `「${text}」应推荐 ${expectedId}`).toBe(true);
+    }
+  });
 });
 
 describe("sanitizeCustomAdTemplate AI 模板消毒", () => {
