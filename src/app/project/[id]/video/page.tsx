@@ -14,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { useT, useLocale } from "@/lib/i18n";
 import { RENDER_PRESETS, DEFAULT_RENDER_PRESET, type RenderPreset } from "@/lib/compose-presets";
 import { BUILTIN_STYLE_PACKS, parseStylePack, serializeStylePack, STYLE_PACK_FORMAT, type StylePack } from "@/lib/style-packs";
-import { getAdTemplate, adTemplateStorageKey, adTemplateAppliedKey } from "@/lib/ad-templates";
+import { decodeStoredAdTemplate, adTemplateStorageKey, adTemplateAppliedKey } from "@/lib/ad-templates";
 import { buildHookVariants } from "@/lib/script-engine/hook-variants";
 import type { ProductCategory } from "@/lib/script-engine/templates";
 import { CAPTION_PRESET_IDS } from "@/lib/caption-presets";
@@ -295,9 +295,10 @@ export default function VideoPage() {
   // path — later manual tweaks are never overwritten on revisit.
   useEffect(() => {
     try {
-      const tplId = localStorage.getItem(adTemplateStorageKey(id));
-      if (!tplId || localStorage.getItem(adTemplateAppliedKey(id))) return;
-      const tpl = getAdTemplate(tplId);
+      const stored = localStorage.getItem(adTemplateStorageKey(id));
+      if (!stored || localStorage.getItem(adTemplateAppliedKey(id))) return;
+      // decodes both builtin ids and inline AI custom templates (custom:<json>)
+      const tpl = decodeStoredAdTemplate(stored);
       if (!tpl) return;
       applyStylePack({
         format: STYLE_PACK_FORMAT,

@@ -8,7 +8,7 @@ import { useTemplateStore } from "@/lib/stores/template-store";
 import { useProductLibraryStore, type ProductItem } from "@/lib/stores/product-library-store";
 import { getExampleProducts, type ExampleProduct } from "@/lib/examples";
 import { useSettingsStore } from "@/lib/stores/settings-store";
-import { AD_TEMPLATE_GROUPS, listAdTemplates, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey, type AdTemplateGroupId, type AdTemplateCategory } from "@/lib/ad-templates";
+import { AD_TEMPLATE_GROUPS, listAdTemplates, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey, recommendAdTemplates, encodeStoredAdTemplate, CUSTOM_AD_TEMPLATE_ID, type AdTemplate, type AdTemplateGroupId, type AdTemplateCategory } from "@/lib/ad-templates";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -103,13 +103,46 @@ export default function NewProjectPage() {
   // to the video page via localStorage
   const [selectedAdTemplateId, setSelectedAdTemplateId] = useState<string>("");
   const [adTemplateGroup, setAdTemplateGroup] = useState<AdTemplateGroupId | "all">("all");
+  const [adTemplateQuery, setAdTemplateQuery] = useState("");
+  // AI-generated custom template (one slot; lives in component state until project creation persists it)
+  const [customAdTemplate, setCustomAdTemplate] = useState<AdTemplate | null>(null);
+  const [aiTplLoading, setAiTplLoading] = useState(false);
+  const [aiTplError, setAiTplError] = useState("");
   const pickAdTemplate = (id: string) => {
     setSelectedAdTemplateId(id);
-    const tpl = getAdTemplate(id);
+    const tpl = id === CUSTOM_AD_TEMPLATE_ID ? customAdTemplate : getAdTemplate(id);
     if (tpl) {
       // visible pre-fill: the user sees (and can still override) what the template chose
       setScriptStyle(tpl.styleType);
       setVideoMode(tpl.videoMode);
+    }
+  };
+  // AI custom template: one cheap LLM call that PICKS from the real preset vocabularies (server-side clamped)
+  const generateAiTemplate = async () => {
+    if (aiTplLoading) return;
+    setAiTplError("");
+    setAiTplLoading(true);
+    try {
+      const res = await fetch("/api/ad-template/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productName,
+          category,
+          sellingPoints,
+          llmConfig: { baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.template) throw new Error(data.error || t("adTemplateAiFailed"));
+      setCustomAdTemplate(data.template as AdTemplate);
+      setSelectedAdTemplateId(CUSTOM_AD_TEMPLATE_ID);
+      setScriptStyle((data.template as AdTemplate).styleType);
+      setVideoMode((data.template as AdTemplate).videoMode);
+    } catch (e) {
+      setAiTplError(e instanceof Error ? e.message : t("adTemplateAiFailed"));
+    } finally {
+      setAiTplLoading(false);
     }
   };
 
@@ -297,12 +330,13 @@ export default function NewProjectPage() {
       const project = await projectRes.json();
 
       // ad template: apply the global look now and hand the compose recipe to the
-      // video page (localStorage, same client-side convention as the template store)
-      const adTemplate = getAdTemplate(selectedAdTemplateId);
+      // video page (localStorage, same client-side convention as the template store);
+      // an AI custom template is stored inline (custom:<json>) since it has no builtin id
+      const adTemplate = selectedAdTemplateId === CUSTOM_AD_TEMPLATE_ID ? customAdTemplate : getAdTemplate(selectedAdTemplateId);
       if (adTemplate) {
         setVisualLook(adTemplate.look);
         try {
-          localStorage.setItem(adTemplateStorageKey(project.id), adTemplate.id);
+          localStorage.setItem(adTemplateStorageKey(project.id), encodeStoredAdTemplate(adTemplate));
         } catch {
           // storage full/unavailable only loses the compose pre-fill, never the flow
         }
@@ -901,8 +935,31 @@ export default function NewProjectPage() {
                 </Label>
                 <p className="text-xs text-muted-foreground mt-1">{t("adTemplateDesc")}</p>
               </div>
+              {/* product-aware recommendations: keyword signals + category tie, computed live from the form */}
+              {(() => {
+                const recommended = recommendAdTemplates({ category, productName, sellingPoints });
+                if (recommended.length === 0) return null;
+                return (
+                  <div className="flex flex-wrap items-center gap-1.5 mb-3">
+                    <span className="text-xs text-muted-foreground">{t("adTemplateRecommended")}</span>
+                    {recommended.map((tpl) => (
+                      <button
+                        key={`rec-${tpl.id}`}
+                        onClick={() => pickAdTemplate(tpl.id)}
+                        className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                          selectedAdTemplateId === tpl.id
+                            ? "border-primary bg-primary/10 text-primary font-medium"
+                            : "border-primary/30 bg-primary/5 text-foreground hover:border-primary/60"
+                        }`}
+                      >
+                        {tpl.emoji} {locale === "zh" ? tpl.name.zh : tpl.name.en}
+                      </button>
+                    ))}
+                  </div>
+                );
+              })()}
               {/* group filter chips — a large library needs a browse taxonomy, not one endless scroll row */}
-              <div className="flex flex-wrap gap-1.5 mb-3">
+              <div className="flex flex-wrap items-center gap-1.5 mb-3">
                 {[{ id: "all" as const, name: { zh: "全部", en: "All" } }, ...AD_TEMPLATE_GROUPS].map((g) => (
                   <button
                     key={g.id}
@@ -919,11 +976,29 @@ export default function NewProjectPage() {
                     )}
                   </button>
                 ))}
+                {/* keyword search — at 100+ templates, browsing alone stops scaling */}
+                <input
+                  value={adTemplateQuery}
+                  onChange={(e) => setAdTemplateQuery(e.target.value)}
+                  placeholder={t("adTemplateSearch")}
+                  className="ml-auto w-36 px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 outline-none focus:border-primary/60 placeholder:text-muted-foreground/60"
+                />
+                {/* AI custom recipe: one LLM call picks from the real preset vocabularies for THIS product */}
+                <button
+                  onClick={generateAiTemplate}
+                  disabled={aiTplLoading || !productName.trim() || !isLLMConfigured}
+                  title={!productName.trim() ? t("adTemplateAiNeedName") : !isLLMConfigured ? t("adTemplateAiNeedLlm") : undefined}
+                  className="px-2.5 py-1 rounded-full text-xs border border-primary/40 bg-primary/5 text-primary hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                >
+                  {aiTplLoading ? t("adTemplateAiLoading") : t("adTemplateAiButton")}
+                </button>
               </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1">
+              {aiTplError && <p className="text-xs text-destructive mb-2">{aiTplError}</p>}
+              {/* wrapping grid capped in height — a 100-card library can't live on one scroll row */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-80 overflow-y-auto pb-1 pr-1">
                 <button
                   onClick={() => setSelectedAdTemplateId("")}
-                  className={`shrink-0 flex flex-col items-start p-3 rounded-lg border text-left transition-all min-w-[150px] ${
+                  className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
                     selectedAdTemplateId === ""
                       ? "border-primary bg-primary/10"
                       : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -934,11 +1009,30 @@ export default function NewProjectPage() {
                   </span>
                   <span className="text-[11px] text-muted-foreground mt-0.5">{t("adTemplateNoneDesc")}</span>
                 </button>
-                {listAdTemplates({ group: adTemplateGroup, category }).map((tpl) => (
+                {/* the AI-generated custom recipe renders as a first-class card at the front */}
+                {customAdTemplate && (
+                  <button
+                    onClick={() => pickAdTemplate(CUSTOM_AD_TEMPLATE_ID)}
+                    className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
+                      selectedAdTemplateId === CUSTOM_AD_TEMPLATE_ID
+                        ? "border-primary bg-primary/10"
+                        : "border-primary/40 bg-primary/5 hover:border-primary"
+                    }`}
+                  >
+                    <span className={`text-sm font-medium ${selectedAdTemplateId === CUSTOM_AD_TEMPLATE_ID ? "text-primary" : "text-foreground"}`}>
+                      {customAdTemplate.emoji} {locale === "zh" ? customAdTemplate.name.zh : customAdTemplate.name.en}
+                      <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-primary/15 text-primary align-middle">AI</span>
+                    </span>
+                    <span className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                      {locale === "zh" ? customAdTemplate.tagline.zh : customAdTemplate.tagline.en}
+                    </span>
+                  </button>
+                )}
+                {listAdTemplates({ group: adTemplateGroup, category, query: adTemplateQuery }).map((tpl) => (
                   <button
                     key={tpl.id}
                     onClick={() => pickAdTemplate(tpl.id)}
-                    className={`shrink-0 flex flex-col items-start p-3 rounded-lg border text-left transition-all min-w-[150px] max-w-[190px] ${
+                    className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
                       selectedAdTemplateId === tpl.id
                         ? "border-primary bg-primary/10"
                         : "border-border/50 bg-muted/20 hover:border-primary/40"

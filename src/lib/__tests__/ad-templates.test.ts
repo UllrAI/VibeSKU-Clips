@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { AD_TEMPLATES, AD_TEMPLATE_GROUPS, listAdTemplates, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey, adTemplateAppliedKey } from "@/lib/ad-templates";
+import { AD_TEMPLATES, AD_TEMPLATE_GROUPS, listAdTemplates, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey, adTemplateAppliedKey, recommendAdTemplates, sanitizeCustomAdTemplate, encodeStoredAdTemplate, decodeStoredAdTemplate, CUSTOM_AD_TEMPLATE_ID } from "@/lib/ad-templates";
 import { getCameraPreset } from "@/lib/camera-presets";
 import { getLookPreset } from "@/lib/look-presets";
 import { CAPTION_PRESET_IDS } from "@/lib/caption-presets";
@@ -79,6 +79,16 @@ describe("listAdTemplates 分组筛选与类目排序", () => {
     expect(productShow.every((t) => t.group === "product_show")).toBe(true);
   });
 
+  it("query 关键词过滤命中双语名称/卖点，大小写不敏感，空串不过滤", () => {
+    const hit = listAdTemplates({ query: "转台" });
+    expect(hit.length).toBeGreaterThan(0);
+    expect(hit.every((t) => `${t.name.zh}${t.name.en}${t.tagline.zh}${t.tagline.en}`.includes("转台"))).toBe(true);
+    const enHit = listAdTemplates({ query: "TURNTABLE" });
+    expect(enHit.some((t) => t.id === "turntable_hero")).toBe(true);
+    expect(listAdTemplates({ query: "  " })).toHaveLength(AD_TEMPLATES.length);
+    expect(listAdTemplates({ query: "绝不存在的关键词xyz" })).toHaveLength(0);
+  });
+
   it("选定类目时 goodFor 命中的模板排前，且不丢任何模板", () => {
     const sorted = listAdTemplates({ category: "food" });
     expect(sorted).toHaveLength(AD_TEMPLATES.length);
@@ -87,6 +97,112 @@ describe("listAdTemplates 分组筛选与类目排序", () => {
     if (firstMiss !== -1 && lastHit !== -1) {
       expect(lastHit).toBeLessThan(firstMiss);
     }
+  });
+});
+
+describe("recommendAdTemplates 商品感知推荐", () => {
+  it("关键词信号命中的模板排最前（信号分压过类目分）", () => {
+    const recs = recommendAdTemplates({ category: "home", productName: "强力去污清洁剂", sellingPoints: "重度污渍一喷即净" });
+    expect(recs.length).toBeGreaterThan(0);
+    expect(recs[0].id).toBe("grime_satisfying"); // 信号+2 与 goodFor:home +3 叠加=5，唯一最高
+  });
+
+  it("只有类目时按 goodFor 推荐，推荐 id 全部真实存在", () => {
+    const recs = recommendAdTemplates({ category: "beauty" });
+    expect(recs.length).toBeGreaterThan(0);
+    expect(recs.every((t) => t.goodFor?.includes("beauty"))).toBe(true);
+    for (const t of recs) expect(getAdTemplate(t.id)).toBeDefined();
+  });
+
+  it("空输入返回空（UI 隐藏推荐行而不是编造推荐）", () => {
+    expect(recommendAdTemplates({})).toHaveLength(0);
+    expect(recommendAdTemplates({ productName: "  " })).toHaveLength(0);
+  });
+
+  it("信号表里的模板 id 全部真实存在（防重构漂移）", () => {
+    // 借道公开 API 验证：每条信号词命中时推荐结果非空且 id 可查
+    const probes: Array<[string, string]> = [["送妈妈的礼物", "gift_story"], ["解压捏捏乐", "squish_asmr"], ["工厂源头直发", "founder_story"]];
+    for (const [text, expectedId] of probes) {
+      const recs = recommendAdTemplates({ productName: text }, 10);
+      expect(recs.some((t) => t.id === expectedId), `「${text}」应推荐 ${expectedId}`).toBe(true);
+    }
+  });
+});
+
+describe("sanitizeCustomAdTemplate AI 模板消毒", () => {
+  it("合法输入原样保留创意字段", () => {
+    const t = sanitizeCustomAdTemplate({
+      name: { zh: "香氛之夜", en: "Scent Night" },
+      tagline: { zh: "夜色氛围", en: "Night mood" },
+      emoji: "🌙",
+      group: "creative",
+      goodFor: ["beauty"],
+      styleType: "scenario",
+      videoMode: "product_closeup",
+      look: "night_neon",
+      cameraPlan: { hook: "slow_push", product_reveal: "orbit_slow", cta: "hero_rise" },
+      compose: { captionPreset: "minimal", bgm: "emotional", bgmDuck: true, quality: "hd", productCard: true },
+      scriptHint: { zh: "夜晚氛围叙事" },
+    })!;
+    expect(t.id).toBe(CUSTOM_AD_TEMPLATE_ID);
+    expect(t.name.zh).toBe("香氛之夜");
+    expect(t.look).toBe("night_neon");
+    expect(t.cameraPlan.hook).toBe("slow_push");
+    expect(t.compose.quality).toBe("hd");
+    expect(t.goodFor).toEqual(["beauty"]);
+  });
+
+  it("非法枚举全部钳制到安全默认值，不合法运镜被剔除", () => {
+    const t = sanitizeCustomAdTemplate({
+      styleType: "nonsense",
+      videoMode: "vr_360",
+      look: "fake_look",
+      group: "fake_group",
+      goodFor: ["book", "beauty"],
+      cameraPlan: { hook: "fake_cam", weird_shot: "crash_push", demo: "macro_glide" },
+      compose: { captionPreset: "huge", bgm: "metal", quality: "8k" },
+    })!;
+    expect(t.styleType).toBe("pain-point");
+    expect(t.videoMode).toBe("product_closeup");
+    expect(t.look).toBe("daylight_clean");
+    expect(t.group).toBe("product_show"); // 从 videoMode 推断
+    expect(t.goodFor).toEqual(["beauty"]);
+    // 仅 1 个合法运镜（<2）→ 回落默认编排
+    expect(Object.keys(t.cameraPlan).length).toBeGreaterThan(1);
+    expect(t.compose.captionPreset).toBe("standard");
+    expect(t.compose.bgm).toBe("upbeat");
+    expect(t.compose.quality).toBeUndefined();
+    // 消毒后的模板能走脚本注入通道
+    expect(adTemplateScriptDirective(t)).toContain("运镜编排");
+  });
+
+  it("非对象输入返回 null", () => {
+    expect(sanitizeCustomAdTemplate(null)).toBeNull();
+    expect(sanitizeCustomAdTemplate("{}")).toBeNull();
+  });
+});
+
+describe("encode/decodeStoredAdTemplate 存取编解码", () => {
+  it("内置模板存 id，解码回同一模板", () => {
+    const tpl = getAdTemplate("turntable_hero")!;
+    expect(encodeStoredAdTemplate(tpl)).toBe("turntable_hero");
+    expect(decodeStoredAdTemplate("turntable_hero")?.name.zh).toBe("转台大片");
+  });
+
+  it("custom 模板存内联 JSON，解码经消毒还原", () => {
+    const custom = sanitizeCustomAdTemplate({ name: { zh: "定制", en: "Custom" }, videoMode: "scene_demo" })!;
+    const stored = encodeStoredAdTemplate(custom);
+    expect(stored.startsWith("custom:")).toBe(true);
+    const decoded = decodeStoredAdTemplate(stored)!;
+    expect(decoded.id).toBe(CUSTOM_AD_TEMPLATE_ID);
+    expect(decoded.name.zh).toBe("定制");
+    expect(decoded.videoMode).toBe("scene_demo");
+  });
+
+  it("坏值解码为 undefined 不抛错", () => {
+    expect(decodeStoredAdTemplate("custom:not-json{")).toBeUndefined();
+    expect(decodeStoredAdTemplate("unknown_id")).toBeUndefined();
+    expect(decodeStoredAdTemplate(null)).toBeUndefined();
   });
 });
 
