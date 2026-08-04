@@ -10,6 +10,7 @@ import { getDb } from "@/lib/db";
 import { scripts as scriptsTable, projects, publishMetrics } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { apiError, errText } from "@/lib/api-error";
+import { llmErrorPair } from "@/lib/llm-error";
 import { topConvertingStyle, topConvertingHook, buildPerformanceHint, type MetricInput } from "@/lib/performance-insights";
 
 /** Allowed enum values for the styleType column in the scripts table */
@@ -265,11 +266,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ scripts: savedScripts, analysis });
   } catch (error) {
     console.error("脚本生成失败:", error);
-    const errMsg = error instanceof Error ? error.message : String(error);
+    // LLM failures carry an actionable bilingual message (bad key / dead free endpoint / rate limit)
+    const { zh, en } = llmErrorPair(error);
     return apiError(
       req,
-      `脚本生成失败: ${errMsg}`,
-      `Script generation failed: ${errMsg}`,
+      `脚本生成失败: ${zh}`,
+      `Script generation failed: ${en}`,
       500
     );
   }

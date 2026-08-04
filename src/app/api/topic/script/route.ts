@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { scripts as scriptsTable, projects } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { apiError, errText } from "@/lib/api-error";
+import { llmErrorPair } from "@/lib/llm-error";
 
 const VALID_NARRATION = new Set<TopicNarrationStyle>([
   "knowledge",
@@ -92,9 +93,10 @@ export async function POST(req: NextRequest) {
       llmConfig: llmConfig as { baseUrl: string; apiKey: string; model: string },
     });
   } catch (error) {
-    const msg = error instanceof Error ? error.message : String(error);
+    // LLM failures carry an actionable bilingual message (bad key / dead free endpoint / rate limit)
+    const { zh, en } = llmErrorPair(error);
     // project already created; return projectId so the frontend can navigate and retry
-    return NextResponse.json({ error: errText(req, `脚本生成失败: ${msg}`, `Script generation failed: ${msg}`), projectId }, { status: 500 });
+    return NextResponse.json({ error: errText(req, `脚本生成失败: ${zh}`, `Script generation failed: ${en}`), projectId }, { status: 500 });
   }
 
   // persist to DB: delete old scripts → insert new ones → select first by default → update project status to scripting

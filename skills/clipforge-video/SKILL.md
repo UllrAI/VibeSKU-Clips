@@ -39,7 +39,7 @@ These are pipeline-correctness facts — violating them produces broken output o
 ## Prerequisites
 
 1. A running ClipForge instance: `pnpm dev` or `pnpm start` (default `http://localhost:3000`).
-2. For script generation, an OpenAI-compatible LLM (set `CLIPFORGE_LLM_BASE_URL` / `CLIPFORGE_LLM_API_KEY` / `CLIPFORGE_LLM_MODEL`). Local/free options exist (Ollama, Pollinations).
+2. For script generation, an OpenAI-compatible LLM (set `CLIPFORGE_LLM_BASE_URL` / `CLIPFORGE_LLM_API_KEY` / `CLIPFORGE_LLM_MODEL`). Local/free options exist: Ollama (offline, keyless) or Pollinations (free daily credit, needs a key from https://enter.pollinations.ai/keys).
 3. Footage and voiceover are free and keyless by default; optional Pexels/Pixabay keys add more stock.
 
 ## Three ways to create

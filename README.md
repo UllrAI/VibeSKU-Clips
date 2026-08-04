@@ -213,7 +213,8 @@ node bin/clipforge.mjs --help          # 全部命令与参数
 | **硅基流动** | Kolors, Qwen-Image | - | 国产高性价比 |
 | **OpenAI** | **gpt-image-2**（任意分辨率+图生图编辑）, gpt-image-1.5 | - | 2026 官方旗舰图像模型，文字渲染强、9:16 竖屏直出、商品保真编辑 |
 
-> **LLM（脚本生成）** 走 OpenAI 兼容协议，内置 Atlas Cloud / **OpenRouter**(400+模型) / DeepSeek / Kimi / 智谱 / 豆包 / OpenAI 等一键预设，并含 **Ollama 本地**（离线免 Key）与 **Pollinations**（免 Key）两档免费选项——任意 OpenAI 兼容端点都能填。
+> **LLM（脚本生成）** 走 OpenAI 兼容协议，内置 Atlas Cloud / **OpenRouter**(400+模型) / DeepSeek / Kimi / 智谱 / 豆包 / OpenAI 等一键预设，并含 **Ollama 本地**（离线免 Key）与 **Pollinations**（注册领每日免费额度，需填 Key）两档免费选项——任意 OpenAI 兼容端点都能填。
+> Pollinations 旧的免 Key 地址 `text.pollinations.ai` 已被官方停用（只返回 402/502），预设与本地已存配置会自动迁到新端点 `gen.pollinations.ai/v1`，Key 在 <https://enter.pollinations.ai/keys> 免费领取。
 
 ### 三、多源免费素材引擎 🆕（不止 AI 生成）
 

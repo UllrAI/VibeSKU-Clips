@@ -16,6 +16,7 @@ import {
   type TopicScriptInput,
 } from "./prompts";
 import type { Shot, ScriptCharacter } from "@/lib/db/schema";
+import { createLLMClient, withLLMErrors } from "@/lib/llm-error";
 
 // ==================== Type definitions ====================
 
@@ -94,13 +95,9 @@ export interface ProductAnalysisResult {
 
 // ==================== Utility functions ====================
 
-/** Create an OpenAI client */
+/** Create an OpenAI client (shared factory: SDK retries + free-pool 402 retry, see lib/llm-error) */
 function createClient(config: LLMConfig): OpenAI {
-  return new OpenAI({
-    baseURL: config.baseUrl,
-    // Local/free OpenAI-compatible endpoints (Ollama, Pollinations) don't need a real key; the SDK requires a non-empty value, so use a placeholder
-    apiKey: config.apiKey || "no-key",
-  });
+  return createLLMClient(config);
 }
 
 /**
@@ -262,23 +259,21 @@ export async function generateScript(input: ScriptInput): Promise<GeneratedScrip
   const client = createClient(input.llmConfig);
   const userPrompt = buildBatchPrompt(input, batchCountFor(input.llmConfig.baseUrl));
 
-  // Call the LLM to generate the script
-  let response;
-  try {
-    response = await client.chat.completions.create({
-      model: input.llmConfig.model,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.8,
-      max_tokens: 16000,
-      ...reasoningParams(input.llmConfig.baseUrl),
-    });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    throw new Error(`LLM 请求失败（模型: ${input.llmConfig.model}，地址: ${input.llmConfig.baseUrl}）: ${msg}`);
-  }
+  // Call the LLM to generate the script (transient free-endpoint failures are retried inside)
+  const response = await withLLMErrors(
+    () =>
+      client.chat.completions.create({
+        model: input.llmConfig.model,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.8,
+        max_tokens: 16000,
+        ...reasoningParams(input.llmConfig.baseUrl),
+      }),
+    { baseUrl: input.llmConfig.baseUrl, model: input.llmConfig.model },
+  );
 
   const content = response.choices[0]?.message?.content;
   if (!content) {
@@ -304,22 +299,20 @@ export async function generateTopicScript(input: TopicScriptGenInput): Promise<G
   const client = createClient(input.llmConfig);
   const userPrompt = buildTopicBatchPrompt(input, batchCountFor(input.llmConfig.baseUrl, input.count ?? 3));
 
-  let response;
-  try {
-    response = await client.chat.completions.create({
-      model: input.llmConfig.model,
-      messages: [
-        { role: "system", content: TOPIC_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.85,
-      max_tokens: 16000,
-      ...reasoningParams(input.llmConfig.baseUrl),
-    });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    throw new Error(`LLM 请求失败（模型: ${input.llmConfig.model}，地址: ${input.llmConfig.baseUrl}）: ${msg}`);
-  }
+  const response = await withLLMErrors(
+    () =>
+      client.chat.completions.create({
+        model: input.llmConfig.model,
+        messages: [
+          { role: "system", content: TOPIC_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.85,
+        max_tokens: 16000,
+        ...reasoningParams(input.llmConfig.baseUrl),
+      }),
+    { baseUrl: input.llmConfig.baseUrl, model: input.llmConfig.model },
+  );
 
   const content = response.choices[0]?.message?.content;
   if (!content) {
@@ -339,15 +332,19 @@ export async function generateSingleScript(input: ScriptInput): Promise<Generate
   const client = createClient(input.llmConfig);
   const userPrompt = buildUserPrompt(input);
 
-  const response = await client.chat.completions.create({
-    model: input.llmConfig.model,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: 0.8,
-    ...reasoningParams(input.llmConfig.baseUrl),
-  });
+  const response = await withLLMErrors(
+    () =>
+      client.chat.completions.create({
+        model: input.llmConfig.model,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.8,
+        ...reasoningParams(input.llmConfig.baseUrl),
+      }),
+    { baseUrl: input.llmConfig.baseUrl, model: input.llmConfig.model },
+  );
 
   const content = response.choices[0]?.message?.content;
   if (!content) {
@@ -384,18 +381,22 @@ export function generateScriptStream(
     let fullContent = "";
 
     try {
-      const stream = await client.chat.completions.create({
-        model: input.llmConfig.model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.8,
-        stream: true,
-        ...reasoningParams(input.llmConfig.baseUrl),
-      }, {
-        signal: abortController.signal,
-      });
+      const stream = await withLLMErrors(
+        () =>
+          client.chat.completions.create({
+            model: input.llmConfig.model,
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user", content: userPrompt },
+            ],
+            temperature: 0.8,
+            stream: true,
+            ...reasoningParams(input.llmConfig.baseUrl),
+          }, {
+            signal: abortController.signal,
+          }),
+        { baseUrl: input.llmConfig.baseUrl, model: input.llmConfig.model },
+      );
 
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta?.content;
@@ -434,16 +435,20 @@ export function createScriptStream(input: ScriptInput): ReadableStream<Uint8Arra
       const userPrompt = buildUserPrompt(input);
 
       try {
-        const stream = await client.chat.completions.create({
-          model: input.llmConfig.model,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: userPrompt },
-          ],
-          temperature: 0.8,
-          stream: true,
-          ...reasoningParams(input.llmConfig.baseUrl),
-        });
+        const stream = await withLLMErrors(
+          () =>
+            client.chat.completions.create({
+              model: input.llmConfig.model,
+              messages: [
+                { role: "system", content: SYSTEM_PROMPT },
+                { role: "user", content: userPrompt },
+              ],
+              temperature: 0.8,
+              stream: true,
+              ...reasoningParams(input.llmConfig.baseUrl),
+            }),
+          { baseUrl: input.llmConfig.baseUrl, model: input.llmConfig.model },
+        );
 
         for await (const chunk of stream) {
           const delta = chunk.choices[0]?.delta?.content;
@@ -484,20 +489,24 @@ export async function analyzeProduct(
     }),
   );
 
-  const response = await client.chat.completions.create({
-    model,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: PRODUCT_ANALYSIS_PROMPT },
-          ...imageContent,
+  const response = await withLLMErrors(
+    () =>
+      client.chat.completions.create({
+        model,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: PRODUCT_ANALYSIS_PROMPT },
+              ...imageContent,
+            ],
+          },
         ],
-      },
-    ],
-    temperature: 0.3,
-    max_tokens: 2000,
-  });
+        temperature: 0.3,
+        max_tokens: 2000,
+      }),
+    { baseUrl: config.baseUrl, model },
+  );
 
   return response.choices[0]?.message?.content || "";
 }

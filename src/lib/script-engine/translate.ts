@@ -12,6 +12,7 @@ import OpenAI from "openai";
 import { FREE_TTS_VOICES } from "@/lib/edge-tts";
 import { estimateDurationSec } from "@/lib/script-import";
 import { reasoningParams } from "@/lib/script-engine/generator";
+import { createLLMClient, withLLMErrors } from "@/lib/llm-error";
 import type { Shot } from "@/lib/db/schema";
 
 export interface DubLLMConfig {
@@ -81,20 +82,24 @@ export function parseTranslations(text: string, expectedCount: number): string[]
 }
 
 function createClient(cfg: DubLLMConfig): OpenAI {
-  // Local/free endpoints (Ollama/Pollinations) don't require a real key; fall back to a placeholder (SDK requires a non-empty value)
-  return new OpenAI({ baseURL: cfg.baseUrl, apiKey: cfg.apiKey || "no-key" });
+  // Shared factory: keyless endpoints get a placeholder key, plus SDK retries + free-pool 402 retry
+  return createLLMClient(cfg);
 }
 
 /** Calls the LLM to batch-translate voiceovers into the target language; returns a same-length translated array (throws on parse failure). */
 export async function translateVoiceovers(voiceovers: string[], targetLang: string, cfg: DubLLMConfig): Promise<string[]> {
   if (!voiceovers.length) return [];
   const client = createClient(cfg);
-  const res = await client.chat.completions.create({
-    model: cfg.model,
-    messages: [{ role: "user", content: buildTranslatePrompt(voiceovers, targetLang) }],
-    temperature: 0.3,
-    ...reasoningParams(cfg.baseUrl),
-  });
+  const res = await withLLMErrors(
+    () =>
+      client.chat.completions.create({
+        model: cfg.model,
+        messages: [{ role: "user", content: buildTranslatePrompt(voiceovers, targetLang) }],
+        temperature: 0.3,
+        ...reasoningParams(cfg.baseUrl),
+      }),
+    cfg,
+  );
   const text = res.choices?.[0]?.message?.content ?? "";
   const out = parseTranslations(text, voiceovers.length);
   if (!out) throw new Error("翻译结果解析失败（LLM 未返回等长 JSON 数组），可换模型或重试");

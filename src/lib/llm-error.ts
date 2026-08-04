@@ -1,0 +1,247 @@
+/**
+ * LLM client factory + failure messages for OpenAI-compatible endpoints.
+ *
+ * Retry logic and error classification are NOT hand-rolled here — both come from the official `openai`
+ * SDK, which already ships exponential backoff with jitter, honours `retry-after` / `retry-after-ms`,
+ * and exposes a typed error hierarchy (AuthenticationError / NotFoundError / RateLimitError / …).
+ * This module only supplies the two things the SDK cannot know:
+ *
+ *  1. That HTTP 402 is retryable on a free shared pool. The SDK retries 408/409/429/5xx; 402 normally
+ *     means "top up your account" so it correctly refuses to retry it. On Pollinations' free tier 402
+ *     instead means "the shared pool ran dry this second" and clears on its own — verified live: the
+ *     same request returned 200, then 402, then 502 within a minute. We flip those responses to
+ *     retryable via the SDK's own `x-should-retry` / `retry-after-ms` response-header protocol, so the
+ *     retrying itself stays inside the SDK.
+ *  2. Wording. Issue #19 reported the app as simply "broken" because the only feedback was
+ *     `LLM 请求失败（模型: openai-fast，地址: https://text.pollinations.ai/openai）: 402 "402 Payment
+ *     Required"` — a status code names the failure but not the fix. Each branch below names the fix.
+ */
+
+import OpenAI, { APIConnectionError, APIConnectionTimeoutError } from "openai";
+
+/** Endpoint + model a call was aimed at (used to tailor the hint). */
+export interface LLMTarget {
+  baseUrl?: string;
+  model?: string;
+}
+
+/** Minimal LLM config accepted by the client factory. */
+export interface LLMClientConfig extends LLMTarget {
+  apiKey?: string;
+}
+
+/** Error carrying both locales, so API routes can answer English clients without re-parsing text. */
+export class LLMRequestError extends Error {
+  readonly zh: string;
+  readonly en: string;
+  readonly status?: number;
+  constructor(zh: string, en: string, status?: number, options?: { cause?: unknown }) {
+    super(zh, options);
+    this.name = "LLMRequestError";
+    this.zh = zh;
+    this.en = en;
+    this.status = status;
+  }
+}
+
+/** True when the endpoint is Pollinations — its free tier gets both the 402 retry and its own hint. */
+export function isPollinations(baseUrl?: string): boolean {
+  return /pollinations\.ai/i.test(baseUrl || "");
+}
+
+/** True when the endpoint is the retired keyless Pollinations text API (dead as of 2026-08). */
+export function isLegacyPollinations(baseUrl?: string): boolean {
+  return /text\.pollinations\.ai/i.test(baseUrl || "");
+}
+
+/**
+ * Wait before re-trying a drained free pool. Deliberately longer than the SDK's default 0.5s/1s/2s
+ * ladder: Pollinations' anonymous tier admits roughly one request per 15s, so a sub-second retry is
+ * guaranteed to hit the same wall.
+ */
+export const FREE_POOL_RETRY_MS = 5000;
+
+/**
+ * fetch wrapper that marks free-pool 402s as retryable using the SDK's own header protocol
+ * (`x-should-retry: true` + `retry-after-ms`), letting the SDK do the backoff, jitter and attempt
+ * accounting. Exported for tests.
+ */
+export function freePoolRetryFetch(
+  baseFetch: typeof fetch = fetch,
+): (url: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
+  return async (url, init) => {
+    const res = await baseFetch(url, init);
+    if (res.status !== 402) return res;
+    // The retired keyless host will 402 forever — retrying it only makes the user wait ~90s for the
+    // same message. Leave it terminal so the "switch endpoints" guidance shows up after one attempt.
+    if (isLegacyPollinations(String(typeof url === "string" ? url : url instanceof URL ? url.href : url.url))) return res;
+    const headers = new Headers(res.headers);
+    headers.set("x-should-retry", "true");
+    if (!headers.has("retry-after") && !headers.has("retry-after-ms")) {
+      headers.set("retry-after-ms", String(FREE_POOL_RETRY_MS));
+    }
+    // Re-wrap rather than mutate: Response.headers is immutable. Body is streamed through untouched.
+    return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
+  };
+}
+
+/**
+ * Build an OpenAI-compatible client with this project's shared reliability settings.
+ * Free/keyless endpoints (Pollinations, Ollama) accept any non-empty key; the SDK requires one.
+ */
+export function createLLMClient(config: LLMClientConfig): OpenAI {
+  return new OpenAI({
+    baseURL: config.baseUrl,
+    apiKey: config.apiKey || "no-key",
+    // SDK default is 2; free/shared endpoints flap enough to be worth one more attempt.
+    maxRetries: 3,
+    ...(isPollinations(config.baseUrl) ? { fetch: freePoolRetryFetch() } : {}),
+  });
+}
+
+/** HTTP status of a failed call, when the error carries one. */
+export function llmErrorStatus(err: unknown): number | undefined {
+  const status = (err as { status?: unknown })?.status;
+  return typeof status === "number" && status >= 100 && status < 600 ? status : undefined;
+}
+
+/** Provider-supplied detail, trimmed — keeps the original wording available for bug reports. */
+function rawDetail(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return msg.replace(/\s+/g, " ").trim().slice(0, 180);
+}
+
+/** Bilingual message pair. */
+export interface LLMMessagePair {
+  zh: string;
+  en: string;
+}
+
+/**
+ * Actionable explanation for an HTTP status from an OpenAI-compatible endpoint.
+ * Status-keyed (not error-class-keyed) so the SDK path and the fetch-based connection test in
+ * /api/llm/test share exactly one set of wordings. Every branch names the next action, not the failure.
+ */
+export function explainLLMStatus(status: number | undefined, target: LLMTarget = {}): LLMMessagePair {
+  const model = target.model || "?";
+  const baseUrl = target.baseUrl || "?";
+
+  if (status === 401 || status === 403) {
+    return {
+      zh: "API Key 无效或无权限：请到对应平台重新复制 Key，并确认该 Key 已开通这个模型",
+      en: "Invalid or unauthorized API key: copy a fresh key from the provider and make sure it can access this model",
+    };
+  }
+  if (status === 402) {
+    if (isLegacyPollinations(baseUrl)) {
+      return {
+        zh: "Pollinations 的免 Key 免费文本接口已停用（现在只会返回 402/502）：请到设置里重新点一次 Pollinations 预设，把地址换成 https://gen.pollinations.ai/v1，并到 https://enter.pollinations.ai/keys 免费注册领 Key 填入；也可改用「Ollama 本地」完全离线免费，或填自己的厂商 Key",
+        en: "Pollinations' keyless free text API is retired (it now only returns 402/502): re-apply the Pollinations preset in Settings to switch the endpoint to https://gen.pollinations.ai/v1 and paste a free key from https://enter.pollinations.ai/keys — or switch to local Ollama, or use your own provider key",
+      };
+    }
+    if (isPollinations(baseUrl)) {
+      return {
+        zh: "Pollinations 额度不足（免费额度按天发放，用完即停）：请到 https://enter.pollinations.ai/keys 查看或领取额度，或改用「Ollama 本地」/ 自己的厂商 Key",
+        en: "Pollinations credit exhausted (free pollen is granted daily and stops when spent): check https://enter.pollinations.ai/keys, or switch to local Ollama / your own provider key",
+      };
+    }
+    return {
+      zh: "接口返回「需要付费」：该账户余额或额度已用尽，请充值后重试，或在设置里换一个渠道",
+      en: "The endpoint returned Payment Required: this account is out of credit — top it up or switch provider in Settings",
+    };
+  }
+  if (status === 404) {
+    return {
+      zh: `地址或模型名不存在：确认 baseUrl 是否需要以 /v1 结尾，以及模型「${model}」是否在该平台上线`,
+      en: `Endpoint or model not found: check whether the baseUrl needs a /v1 suffix and whether model "${model}" exists on this platform`,
+    };
+  }
+  if (status === 413) {
+    return {
+      zh: "请求内容过大：请减少商品图片数量或缩短描述后重试",
+      en: "Request payload too large: use fewer product images or a shorter description",
+    };
+  }
+  if (status === 429) {
+    return {
+      zh: "触发限流（免费/公共端点很常见）：已自动重试仍失败，请等十几秒再试，或改用自己的 Key / 本地 Ollama",
+      en: "Rate limited (common on free/shared endpoints): automatic retries were exhausted — wait a few seconds, or use your own key / local Ollama",
+    };
+  }
+  if (status === 400 || status === 422) {
+    return {
+      zh: "请求被拒绝（400）：多为模型名填错或该模型不支持本次参数，可换个模型再试",
+      en: "Request rejected (400): usually a wrong model name or a parameter this model does not support — try another model",
+    };
+  }
+  if (status !== undefined && status >= 500) {
+    return {
+      zh: "对方服务暂时不可用（5xx）：已自动重试仍失败，请稍后再试或在设置里换一个渠道",
+      en: "The provider is temporarily unavailable (5xx): automatic retries were exhausted — try again later or switch provider in Settings",
+    };
+  }
+  return { zh: "LLM 请求失败", en: "LLM request failed" };
+}
+
+/**
+ * Turn a provider error into an actionable explanation in both locales.
+ * Connection-level failures come from the SDK's typed errors (no HTTP status exists for them);
+ * everything else is keyed off the status via explainLLMStatus.
+ */
+export function explainLLMError(err: unknown, target: LLMTarget = {}): { zh: string; en: string; status?: number } {
+  const status = llmErrorStatus(err);
+  const detail = rawDetail(err);
+  const model = target.model || "?";
+  const baseUrl = target.baseUrl || "?";
+  const withCtx = ({ zh, en }: LLMMessagePair) => ({
+    zh: `${zh}（模型: ${model}，地址: ${baseUrl}）｜原始报错: ${detail}`,
+    en: `${en} (model: ${model}, endpoint: ${baseUrl}) | raw: ${detail}`,
+    status,
+  });
+
+  if (err instanceof APIConnectionTimeoutError) {
+    return withCtx({
+      zh: "请求超时：网络不稳或该端点响应过慢，请重试；国内访问海外端点建议配置代理",
+      en: "Request timed out: unstable network or a slow endpoint — retry, and consider a proxy for overseas endpoints",
+    });
+  }
+  if (err instanceof APIConnectionError) {
+    return withCtx({
+      zh: "连不上这个 API 地址：请检查网络/代理是否可访问该域名；本地 Ollama 需先启动服务（ollama serve）",
+      en: "Cannot reach the API endpoint: check network/proxy access to this host; a local Ollama needs `ollama serve` running",
+    });
+  }
+  return withCtx(explainLLMStatus(status, target));
+}
+
+/** Wrap any provider error into an LLMRequestError carrying actionable bilingual text. */
+export function toLLMRequestError(err: unknown, target: LLMTarget = {}): LLMRequestError {
+  if (err instanceof LLMRequestError) return err;
+  const { zh, en, status } = explainLLMError(err, target);
+  return new LLMRequestError(zh, en, status, { cause: err });
+}
+
+/**
+ * Run an LLM call and relabel any provider error with actionable text.
+ * No retry loop of our own — the SDK client from `createLLMClient` already retried.
+ * User-initiated aborts pass through untouched so callers can tell "cancelled" from "failed".
+ */
+export async function withLLMErrors<T>(fn: () => Promise<T>, target: LLMTarget = {}): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if ((err as { name?: string })?.name === "APIUserAbortError" || (err as { name?: string })?.name === "AbortError") throw err;
+    throw toLLMRequestError(err, target);
+  }
+}
+
+/**
+ * Locale pair for any error thrown out of a generation path: an LLMRequestError keeps its two
+ * locales, anything else (parse failures, DB errors) reuses its single message for both.
+ * Lets API routes stay one-liners while still answering English clients in English.
+ */
+export function llmErrorPair(err: unknown): { zh: string; en: string } {
+  if (err instanceof LLMRequestError) return { zh: err.zh, en: err.en };
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return { zh: msg, en: msg };
+}

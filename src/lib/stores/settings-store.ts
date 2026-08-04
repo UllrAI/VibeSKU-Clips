@@ -42,7 +42,7 @@ export interface TTSSetting {
   groupId?: string;
 }
 
-interface SettingsState {
+export interface SettingsState {
   // AI 平台配置
   providers: Record<string, ProviderSetting>;
   // LLM 配置
@@ -91,6 +91,42 @@ interface SettingsState {
   setVisualLook: (look: string) => void;
   /** 一个 Atlas Key 一键接入：脚本+看图+生图+生视频+配音全配好（不覆盖用户已选模型/已开的配音） */
   applyAtlasOneKey: (apiKey: string) => void;
+}
+
+/** Pollinations 的新端点（旧的 text.pollinations.ai 免 Key 接口已停用） */
+const POLLINATIONS_BASE_URL = "https://gen.pollinations.ai/v1";
+
+/**
+ * 持久化设置的版本迁移（纯函数，可单测）。
+ *
+ * v1：清洗历史版本预设写入的失效模型名（旧预设填过不存在的模型 ID，"测试连接"只验 Key
+ * 不验模型名所以一直显示正常，直到生成脚本才报 Model Not Exist——issue #12 用户即此场景）。
+ * 只在 baseUrl 匹配对应官方端点时改写，避免误伤自建代理上的同名自定义模型。
+ *
+ * v2：Pollinations 免 Key 免费文本接口（text.pollinations.ai/openai）已停用，实测只返回
+ * 402/502（issue #19：用户装完选 Pollinations，一生成就报 402 Payment Required，Mac/Win 都一样）。
+ * 把地址迁到官方新端点 gen.pollinations.ai/v1，并清掉老预设写入的占位 Key "pollinations"——
+ * 新端点必须用注册领取的真 Key，留着占位值只会把 401 伪装成"已配置"。清空后设置页会明确提示填 Key。
+ */
+export function migrateSettings(state: SettingsState): SettingsState {
+  const llm = state?.llm;
+  if (llm?.baseUrl) {
+    const fixes: Array<{ hostRe: RegExp; from: string; to: string }> = [
+      { hostRe: /api\.deepseek\.com/i, from: "deepseek-v3.2", to: "deepseek-v4-flash" },
+      { hostRe: /volces\.com/i, from: "doubao-seed-2.0-pro", to: "doubao-seed-2-0-pro-260215" },
+    ];
+    for (const f of fixes) {
+      if (!f.hostRe.test(llm.baseUrl)) continue;
+      if (llm.model === f.from) llm.model = f.to;
+      if (llm.visionModel === f.from) llm.visionModel = f.to;
+    }
+
+    if (/text\.pollinations\.ai/i.test(llm.baseUrl)) {
+      llm.baseUrl = POLLINATIONS_BASE_URL;
+      if (llm.apiKey === "pollinations") llm.apiKey = "";
+    }
+  }
+  return state;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -189,23 +225,9 @@ export const useSettingsStore = create<SettingsState>()(
       // v1：清洗历史版本预设写入的失效模型名（旧预设填过不存在的模型 ID，"测试连接"只验 Key
       // 不验模型名所以一直显示正常，直到生成脚本才报 Model Not Exist——issue #12 用户即此场景）。
       // 只在 baseUrl 匹配对应官方端点时改写，避免误伤自建代理上的同名自定义模型。
-      version: 1,
-      migrate: (persisted) => {
-        const state = persisted as SettingsState;
-        const llm = state?.llm;
-        if (llm?.baseUrl) {
-          const fixes: Array<{ hostRe: RegExp; from: string; to: string }> = [
-            { hostRe: /api\.deepseek\.com/i, from: "deepseek-v3.2", to: "deepseek-v4-flash" },
-            { hostRe: /volces\.com/i, from: "doubao-seed-2.0-pro", to: "doubao-seed-2-0-pro-260215" },
-          ];
-          for (const f of fixes) {
-            if (!f.hostRe.test(llm.baseUrl)) continue;
-            if (llm.model === f.from) llm.model = f.to;
-            if (llm.visionModel === f.from) llm.visionModel = f.to;
-          }
-        }
-        return state;
-      },
+      // v2：把已停用的 Pollinations 免 Key 地址迁到新端点（见 migrateSettings 注释）。
+      version: 2,
+      migrate: (persisted) => migrateSettings(persisted as SettingsState),
     }
   )
 );

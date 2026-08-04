@@ -10,8 +10,8 @@
  * allows a single queued request per IP), tiny JSON output. Any failure falls back to the heuristic —
  * semantic rerank must never break auto-fill.
  */
-import OpenAI from "openai";
 import { reasoningParams } from "@/lib/script-engine/generator";
+import { createLLMClient, withLLMErrors } from "@/lib/llm-error";
 
 export interface SemanticLLMConfig {
   baseUrl: string;
@@ -87,14 +87,18 @@ export function parseRerankPicks(text: string, shots: RerankShot[]): Map<number,
 export async function rerankShotCandidates(shots: RerankShot[], cfg: SemanticLLMConfig): Promise<Map<number, number>> {
   const rankable = shots.filter((s) => s.candidates.length > 1);
   if (rankable.length === 0) return new Map();
-  // keyless endpoints (Ollama/Pollinations) accept a placeholder key; the SDK requires non-empty
-  const client = new OpenAI({ baseURL: cfg.baseUrl, apiKey: cfg.apiKey || "no-key" });
-  const res = await client.chat.completions.create({
-    model: cfg.model,
-    messages: [{ role: "user", content: buildRerankPrompt(rankable) }],
-    temperature: 0,
-    ...reasoningParams(cfg.baseUrl),
-  });
+  // shared factory: placeholder key for keyless endpoints, SDK retries + free-pool 402 retry
+  const client = createLLMClient(cfg);
+  const res = await withLLMErrors(
+    () =>
+      client.chat.completions.create({
+        model: cfg.model,
+        messages: [{ role: "user", content: buildRerankPrompt(rankable) }],
+        temperature: 0,
+        ...reasoningParams(cfg.baseUrl),
+      }),
+    cfg,
+  );
   const picks = parseRerankPicks(res.choices?.[0]?.message?.content ?? "", rankable);
   if (!picks) throw new Error("语义配片解析失败（LLM 未返回可用的 JSON picks）");
   return picks;

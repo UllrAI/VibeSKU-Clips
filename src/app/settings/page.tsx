@@ -32,6 +32,7 @@ import {
   type TTSProvider,
 } from "@/lib/tts-presets";
 import { mergeCustomModels } from "@/lib/gen-params";
+import { LLM_PRESETS } from "@/lib/llm-presets";
 import { GenerationSettings } from "@/components/generation-settings";
 
 // default resolution options
@@ -679,25 +680,16 @@ export default function SettingsPage() {
                   <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border/50">
                     <p className="text-xs text-muted-foreground mb-2">{t("llmPresetHint")}</p>
                     <div className="flex flex-wrap gap-2">
-                      {([
-                        { label: "Atlas Cloud", baseUrl: "https://api.atlascloud.ai/v1", model: "claude-sonnet-4-20250514", tip: t("presetAtlasTip") },
-                        { label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-4o", tip: t("presetOpenrouterTip") },
-                        { label: "DeepSeek", baseUrl: "https://api.deepseek.com", model: "deepseek-v4-flash", tip: t("presetDeepseekTip") },
-                        { label: "Kimi", baseUrl: "https://api.moonshot.cn/v1", model: "kimi-k2.5", tip: t("presetKimiTip") },
-                        { label: "智谱 GLM", baseUrl: "https://open.bigmodel.cn/api/paas/v4", model: "glm-5-turbo", tip: t("presetGlmTip") },
-                        { label: "MiniMax", baseUrl: "https://api.minimax.chat/v1", model: "MiniMax-M2.7", tip: t("presetMinimaxTip") },
-                        { label: "豆包", baseUrl: "https://ark.cn-beijing.volces.com/api/v3", model: "doubao-seed-2-0-pro-260215", tip: t("presetDoubaoTip") },
-                        { label: "OpenAI", baseUrl: "https://api.openai.com/v1", model: "gpt-5.4", tip: "" },
-                        { label: "Ollama 本地", baseUrl: "http://localhost:11434/v1", model: "qwen2.5", tip: t("presetOllamaTip"), apiKey: "ollama" },
-                        { label: "Pollinations", baseUrl: "https://text.pollinations.ai/openai", model: "openai-fast", tip: t("presetPollinationsTip"), apiKey: "pollinations" },
-                      ] as { label: string; baseUrl: string; model: string; tip: string; apiKey?: string }[]).map((preset) => (
+                      {LLM_PRESETS.map((preset) => (
                         <button
                           key={preset.label}
                           onClick={() => setLLM({ ...llm, baseUrl: preset.baseUrl, model: preset.model, visionModel: preset.model, ...(preset.apiKey ? { apiKey: preset.apiKey } : {}) })}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs border border-border/50 bg-background hover:border-primary/40 hover:text-primary transition-colors"
                         >
                           {preset.label}
-                          {preset.tip && <span className="text-[10px] text-muted-foreground/70">({preset.tip})</span>}
+                          {preset.tipKey && (
+                            <span className="text-[10px] text-muted-foreground/70">({t(preset.tipKey as Parameters<typeof t>[0])})</span>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -729,6 +721,20 @@ export default function SettingsPage() {
                         onChange={(apiKey) => setLLM({ ...llm, apiKey })}
                         placeholder={t("llmApiKeyPlaceholder")}
                       />
+                      {/* Pollinations 已改为「注册领每日免费额度」，直接把领 Key 的地址摆在输入框下面 */}
+                      {/pollinations\.ai/i.test(llm.baseUrl) && (
+                        <p className="text-xs text-muted-foreground">
+                          {t("pollinationsKeyHint")}{" "}
+                          <a
+                            href="https://enter.pollinations.ai/keys"
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary underline underline-offset-2"
+                          >
+                            enter.pollinations.ai/keys
+                          </a>
+                        </p>
+                      )}
                     </div>
 
                     {/* model name */}

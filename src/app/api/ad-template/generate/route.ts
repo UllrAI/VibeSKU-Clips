@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
 import { apiError } from "@/lib/api-error";
+import { createLLMClient, llmErrorPair, withLLMErrors } from "@/lib/llm-error";
 import { reasoningParams } from "@/lib/script-engine/generator";
 import { sanitizeCustomAdTemplate, AD_TEMPLATE_GROUPS } from "@/lib/ad-templates";
 import { CAMERA_PRESETS } from "@/lib/camera-presets";
@@ -13,8 +13,10 @@ import { LOOK_PRESETS } from "@/lib/look-presets";
  * every id in its output is validated and clamped by sanitizeCustomAdTemplate, so
  * an invalid pick degrades to a safe default instead of breaking the pipeline.
  *
- * Single attempt, no retry: this is a cheap text call, but blind retry loops are
- * banned project-wide (paid-task discipline) — a failure surfaces to the user.
+ * No retry loop of our own: transport-level retries (429/5xx, plus free-pool 402)
+ * are the SDK's job via createLLMClient; anything that still fails surfaces to the
+ * user with an actionable message. Blind app-level retry loops stay banned
+ * project-wide (paid-task discipline) — those would re-submit billable work.
  */
 
 const STYLE_GLOSS: Record<string, string> = {
@@ -79,20 +81,21 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const client = new OpenAI({
-      baseURL: llmConfig.baseUrl,
-      // keyless OpenAI-compatible endpoints (Ollama/Pollinations) accept any non-empty key
-      apiKey: llmConfig.apiKey || "no-key",
-    });
-    const response = await client.chat.completions.create({
-      model: llmConfig.model,
-      messages: [
-        { role: "system", content: "你是资深电商短视频导演，只输出 JSON。" },
-        { role: "user", content: buildPrompt(productName, category, sellingPoints) },
-      ],
-      temperature: 0.8,
-      ...reasoningParams(llmConfig.baseUrl),
-    });
+    // shared factory: keyless endpoints accept a placeholder key; SDK retries + free-pool 402 retry
+    const client = createLLMClient(llmConfig);
+    const response = await withLLMErrors(
+      () =>
+        client.chat.completions.create({
+          model: llmConfig.model,
+          messages: [
+            { role: "system", content: "你是资深电商短视频导演，只输出 JSON。" },
+            { role: "user", content: buildPrompt(productName, category, sellingPoints) },
+          ],
+          temperature: 0.8,
+          ...reasoningParams(llmConfig.baseUrl),
+        }),
+      llmConfig,
+    );
     const text = response.choices[0]?.message?.content ?? "";
     const start = text.indexOf("{");
     const end = text.lastIndexOf("}");
@@ -106,7 +109,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ template });
   } catch (error) {
     console.error("AI 定制模板生成失败:", error);
-    const msg = error instanceof Error ? error.message : String(error);
-    return apiError(req, `AI 定制模板生成失败: ${msg}`, `AI template generation failed: ${msg}`, 500);
+    const { zh, en } = llmErrorPair(error);
+    return apiError(req, `AI 定制模板生成失败: ${zh}`, `AI template generation failed: ${en}`, 500);
   }
 }
