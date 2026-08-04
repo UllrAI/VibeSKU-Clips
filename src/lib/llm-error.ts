@@ -18,11 +18,14 @@
  */
 
 import OpenAI, { APIConnectionError, APIConnectionTimeoutError } from "openai";
+import { listModels, modelListHint } from "@/lib/llm-models";
 
 /** Endpoint + model a call was aimed at (used to tailor the hint). */
 export interface LLMTarget {
   baseUrl?: string;
   model?: string;
+  /** Raw provider response/message, when the caller has it — lets 400s be told apart. */
+  detail?: string;
 }
 
 /** Minimal LLM config accepted by the client factory. */
@@ -52,6 +55,16 @@ export function isPollinations(baseUrl?: string): boolean {
 /** True when the endpoint is the retired keyless Pollinations text API (dead as of 2026-08). */
 export function isLegacyPollinations(baseUrl?: string): boolean {
   return /text\.pollinations\.ai/i.test(baseUrl || "");
+}
+
+/**
+ * True when a 4xx blames the completion-token budget rather than the request itself: either the
+ * completion hit its cap ("could not finish the message…") or the model refuses `max_tokens` and
+ * wants `max_completion_tokens`. Both are recoverable in ways a generic "bad request" is not.
+ */
+export function isTokenCapRejection(text: string | undefined): boolean {
+  if (!text) return false;
+  return /max_tokens|max_completion_tokens|max_output_tokens|output limit|could not finish the message/i.test(text);
 }
 
 /**
@@ -90,12 +103,16 @@ export function freePoolRetryFetch(
  * Free/keyless endpoints (Pollinations, Ollama) accept any non-empty key; the SDK requires one.
  */
 export function createLLMClient(config: LLMClientConfig): OpenAI {
+  // 402 is only worth retrying on the anonymous shared pool, where it means "the pool ran dry this
+  // second". With a real key it means "this key's daily pollen is spent" — that clears tomorrow, not
+  // in 5s, so retrying would just make the user wait 15s for the same message.
+  const retryFreePool402 = isPollinations(config.baseUrl) && !config.apiKey;
   return new OpenAI({
     baseURL: config.baseUrl,
     apiKey: config.apiKey || "no-key",
     // SDK default is 2; free/shared endpoints flap enough to be worth one more attempt.
     maxRetries: 3,
-    ...(isPollinations(config.baseUrl) ? { fetch: freePoolRetryFetch() } : {}),
+    ...(retryFreePool402 ? { fetch: freePoolRetryFetch() } : {}),
   });
 }
 
@@ -169,6 +186,15 @@ export function explainLLMStatus(status: number | undefined, target: LLMTarget =
     };
   }
   if (status === 400 || status === 422) {
+    // Some backends (Pollinations' azure-openai upstream) report "the completion hit its token cap"
+    // as a 400 instead of returning truncated text, so a 400 here often means the model ran out of
+    // output room mid-script — telling the user to "try another model name" would be wrong advice.
+    if (isTokenCapRejection(target.detail)) {
+      return {
+        zh: "模型输出长度不够，本次生成中途被打断：请缩短视频时长或减少分镜数量，也可在设置里换一个输出更充裕的模型（免费/公共模型的输出上限通常很小）",
+        en: "The model ran out of output budget mid-generation: shorten the video or use fewer shots, or switch to a model with a larger output budget (free/shared models cap output aggressively)",
+      };
+    }
     return {
       zh: "请求被拒绝（400）：多为模型名填错或该模型不支持本次参数，可换个模型再试",
       en: "Request rejected (400): usually a wrong model name or a parameter this model does not support — try another model",
@@ -191,6 +217,9 @@ export function explainLLMStatus(status: number | undefined, target: LLMTarget =
 export function explainLLMError(err: unknown, target: LLMTarget = {}): { zh: string; en: string; status?: number } {
   const status = llmErrorStatus(err);
   const detail = rawDetail(err);
+  // Match on the untruncated message (providers bury the useful phrase behind a JSON envelope) but
+  // still show the trimmed one.
+  const full = target.detail ?? (err instanceof Error ? err.message : String(err ?? ""));
   const model = target.model || "?";
   const baseUrl = target.baseUrl || "?";
   const withCtx = ({ zh, en }: LLMMessagePair) => ({
@@ -211,7 +240,7 @@ export function explainLLMError(err: unknown, target: LLMTarget = {}): { zh: str
       en: "Cannot reach the API endpoint: check network/proxy access to this host; a local Ollama needs `ollama serve` running",
     });
   }
-  return withCtx(explainLLMStatus(status, target));
+  return withCtx(explainLLMStatus(status, { ...target, detail: full }));
 }
 
 /** Wrap any provider error into an LLMRequestError carrying actionable bilingual text. */
@@ -226,12 +255,20 @@ export function toLLMRequestError(err: unknown, target: LLMTarget = {}): LLMRequ
  * No retry loop of our own — the SDK client from `createLLMClient` already retried.
  * User-initiated aborts pass through untouched so callers can tell "cancelled" from "failed".
  */
-export async function withLLMErrors<T>(fn: () => Promise<T>, target: LLMTarget = {}): Promise<T> {
+export async function withLLMErrors<T>(fn: () => Promise<T>, target: LLMClientConfig = {}): Promise<T> {
   try {
     return await fn();
   } catch (err) {
     if ((err as { name?: string })?.name === "APIUserAbortError" || (err as { name?: string })?.name === "AbortError") throw err;
-    throw toLLMRequestError(err, target);
+    const wrapped = toLLMRequestError(err, target);
+    // A wrong model name is the most common misconfiguration and the least self-evident: one extra
+    // GET /models turns "model not found" into "here is what this endpoint actually serves". Only on
+    // 404, so the happy path and every other failure keep their timing.
+    if (wrapped.status === 404 && target.baseUrl) {
+      const hint = modelListHint(await listModels(target.baseUrl, target.apiKey || ""), target.model, target.baseUrl);
+      if (hint) return Promise.reject(new LLMRequestError(`${wrapped.zh}｜${hint.zh}`, `${wrapped.en} | ${hint.en}`, 404, { cause: err }));
+    }
+    throw wrapped;
   }
 }
 

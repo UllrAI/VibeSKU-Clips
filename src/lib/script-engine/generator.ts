@@ -16,7 +16,7 @@ import {
   type TopicScriptInput,
 } from "./prompts";
 import type { Shot, ScriptCharacter } from "@/lib/db/schema";
-import { createLLMClient, withLLMErrors } from "@/lib/llm-error";
+import { createLLMClient, withLLMErrors, LLMRequestError } from "@/lib/llm-error";
 
 // ==================== Type definitions ====================
 
@@ -272,7 +272,7 @@ export async function generateScript(input: ScriptInput): Promise<GeneratedScrip
         max_tokens: 16000,
         ...reasoningParams(input.llmConfig.baseUrl),
       }),
-    { baseUrl: input.llmConfig.baseUrl, model: input.llmConfig.model },
+    input.llmConfig,
   );
 
   const content = response.choices[0]?.message?.content;
@@ -311,7 +311,7 @@ export async function generateTopicScript(input: TopicScriptGenInput): Promise<G
         max_tokens: 16000,
         ...reasoningParams(input.llmConfig.baseUrl),
       }),
-    { baseUrl: input.llmConfig.baseUrl, model: input.llmConfig.model },
+    input.llmConfig,
   );
 
   const content = response.choices[0]?.message?.content;
@@ -343,7 +343,7 @@ export async function generateSingleScript(input: ScriptInput): Promise<Generate
         temperature: 0.8,
         ...reasoningParams(input.llmConfig.baseUrl),
       }),
-    { baseUrl: input.llmConfig.baseUrl, model: input.llmConfig.model },
+    input.llmConfig,
   );
 
   const content = response.choices[0]?.message?.content;
@@ -395,7 +395,7 @@ export function generateScriptStream(
           }, {
             signal: abortController.signal,
           }),
-        { baseUrl: input.llmConfig.baseUrl, model: input.llmConfig.model },
+        input.llmConfig,
       );
 
       for await (const chunk of stream) {
@@ -447,7 +447,7 @@ export function createScriptStream(input: ScriptInput): ReadableStream<Uint8Arra
               stream: true,
               ...reasoningParams(input.llmConfig.baseUrl),
             }),
-          { baseUrl: input.llmConfig.baseUrl, model: input.llmConfig.model },
+          input.llmConfig,
         );
 
         for await (const chunk of stream) {
@@ -505,7 +505,7 @@ export async function analyzeProduct(
         temperature: 0.3,
         max_tokens: 2000,
       }),
-    { baseUrl: config.baseUrl, model },
+    { ...config, model },
   );
 
   return response.choices[0]?.message?.content || "";
@@ -531,6 +531,20 @@ export async function analyzeProductStructured(
 }
 
 // ==================== Parsing utilities ====================
+
+/**
+ * True when a voiceover line is actual copy rather than our own JSON template echoed back.
+ *
+ * Weak models (verified with qwen2.5:0.5b on Ollama) answer with the schema's field descriptions
+ * copied verbatim — "配音文案：口语化的播音文案，控制字数与duration匹配（约3字/秒）" as the voiceover.
+ * The markers below are strings this project writes into the prompt, so matching them is exact, not a
+ * quality heuristic: no real script line contains them.
+ */
+export function isRealVoiceover(voiceover: string): boolean {
+  const text = voiceover.trim();
+  if (text.length === 0) return false;
+  return !/口语化的播音文案|控制字数与duration|画面描述：要足够具体|从下方运镜词表|英文AI生图|english keyword/i.test(text);
+}
 
 /**
  * Parse LLM script response content.
@@ -574,5 +588,17 @@ export function parseScriptResponse(content: string, fallbackStyleType: string):
   if (scripts.length === 0) {
     throw new Error("LLM 未生成有效分镜（脚本为空），请重试或调整输入");
   }
-  return scripts;
+
+  // Same reasoning one step further: a script whose shots carry no voiceover at all renders as a
+  // silent video with no captions, yet every stage downstream would report success. Weak local models
+  // fail exactly this way — correct JSON shape, empty content (verified with qwen2.5:0.5b on Ollama,
+  // issue #19 follow-up). Fail loudly and name the fix instead of handing back an unusable script.
+  const withVoiceover = scripts.filter((s) => s.shots.some((shot) => isRealVoiceover(shot.voiceover)));
+  if (withVoiceover.length === 0) {
+    throw new LLMRequestError(
+      "这个模型没写出真正的口播文案（分镜里的 voiceover 要么是空的，要么把格式说明原样抄了回来，成片会没有声音也没有字幕）：多为模型能力不足，请换一个更强的模型——本地 Ollama 建议用 7B 及以上的 instruct 模型（实测 qwen2.5:7b-instruct 可用），0.5B/1.5B 这类小模型写不出结构化脚本",
+      "The model produced no real voiceover lines (they are empty, or it echoed the format description back): the video would be silent and caption-less. This usually means the model is too weak — switch to a stronger one. For local Ollama use a 7B-or-larger instruct model (qwen2.5:7b-instruct is verified working); 0.5B/1.5B models cannot produce a structured script",
+    );
+  }
+  return withVoiceover;
 }

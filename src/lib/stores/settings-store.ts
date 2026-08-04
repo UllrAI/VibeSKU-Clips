@@ -107,6 +107,9 @@ const POLLINATIONS_BASE_URL = "https://gen.pollinations.ai/v1";
  * 402/502（issue #19：用户装完选 Pollinations，一生成就报 402 Payment Required，Mac/Win 都一样）。
  * 把地址迁到官方新端点 gen.pollinations.ai/v1，并清掉老预设写入的占位 Key "pollinations"——
  * 新端点必须用注册领取的真 Key，留着占位值只会把 401 伪装成"已配置"。清空后设置页会明确提示填 Key。
+ *
+ * v3：Ollama 预设的 localhost 改成 127.0.0.1。Windows 上 localhost 会先解析到 ::1，而 Ollama 默认
+ * 只监听 127.0.0.1，用户会看到一个无从排查的"连不上"（issue #19 追问）。同端口同机，改写无副作用。
  */
 export function migrateSettings(state: SettingsState): SettingsState {
   const llm = state?.llm;
@@ -125,6 +128,8 @@ export function migrateSettings(state: SettingsState): SettingsState {
       llm.baseUrl = POLLINATIONS_BASE_URL;
       if (llm.apiKey === "pollinations") llm.apiKey = "";
     }
+
+    llm.baseUrl = llm.baseUrl.replace(/^(https?:\/\/)localhost(:11434\b)/i, "$1127.0.0.1$2");
   }
   return state;
 }
@@ -226,7 +231,8 @@ export const useSettingsStore = create<SettingsState>()(
       // 不验模型名所以一直显示正常，直到生成脚本才报 Model Not Exist——issue #12 用户即此场景）。
       // 只在 baseUrl 匹配对应官方端点时改写，避免误伤自建代理上的同名自定义模型。
       // v2：把已停用的 Pollinations 免 Key 地址迁到新端点（见 migrateSettings 注释）。
-      version: 2,
+      // v3：Ollama 的 localhost:11434 改写成 127.0.0.1:11434（Windows 上 ::1 连不通）。
+      version: 3,
       migrate: (persisted) => migrateSettings(persisted as SettingsState),
     }
   )

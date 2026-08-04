@@ -33,6 +33,7 @@ import {
 } from "@/lib/tts-presets";
 import { mergeCustomModels } from "@/lib/gen-params";
 import { LLM_PRESETS } from "@/lib/llm-presets";
+import { ModelPicker } from "@/components/settings/model-picker";
 import { GenerationSettings } from "@/components/generation-settings";
 
 // default resolution options
@@ -401,9 +402,12 @@ export default function SettingsPage() {
 
   // test LLM connection
   const [llmTestError, setLlmTestError] = useState("");
+  // 连接通过但仍有值得知道的事（例如该模型输出上限极小）——绿灯照给，附一行提醒
+  const [llmTestWarning, setLlmTestWarning] = useState("");
   const testLLMConnection = async () => {
     setLlmTestStatus("testing");
     setLlmTestError("");
+    setLlmTestWarning("");
     try {
       // use server-side test: browser direct calls to provider APIs would be blocked by CORS and falsely report failure
       const res = await fetch("/api/llm/test", {
@@ -414,11 +418,13 @@ export default function SettingsPage() {
       const data = await res.json().catch(() => ({ ok: false }));
       setLlmTestStatus(data.ok ? "success" : "error");
       if (!data.ok) setLlmTestError(data.error || t("connectFailed"));
+      if (data.warning) setLlmTestWarning(data.warning);
     } catch (e) {
       setLlmTestStatus("error");
       setLlmTestError(e instanceof Error ? e.message : t("connectFailed"));
     }
-    setTimeout(() => setLlmTestStatus("idle"), 5000);
+    // 成功 5 秒后收起；失败保持到下一次测试——可行动的报错往往有两三行，5 秒读不完（issue #19 追问）
+    setTimeout(() => setLlmTestStatus((s) => (s === "error" ? s : "idle")), 5000);
   };
 
   // compute AI provider configuration status
@@ -751,6 +757,12 @@ export default function SettingsPage() {
                           placeholder="gpt-4o"
                           className="font-mono text-xs"
                         />
+                        {/* 模型名靠手打是最常见的错配来源，本地 Ollama 还必须带 :tag（issue #19 追问） */}
+                        <ModelPicker
+                          baseUrl={llm.baseUrl}
+                          apiKey={llm.apiKey}
+                          onPick={(model) => setLLM({ ...llm, model })}
+                        />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">
@@ -767,8 +779,16 @@ export default function SettingsPage() {
                           placeholder="gpt-4o"
                           className="font-mono text-xs"
                         />
+                        <ModelPicker
+                          baseUrl={llm.baseUrl}
+                          apiKey={llm.apiKey}
+                          onPick={(visionModel) => setLLM({ ...llm, visionModel })}
+                        />
                       </div>
                     </div>
+                    {/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\]):11434/i.test(llm.baseUrl) && (
+                      <p className="text-xs text-muted-foreground -mt-2">{t("ollamaModelHint")}</p>
+                    )}
 
                     {/* test connection button */}
                     <div className="pt-3 mt-3 border-t border-border/50">
@@ -795,6 +815,9 @@ export default function SettingsPage() {
                       )}
                       {llmTestStatus === "error" && llmTestError && (
                         <p className="mt-2 text-xs text-destructive break-all">{llmTestError}</p>
+                      )}
+                      {llmTestWarning && (
+                        <p className="mt-2 text-xs text-amber-600 break-all">{llmTestWarning}</p>
                       )}
                       <p className="mt-2 text-[11px] text-muted-foreground">{t("llmTestTip")}</p>
                     </div>

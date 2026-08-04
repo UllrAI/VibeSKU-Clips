@@ -85,11 +85,15 @@ describe("createLLMClient（重试交给 openai SDK，不自研）", () => {
     expect(client.maxRetries).toBe(3);
   });
 
-  it("只有 Pollinations 装 402 重试钩子：真付费厂商的 402 是余额不足，重试无意义", () => {
+  // 402 只有在「匿名共享池这一秒被抽干」时才值得重试。带上真 Key 之后，Pollinations 的 402 含义
+  // 变成「这把 Key 今天的额度用完了」——明天才恢复，重试只会让用户白等 15 秒还是同一句报错。
+  it("只有匿名 Pollinations 装 402 重试钩子：带 Key 的 402 是当天额度耗尽，付费厂商的 402 是余额不足", () => {
     const fetchOf = (c: OpenAI) => (c as unknown as { fetch: typeof fetch }).fetch;
-    const poll = createLLMClient({ baseUrl: NEW_POLLINATIONS, apiKey: "k", model: "m" });
+    const anon = createLLMClient({ baseUrl: NEW_POLLINATIONS, apiKey: "", model: "m" });
+    const keyed = createLLMClient({ baseUrl: NEW_POLLINATIONS, apiKey: "real-key", model: "m" });
     const openai = createLLMClient({ baseUrl: "https://api.openai.com/v1", apiKey: "k", model: "m" });
-    expect(fetchOf(poll)).not.toBe(fetchOf(openai));
+    expect(fetchOf(anon)).not.toBe(fetch);
+    expect(fetchOf(keyed)).toBe(fetch);
     expect(fetchOf(openai)).toBe(fetch);
   });
 });

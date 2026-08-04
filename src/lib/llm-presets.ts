@@ -28,7 +28,10 @@ export const LLM_PRESETS: LLMPreset[] = [
   { label: "MiniMax", baseUrl: "https://api.minimax.chat/v1", model: "MiniMax-M2.7", tipKey: "presetMinimaxTip" },
   { label: "豆包", baseUrl: "https://ark.cn-beijing.volces.com/api/v3", model: "doubao-seed-2-0-pro-260215", tipKey: "presetDoubaoTip" },
   { label: "OpenAI", baseUrl: "https://api.openai.com/v1", model: "gpt-5.4" },
-  { label: "Ollama 本地", baseUrl: "http://localhost:11434/v1", model: "qwen2.5", tipKey: "presetOllamaTip", apiKey: "ollama" },
+  // 127.0.0.1 rather than localhost: on Windows, localhost resolves to ::1 first while Ollama binds
+  // 127.0.0.1 only, so the hostname form can fail to connect for reasons the user cannot see.
+  // The model must match a pulled tag exactly — `ollama pull qwen2.5` installs exactly this id.
+  { label: "Ollama 本地", baseUrl: "http://127.0.0.1:11434/v1", model: "qwen2.5", tipKey: "presetOllamaTip", apiKey: "ollama" },
   // Pollinations 迁到了 gen.pollinations.ai 并改为「注册领每日免费额度」；旧的免 Key 地址
   // text.pollinations.ai 现已只返回 402/502（issue #19），因此也不再预填占位 Key
   { label: "Pollinations", baseUrl: "https://gen.pollinations.ai/v1", model: "openai-fast", tipKey: "presetPollinationsTip" },

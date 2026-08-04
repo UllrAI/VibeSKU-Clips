@@ -658,7 +658,8 @@ describe("parseScriptResponse", () => {
     const content = JSON.stringify({
       title: "测试",
       shots: [
-        { shotId: 1, type: "invalid_type", duration: -1, description: "", camera: "", visualSource: "unknown", transition: "unknown", voiceover: "" },
+        // 口播给了内容：本用例验的是枚举/数值字段的兜底，空口播另有专门的失败用例
+        { shotId: 1, type: "invalid_type", duration: -1, description: "", camera: "", visualSource: "unknown", transition: "unknown", voiceover: "来看看这个" },
       ],
     });
     const scripts = parseScriptResponse(content, "pain_point");
@@ -671,6 +672,41 @@ describe("parseScriptResponse", () => {
     expect(shot.visualSource).toBe("ai_generate");
     // invalid transition should fall back to "ai_start_end" (consistent with schema default and UI default)
     expect(shot.transition).toBe("ai_start_end");
+  });
+
+  // 弱模型（实测 Ollama qwen2.5:0.5b）会返回结构完全合法、内容全空的脚本：分镜齐全但 voiceover 全是
+  // 空串。这种"成功"一路走到成片才暴露——视频没声音也没字幕。必须当场失败并说清怎么办（issue #19 追问）。
+  it("所有分镜口播都为空 → 抛错而不是返回一个会渲成哑片的脚本", () => {
+    const content = JSON.stringify({
+      title: "测试",
+      shots: [
+        { shotId: 1, type: "hook", duration: 3, description: "a", visualSource: "ai_generate", voiceover: "" },
+        { shotId: 2, type: "cta", duration: 3, description: "b", visualSource: "ai_generate", voiceover: "   " },
+      ],
+    });
+    expect(() => parseScriptResponse(content, "pain_point")).toThrow(/口播/);
+  });
+
+  // 同一批小模型的另一种失败姿势：把我们 prompt 里的 JSON 字段说明当成内容抄回来（实测 0.5b 两种都出现过）
+  it("把格式说明原样抄回来的「口播」不算口播", () => {
+    const content = JSON.stringify({
+      title: "测试",
+      shots: [
+        { shotId: 1, type: "hook", duration: 3, description: "a", visualSource: "ai_generate", voiceover: "配音文案：口语化的播音文案，控制字数与duration匹配（约3字/秒）" },
+      ],
+    });
+    expect(() => parseScriptResponse(content, "pain_point")).toThrow(/口播/);
+  });
+
+  it("只要还有一个分镜有口播就照常返回（用户可以自己补另一条）", () => {
+    const content = JSON.stringify({
+      title: "测试",
+      shots: [
+        { shotId: 1, type: "hook", duration: 3, description: "a", visualSource: "ai_generate", voiceover: "" },
+        { shotId: 2, type: "cta", duration: 3, description: "b", visualSource: "ai_generate", voiceover: "现在下单" },
+      ],
+    });
+    expect(parseScriptResponse(content, "pain_point")[0].shots).toHaveLength(2);
   });
 
   it("totalDuration 缺失时自动从 shots 累加计算", () => {

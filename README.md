@@ -215,6 +215,8 @@ node bin/clipforge.mjs --help          # 全部命令与参数
 
 > **LLM（脚本生成）** 走 OpenAI 兼容协议，内置 Atlas Cloud / **OpenRouter**(400+模型) / DeepSeek / Kimi / 智谱 / 豆包 / OpenAI 等一键预设，并含 **Ollama 本地**（离线免 Key）与 **Pollinations**（注册领每日免费额度，需填 Key）两档免费选项——任意 OpenAI 兼容端点都能填。
 > Pollinations 旧的免 Key 地址 `text.pollinations.ai` 已被官方停用（只返回 402/502），预设与本地已存配置会自动迁到新端点 `gen.pollinations.ai/v1`，Key 在 <https://enter.pollinations.ai/keys> 免费领取。
+> 模型名不用手打：设置页每个模型输入框下都有「读取可用模型」，直接列出该端点真正提供的模型点选填入；填错时报错也会带上可用模型清单。
+> **Ollama 本地**请用 `ollama list` 里的完整名字（含 `:tag`，如 `qwen2.5:7b-instruct`），并建议 7B 及以上的 instruct 模型——0.5B/1.5B 级别写不出结构化脚本（实测 `qwen2.5:7b-instruct` 可正常出片，更小的模型会被拦下并提示换模型）。
 
 ### 三、多源免费素材引擎 🆕（不止 AI 生成）
 
