@@ -14,7 +14,7 @@ import type { AddressInfo } from "node:net";
 import OpenAI from "openai";
 import { probeLLMEndpoint, PROBE_MAX_TOKENS } from "@/lib/llm-probe";
 import { listModels, modelListHint, isOllama, normalizeBase } from "@/lib/llm-models";
-import { LLMRequestError, explainLLMStatus, isTokenCapRejection, withLLMErrors } from "@/lib/llm-error";
+import { LLMRequestError, createLLMClient, explainLLMStatus, isTokenCapRejection, withLLMErrors } from "@/lib/llm-error";
 import { LLM_PRESETS } from "@/lib/llm-presets";
 import { migrateSettings, type SettingsState } from "@/lib/stores/settings-store";
 import { settings } from "@/lib/i18n/messages/settings";
@@ -142,6 +142,85 @@ describe("探针：把「输出上限」类 400 和真正的配置错误分开",
     });
     await probeLLMEndpoint({ baseUrl: `${base}/`, apiKey: "k", model: "m" });
     expect(paths[0]).toBe("/v1/chat/completions");
+  });
+});
+
+// 生成路径固定发 max_tokens:16000，这是我们对「别人家模型上限」的一个猜测。猜错时厂商会 400，
+// 而这跟用户填的东西毫无关系——预防性地去掉上限重试一次，让厂商用自己的默认值。
+describe("生成路径：厂商嫌我们的 max_tokens 不合法时自动去掉重试（预防，非用户可修）", () => {
+  const okBody = { id: "x", choices: [{ index: 0, message: { role: "assistant", content: "成了" }, finish_reason: "stop" }] };
+
+  it("上限超过厂商天花板 → 去掉 max_tokens 重试，调用方直接拿到成功结果", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const base = await serve((_req, res, body) => {
+      const parsed = JSON.parse(body || "{}");
+      bodies.push(parsed);
+      if (parsed.max_tokens !== undefined) {
+        return json(res, 400, { error: { message: "max_tokens is greater than the maximum allowed (8192) for this model" } });
+      }
+      json(res, 200, okBody);
+    });
+    const client = createLLMClient({ baseUrl: base, apiKey: "k", model: "m" });
+    const res = await client.chat.completions.create({ model: "m", messages: [{ role: "user", content: "hi" }], max_tokens: 16000 });
+    expect(res.choices[0].message.content).toBe("成了");
+    expect(bodies).toHaveLength(2);
+    expect(bodies[1].max_tokens).toBeUndefined();
+  });
+
+  it("推理模型嫌字段名不对 → 改名成 max_completion_tokens 而不是丢掉限额", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    const base = await serve((_req, res, body) => {
+      const parsed = JSON.parse(body || "{}");
+      bodies.push(parsed);
+      if (parsed.max_tokens !== undefined) {
+        return json(res, 400, { error: { message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead." } });
+      }
+      json(res, 200, okBody);
+    });
+    const client = createLLMClient({ baseUrl: base, apiKey: "k", model: "o5" });
+    await client.chat.completions.create({ model: "o5", messages: [{ role: "user", content: "hi" }], max_tokens: 16000 });
+    expect(bodies[1].max_tokens).toBeUndefined();
+    expect(bodies[1].max_completion_tokens).toBe(16000);
+  });
+
+  it("与上限无关的 400 原样抛出：不重试、报错内容完整保留（读 body 不能把报文吃掉）", async () => {
+    let calls = 0;
+    const base = await serve((_req, res) => {
+      calls++;
+      json(res, 400, { error: { message: "Invalid value for 'temperature'" } });
+    });
+    const client = createLLMClient({ baseUrl: base, apiKey: "k", model: "m" });
+    const err = await client.chat.completions
+      .create({ model: "m", messages: [{ role: "user", content: "hi" }], max_tokens: 16000 })
+      .catch((e) => e);
+    expect(calls).toBe(1);
+    expect(err.status).toBe(400);
+    expect(String(err.message)).toContain("temperature");
+  });
+
+  it("没带 max_tokens 的请求不受影响（少读一次 body，流式响应不能被碰）", async () => {
+    let calls = 0;
+    const base = await serve((_req, res) => {
+      calls++;
+      json(res, 200, okBody);
+    });
+    const client = createLLMClient({ baseUrl: base, apiKey: "k", model: "m" });
+    const res = await client.chat.completions.create({ model: "m", messages: [{ role: "user", content: "hi" }] });
+    expect(res.choices[0].message.content).toBe("成了");
+    expect(calls).toBe(1);
+  });
+
+  it("流式请求成功时响应体原样透传（错误分支绝不能把 SSE 流读掉）", async () => {
+    const base = await serve((_req, res) => {
+      res.writeHead(200, { "content-type": "text/event-stream" });
+      res.write(`data: ${JSON.stringify({ id: "x", choices: [{ index: 0, delta: { content: "流" } }] })}\n\n`);
+      res.end("data: [DONE]\n\n");
+    });
+    const client = createLLMClient({ baseUrl: base, apiKey: "k", model: "m" });
+    const stream = await client.chat.completions.create({ model: "m", messages: [{ role: "user", content: "hi" }], max_tokens: 16000, stream: true });
+    let out = "";
+    for await (const chunk of stream) out += chunk.choices[0]?.delta?.content ?? "";
+    expect(out).toBe("流");
   });
 });
 

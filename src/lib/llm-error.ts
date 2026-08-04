@@ -99,6 +99,54 @@ export function freePoolRetryFetch(
 }
 
 /**
+ * Rewrite a request body that the provider rejected because of its completion cap.
+ * Returns undefined when there is nothing to rewrite (so the caller keeps the original failure).
+ */
+function withoutTokenCap(body: string, providerMessage: string): string | undefined {
+  try {
+    const parsed = JSON.parse(body) as Record<string, unknown>;
+    if (parsed.max_tokens === undefined) return undefined;
+    // Reasoning models don't dislike the cap, only its name — keep the intent, rename the field.
+    if (/max_completion_tokens/i.test(providerMessage)) parsed.max_completion_tokens = parsed.max_tokens;
+    delete parsed.max_tokens;
+    return JSON.stringify(parsed);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * fetch wrapper that replays a request once without our completion cap when the provider rejected it.
+ *
+ * Every generation call ships a fixed `max_tokens: 16000`. That number is a guess about someone
+ * else's model: a provider whose ceiling is lower answers 400 ("max_tokens is greater than the
+ * maximum allowed"), and a reasoning model answers 400 ("use max_completion_tokens instead"). Both
+ * are our parameter's fault, not the user's — retrying without the cap lets the provider apply its
+ * own default and the call succeeds. Preventive: the same class of 400 that made the connection test
+ * unpassable on Pollinations (issue #19) can reach the generation path through any provider whose
+ * output ceiling is below 16000.
+ */
+export function tokenCapRetryFetch(
+  baseFetch: typeof fetch = fetch,
+): (url: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
+  return async (url, init) => {
+    const res = await baseFetch(url, init);
+    // Never touch a successful response: its body may be an SSE stream that must pass through intact.
+    if (res.ok || (res.status !== 400 && res.status !== 422)) return res;
+    const sent = typeof init?.body === "string" ? init.body : undefined;
+    if (!sent || !sent.includes('"max_tokens"')) return res;
+
+    const text = await res.text().catch(() => "");
+    // Reading the body consumes it, so any path that gives up must hand back an equivalent Response.
+    const asIs = () => new Response(text, { status: res.status, statusText: res.statusText, headers: res.headers });
+    if (!isTokenCapRejection(text)) return asIs();
+    const retryBody = withoutTokenCap(sent, text);
+    if (!retryBody) return asIs();
+    return baseFetch(url, { ...init, body: retryBody });
+  };
+}
+
+/**
  * Build an OpenAI-compatible client with this project's shared reliability settings.
  * Free/keyless endpoints (Pollinations, Ollama) accept any non-empty key; the SDK requires one.
  */
@@ -112,7 +160,9 @@ export function createLLMClient(config: LLMClientConfig): OpenAI {
     apiKey: config.apiKey || "no-key",
     // SDK default is 2; free/shared endpoints flap enough to be worth one more attempt.
     maxRetries: 3,
-    ...(retryFreePool402 ? { fetch: freePoolRetryFetch() } : {}),
+    // Cap recovery applies everywhere (our max_tokens, our problem); the 402 hook only where 402 is
+    // genuinely transient. Composed so one wrapper feeds the other.
+    fetch: tokenCapRetryFetch(retryFreePool402 ? freePoolRetryFetch() : fetch),
   });
 }
 

@@ -87,14 +87,27 @@ describe("createLLMClient（重试交给 openai SDK，不自研）", () => {
 
   // 402 只有在「匿名共享池这一秒被抽干」时才值得重试。带上真 Key 之后，Pollinations 的 402 含义
   // 变成「这把 Key 今天的额度用完了」——明天才恢复，重试只会让用户白等 15 秒还是同一句报错。
-  it("只有匿名 Pollinations 装 402 重试钩子：带 Key 的 402 是当天额度耗尽，付费厂商的 402 是余额不足", () => {
-    const fetchOf = (c: OpenAI) => (c as unknown as { fetch: typeof fetch }).fetch;
-    const anon = createLLMClient({ baseUrl: NEW_POLLINATIONS, apiKey: "", model: "m" });
-    const keyed = createLLMClient({ baseUrl: NEW_POLLINATIONS, apiKey: "real-key", model: "m" });
-    const openai = createLLMClient({ baseUrl: "https://api.openai.com/v1", apiKey: "k", model: "m" });
-    expect(fetchOf(anon)).not.toBe(fetch);
-    expect(fetchOf(keyed)).toBe(fetch);
-    expect(fetchOf(openai)).toBe(fetch);
+  // 用行为断言而非对象身份：装没装钩子不重要，重试与否才是用户能感知的事。
+  it("只有匿名 Pollinations 会重试 402：带 Key 的 402 是当天额度耗尽，不该白等", async () => {
+    const hits = async (apiKey: string) => {
+      let calls = 0;
+      const server = createServer((_req, res) => {
+        calls++;
+        res.writeHead(402, { "content-type": "application/json", "retry-after-ms": "5" });
+        res.end(JSON.stringify({ error: "402 Payment Required" }));
+      });
+      await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+      const port = (server.address() as AddressInfo).port;
+      try {
+        const client = createLLMClient({ baseUrl: `http://127.0.0.1:${port}/pollinations.ai/v1`, apiKey, model: "m" });
+        await client.chat.completions.create({ model: "m", messages: [{ role: "user", content: "hi" }] }).catch(() => {});
+        return calls;
+      } finally {
+        server.close();
+      }
+    };
+    expect(await hits("")).toBeGreaterThan(1); // 匿名池：抽干是暂时的，重试
+    expect(await hits("real-key")).toBe(1); // 有 Key：额度明天才回，重试无意义
   });
 });
 
