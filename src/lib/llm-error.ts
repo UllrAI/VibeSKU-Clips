@@ -266,7 +266,7 @@ export async function withLLMErrors<T>(fn: () => Promise<T>, target: LLMClientCo
     // 404, so the happy path and every other failure keep their timing.
     if (wrapped.status === 404 && target.baseUrl) {
       const hint = modelListHint(await listModels(target.baseUrl, target.apiKey || ""), target.model, target.baseUrl);
-      if (hint) return Promise.reject(new LLMRequestError(`${wrapped.zh}｜${hint.zh}`, `${wrapped.en} | ${hint.en}`, 404, { cause: err }));
+      if (hint) throw new LLMRequestError(`${wrapped.zh}｜${hint.zh}`, `${wrapped.en} | ${hint.en}`, 404, { cause: err });
     }
     throw wrapped;
   }
