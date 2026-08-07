@@ -497,14 +497,16 @@ async function cmdCarousel(flags) {
   return { ok: true, projectId, count: res.count, cards: res.cards };
 }
 
-// Trending topics: fetch daily trending searches for a region and suggest what topic to produce next (then use create --topic)
+// Trending topics: suggest what topic to produce next (then use create --topic).
+// Default = domestic boards (Douyin hot search / Toutiao fallback, matching the web landing page);
+// pass --geo for Google Trends daily searches of a region instead.
 async function cmdTrends(flags) {
-  const geo = typeof flags.geo === "string" ? flags.geo : "US";
-  const res = await api(`/api/trends?geo=${encodeURIComponent(geo)}`);
+  const geo = typeof flags.geo === "string" ? flags.geo : "";
+  const res = await api(geo ? `/api/trends?geo=${encodeURIComponent(geo)}` : "/api/trends?source=cn");
   const topics = res.topics || [];
-  step(`${res.geo} 热搜选题 ${topics.length} 条：`);
+  step(`${res.geo || res.source || "cn"} 热搜选题 ${topics.length} 条：`);
   topics.forEach((t, i) => process.stderr.write(`  ${i + 1}. ${t.title}${t.traffic ? ` (${t.traffic})` : ""}\n`));
-  return { ok: true, geo: res.geo, count: topics.length, topics };
+  return { ok: true, source: res.source, geo: res.geo, count: topics.length, topics };
 }
 
 async function cmdGet(flags) {
@@ -554,7 +556,7 @@ const HELP = `ClipForge CLI · 命令行一句话出片
   clipforge import --project <id> (--file <路径> | --text "你的脚本") [--title "..."]   自带脚本出片
   clipforge dub --project <id> --lang en                                              配音译制(换语种,出海)
   clipforge compose --project <id> [同款成片选项] [--no-fill]
-  clipforge trends [--geo US]   拉热搜选题(不知道做什么时)
+  clipforge trends [--geo US]   拉热搜选题(默认抖音/头条国内榜;--geo 走 Google Trends)
   clipforge list                列出项目
   clipforge voices              列出免费 Edge TTS 音色
   clipforge cover --project <id> --title "手冲咖啡 三步搞定" [--position center|lower|upper]   生成封面图

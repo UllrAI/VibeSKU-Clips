@@ -16,10 +16,21 @@ import { useT, useLocale, useSetLocale } from "@/lib/i18n";
 import { LOCALES, LOCALE_LABELS } from "@/lib/i18n/config";
 import { ATLAS_KEYS_URL } from "@/lib/atlas-onekey";
 import { formatRelativeTime } from "@/lib/relative-time";
-import type { TrendTopic } from "@/lib/trends";
+import { classifyTrendTitle, pickDailyTrend, TREND_CATEGORY_IDS } from "@/lib/trends";
+import type { TrendTopic, TrendCategoryId } from "@/lib/trends";
 
 /** How many trend chips are shown at once; "shuffle" pages through the full board. */
 const TRENDS_PAGE_SIZE = 8;
+
+/** localStorage keys for the daily-persona picker (device-local, no account concept) */
+const DAILY_PERSONA_KEY = "clipforge_daily_persona";
+const DAILY_LAST_KEY = "clipforge_daily_last";
+
+/** Local calendar date (YYYY-MM-DD) — "today" for the daily-pick marker follows the user's clock. */
+function localDateStamp(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
 
 type Mode = "upload" | "topic" | "link";
 interface PickedImage {
@@ -66,6 +77,11 @@ export default function StartPage() {
   const [trends, setTrends] = useState<TrendTopic[]>([]);
   const [trendsSource, setTrendsSource] = useState<string>("");
   const [trendsPage, setTrendsPage] = useState(0);
+  const [trendsCat, setTrendsCat] = useState<"all" | TrendCategoryId>("all");
+  // daily-persona picker state (persisted per device)
+  const [dailyPersona, setDailyPersona] = useState("");
+  const [dailyLast, setDailyLast] = useState<{ date: string; topic: string } | null>(null);
+  const [dailyMsg, setDailyMsg] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
   const keyformRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -112,9 +128,31 @@ export default function StartPage() {
     return () => { cancelled = true; };
   }, [locale]);
 
-  // current slice of the board; "shuffle" cycles through pages
-  const trendsPageCount = Math.max(1, Math.ceil(trends.length / TRENDS_PAGE_SIZE));
-  const trendsShown = trends.slice(
+  // load the persisted daily persona + today's marker once on mount
+  // (deferred to a microtask: hydrating from localStorage after paint keeps SSR markup stable
+  // and satisfies the no-sync-setState-in-effect rule)
+  useEffect(() => {
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        setDailyPersona(localStorage.getItem(DAILY_PERSONA_KEY) || "");
+        const last = JSON.parse(localStorage.getItem(DAILY_LAST_KEY) || "null");
+        if (last && typeof last.date === "string" && typeof last.topic === "string") setDailyLast(last);
+      } catch {
+        /* corrupted storage → start fresh */
+      }
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // categories present on the current board (chips render only for non-empty ones; hidden entirely when nothing classifies)
+  const trendsCats = TREND_CATEGORY_IDS.filter((id) => trends.some((tp) => classifyTrendTitle(tp.title) === id));
+  const catFiltered = trendsCat === "all" ? trends : trends.filter((tp) => classifyTrendTitle(tp.title) === trendsCat);
+
+  // current slice of the filtered board; "shuffle" cycles through pages
+  const trendsPageCount = Math.max(1, Math.ceil(catFiltered.length / TRENDS_PAGE_SIZE));
+  const trendsShown = catFiltered.slice(
     (trendsPage % trendsPageCount) * TRENDS_PAGE_SIZE,
     (trendsPage % trendsPageCount) * TRENDS_PAGE_SIZE + TRENDS_PAGE_SIZE
   );
@@ -126,6 +164,30 @@ export default function StartPage() {
     setMode("topic");
     setTopic(tp.title);
     requestAnimationFrame(() => cardRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }));
+  };
+
+  // daily pick: score the full board against the persona keywords, prefill the winner, remember today's pick
+  const runDailyPick = () => {
+    const pick = pickDailyTrend(trends, dailyPersona);
+    if (!pick) return;
+    pickTrend(pick.topic);
+    setDailyMsg(t(pick.matched ? "dailyPickedMatched" : "dailyPickedFallback").replace("{topic}", pick.topic.title));
+    const last = { date: localDateStamp(), topic: pick.topic.title };
+    setDailyLast(last);
+    try {
+      localStorage.setItem(DAILY_LAST_KEY, JSON.stringify(last));
+    } catch {
+      /* storage full/blocked — the marker is a convenience, not a requirement */
+    }
+  };
+
+  const onPersonaChange = (v: string) => {
+    setDailyPersona(v);
+    try {
+      localStorage.setItem(DAILY_PERSONA_KEY, v);
+    } catch {
+      /* ignore */
+    }
   };
 
   // navigate to the appropriate step based on project status
@@ -417,6 +479,21 @@ export default function StartPage() {
         .cf-trend .tw{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .cf-trend .tv{font-size:11px;color:var(--muted);flex:none}
         .cf-trends-src{margin-top:9px;font-size:11.5px;color:var(--muted)}
+        .cf-trends-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
+        .cf-cat{padding:4px 10px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;transition:.18s}
+        .cf-cat:hover{color:var(--dim)}
+        .cf-cat.on{border-color:rgba(94,234,212,.4);background:rgba(94,234,212,.08);color:var(--text)}
+        .cf-trend-wrap{display:inline-flex;align-items:stretch;max-width:100%}
+        .cf-trend-wrap .cf-trend{border-top-right-radius:0;border-bottom-right-radius:0;border-right:0}
+        .cf-trend-clone{display:inline-flex;align-items:center;padding:0 9px;border:1px solid var(--bd);border-left:1px dashed var(--bd);border-radius:0 999px 999px 0;color:var(--muted);font-size:11px;text-decoration:none;transition:.18s;flex:none}
+        .cf-trend-clone:hover{color:var(--teal);border-color:rgba(94,234,212,.4)}
+        .cf-daily{display:flex;align-items:center;gap:8px;margin-top:14px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--surface)}
+        .cf-daily-lbl{font-size:12.5px;font-weight:600;color:var(--dim);flex:none}
+        .cf-daily-input{flex:1;min-width:0;background:rgba(0,0,0,.25);border:1px solid var(--bd);border-radius:9px;color:var(--text);font:inherit;font-size:13px;padding:7px 11px;outline:none;transition:.18s}
+        .cf-daily-input:focus{border-color:rgba(94,234,212,.45)}
+        .cf-daily-btn{padding:7px 14px;border:0;border-radius:9px;background:var(--surface2);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;box-shadow:inset 0 0 0 1px var(--bd2);transition:.18s;flex:none}
+        .cf-daily-btn:hover{box-shadow:inset 0 0 0 1px rgba(94,234,212,.45)}
+        .cf-daily-msg{margin-top:8px;font-size:12px;color:var(--dim)}
         .cf-examples{margin-top:24px;font-size:13px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
         .cf-chip{padding:6px 12px;border:1px solid var(--bd);border-radius:999px;background:var(--surface);color:var(--dim);font:inherit;cursor:pointer;transition:.18s}
         .cf-chip:hover{border-color:rgba(94,234,212,.4);color:var(--text)}
@@ -573,7 +650,7 @@ export default function StartPage() {
             {error && <div className="cf-err">{error}</div>}
           </div>
 
-          {trendsShown.length > 0 && (
+          {trends.length > 0 && (
             <div className="cf-trends">
               <div className="cf-trends-head">
                 <span className="cf-trends-lbl">{t("trendsLabel")}</span>
@@ -582,22 +659,62 @@ export default function StartPage() {
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
                 </button>
               </div>
+              {trendsCats.length > 1 && (
+                <div className="cf-trends-cats">
+                  {(["all", ...trendsCats] as const).map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`cf-cat${trendsCat === id ? " on" : ""}`}
+                      onClick={() => { setTrendsCat(id); setTrendsPage(0); }}
+                    >
+                      {id === "all" ? t("trendCatAll") : t(`trendCat_${id}`)}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="cf-trends-row">
                 {trendsShown.map((tp) => (
-                  <button
-                    key={`${tp.source || "t"}-${tp.rank ?? tp.title}`}
-                    type="button"
-                    className="cf-chip cf-trend"
-                    title={tp.context || tp.title}
-                    onClick={() => pickTrend(tp)}
-                  >
-                    {typeof tp.rank === "number" && tp.rank <= 3 && <b className="rk">{tp.rank}</b>}
-                    <span className="tw">{tp.title}</span>
-                    {tp.traffic && <span className="tv">{tp.traffic}</span>}
-                  </button>
+                  <span key={`${tp.source || "t"}-${tp.rank ?? tp.title}`} className="cf-trend-wrap">
+                    <button
+                      type="button"
+                      className="cf-chip cf-trend"
+                      title={tp.context || tp.title}
+                      onClick={() => pickTrend(tp)}
+                    >
+                      {typeof tp.rank === "number" && tp.rank <= 3 && <b className="rk">{tp.rank}</b>}
+                      <span className="tw">{tp.title}</span>
+                      {tp.traffic && <span className="tv">{tp.traffic}</span>}
+                    </button>
+                    <Link
+                      href={`/project/clone?trend=${encodeURIComponent(tp.title)}`}
+                      className="cf-trend-clone"
+                      title={t("trendCloneAria")}
+                      aria-label={t("trendCloneAria")}
+                    >
+                      {t("trendCloneLabel")}
+                    </Link>
+                  </span>
                 ))}
               </div>
               <div className="cf-trends-src">{t("trendsSourceNote", { source: trendsSourceLabel })}</div>
+
+              <div className="cf-daily">
+                <span className="cf-daily-lbl">{t("dailyLabel")}</span>
+                <input
+                  className="cf-daily-input"
+                  value={dailyPersona}
+                  onChange={(e) => onPersonaChange(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") runDailyPick(); }}
+                  placeholder={t("dailyPersonaPlaceholder")}
+                />
+                <button type="button" className="cf-daily-btn" onClick={runDailyPick}>{t("dailyPick")}</button>
+              </div>
+              {(dailyMsg || (dailyLast && dailyLast.date === localDateStamp())) && (
+                <div className="cf-daily-msg">
+                  {dailyMsg || t("dailyDoneHint").replace("{topic}", dailyLast?.topic ?? "")}
+                </div>
+              )}
             </div>
           )}
 

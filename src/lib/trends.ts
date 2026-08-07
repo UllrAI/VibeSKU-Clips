@@ -190,6 +190,101 @@ export async function fetchDomesticTrends(): Promise<{ source: TrendSource; topi
 }
 
 // ---------------------------------------------------------------------------
+// Trend categorization — keyword classifier over titles (works for any source)
+// ---------------------------------------------------------------------------
+// Douyin's sub-board params are ignored by the keyless endpoint and its
+// sentence_tag codes are undocumented numeric buckets — guessing a mapping
+// would mislabel topics. A keyword classifier over titles is honest, testable,
+// and works across Douyin / Toutiao / Google alike. Unmatched titles stay
+// visible under "all" only.
+
+export type TrendCategoryId =
+  | "game"
+  | "sports"
+  | "car"
+  | "tech"
+  | "food"
+  | "fashion"
+  | "pets"
+  | "ent"
+  | "life"
+  | "society";
+
+/** Category ids in display order (chips render in this order after "all"). */
+export const TREND_CATEGORY_IDS: TrendCategoryId[] = [
+  "ent",
+  "food",
+  "tech",
+  "game",
+  "sports",
+  "fashion",
+  "car",
+  "pets",
+  "life",
+  "society",
+];
+
+// Match order ≠ display order: specific verticals first so e.g. "CODM联动崩坏3"
+// hits game before ent, and generic society verbs ("回应") only catch leftovers.
+const CATEGORY_RULES: Array<[TrendCategoryId, RegExp]> = [
+  ["game", /游戏|手游|端游|电竞|KPL|LPL|S赛|赛季|皮肤|联动|公测|内测|开服|停服|原神|王者荣耀|和平精英|崩坏|CODM|steam|主机|switch|PS5/i],
+  ["sports", /比赛|夺冠|冠军|决赛|半决赛|球队|球员|足球|篮球|男篮|女篮|男足|女足|排球|女排|乒乓|羽毛球|网球|游泳|田径|马拉松|奥运|世界杯|亚运|斯诺克|CBA|NBA|健身|瑜伽|骑行/i],
+  ["car", /汽车|新车|电车|新能源车|电动车|续航|充电桩|召回|试驾|车展|特斯拉|比亚迪|蔚来|理想汽车|小鹏|问界|驾照|违章|油价/],
+  ["tech", /手机|芯片|人工智能|大模型|AI|发布会|iPhone|苹果|华为|小米|三星|荣耀|OPPO|vivo|机器人|无人机|卫星|火箭|航天|算力|操作系统|App|互联网|程序员|数码/i],
+  ["food", /奶茶|咖啡|美食|好吃|吃播|探店|餐厅|火锅|烧烤|小吃|零食|月饼|粽子|螺蛳粉|预制菜|外卖|食品|饮料|白酒|啤酒|茶饮/],
+  ["fashion", /穿搭|时尚|时装|秀场|美妆|口红|粉底|护肤|化妆|发型|美甲|香水|包包|球鞋|潮牌/],
+  ["pets", /小猫|小狗|猫咪|狗狗|宠物|大熊猫|熊猫|动物园|萌宠/],
+  ["ent", /电影|影片|电视剧|综艺|演唱会|音乐节|巡演|官宣|恋情|塌房|番位|主演|票房|首映|开播|收官|大结局|预告|定档|杀青|颁奖|红毯|出道|复出|专辑|新歌|MV|演员|导演|明星|爱豆|粉丝|应援|新闻联播/],
+  ["life", /立秋|立春|立夏|立冬|节气|天气|台风|暴雨|降雨|降温|高温|寒潮|旅游|景区|门票|放假|假期|调休|春运|高铁|机票|地铁/],
+  ["society", /警方|通报|调查|事故|遇难|坠|案|判|法院|检方|涉嫌|被拘|被抓|回应|致歉|道歉|辟谣|谣言|作弊|违规|处罚|罚款|地震|洪水|山洪|泥石流|爆炸|火灾|失联|救援|寻人|欠薪|维权|进出口|贸易/],
+];
+
+/** Classify a trend title into a creator-facing category; unmatched → null (shown only under "all"). Pure function. */
+export function classifyTrendTitle(title: string): TrendCategoryId | null {
+  for (const [id, re] of CATEGORY_RULES) {
+    if (re.test(title)) return id;
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Daily-persona topic picking — "one a day" without a scheduler
+// ---------------------------------------------------------------------------
+
+export interface DailyPick {
+  topic: TrendTopic;
+  /** true when the pick actually matched the persona keywords; false = fell back to the top-ranked trend */
+  matched: boolean;
+}
+
+/**
+ * Pick today's topic for a persona: score every trend by how many persona
+ * keywords its title contains (whitespace/comma separated), tie-break by board
+ * rank. No keyword hits at all → fall back to the top-ranked trend with
+ * matched=false so the UI can say so honestly. Pure function.
+ */
+export function pickDailyTrend(topics: TrendTopic[], personaKeywords: string): DailyPick | null {
+  if (topics.length === 0) return null;
+  const keywords = personaKeywords
+    .split(/[\s,，、;；]+/)
+    .map((k) => k.trim().toLowerCase())
+    .filter(Boolean);
+  let best: TrendTopic | null = null;
+  let bestScore = 0;
+  for (const tp of topics) {
+    const title = tp.title.toLowerCase();
+    const score = keywords.reduce((acc, k) => acc + (title.includes(k) ? 1 : 0), 0);
+    if (score > bestScore || (score === bestScore && score > 0 && best && (tp.rank ?? 999) < (best.rank ?? 999))) {
+      best = tp;
+      bestScore = score;
+    }
+  }
+  if (best && bestScore > 0) return { topic: best, matched: true };
+  const top = [...topics].sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999))[0];
+  return { topic: top, matched: false };
+}
+
+// ---------------------------------------------------------------------------
 // Shared TTL cache — free endpoints must not be hit once per page view
 // ---------------------------------------------------------------------------
 

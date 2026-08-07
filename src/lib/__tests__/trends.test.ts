@@ -7,7 +7,11 @@ import {
   formatHotValue,
   cachedTrends,
   clearTrendsCache,
+  classifyTrendTitle,
+  pickDailyTrend,
+  TREND_CATEGORY_IDS,
 } from "@/lib/trends";
+import type { TrendTopic } from "@/lib/trends";
 
 const SAMPLE = `<?xml version="1.0"?><rss><channel>
 <title>Daily Search Trends</title>
@@ -98,6 +102,45 @@ describe("parseToutiaoHotBoard", () => {
   it("畸形输入 → 空数组", () => {
     expect(parseToutiaoHotBoard(undefined)).toEqual([]);
     expect(parseToutiaoHotBoard({ data: {} })).toEqual([]);
+  });
+});
+
+describe("classifyTrendTitle", () => {
+  it("真实榜单样本分入正确类目；规则顺序保证垂类优先", () => {
+    expect(classifyTrendTitle("CODM联动崩坏3")).toBe("game"); // 联动 also ent-ish → game wins by order
+    expect(classifyTrendTitle("秋天的第一杯奶茶我先喝了")).toBe("food");
+    expect(classifyTrendTitle("台风白海豚实时路径")).toBe("life");
+    expect(classifyTrendTitle("四川宜宾高县发生4.9级地震")).toBe("society");
+    expect(classifyTrendTitle("河南三支一扶笔试存在组织作弊")).toBe("society");
+    expect(classifyTrendTitle("新闻联播")).toBe("ent");
+    expect(classifyTrendTitle("iPhone 17 发布会定档")).toBe("tech");
+    expect(classifyTrendTitle("女排世锦赛决赛")).toBe("sports");
+    expect(classifyTrendTitle("大熊猫花花营业")).toBe("pets");
+    expect(classifyTrendTitle("明星回应恋情")).toBe("ent"); // 回应 is also society → ent wins by order
+  });
+  it("未命中 → null（只留在「全部」）；类目 id 集合稳定", () => {
+    expect(classifyTrendTitle("海上大风车给油田直供绿电")).toBe(null);
+    expect(TREND_CATEGORY_IDS.length).toBe(10);
+  });
+});
+
+describe("pickDailyTrend", () => {
+  const board: TrendTopic[] = [
+    { title: "台风白海豚实时路径", rank: 1 },
+    { title: "新款口红试色", rank: 2 },
+    { title: "护肤品成分党实测口红", rank: 3 },
+    { title: "CODM联动崩坏3", rank: 4 },
+  ];
+  it("按人设关键词计分选题；多词命中优先，同分取榜位高", () => {
+    expect(pickDailyTrend(board, "口红 护肤")).toEqual({ topic: board[2], matched: true }); // 2 hits beats 1 hit
+    expect(pickDailyTrend(board, "口红")).toEqual({ topic: board[1], matched: true }); // tie → higher rank
+  });
+  it("无命中 → 诚实回退榜一 matched=false；空榜 → null", () => {
+    expect(pickDailyTrend(board, "钓鱼")).toEqual({ topic: board[0], matched: false });
+    expect(pickDailyTrend([], "口红")).toBe(null);
+  });
+  it("分隔符宽容：逗号/顿号/分号/空格混用", () => {
+    expect(pickDailyTrend(board, "钓鱼，口红、露营")?.topic).toBe(board[1]);
   });
 });
 

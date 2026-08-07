@@ -36,7 +36,7 @@
 | 🚦 **不被限流** | AIGC 标识（国标）+ 广告法违禁词扫描 + 发布门禁，合规默认开，国内平台放心发 |
 | 📦 **批量 + 爆款复刻** | 10 个商品一键全成片，竞品链接换品重拍，A/B 测转化 |
 | 🤖 **Agent 一句话出片** | MCP / CLI / Skill——在 Claude / Cursor 里说「用这个链接出条 9:16」即可 |
-| 🔥 **今天发什么** | 落地页热点雷达：抖音热搜实时热榜（头条热榜兜底，英文界面走 Google Trends），点一个热点直接预填「一句话成片」——不知道发什么？打开就有答案，免 Key 免登录 |
+| 🔥 **今天发什么** | 落地页热点雷达：抖音热搜实时热榜（头条兜底，英文界面走 Google Trends），**按类目筛**（娱乐/美食/数码/游戏…关键词分类器），点热点直接预填「一句话成片」，每条热点还带「同款」直达爆款复刻；**📅 日更按人设选题**——填人设关键词一键从今日热榜选题，配 cron 就是全自动日更机（README 有配方）。免 Key 免登录 |
 | 🧩 **无限画布节点** | [Infinite Canvas 插件](integrations/infinite-canvas/)：画布上连商品图 →「出片」→ 成片以视频节点落回画布可继续二创；主题/带货双模式，本地实例驱动（v0.8.79 起自带仅限 localhost 的跨端口 CORS） |
 | 💰 **付费安全** | 云端任务落库可恢复、绝不自动重试——付的每一分钱不白花 |
 
@@ -168,7 +168,7 @@ ClipForge **开源、本地运行、无水印、免费路径零成本、数据�
 **能在命令行里直接出片吗？**
 可以。内置 **命令行 CLI**：先启动实例，再设好 `CLIPFORGE_LLM_*` 环境变量，然后：
 ```bash
-node bin/clipforge.mjs trends --geo US                                   # 不知道做什么？先拉热搜选题
+node bin/clipforge.mjs trends                                            # 不知道做什么？先拉热搜选题(默认抖音/头条国内榜,--geo US 走 Google Trends)
 node bin/clipforge.mjs create --topic "在家手冲咖啡" --quality hd --bgm   # 一句话出片，回填 videoUrl
 node bin/clipforge.mjs import --project <id> --file my-script.txt        # 用自己写好的稿子出片
 node bin/clipforge.mjs dub --project <id> --lang en                      # 换语种译制(出海)，再 compose
@@ -183,6 +183,14 @@ node bin/clipforge.mjs carousel --project <id>                           # 生�
 node bin/clipforge.mjs list            # 列出项目
 node bin/clipforge.mjs --help          # 全部命令与参数
 ```
+
+**能全自动日更吗？**
+可以，`trends` + `create` 接上 cron 就是一台日更机（首页的「日更 · 按人设选题」是同一逻辑的网页版）。示例：每天 9 点从国内热榜拿榜一出一条待发成片：
+```bash
+crontab -e   # 加入下面一行（把路径和环境变量换成你的）
+# 0 9 * * * cd /path/to/clipforge && TOPIC=$(node bin/clipforge.mjs trends --json | python3 -c "import json,sys;print(json.load(sys.stdin)['topics'][0]['title'])") && node bin/clipforge.mjs create --topic "$TOPIC" --bgm >> daily.log 2>&1
+```
+出的是**待发草稿**（本地成片文件），发布动作留给你自己——自动发布各平台有账号风控与协议风险，我们不做。
 
 ---
 

@@ -5,6 +5,11 @@ export const clone: NamespaceMessages = {
   zh: {
     heroTitle: "爆款复刻",
     heroSubtitle: "贴爆款视频链接做参考，载入高转化带货结构，用你的商品重新生成脚本",
+    // 从首页热点雷达跳转过来的同款横幅
+    trendBannerTitle: "做热点「{trend}」的同款",
+    trendBannerDesc: "先去抖音搜这个热点，挑一条你想复刻的爆款——把链接粘到下面，或下载后上传参考视频。",
+    trendBannerSearch: "去抖音搜「{trend}」 ↗",
+    trendBannerDismiss: "知道了",
     step1Title: "输入爆款视频",
     videoUrlLabel: "视频链接",
     videoUrlPlaceholder: "粘贴抖音 / 快手 / 小红书视频链接",
@@ -72,6 +77,11 @@ export const clone: NamespaceMessages = {
   en: {
     heroTitle: "Clone a hit",
     heroSubtitle: "Paste a trending video as reference, load a high-converting commerce structure, and regenerate the script with your product",
+    // 从首页热点雷达跳转过来的同款横幅
+    trendBannerTitle: "Remixing the trend “{trend}”",
+    trendBannerDesc: "Search this trend on Douyin, pick a viral video you want to remix — paste its link below, or download it and upload as the reference.",
+    trendBannerSearch: "Search “{trend}” on Douyin ↗",
+    trendBannerDismiss: "Got it",
     step1Title: "Enter the trending video",
     videoUrlLabel: "Video link",
     videoUrlPlaceholder: "Paste a TikTok / Kuaishou / Xiaohongshu video link",
