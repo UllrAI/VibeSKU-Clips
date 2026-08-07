@@ -197,8 +197,9 @@ export const adTemplateRecipes = sqliteTable("ad_template_recipes", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   // Full AdTemplate recipe (already sanitized/validated at write time)
   recipe: text("recipe", { mode: "json" }).notNull(),
-  // Where it came from: ai=saved from AI custom generation, import=shared JSON import
-  source: text("source", { enum: ["ai", "import"] }).notNull().default("ai"),
+  // Where it came from: ai=saved from AI custom generation, import=shared JSON import, edit=recipe-editor fork
+  // (TS-level enum only — SQLite column is plain TEXT, so extending needs no migration)
+  source: text("source", { enum: ["ai", "import", "edit"] }).notNull().default("ai"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 

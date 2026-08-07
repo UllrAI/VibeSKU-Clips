@@ -5,6 +5,7 @@ import { adTemplateRecipes } from "@/lib/db/schema";
 import { apiError } from "@/lib/api-error";
 import {
   parseAdTemplateShare,
+  parseAdTemplateShareAny,
   AD_TEMPLATE_SHARE_KIND,
   AD_TEMPLATE_SHARE_VERSION,
   type AdTemplate,
@@ -48,8 +49,9 @@ export async function GET() {
 }
 
 /**
- * POST /api/ad-template/mine —— save one template.
- * body: { share: string } (imported share-file text) OR { template: object } (AI custom result).
+ * POST /api/ad-template/mine —— save one template OR a whole pack.
+ * body: { share: string } (imported share-file text, single or pack envelope)
+ *       OR { template: object, source?: "edit" } (AI custom result / editor fork).
  */
 export async function POST(req: NextRequest) {
   let body: Record<string, unknown> = {};
@@ -70,7 +72,49 @@ export async function POST(req: NextRequest) {
         template: body.template,
       });
 
-  const result = parseAdTemplateShare(shareText);
+  const result = parseAdTemplateShareAny(shareText);
+  if (!result.templates) {
+    const err = SHARE_ERRORS[result.error ?? "invalid_template"];
+    return apiError(req, err.zh, err.en, 422);
+  }
+
+  const source = body.source === "edit" ? "edit" : isImport ? "import" : "ai";
+  const db = getDb();
+  const rows = await db
+    .insert(adTemplateRecipes)
+    .values(result.templates.map((t) => ({ recipe: t, source: source as "ai" | "import" | "edit" })))
+    .returning();
+  const templates = rows.map((row) => ({ ...(row.recipe as AdTemplate), id: row.id, source: row.source }));
+
+  return NextResponse.json({
+    // `template` (first row) kept alongside `templates` so single-save callers stay simple
+    template: templates[0],
+    templates,
+    ...(result.warnings?.length && { warnings: result.warnings }),
+  });
+}
+
+/**
+ * PUT /api/ad-template/mine —— update one saved template in place (recipe editor).
+ * body: { id: string, template: object }. Runs the same sanitize + compliance rules.
+ */
+export async function PUT(req: NextRequest) {
+  let body: Record<string, unknown> = {};
+  try {
+    body = await req.json();
+  } catch {
+    return apiError(req, "请求体不是有效 JSON", "Request body is not valid JSON");
+  }
+  const id = typeof body.id === "string" ? body.id : "";
+  if (!id || !SAFE_ID.test(id)) return apiError(req, "无效的模板ID", "Invalid template ID");
+
+  const result = parseAdTemplateShare(
+    JSON.stringify({
+      kind: AD_TEMPLATE_SHARE_KIND,
+      version: AD_TEMPLATE_SHARE_VERSION,
+      template: body.template,
+    })
+  );
   if (!result.template) {
     const err = SHARE_ERRORS[result.error ?? "invalid_template"];
     return apiError(req, err.zh, err.en, 422);
@@ -78,12 +122,11 @@ export async function POST(req: NextRequest) {
 
   const db = getDb();
   const [row] = await db
-    .insert(adTemplateRecipes)
-    .values({
-      recipe: result.template,
-      source: isImport ? "import" : "ai",
-    })
+    .update(adTemplateRecipes)
+    .set({ recipe: result.template })
+    .where(eq(adTemplateRecipes.id, id))
     .returning();
+  if (!row) return apiError(req, "模板不存在", "Template not found", 404);
 
   return NextResponse.json({
     template: { ...(row.recipe as AdTemplate), id: row.id, source: row.source },

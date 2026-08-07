@@ -5803,8 +5803,86 @@ export function parseAdTemplateShare(raw: string): AdTemplateShareResult {
   if (envelope.version !== AD_TEMPLATE_SHARE_VERSION) return { error: "unsupported_version" };
   const template = sanitizeCustomAdTemplate(envelope.template);
   if (!template) return { error: "invalid_template" };
-  const warnings = checkAdCompliance(
-    [template.name.zh, template.tagline.zh, template.scriptHint.zh].join(" \n ")
-  ).map((v) => v.term);
+  const warnings = complianceTerms(template);
   return { template, ...(warnings.length > 0 && { warnings }) };
 }
+
+/** Ad-law lexicon hits in one template's recipe copy (shared by single + pack parsing). */
+function complianceTerms(template: AdTemplate): string[] {
+  return checkAdCompliance(
+    [template.name.zh, template.tagline.zh, template.scriptHint.zh].join(" \n ")
+  ).map((v) => v.term);
+}
+
+/* ==================== Multi-template pack ==================== */
+
+export const AD_TEMPLATE_PACK_KIND = "clipforge-ad-template-pack";
+/** Hard ceiling on pack size — entries past it are dropped (protects the DB from a hostile multi-megabyte file). */
+const AD_TEMPLATE_PACK_MAX = 100;
+
+export interface AdTemplatePackResult {
+  templates?: AdTemplate[];
+  error?: AdTemplateShareError;
+  /** Ad-law lexicon hits across ALL entries, deduplicated — shown to the user, never blocking */
+  warnings?: string[];
+}
+
+/** Serialize several templates as one shareable pack document (ids stripped, like the single format). */
+export function exportAdTemplatePack(templates: AdTemplate[]): string {
+  const recipes = templates.map((t) => {
+    const recipe: Partial<AdTemplate> = { ...t };
+    delete recipe.id;
+    return recipe;
+  });
+  return JSON.stringify(
+    { kind: AD_TEMPLATE_PACK_KIND, version: AD_TEMPLATE_SHARE_VERSION, templates: recipes },
+    null,
+    2
+  );
+}
+
+/**
+ * Parse a share document of EITHER kind — one template or a pack — behind the
+ * same paste box. Pack entries are clamped individually; entries that are not
+ * objects at all are dropped, and the parse fails only when nothing usable
+ * remains. Warnings are the union across entries.
+ */
+export function parseAdTemplateShareAny(raw: string): AdTemplatePackResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { error: "invalid_json" };
+  }
+  const envelope = parsed as
+    | { kind?: unknown; version?: unknown; template?: unknown; templates?: unknown }
+    | null;
+  if (!envelope || (envelope.kind !== AD_TEMPLATE_SHARE_KIND && envelope.kind !== AD_TEMPLATE_PACK_KIND)) {
+    return { error: "wrong_kind" };
+  }
+  if (envelope.version !== AD_TEMPLATE_SHARE_VERSION) return { error: "unsupported_version" };
+  const entries =
+    envelope.kind === AD_TEMPLATE_PACK_KIND
+      ? Array.isArray(envelope.templates)
+        ? envelope.templates
+        : []
+      : [envelope.template];
+  const templates = entries
+    .slice(0, AD_TEMPLATE_PACK_MAX)
+    .map((entry) => sanitizeCustomAdTemplate(entry))
+    .filter((t): t is AdTemplate => t !== null);
+  if (templates.length === 0) return { error: "invalid_template" };
+  const warnings = [...new Set(templates.flatMap(complianceTerms))];
+  return { templates, ...(warnings.length > 0 && { warnings }) };
+}
+
+/**
+ * Recipe-editor select vocabularies — spread from the very sets
+ * sanitizeCustomAdTemplate clamps against, so the editor can never offer a
+ * value the validator would reject.
+ */
+export const AD_TEMPLATE_EDIT_VOCAB = {
+  bgm: [...BGM_VALUES] as NonNullable<StylePackCompose["bgm"]>[],
+  quality: [...QUALITY_VALUES] as NonNullable<StylePackCompose["quality"]>[],
+  shotTypes: [...SHOT_TYPES] as Shot["type"][],
+};

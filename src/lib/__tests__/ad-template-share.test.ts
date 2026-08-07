@@ -2,8 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   AD_TEMPLATE_SHARE_KIND,
   AD_TEMPLATE_SHARE_VERSION,
+  AD_TEMPLATE_PACK_KIND,
   exportAdTemplateShare,
   parseAdTemplateShare,
+  exportAdTemplatePack,
+  parseAdTemplateShareAny,
   encodeStoredAdTemplate,
   decodeStoredAdTemplate,
   getAdTemplate,
@@ -91,6 +94,74 @@ describe("导入校验与合规筛查", () => {
     expect(result.error).toBeUndefined();
     expect(result.template).toBeTruthy();
     expect(result.warnings).toEqual(expect.arrayContaining(["疗效", "三天见效", "最后一天"]));
+  });
+});
+
+describe("多款打包分享（pack 信封）", () => {
+  it("打包导出信封含 pack kind、逐款去 id；导入后每款配方还原", () => {
+    const picks = AD_TEMPLATES.slice(0, 3);
+    const text = exportAdTemplatePack(picks);
+    const doc = JSON.parse(text);
+    expect(doc.kind).toBe(AD_TEMPLATE_PACK_KIND);
+    expect(doc.version).toBe(AD_TEMPLATE_SHARE_VERSION);
+    expect(doc.templates).toHaveLength(3);
+    expect(doc.templates.every((t: { id?: string }) => t.id === undefined)).toBe(true);
+
+    const result = parseAdTemplateShareAny(text);
+    expect(result.error).toBeUndefined();
+    expect(result.templates).toHaveLength(3);
+    result.templates!.forEach((tpl, i) => {
+      expect(tpl.name).toEqual(picks[i].name);
+      expect(tpl.cameraPlan).toEqual(picks[i].cameraPlan);
+      expect(tpl.compose.captionPreset).toBe(picks[i].compose.captionPreset);
+    });
+  });
+
+  it("统一入口同时接受单款信封（返回 1 款）", () => {
+    const result = parseAdTemplateShareAny(exportAdTemplateShare(AD_TEMPLATES[0]));
+    expect(result.error).toBeUndefined();
+    expect(result.templates).toHaveLength(1);
+    expect(result.templates![0].styleType).toBe(AD_TEMPLATES[0].styleType);
+  });
+
+  it("pack 错误码：错误 kind / 版本过新 / 空列表或全员非对象 → invalid_template", () => {
+    expect(parseAdTemplateShareAny(JSON.stringify({ kind: "other", version: 1, templates: [] })).error).toBe("wrong_kind");
+    expect(
+      parseAdTemplateShareAny(JSON.stringify({ kind: AD_TEMPLATE_PACK_KIND, version: 999, templates: [{}] })).error
+    ).toBe("unsupported_version");
+    expect(
+      parseAdTemplateShareAny(JSON.stringify({ kind: AD_TEMPLATE_PACK_KIND, version: 1, templates: [] })).error
+    ).toBe("invalid_template");
+    expect(
+      parseAdTemplateShareAny(JSON.stringify({ kind: AD_TEMPLATE_PACK_KIND, version: 1, templates: ["a", 42, null] })).error
+    ).toBe("invalid_template");
+  });
+
+  it("非对象条目被丢弃，剩余有效条目照常导入", () => {
+    const good = JSON.parse(exportAdTemplateShare(AD_TEMPLATES[1])).template;
+    const result = parseAdTemplateShareAny(
+      JSON.stringify({ kind: AD_TEMPLATE_PACK_KIND, version: 1, templates: ["junk", good, null] })
+    );
+    expect(result.error).toBeUndefined();
+    expect(result.templates).toHaveLength(1);
+    expect(result.templates![0].name).toEqual(AD_TEMPLATES[1].name);
+  });
+
+  it("警告跨条目去重（两款都命中「疗效」只报一次）", () => {
+    const risky = { name: { zh: "养生", en: "W" }, scriptHint: { zh: "宣称疗效的话术禁用" } };
+    const result = parseAdTemplateShareAny(
+      JSON.stringify({ kind: AD_TEMPLATE_PACK_KIND, version: 1, templates: [risky, risky] })
+    );
+    expect(result.templates).toHaveLength(2);
+    expect(result.warnings!.filter((w) => w === "疗效")).toHaveLength(1);
+  });
+
+  it("超过 100 款的 pack 被截断到上限（防御恶意大文件）", () => {
+    const one = JSON.parse(exportAdTemplateShare(AD_TEMPLATES[0])).template;
+    const result = parseAdTemplateShareAny(
+      JSON.stringify({ kind: AD_TEMPLATE_PACK_KIND, version: 1, templates: Array(120).fill(one) })
+    );
+    expect(result.templates).toHaveLength(100);
   });
 });
 

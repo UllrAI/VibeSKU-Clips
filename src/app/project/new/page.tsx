@@ -8,7 +8,10 @@ import { useTemplateStore } from "@/lib/stores/template-store";
 import { useProductLibraryStore, type ProductItem } from "@/lib/stores/product-library-store";
 import { getExampleProducts, type ExampleProduct } from "@/lib/examples";
 import { useSettingsStore } from "@/lib/stores/settings-store";
-import { AD_TEMPLATE_GROUPS, listAdTemplates, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey, recommendAdTemplates, encodeStoredAdTemplate, exportAdTemplateShare, CUSTOM_AD_TEMPLATE_ID, type AdTemplate, type AdTemplateGroupId, type AdTemplateCategory } from "@/lib/ad-templates";
+import { AD_TEMPLATE_GROUPS, listAdTemplates, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey, recommendAdTemplates, encodeStoredAdTemplate, exportAdTemplateShare, exportAdTemplatePack, AD_TEMPLATE_EDIT_VOCAB, CUSTOM_AD_TEMPLATE_ID, type AdTemplate, type AdTemplateGroupId, type AdTemplateCategory } from "@/lib/ad-templates";
+import { CAMERA_PRESETS } from "@/lib/camera-presets";
+import { LOOK_PRESETS } from "@/lib/look-presets";
+import { CAPTION_PRESET_IDS, type CaptionPresetId } from "@/lib/caption-presets";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,6 +46,46 @@ const durationOptions = [
   { value: "30", label: "30s" },
   { value: "60", label: "60s" },
 ];
+
+// video mode options — the step-3 cards use value+label+icon; the recipe editor reuses value+label
+const videoModeOptions = [
+  { value: "product_closeup", labelKey: "modeCloseupLabel", descKey: "modeCloseupDesc", icon: LuBox },
+  { value: "graphic_montage", labelKey: "modeMontageLabel", descKey: "modeMontageDesc", icon: LuLayoutGrid },
+  { value: "scene_demo", labelKey: "modeSceneLabel", descKey: "modeSceneDesc", icon: LuEye },
+  { value: "live_presenter", labelKey: "modePresenterLabel", descKey: "modePresenterDesc", icon: LuVideo },
+];
+
+// recipe-editor display labels for compose enums (bilingual data like the preset libraries, not i18n keys)
+const BGM_LABELS: Record<string, { zh: string; en: string }> = {
+  none: { zh: "无", en: "None" },
+  upbeat: { zh: "轻快", en: "Upbeat" },
+  chill: { zh: "舒缓", en: "Chill" },
+  energetic: { zh: "动感", en: "Energetic" },
+  emotional: { zh: "情感", en: "Emotional" },
+};
+const QUALITY_LABELS: Record<string, { zh: string; en: string }> = {
+  fast: { zh: "快速", en: "Fast" },
+  standard: { zh: "标准", en: "Standard" },
+  hd: { zh: "高清", en: "HD" },
+};
+const CAPTION_LABELS: Record<CaptionPresetId, { zh: string; en: string }> = {
+  standard: { zh: "标准", en: "Standard" },
+  bold: { zh: "大字冲击", en: "Bold" },
+  minimal: { zh: "极简", en: "Minimal" },
+  karaoke: { zh: "卡拉OK", en: "Karaoke" },
+};
+// shot-type → i18n key for the camera-plan selects
+const SHOT_LABEL_KEYS: Record<string, string> = {
+  hook: "adTplShotHook",
+  pain_point: "adTplShotPain",
+  product_reveal: "adTplShotReveal",
+  demo: "adTplShotDemo",
+  social_proof: "adTplShotProof",
+  cta: "adTplShotCta",
+};
+// shared input/select styling for the compact recipe editor
+const EDITOR_INPUT_CLS =
+  "w-full px-2 py-1.5 rounded-md text-xs border border-border/50 bg-background/60 outline-none focus:border-primary/60 placeholder:text-muted-foreground/60";
 
 // script style options (label/desc changed to i18n keys, converted via t() at render time)
 // Ordered by form (剧情形 → 物品形 → 口播形 → 场景形), smart-pick last — the full style system
@@ -115,6 +158,12 @@ export default function NewProjectPage() {
   const [importBusy, setImportBusy] = useState(false);
   const [mineNotice, setMineNotice] = useState("");
   const [aiTplSaved, setAiTplSaved] = useState(false);
+  // recipe editor: fork any template (builtin/AI/mine) into an editable draft;
+  // editorSourceId non-empty = a mine row being edited in place, empty = saving a new fork
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editorDraft, setEditorDraft] = useState<AdTemplate | null>(null);
+  const [editorSourceId, setEditorSourceId] = useState("");
+  const [editorBusy, setEditorBusy] = useState(false);
   useEffect(() => {
     // best-effort: an empty "mine" list (fresh install / fetch failure) just hides the section
     fetch("/api/ad-template/mine")
@@ -130,9 +179,11 @@ export default function NewProjectPage() {
     if (id === CUSTOM_AD_TEMPLATE_ID) return customAdTemplate;
     return myTemplates.find((m) => m.id === id) ?? getAdTemplate(id) ?? null;
   };
-  const pickAdTemplate = (id: string) => {
+  // `known` bypasses resolveAdTemplate for templates just added in the same event —
+  // the myTemplates closure is still stale there, so a lookup would miss the pre-fill
+  const pickAdTemplate = (id: string, known?: AdTemplate | null) => {
     setSelectedAdTemplateId(id);
-    const tpl = resolveAdTemplate(id);
+    const tpl = known ?? resolveAdTemplate(id);
     if (tpl) {
       // visible pre-fill: the user sees (and can still override) what the template chose
       setScriptStyle(tpl.styleType);
@@ -158,7 +209,7 @@ export default function NewProjectPage() {
       setMineNotice(e instanceof Error ? e.message : t("adTemplateImportFailed"));
     }
   };
-  /** Import a shared template JSON; the server is the authoritative validator */
+  /** Import a shared template JSON (single OR pack); the server is the authoritative validator */
   const importAdTemplate = async () => {
     if (importBusy || !importText.trim()) return;
     setImportBusy(true);
@@ -170,15 +221,22 @@ export default function NewProjectPage() {
         body: JSON.stringify({ share: importText }),
       });
       const data = await res.json();
-      if (!res.ok || !data.template) throw new Error(data.error || t("adTemplateImportFailed"));
-      const tpl = data.template as AdTemplate;
-      setMyTemplates((prev) => [tpl, ...prev]);
+      const imported = (Array.isArray(data.templates) ? data.templates : [data.template]).filter(
+        Boolean
+      ) as AdTemplate[];
+      if (!res.ok || imported.length === 0) throw new Error(data.error || t("adTemplateImportFailed"));
+      setMyTemplates((prev) => [...imported, ...prev]);
       setImportOpen(false);
       setImportText("");
-      pickAdTemplate(tpl.id);
+      pickAdTemplate(imported[0].id, imported[0]);
+      const notices: string[] = [];
+      if (imported.length > 1) notices.push(t("adTemplateImportedMany").replace("{n}", String(imported.length)));
       if (Array.isArray(data.warnings) && data.warnings.length > 0) {
-        setMineNotice(`${t("adTemplateImportWarn")}${data.warnings.join("、")}`);
+        // multi-import already says "imported" — use the prefix-free warning to avoid saying it twice
+        const warnKey = imported.length > 1 ? "adTemplateWarnOnly" : "adTemplateImportWarn";
+        notices.push(`${t(warnKey)}${data.warnings.join("、")}`);
       }
+      if (notices.length > 0) setMineNotice(notices.join(" "));
     } catch (e) {
       setMineNotice(e instanceof Error ? e.message : t("adTemplateImportFailed"));
     } finally {
@@ -201,6 +259,61 @@ export default function NewProjectPage() {
     a.download = `clipforge-template-${tpl.name.en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "recipe"}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
+  };
+  /** Download ALL my templates as one shareable pack file */
+  const exportMinePack = () => {
+    if (myTemplates.length === 0) return;
+    const blob = new Blob([exportAdTemplatePack(myTemplates)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `clipforge-template-pack-${myTemplates.length}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+  /** Open the recipe editor for the current selection: mine → edit in place, anything else → fork */
+  const openTemplateEditor = () => {
+    const tpl = resolveAdTemplate(selectedAdTemplateId);
+    if (!tpl) return;
+    const isMine = myTemplates.some((m) => m.id === tpl.id);
+    // deep copy — the draft must never mutate the builtin library / store objects
+    setEditorDraft(JSON.parse(JSON.stringify(tpl)) as AdTemplate);
+    setEditorSourceId(isMine ? tpl.id : "");
+    setEditorOpen(true);
+    setImportOpen(false);
+    setMineNotice("");
+  };
+  /** Persist the editor draft: PUT updates a mine row in place, POST saves a new fork */
+  const saveEditorTemplate = async () => {
+    if (!editorDraft || editorBusy) return;
+    setEditorBusy(true);
+    setMineNotice("");
+    try {
+      const res = await fetch("/api/ad-template/mine", {
+        method: editorSourceId ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          editorSourceId
+            ? { id: editorSourceId, template: editorDraft }
+            : { template: editorDraft, source: "edit" }
+        ),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.template) throw new Error(data.error || t("adTplEditorSaveFailed"));
+      const tpl = data.template as AdTemplate;
+      setMyTemplates((prev) =>
+        editorSourceId ? prev.map((m) => (m.id === tpl.id ? tpl : m)) : [tpl, ...prev]
+      );
+      setEditorOpen(false);
+      setEditorDraft(null);
+      pickAdTemplate(tpl.id, tpl);
+      if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+        setMineNotice(`${t("adTemplateImportWarn")}${data.warnings.join("、")}`);
+      }
+    } catch (e) {
+      setMineNotice(e instanceof Error ? e.message : t("adTplEditorSaveFailed"));
+    } finally {
+      setEditorBusy(false);
+    }
   };
   // AI custom template: one cheap LLM call that PICKS from the real preset vocabularies (server-side clamped)
   const generateAiTemplate = async () => {
@@ -916,12 +1029,7 @@ export default function NewProjectPage() {
               {/* video mode */}
               <Label className="text-sm font-medium mb-3 block">{t("videoModeLabel")}</Label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { value: "product_closeup", labelKey: "modeCloseupLabel", descKey: "modeCloseupDesc", icon: LuBox },
-                  { value: "graphic_montage", labelKey: "modeMontageLabel", descKey: "modeMontageDesc", icon: LuLayoutGrid },
-                  { value: "scene_demo", labelKey: "modeSceneLabel", descKey: "modeSceneDesc", icon: LuEye },
-                  { value: "live_presenter", labelKey: "modePresenterLabel", descKey: "modePresenterDesc", icon: LuVideo },
-                ].map((opt) => {
+                {videoModeOptions.map((opt) => {
                   const Icon = opt.icon;
                   return (
                     <button
@@ -1100,11 +1208,29 @@ export default function NewProjectPage() {
                   {t("adTemplateImportButton")}
                 </button>
                 {selectedAdTemplateId && resolveAdTemplate(selectedAdTemplateId) && (
+                  <>
+                    <button
+                      onClick={exportSelectedTemplate}
+                      className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                    >
+                      {t("adTemplateExportButton")}
+                    </button>
+                    {/* fork/edit the selected recipe — builtin & AI save as new mine rows, mine edits in place */}
+                    <button
+                      onClick={openTemplateEditor}
+                      className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                    >
+                      {t("adTemplateEditButton")}
+                    </button>
+                  </>
+                )}
+                {/* pack export lives on the "mine" tab — everything I own, one share file */}
+                {adTemplateGroup === "mine" && myTemplates.length > 0 && (
                   <button
-                    onClick={exportSelectedTemplate}
+                    onClick={exportMinePack}
                     className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
                   >
-                    {t("adTemplateExportButton")}
+                    {t("adTemplatePackExport")} ({myTemplates.length})
                   </button>
                 )}
               </div>
@@ -1127,6 +1253,219 @@ export default function NewProjectPage() {
                     </button>
                     <button
                       onClick={() => { setImportOpen(false); setImportText(""); setMineNotice(""); }}
+                      className="px-3 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                    >
+                      {t("adTemplateImportCancel")}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {/* recipe editor — every select is fed from the same vocabularies the server clamps to */}
+              {editorOpen && editorDraft && (
+                <div className="mb-3 p-3 rounded-lg border border-primary/30 bg-primary/[0.03] space-y-3">
+                  <p className="text-xs font-medium text-primary">
+                    {editorSourceId ? t("adTplEditorTitleEdit") : t("adTplEditorTitleFork")}
+                  </p>
+                  <div className="grid grid-cols-[3.5rem_1fr_1fr] gap-2">
+                    <input
+                      value={editorDraft.emoji}
+                      onChange={(e) => setEditorDraft((d) => (d ? { ...d, emoji: e.target.value } : d))}
+                      placeholder={t("adTplFieldEmoji")}
+                      className={EDITOR_INPUT_CLS}
+                    />
+                    <input
+                      value={editorDraft.name.zh}
+                      onChange={(e) => setEditorDraft((d) => (d ? { ...d, name: { ...d.name, zh: e.target.value } } : d))}
+                      placeholder={t("adTplFieldNameZh")}
+                      className={EDITOR_INPUT_CLS}
+                    />
+                    <input
+                      value={editorDraft.name.en}
+                      onChange={(e) => setEditorDraft((d) => (d ? { ...d, name: { ...d.name, en: e.target.value } } : d))}
+                      placeholder={t("adTplFieldNameEn")}
+                      className={EDITOR_INPUT_CLS}
+                    />
+                  </div>
+                  <input
+                    value={editorDraft.tagline.zh}
+                    onChange={(e) => setEditorDraft((d) => (d ? { ...d, tagline: { ...d.tagline, zh: e.target.value } } : d))}
+                    placeholder={t("adTplFieldTagline")}
+                    className={EDITOR_INPUT_CLS}
+                  />
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <label className="text-[11px] text-muted-foreground">
+                      {t("adTplFieldStyle")}
+                      <select
+                        value={editorDraft.styleType}
+                        onChange={(e) => setEditorDraft((d) => (d ? { ...d, styleType: e.target.value } : d))}
+                        className={EDITOR_INPUT_CLS}
+                      >
+                        {styleOptions.map((o) => (
+                          <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-[11px] text-muted-foreground">
+                      {t("adTplFieldMode")}
+                      <select
+                        value={editorDraft.videoMode}
+                        onChange={(e) =>
+                          setEditorDraft((d) => (d ? { ...d, videoMode: e.target.value as AdTemplate["videoMode"] } : d))
+                        }
+                        className={EDITOR_INPUT_CLS}
+                      >
+                        {videoModeOptions.map((o) => (
+                          <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-[11px] text-muted-foreground">
+                      {t("adTplFieldLook")}
+                      <select
+                        value={editorDraft.look}
+                        onChange={(e) => setEditorDraft((d) => (d ? { ...d, look: e.target.value } : d))}
+                        className={EDITOR_INPUT_CLS}
+                      >
+                        {LOOK_PRESETS.map((p) => (
+                          <option key={p.id} value={p.id}>{locale === "zh" ? p.name.zh : p.name.en}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-[11px] text-muted-foreground">
+                      {t("adTplFieldGroup")}
+                      <select
+                        value={editorDraft.group}
+                        onChange={(e) =>
+                          setEditorDraft((d) => (d ? { ...d, group: e.target.value as AdTemplateGroupId } : d))
+                        }
+                        className={EDITOR_INPUT_CLS}
+                      >
+                        {AD_TEMPLATE_GROUPS.map((g) => (
+                          <option key={g.id} value={g.id}>{locale === "zh" ? g.name.zh : g.name.en}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <div>
+                    <p className="text-[11px] text-muted-foreground mb-1">{t("adTplFieldCamera")}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {AD_TEMPLATE_EDIT_VOCAB.shotTypes.map((st) => (
+                        <label key={st} className="text-[11px] text-muted-foreground">
+                          {t(SHOT_LABEL_KEYS[st] ?? st)}
+                          <select
+                            value={editorDraft.cameraPlan[st] ?? ""}
+                            onChange={(e) =>
+                              setEditorDraft((d) => {
+                                if (!d) return d;
+                                const plan = { ...d.cameraPlan };
+                                if (e.target.value) plan[st] = e.target.value;
+                                else delete plan[st];
+                                return { ...d, cameraPlan: plan };
+                              })
+                            }
+                            className={EDITOR_INPUT_CLS}
+                          >
+                            <option value="">{t("adTplCameraAuto")}</option>
+                            {CAMERA_PRESETS.map((p) => (
+                              <option key={p.id} value={p.id}>{locale === "zh" ? p.name.zh : p.name.en}</option>
+                            ))}
+                          </select>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-end gap-2">
+                    <label className="text-[11px] text-muted-foreground">
+                      {t("adTplComposeCaption")}
+                      <select
+                        value={editorDraft.compose.captionPreset}
+                        onChange={(e) =>
+                          setEditorDraft((d) =>
+                            d ? { ...d, compose: { ...d.compose, captionPreset: e.target.value as CaptionPresetId } } : d
+                          )
+                        }
+                        className={EDITOR_INPUT_CLS}
+                      >
+                        {CAPTION_PRESET_IDS.map((id) => (
+                          <option key={id} value={id}>{locale === "zh" ? CAPTION_LABELS[id].zh : CAPTION_LABELS[id].en}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-[11px] text-muted-foreground">
+                      {t("adTplComposeBgm")}
+                      <select
+                        value={editorDraft.compose.bgm}
+                        onChange={(e) =>
+                          setEditorDraft((d) =>
+                            d ? { ...d, compose: { ...d.compose, bgm: e.target.value as AdTemplate["compose"]["bgm"] } } : d
+                          )
+                        }
+                        className={EDITOR_INPUT_CLS}
+                      >
+                        {AD_TEMPLATE_EDIT_VOCAB.bgm.map((b) => (
+                          <option key={b} value={b}>{locale === "zh" ? BGM_LABELS[b]?.zh ?? b : BGM_LABELS[b]?.en ?? b}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="text-[11px] text-muted-foreground">
+                      {t("adTplComposeQuality")}
+                      <select
+                        value={editorDraft.compose.quality ?? ""}
+                        onChange={(e) =>
+                          setEditorDraft((d) => {
+                            if (!d) return d;
+                            const compose = { ...d.compose };
+                            if (e.target.value) compose.quality = e.target.value as NonNullable<AdTemplate["compose"]["quality"]>;
+                            else delete compose.quality;
+                            return { ...d, compose };
+                          })
+                        }
+                        className={EDITOR_INPUT_CLS}
+                      >
+                        <option value="">{t("adTplComposeQualityDefault")}</option>
+                        {AD_TEMPLATE_EDIT_VOCAB.quality.map((q) => (
+                          <option key={q} value={q}>{locale === "zh" ? QUALITY_LABELS[q]?.zh ?? q : QUALITY_LABELS[q]?.en ?? q}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground pb-1.5">
+                      <input
+                        type="checkbox"
+                        checked={editorDraft.compose.bgmDuck}
+                        onChange={(e) =>
+                          setEditorDraft((d) => (d ? { ...d, compose: { ...d.compose, bgmDuck: e.target.checked } } : d))
+                        }
+                      />
+                      {t("adTplComposeDuck")}
+                    </label>
+                    <label className="flex items-center gap-1.5 text-[11px] text-muted-foreground pb-1.5">
+                      <input
+                        type="checkbox"
+                        checked={editorDraft.compose.productCard ?? false}
+                        onChange={(e) =>
+                          setEditorDraft((d) => (d ? { ...d, compose: { ...d.compose, productCard: e.target.checked } } : d))
+                        }
+                      />
+                      {t("adTplComposeCard")}
+                    </label>
+                  </div>
+                  <textarea
+                    value={editorDraft.scriptHint.zh}
+                    onChange={(e) => setEditorDraft((d) => (d ? { ...d, scriptHint: { zh: e.target.value } } : d))}
+                    placeholder={t("adTplFieldHint")}
+                    rows={2}
+                    className={EDITOR_INPUT_CLS}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={saveEditorTemplate}
+                      disabled={editorBusy}
+                      className="px-3 py-1 rounded-full text-xs border border-primary/40 bg-primary/5 text-primary hover:border-primary disabled:opacity-40 transition-all"
+                    >
+                      {editorSourceId ? t("adTplEditorSaveEdit") : t("adTplEditorSaveFork")}
+                    </button>
+                    <button
+                      onClick={() => { setEditorOpen(false); setEditorDraft(null); setMineNotice(""); }}
                       className="px-3 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
                     >
                       {t("adTemplateImportCancel")}
