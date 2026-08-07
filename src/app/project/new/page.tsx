@@ -8,7 +8,7 @@ import { useTemplateStore } from "@/lib/stores/template-store";
 import { useProductLibraryStore, type ProductItem } from "@/lib/stores/product-library-store";
 import { getExampleProducts, type ExampleProduct } from "@/lib/examples";
 import { useSettingsStore } from "@/lib/stores/settings-store";
-import { AD_TEMPLATE_GROUPS, listAdTemplates, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey, recommendAdTemplates, encodeStoredAdTemplate, CUSTOM_AD_TEMPLATE_ID, type AdTemplate, type AdTemplateGroupId, type AdTemplateCategory } from "@/lib/ad-templates";
+import { AD_TEMPLATE_GROUPS, listAdTemplates, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey, recommendAdTemplates, encodeStoredAdTemplate, exportAdTemplateShare, CUSTOM_AD_TEMPLATE_ID, type AdTemplate, type AdTemplateGroupId, type AdTemplateCategory } from "@/lib/ad-templates";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -102,20 +102,105 @@ export default function NewProjectPage() {
   // injects the camera/look plan into script generation, and hands the compose recipe
   // to the video page via localStorage
   const [selectedAdTemplateId, setSelectedAdTemplateId] = useState<string>("");
-  const [adTemplateGroup, setAdTemplateGroup] = useState<AdTemplateGroupId | "all">("all");
+  const [adTemplateGroup, setAdTemplateGroup] = useState<AdTemplateGroupId | "all" | "mine">("all");
   const [adTemplateQuery, setAdTemplateQuery] = useState("");
   // AI-generated custom template (one slot; lives in component state until project creation persists it)
   const [customAdTemplate, setCustomAdTemplate] = useState<AdTemplate | null>(null);
   const [aiTplLoading, setAiTplLoading] = useState(false);
   const [aiTplError, setAiTplError] = useState("");
+  // user-owned templates (template economy): saved AI recipes + imported share files, DB-backed
+  const [myTemplates, setMyTemplates] = useState<AdTemplate[]>([]);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importText, setImportText] = useState("");
+  const [importBusy, setImportBusy] = useState(false);
+  const [mineNotice, setMineNotice] = useState("");
+  const [aiTplSaved, setAiTplSaved] = useState(false);
+  useEffect(() => {
+    // best-effort: an empty "mine" list (fresh install / fetch failure) just hides the section
+    fetch("/api/ad-template/mine")
+      .then((r) => r.json())
+      .then((d) => {
+        if (Array.isArray(d.templates)) setMyTemplates(d.templates as AdTemplate[]);
+      })
+      .catch(() => {});
+  }, []);
+  /** Resolve any selectable template id: AI slot → my templates → builtin library */
+  const resolveAdTemplate = (id: string): AdTemplate | null => {
+    if (!id) return null;
+    if (id === CUSTOM_AD_TEMPLATE_ID) return customAdTemplate;
+    return myTemplates.find((m) => m.id === id) ?? getAdTemplate(id) ?? null;
+  };
   const pickAdTemplate = (id: string) => {
     setSelectedAdTemplateId(id);
-    const tpl = id === CUSTOM_AD_TEMPLATE_ID ? customAdTemplate : getAdTemplate(id);
+    const tpl = resolveAdTemplate(id);
     if (tpl) {
       // visible pre-fill: the user sees (and can still override) what the template chose
       setScriptStyle(tpl.styleType);
       setVideoMode(tpl.videoMode);
     }
+  };
+  /** Persist the current AI recipe into "my templates" (server re-validates + compliance-screens) */
+  const saveAiTemplateToMine = async () => {
+    if (!customAdTemplate || aiTplSaved) return;
+    setMineNotice("");
+    try {
+      const res = await fetch("/api/ad-template/mine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ template: customAdTemplate }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.template) throw new Error(data.error || t("adTemplateImportFailed"));
+      setMyTemplates((prev) => [data.template as AdTemplate, ...prev]);
+      setAiTplSaved(true);
+      setMineNotice(t("adTemplateSaved"));
+    } catch (e) {
+      setMineNotice(e instanceof Error ? e.message : t("adTemplateImportFailed"));
+    }
+  };
+  /** Import a shared template JSON; the server is the authoritative validator */
+  const importAdTemplate = async () => {
+    if (importBusy || !importText.trim()) return;
+    setImportBusy(true);
+    setMineNotice("");
+    try {
+      const res = await fetch("/api/ad-template/mine", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ share: importText }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.template) throw new Error(data.error || t("adTemplateImportFailed"));
+      const tpl = data.template as AdTemplate;
+      setMyTemplates((prev) => [tpl, ...prev]);
+      setImportOpen(false);
+      setImportText("");
+      pickAdTemplate(tpl.id);
+      if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+        setMineNotice(`${t("adTemplateImportWarn")}${data.warnings.join("、")}`);
+      }
+    } catch (e) {
+      setMineNotice(e instanceof Error ? e.message : t("adTemplateImportFailed"));
+    } finally {
+      setImportBusy(false);
+    }
+  };
+  const deleteMyTemplate = async (id: string) => {
+    setMyTemplates((prev) => prev.filter((m) => m.id !== id));
+    if (selectedAdTemplateId === id) setSelectedAdTemplateId("");
+    // fire-and-forget: the optimistic removal above is the UX; a failed delete resurfaces on reload
+    fetch(`/api/ad-template/mine?id=${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => {});
+  };
+  /** Download the selected template as a shareable .json file (works for builtin/AI/my templates) */
+  const exportSelectedTemplate = () => {
+    const tpl = resolveAdTemplate(selectedAdTemplateId);
+    if (!tpl) return;
+    const blob = new Blob([exportAdTemplateShare(tpl)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `clipforge-template-${tpl.name.en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "recipe"}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
   // AI custom template: one cheap LLM call that PICKS from the real preset vocabularies (server-side clamped)
   const generateAiTemplate = async () => {
@@ -136,6 +221,7 @@ export default function NewProjectPage() {
       const data = await res.json();
       if (!res.ok || !data.template) throw new Error(data.error || t("adTemplateAiFailed"));
       setCustomAdTemplate(data.template as AdTemplate);
+      setAiTplSaved(false); // a fresh recipe is savable again
       setSelectedAdTemplateId(CUSTOM_AD_TEMPLATE_ID);
       setScriptStyle((data.template as AdTemplate).styleType);
       setVideoMode((data.template as AdTemplate).videoMode);
@@ -331,8 +417,8 @@ export default function NewProjectPage() {
 
       // ad template: apply the global look now and hand the compose recipe to the
       // video page (localStorage, same client-side convention as the template store);
-      // an AI custom template is stored inline (custom:<json>) since it has no builtin id
-      const adTemplate = selectedAdTemplateId === CUSTOM_AD_TEMPLATE_ID ? customAdTemplate : getAdTemplate(selectedAdTemplateId);
+      // AI custom and "my templates" are stored inline (custom:<json>) since they have no builtin id
+      const adTemplate = resolveAdTemplate(selectedAdTemplateId);
       if (adTemplate) {
         setVisualLook(adTemplate.look);
         try {
@@ -976,6 +1062,20 @@ export default function NewProjectPage() {
                     )}
                   </button>
                 ))}
+                {/* user-owned templates get their own chip once any exist (template economy) */}
+                {myTemplates.length > 0 && (
+                  <button
+                    onClick={() => setAdTemplateGroup("mine")}
+                    className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                      adTemplateGroup === "mine"
+                        ? "border-primary bg-primary/10 text-primary font-medium"
+                        : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
+                    }`}
+                  >
+                    {t("adTemplateMine")}
+                    <span className="ml-1 opacity-60">{myTemplates.length}</span>
+                  </button>
+                )}
                 {/* keyword search — at 100+ templates, browsing alone stops scaling */}
                 <input
                   value={adTemplateQuery}
@@ -992,8 +1092,50 @@ export default function NewProjectPage() {
                 >
                   {aiTplLoading ? t("adTemplateAiLoading") : t("adTemplateAiButton")}
                 </button>
+                {/* recipes travel: import a shared .json, export the current pick */}
+                <button
+                  onClick={() => { setImportOpen((v) => !v); setMineNotice(""); }}
+                  className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                >
+                  {t("adTemplateImportButton")}
+                </button>
+                {selectedAdTemplateId && resolveAdTemplate(selectedAdTemplateId) && (
+                  <button
+                    onClick={exportSelectedTemplate}
+                    className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                  >
+                    {t("adTemplateExportButton")}
+                  </button>
+                )}
               </div>
+              {importOpen && (
+                <div className="mb-3 space-y-2">
+                  <textarea
+                    value={importText}
+                    onChange={(e) => setImportText(e.target.value)}
+                    placeholder={t("adTemplateImportPlaceholder")}
+                    rows={4}
+                    className="w-full px-3 py-2 rounded-lg text-xs font-mono border border-border/50 bg-muted/20 outline-none focus:border-primary/60 placeholder:text-muted-foreground/60"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={importAdTemplate}
+                      disabled={importBusy || !importText.trim()}
+                      className="px-3 py-1 rounded-full text-xs border border-primary/40 bg-primary/5 text-primary hover:border-primary disabled:opacity-40 transition-all"
+                    >
+                      {t("adTemplateImportConfirm")}
+                    </button>
+                    <button
+                      onClick={() => { setImportOpen(false); setImportText(""); setMineNotice(""); }}
+                      className="px-3 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                    >
+                      {t("adTemplateImportCancel")}
+                    </button>
+                  </div>
+                </div>
+              )}
               {aiTplError && <p className="text-xs text-destructive mb-2">{aiTplError}</p>}
+              {mineNotice && <p className="text-xs text-muted-foreground mb-2">{mineNotice}</p>}
               {/* wrapping grid capped in height — a 100-card library can't live on one scroll row */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-80 overflow-y-auto pb-1 pr-1">
                 <button
@@ -1010,7 +1152,7 @@ export default function NewProjectPage() {
                   <span className="text-[11px] text-muted-foreground mt-0.5">{t("adTemplateNoneDesc")}</span>
                 </button>
                 {/* the AI-generated custom recipe renders as a first-class card at the front */}
-                {customAdTemplate && (
+                {customAdTemplate && adTemplateGroup !== "mine" && (
                   <button
                     onClick={() => pickAdTemplate(CUSTOM_AD_TEMPLATE_ID)}
                     className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
@@ -1022,13 +1164,58 @@ export default function NewProjectPage() {
                     <span className={`text-sm font-medium ${selectedAdTemplateId === CUSTOM_AD_TEMPLATE_ID ? "text-primary" : "text-foreground"}`}>
                       {customAdTemplate.emoji} {locale === "zh" ? customAdTemplate.name.zh : customAdTemplate.name.en}
                       <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-primary/15 text-primary align-middle">AI</span>
+                      {/* save-for-reuse chip (span, not button — cards are buttons already) */}
+                      {!aiTplSaved && (
+                        <span
+                          onClick={(e) => { e.stopPropagation(); saveAiTemplateToMine(); }}
+                          className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full border border-primary/40 text-primary hover:bg-primary/10 align-middle cursor-pointer"
+                        >
+                          {t("adTemplateSaveMine")}
+                        </span>
+                      )}
                     </span>
                     <span className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
                       {locale === "zh" ? customAdTemplate.tagline.zh : customAdTemplate.tagline.en}
                     </span>
                   </button>
                 )}
-                {listAdTemplates({ group: adTemplateGroup, category, query: adTemplateQuery }).map((tpl) => (
+                {/* user-owned templates: shown under "all" and their own chip, searchable like builtins */}
+                {(adTemplateGroup === "all" || adTemplateGroup === "mine") &&
+                  myTemplates
+                    .filter((tpl) => {
+                      const q = adTemplateQuery.trim().toLowerCase();
+                      if (!q) return true;
+                      return `${tpl.name.zh} ${tpl.name.en} ${tpl.tagline.zh} ${tpl.tagline.en}`.toLowerCase().includes(q);
+                    })
+                    .map((tpl) => (
+                      <button
+                        key={tpl.id}
+                        onClick={() => pickAdTemplate(tpl.id)}
+                        className={`relative flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
+                          selectedAdTemplateId === tpl.id
+                            ? "border-primary bg-primary/10"
+                            : "border-border/50 bg-muted/20 hover:border-primary/40"
+                        }`}
+                      >
+                        <span className={`text-sm font-medium ${selectedAdTemplateId === tpl.id ? "text-primary" : "text-foreground"}`}>
+                          {tpl.emoji} {locale === "zh" ? tpl.name.zh : tpl.name.en}
+                          <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-primary/15 text-primary align-middle">
+                            {t("adTemplateMine")}
+                          </span>
+                        </span>
+                        <span className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
+                          {locale === "zh" ? tpl.tagline.zh : tpl.tagline.en}
+                        </span>
+                        <span
+                          onClick={(e) => { e.stopPropagation(); deleteMyTemplate(tpl.id); }}
+                          title={t("adTemplateDeleteTitle")}
+                          className="absolute top-1.5 right-1.5 text-[11px] leading-none px-1 py-0.5 rounded text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                        >
+                          ✕
+                        </span>
+                      </button>
+                    ))}
+                {adTemplateGroup !== "mine" && listAdTemplates({ group: adTemplateGroup, category, query: adTemplateQuery }).map((tpl) => (
                   <button
                     key={tpl.id}
                     onClick={() => pickAdTemplate(tpl.id)}

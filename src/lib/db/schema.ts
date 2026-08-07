@@ -190,6 +190,18 @@ export const scriptTemplates = sqliteTable("script_templates", {
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
+// User-owned ad-template recipes ("my templates"): AI-generated recipes saved for reuse
+// and recipes imported from shared JSON. The built-in curated library stays in code
+// (ad-templates.ts); this table only holds what the user creates or brings in.
+export const adTemplateRecipes = sqliteTable("ad_template_recipes", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  // Full AdTemplate recipe (already sanitized/validated at write time)
+  recipe: text("recipe", { mode: "json" }).notNull(),
+  // Where it came from: ai=saved from AI custom generation, import=shared JSON import
+  source: text("source", { enum: ["ai", "import"] }).notNull().default("ai"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
 // Characters table — on-screen presenters reused across projects
 export const characters = sqliteTable("characters", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

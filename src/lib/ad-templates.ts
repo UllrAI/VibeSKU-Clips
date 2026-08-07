@@ -24,6 +24,7 @@ import type { StylePackCompose } from "@/lib/style-packs";
 import { getCameraPreset } from "@/lib/camera-presets";
 import { getLookPreset } from "@/lib/look-presets";
 import { isCaptionPreset } from "@/lib/caption-presets";
+import { checkAdCompliance } from "@/lib/ad-compliance";
 
 /**
  * Template groups — the browse taxonomy for a large library. Mirrors how
@@ -5677,11 +5678,16 @@ export function sanitizeCustomAdTemplate(raw: unknown): AdTemplate | null {
 /** Stored-value prefix marking an inline custom template (vs. a builtin id). */
 const CUSTOM_STORED_PREFIX = "custom:";
 
-/** Encode a template selection for localStorage: builtin → its id, custom → inline JSON. */
+/**
+ * Encode a template selection for localStorage: builtin → its id, everything else
+ * (AI custom AND user-owned "my templates") → inline JSON. Deciding by library
+ * lookup instead of the custom-id sentinel matters: a my-template id stored bare
+ * would be unresolvable on decode (it only exists in the DB, not in this module).
+ */
 export function encodeStoredAdTemplate(template: AdTemplate): string {
-  return template.id === CUSTOM_AD_TEMPLATE_ID
-    ? CUSTOM_STORED_PREFIX + JSON.stringify(template)
-    : template.id;
+  return getAdTemplate(template.id)
+    ? template.id
+    : CUSTOM_STORED_PREFIX + JSON.stringify(template);
 }
 
 /** Decode a stored selection back to a template (builtin lookup or sanitized inline custom). */
@@ -5739,4 +5745,66 @@ export function adTemplateStorageKey(projectId: string): string {
 /** localStorage key marking that the video page already applied the template's compose recipe once. */
 export function adTemplateAppliedKey(projectId: string): string {
   return `clipforge-ad-template-applied:${projectId}`;
+}
+
+/* ==================== Shareable recipe format (template economy) ==================== */
+
+/**
+ * A template is a recipe, and recipes are meant to travel — the ComfyUI/n8n
+ * playbook where shareable configs become community currency. This block defines
+ * the interchange format: a small JSON envelope around one AdTemplate. Exports
+ * strip the id (the importer mints its own); imports are clamped by
+ * sanitizeCustomAdTemplate (unknown ids degrade to safe defaults, so a file from
+ * a future version with new presets still lands usable) and screened against the
+ * ad-law lexicon. Lexicon hits surface as WARNINGS, never rejections: a template
+ * is a creative directive, not published copy — guardrail sentences like
+ * "不得宣称疗效" and aesthetic idioms like "治愈系" hit the same terms as real
+ * violations (14 of our own curated 391 match), so word-level rejection here is
+ * all false positives. The hard gate stays where context is real: the compose
+ * stage scans the actual voiceover/captions of the finished video.
+ */
+export const AD_TEMPLATE_SHARE_KIND = "clipforge-ad-template";
+export const AD_TEMPLATE_SHARE_VERSION = 1;
+
+export type AdTemplateShareError =
+  | "invalid_json"
+  | "wrong_kind"
+  | "unsupported_version"
+  | "invalid_template";
+
+export interface AdTemplateShareResult {
+  template?: AdTemplate;
+  error?: AdTemplateShareError;
+  /** Ad-law lexicon hits in the recipe text — shown to the user, never blocking */
+  warnings?: string[];
+}
+
+/** Serialize a template as a shareable JSON document (id stripped; pretty-printed for hand editing). */
+export function exportAdTemplateShare(template: AdTemplate): string {
+  const recipe: Partial<AdTemplate> = { ...template };
+  delete recipe.id;
+  return JSON.stringify(
+    { kind: AD_TEMPLATE_SHARE_KIND, version: AD_TEMPLATE_SHARE_VERSION, template: recipe },
+    null,
+    2
+  );
+}
+
+/** Parse + validate + compliance-screen a shared template JSON string. */
+export function parseAdTemplateShare(raw: string): AdTemplateShareResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { error: "invalid_json" };
+  }
+  const envelope = parsed as { kind?: unknown; version?: unknown; template?: unknown } | null;
+  if (!envelope || envelope.kind !== AD_TEMPLATE_SHARE_KIND) return { error: "wrong_kind" };
+  if (envelope.version !== AD_TEMPLATE_SHARE_VERSION) return { error: "unsupported_version" };
+  const template = sanitizeCustomAdTemplate(envelope.template);
+  if (!template) return { error: "invalid_template" };
+  const warnings = checkAdCompliance(
+    [template.name.zh, template.tagline.zh, template.scriptHint.zh].join(" \n ")
+  ).map((v) => v.term);
+  return { template, ...(warnings.length > 0 && { warnings }) };
 }

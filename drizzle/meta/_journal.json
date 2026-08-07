@@ -78,6 +78,13 @@
       "when": 1785410845014,
       "tag": "0010_add_composition_label",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1786078335796,
+      "tag": "0011_add_ad_template_recipes",
+      "breakpoints": true
     }
   ]
 }
