@@ -36,6 +36,7 @@
 | 🚦 **Don't get throttled** | AIGC labeling + ad-law banned-term scan + publish gate — compliance on by default |
 | 📦 **Batch + viral remix** | 10 products rendered in one click, re-shoot a competitor's viral with your product, A/B cuts |
 | 🤖 **One sentence via agents** | MCP / CLI / Skill — tell Claude / Cursor *"make a 9:16 from this product link"* |
+| 🧩 **Infinite Canvas node** | [Canvas plugin](integrations/infinite-canvas/): connect product images on the canvas → run → the finished video lands back as a canvas video node for further remixing; topic & commerce modes, driven by your local instance (localhost-only cross-port CORS ships in v0.8.79) |
 | 💰 **Paid calls never wasted** | Cloud tasks persisted & recoverable, never auto-retried — every cent accounted for |
 
 Want higher quality? Add one key: a single interface aggregates **7 platforms, 30+ curated models** (GPT Image 2 / Seedance 2.0 / **MiniMax H3** / Kling O3 / Veo 3.1…), plus **200+ video models dynamically discovered** from the whole Atlas catalog — new models show up without upgrading the app. Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
