@@ -36,6 +36,16 @@ export const TRANSITIONS: Record<TransitionMode, TransitionConfig> = {
       // Seedance 2.0 (supports start frame image + end frame last_image)
       "bytedance/seedance-2.0/image-to-video",
       "bytedance/seedance-2.0-fast/image-to-video",
+      "bytedance/seedance-2.0-mini/image-to-video",
+      // MiniMax H3 (image + end_image per published schema)
+      "minimax/h3/image-to-video",
+      // Kling Video O3 (image + end_image)
+      "kwaivgi/kling-video-o3-std/image-to-video",
+      "kwaivgi/kling-video-o3-pro/image-to-video",
+      // Google Veo 3.1 (image + last_image)
+      "google/veo3.1/image-to-video",
+      // Wan 2.7 (image + last_image)
+      "alibaba/wan-2.7/image-to-video",
       // Vidu Q3 series
       "vidu/q3-pro/start-end-to-video",
       "vidu/q3-turbo/start-end-to-video",

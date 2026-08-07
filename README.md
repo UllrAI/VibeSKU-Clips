@@ -38,7 +38,7 @@
 | 🤖 **Agent 一句话出片** | MCP / CLI / Skill——在 Claude / Cursor 里说「用这个链接出条 9:16」即可 |
 | 💰 **付费安全** | 云端任务落库可恢复、绝不自动重试——付的每一分钱不白花 |
 
-想更高画质再加 Key：一个接口聚合 **7 大平台 30+ 模型**（GPT Image 2 / Seedance 2.0 / Kling 3.0…）；自部署开源（AGPL-3.0），数据全在本机不上云。
+想更高画质再加 Key：一个接口聚合 **7 大平台 30+ 精选模型**（GPT Image 2 / Seedance 2.0 / **MiniMax H3** / Kling O3 / Veo 3.1…），Atlas 全站 **200+ 视频模型动态直连**——平台新上的模型无需升级就能用；自部署开源（AGPL-3.0），数据全在本机不上云。
 
 ## 🚀 30 秒跑起来
 
@@ -201,11 +201,11 @@ node bin/clipforge.mjs --help          # 全部命令与参数
 >
 > 💰 **付费安全与防呆**：云端视频任务**提交成功即落库任务 ID**，轮询超时/断网/重启都不丢已扣费任务（素材页「恢复查询」取回结果，杜绝重复付费）；创建付费任务的请求**绝不自动重试**；「转动态」**自动校验并映射到真 i2v 模型**，不会计费成文生视频；生图尺寸**按各模型协议自动适配合法值**（比例精确不失真），杜绝「尺寸不合法但已扣费」的失败任务。
 
-一个接口聚合 7 大生图/生视频平台 + OpenRouter LLM、30+ 主流模型：
+一个接口聚合 7 大生图/生视频平台 + OpenRouter LLM、30+ 精选模型，Atlas 平台另有 **200+ 视频模型动态发现**（运行时拉取官方模型目录并按各模型公开 schema 自动构参——平台每上新一个模型，设置页下拉就多一项，无需等升级）：
 
 | 平台 | 图片模型 | 视频模型 | 特色 |
 |------|---------|---------|------|
-| **Atlas Cloud** ⭐推荐 | **GPT Image 2**, Seedream 5.0, Nano Banana 2 | **Seedance 2.0**(原生音频), Kling 3.0, Vidu Q3 | 一个 Key 聚合 LLM+生图+生视频，模型最全价格最优 |
+| **Atlas Cloud** ⭐推荐 | **GPT Image 2**, Seedream 5.0, Nano Banana 2 | **Seedance 2.0**(原生音频), **MiniMax H3**(海螺3.0·2K·原生立体声), Kling O3, Veo 3.1, 万相 2.7, Hailuo 2.3, Vidu Q3 + 全站 200+ 动态直连 | 一个 Key 聚合 LLM+生图+生视频，模型最全价格最优 |
 | **fal.ai** | **GPT Image 2**(+edit), FLUX.1/2 Pro, Recraft V4, Seedream V5 Edit | Kling 3.0 Pro, Veo 3, Hailuo 2.3, Luma Ray 2, Vidu Q2 | 模型全，含 OpenAI 生图与商品保真编辑 |
 | **Replicate** | FLUX 1.1 Pro/Kontext, Imagen 4, Seedream 4 | Kling v2.1, Seedance 1 Pro, Hailuo 02, Veo 3 Fast | 模型库最全，predictions API 统一调用 |
 | **火山引擎（方舟 Ark）** | Seedream 5.0/4.0 | Seedance 2.0/1.0 Pro(原生音频) | 字节系明星模型，电影级画质，速度快 |
@@ -433,20 +433,26 @@ src/
 
 ---
 
-## 支持的 AI 模型（2026.06 官方文档确认）
+## 支持的 AI 模型（2026.08 官方文档确认）
 
 ### 视频生成
 
 | 模型 | 平台 | 音频 | 模式 | 特点 |
 |------|------|------|------|------|
 | **Seedance 2.0** ⭐ | Atlas Cloud | 原生支持 | T2V / I2V / 参考 / 首尾帧 | 字节最新，原生音频，4-15s，最高 1440p |
-| **Kling 3.0 Pro** | fal.ai / Atlas Cloud | 原生支持 | T2V / I2V | 可灵最新，多分镜+人脸绑定 |
-| **Veo 3** | fal.ai | 原生支持 | T2V | Google，对话+音效+唇形同步 |
+| **MiniMax H3** 🆕 | Atlas Cloud | 原生立体声 | T2V / I2V / 参考 / 首尾帧 | 海螺 3.0 全模态（2026-07-31 发布），2K，4-15s，图/视频/音频混合参考保主体 |
+| **Kling O3** 🆕 | Atlas Cloud | 原生支持 | T2V / I2V / 参考 / 首尾帧 | 快手全模态 MVL，多镜头叙事 3-15s |
+| **Veo 3.1** 🆕 | Atlas Cloud / fal.ai | 原生支持 | T2V / I2V / 首尾帧 | Google 旗舰，4/6/8s，最高 4K |
+| **万相 2.7** 🆕 | Atlas Cloud | 原生支持 | T2V / I2V / 参考 / 首尾帧 | 多镜头叙事+音画同步，参考模式支持声音克隆 |
+| **Seedance 2.0 Mini** 🆕 | Atlas Cloud | 原生支持 | T2V / I2V / 参考 / 首尾帧 | 轻量经济版，跑量出片降成本 |
+| **Kling 3.0 Pro** | fal.ai / Atlas Cloud | 原生支持 | T2V / I2V | 可灵，多分镜+人脸绑定 |
 | **Vidu Q3 Pro** | Atlas Cloud | - | T2V / I2V / 首尾帧 | 首尾帧过渡（转场神器） |
-| **Hailuo 2.3** | fal.ai | - | T2V / I2V | MiniMax 海螺，运动物理逼真 |
+| **Hailuo 2.3** | Atlas Cloud / fal.ai | - | T2V / I2V | MiniMax 海螺，运动物理逼真，6/10s |
 | **Luma Ray 2** | fal.ai | - | T2V / I2V | 真实运动和物理效果 |
 | **Seedance 1.5 Pro** | 火山引擎 / Atlas Cloud | - | T2V / I2V | 字节豆包，电影级画质 |
 | **万相 2.6** | 阿里百炼 | - | I2V | 商品图生视频效果好 |
+
+> 以上是内置精选（含中文名与能力守卫）。启用 Atlas Cloud 后，设置页还会**动态发现全站 200+ 视频模型**（Youchuan、HappyHorse、Grok Imagine、Gemini Omni Flash……含单价标注），提交时按各模型公开 schema 自动构参——平台上新模型无需等软件升级。
 
 ### 图片生成
 

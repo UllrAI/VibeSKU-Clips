@@ -128,6 +128,51 @@ describe("模型能力校验与 i2v 映射（issue #16 问题4：转动态被计
     expect(req).not.toHaveBeenCalled();
   });
 
+  it("Hailuo 2.3 命名规则（t2v-/i2v- 前缀）：t2v-standard + 首帧图 → 自动映射 i2v-standard", async () => {
+    const p = new AtlasCloudProvider(cfg);
+    const req = vi.spyOn(asAny(p), "request").mockResolvedValue({ data: { id: "task-h" } });
+    const { modelId } = await p.submitVideoTask({
+      modelId: "minimax/hailuo-2.3/t2v-standard",
+      mode: "image-to-video",
+      prompt: "x",
+      firstFrameUrl: "https://example.com/f.png",
+    });
+    expect(modelId).toBe("minimax/hailuo-2.3/i2v-standard");
+    expect(req.mock.calls[0][1]).toMatchObject({ body: expect.objectContaining({ model: "minimax/hailuo-2.3/i2v-standard" }) });
+  });
+
+  it("MiniMax H3 参考生视频：t2v 变体 + 参考素材 → 映射 reference-to-video，请求体用 refers 混合数组", async () => {
+    const p = new AtlasCloudProvider(cfg);
+    const req = vi.spyOn(asAny(p), "request").mockResolvedValue({ data: { id: "task-r" } });
+    const { modelId } = await p.submitVideoTask({
+      modelId: "minimax/h3/text-to-video",
+      mode: "video-to-video",
+      prompt: "x",
+      referenceVideoUrls: ["https://example.com/ref.mp4"],
+      referenceImageUrls: ["https://example.com/p.png"],
+    });
+    expect(modelId).toBe("minimax/h3/reference-to-video");
+    const body = (req.mock.calls[0][1] as { body: Record<string, unknown> }).body;
+    expect(body.refers).toEqual(["https://example.com/ref.mp4", "https://example.com/p.png"]);
+    expect(body).not.toHaveProperty("reference_videos");
+  });
+
+  it("MiniMax H3 图生视频：尾帧走 end_image 字段（而非 Seedance 的 last_image）", async () => {
+    const p = new AtlasCloudProvider(cfg);
+    const req = vi.spyOn(asAny(p), "request").mockResolvedValue({ data: { id: "task-e" } });
+    await p.submitVideoTask({
+      modelId: "minimax/h3/image-to-video",
+      mode: "image-to-video",
+      prompt: "x",
+      firstFrameUrl: "https://example.com/f.png",
+      lastFrameUrl: "https://example.com/l.png",
+    });
+    const body = (req.mock.calls[0][1] as { body: Record<string, unknown> }).body;
+    expect(body.end_image).toBe("https://example.com/l.png");
+    expect(body).not.toHaveProperty("last_image");
+    expect(body).not.toHaveProperty("watermark"); // H3 schema has no watermark field
+  });
+
   it("目录外的自定义模型：无能力信息，原样透传", async () => {
     const p = new AtlasCloudProvider(cfg);
     const req = vi.spyOn(asAny(p), "request").mockResolvedValue({ data: { id: "task-2" } });

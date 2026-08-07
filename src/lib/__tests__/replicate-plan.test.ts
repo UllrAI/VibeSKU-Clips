@@ -79,9 +79,18 @@ describe("referenceModelFor 模型映射", () => {
     expect(referenceModelFor("bytedance/seedance-2.0/reference-to-video")).toBe("bytedance/seedance-2.0/reference-to-video");
   });
 
-  it("非 Seedance 2.0 家族 → undefined（UI 据此禁用按钮）", () => {
+  it("v0.8.76 新增家族：MiniMax H3 / 万相 2.7 / Kling O3 也能映射 reference 兄弟", () => {
+    expect(referenceModelFor("minimax/h3/image-to-video")).toBe("minimax/h3/reference-to-video");
+    expect(referenceModelFor("minimax/h3/text-to-video")).toBe("minimax/h3/reference-to-video");
+    expect(referenceModelFor("alibaba/wan-2.7/image-to-video")).toBe("alibaba/wan-2.7/reference-to-video");
+    expect(referenceModelFor("kwaivgi/kling-video-o3-std/text-to-video")).toBe("kwaivgi/kling-video-o3-std/reference-to-video");
+    expect(referenceModelFor("minimax/h3/reference-to-video")).toBe("minimax/h3/reference-to-video");
+  });
+
+  it("无 reference 变体的家族 → undefined（UI 据此禁用按钮）", () => {
     expect(referenceModelFor("kwaivgi/kling-v3.0-pro/image-to-video")).toBeUndefined();
     expect(referenceModelFor("bytedance/seedance-v1.5-pro/image-to-video")).toBeUndefined();
+    expect(referenceModelFor("minimax/hailuo-2.3/i2v-standard")).toBeUndefined();
     expect(referenceModelFor(undefined)).toBeUndefined();
   });
 

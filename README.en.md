@@ -38,7 +38,7 @@
 | 🤖 **One sentence via agents** | MCP / CLI / Skill — tell Claude / Cursor *"make a 9:16 from this product link"* |
 | 💰 **Paid calls never wasted** | Cloud tasks persisted & recoverable, never auto-retried — every cent accounted for |
 
-Want higher quality? Add one key: a single interface aggregates **7 platforms, 30+ models** (GPT Image 2 / Seedance 2.0 / Kling 3.0…). Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
+Want higher quality? Add one key: a single interface aggregates **7 platforms, 30+ curated models** (GPT Image 2 / Seedance 2.0 / **MiniMax H3** / Kling O3 / Veo 3.1…), plus **200+ video models dynamically discovered** from the whole Atlas catalog — new models show up without upgrading the app. Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
 
 ## 🚀 Run it in 30 seconds
 
@@ -176,11 +176,11 @@ Yes. ClipForge ships an **MCP Server** (`clipforge_product_script` turns a produ
 >
 > 💰 **Paid-task safety**: every cloud video task is **persisted with its provider task ID the moment it is accepted** — a poll timeout, network drop, or restart can no longer lose a task you already paid for (the assets page offers "resume query", preventing duplicate billing); task-creating requests are **never auto-retried**; image-to-video requests are **validated and mapped to a true i2v model**, so "add motion" can never be billed as text-to-video; image sizes are **auto-adapted to each model's protocol** (exact aspect ratios), eliminating "invalid size but already billed" failures.
 
-One interface aggregates 7 image/video platforms + OpenRouter LLMs and 30+ mainstream models:
+One interface aggregates 7 image/video platforms + OpenRouter LLMs and 30+ curated models, plus **200+ dynamically discovered video models** on Atlas (the live model catalog is fetched at runtime and request params are derived from each model's published schema — every new model the platform ships appears in the picker without an app upgrade):
 
 | Platform | Image models | Video models | Highlights |
 |------|---------|---------|------|
-| **Atlas Cloud** ⭐ recommended | **GPT Image 2**, Seedream 5.0, Nano Banana 2 | **Seedance 2.0** (native audio), Kling 3.0, Vidu Q3 | One key for LLM + image + video; widest models, best price |
+| **Atlas Cloud** ⭐ recommended | **GPT Image 2**, Seedream 5.0, Nano Banana 2 | **Seedance 2.0** (native audio), **MiniMax H3** (Hailuo 3.0 · 2K · native stereo), Kling O3, Veo 3.1, Wan 2.7, Hailuo 2.3, Vidu Q3 + 200+ discovered live | One key for LLM + image + video; widest models, best price |
 | **fal.ai** | **GPT Image 2** (+edit), FLUX.1/2 Pro, Recraft V4, Seedream V5 Edit | Kling 3.0 Pro, Veo 3, Hailuo 2.3, Luma Ray 2, Vidu Q2 | Broad model set, incl. OpenAI image gen & product-fidelity edit |
 | **Replicate** | FLUX 1.1 Pro/Kontext, Imagen 4, Seedream 4 | Kling v2.1, Seedance 1 Pro, Hailuo 02, Veo 3 Fast | Largest model library, unified predictions API |
 | **Volcengine (Ark)** | Seedream 5.0/4.0 | Seedance 2.0/1.0 Pro (native audio) | ByteDance flagship models, cinematic quality, fast |
@@ -401,20 +401,26 @@ src/
 
 ---
 
-## Supported AI models (confirmed against official docs, 2026.06)
+## Supported AI models (confirmed against official docs, 2026.08)
 
 ### Video generation
 
 | Model | Platform | Audio | Mode | Notes |
 |------|------|------|------|------|
 | **Seedance 2.0** ⭐ | Atlas Cloud | Native | T2V / I2V / ref / first-last | ByteDance's latest, native audio, 4–15s, up to 1440p |
-| **Kling 3.0 Pro** | fal.ai / Atlas Cloud | Native | T2V / I2V | Kling's latest, multi-shot + face binding |
-| **Veo 3** | fal.ai | Native | T2V | Google, dialogue + SFX + lip-sync |
+| **MiniMax H3** 🆕 | Atlas Cloud | Native stereo | T2V / I2V / ref / first-last | Hailuo 3.0 omni-modal (launched 2026-07-31), 2K, 4–15s, mixed image/video/audio references |
+| **Kling O3** 🆕 | Atlas Cloud | Native | T2V / I2V / ref / first-last | Kuaishou omni-modal MVL, multi-shot narrative, 3–15s |
+| **Veo 3.1** 🆕 | Atlas Cloud / fal.ai | Native | T2V / I2V / first-last | Google flagship, 4/6/8s, up to 4K |
+| **Wan 2.7** 🆕 | Atlas Cloud | Native | T2V / I2V / ref / first-last | Multi-shot narrative + AV sync, voice-clone references |
+| **Seedance 2.0 Mini** 🆕 | Atlas Cloud | Native | T2V / I2V / ref / first-last | Lightweight & economical for high-volume output |
+| **Kling 3.0 Pro** | fal.ai / Atlas Cloud | Native | T2V / I2V | Kling, multi-shot + face binding |
 | **Vidu Q3 Pro** | Atlas Cloud | - | T2V / I2V / first-last | First/last-frame transitions (transition magic) |
-| **Hailuo 2.3** | fal.ai | - | T2V / I2V | MiniMax, lifelike motion physics |
+| **Hailuo 2.3** | Atlas Cloud / fal.ai | - | T2V / I2V | MiniMax, lifelike motion physics, 6/10s |
 | **Luma Ray 2** | fal.ai | - | T2V / I2V | Realistic motion & physics |
 | **Seedance 1.5 Pro** | Volcengine / Atlas Cloud | - | T2V / I2V | ByteDance, cinematic quality |
 | **Wanxiang 2.6** | Alibaba Bailian | - | I2V | Strong product image-to-video |
+
+> The table above is the built-in curated set (with capability guards). With Atlas Cloud enabled, the settings page also **dynamically discovers 200+ video models** across the catalog (Youchuan, HappyHorse, Grok Imagine, Gemini Omni Flash… with per-request pricing shown), and request bodies are built from each model's published schema at submit time — new platform models need no app upgrade.
 
 ### Image generation
 

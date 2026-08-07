@@ -107,6 +107,14 @@ describe("链式首尾帧辅助函数", () => {
     expect(modelSupportsLastFrame("bytedance/seedance-2.0-fast/image-to-video")).toBe(true);
     expect(modelSupportsLastFrame("bytedance/seedance-2.0/image-to-video")).toBe(true);
     expect(modelSupportsLastFrame("vidu/q3-pro/start-end-to-video")).toBe(true);
+    // v0.8.76 new families with a pinned-last-frame param per published schema
+    expect(modelSupportsLastFrame("minimax/h3/image-to-video")).toBe(true);
+    expect(modelSupportsLastFrame("kwaivgi/kling-video-o3-std/image-to-video")).toBe(true);
+    expect(modelSupportsLastFrame("google/veo3.1/image-to-video")).toBe(true);
+    expect(modelSupportsLastFrame("alibaba/wan-2.7/image-to-video")).toBe(true);
+    expect(modelSupportsLastFrame("bytedance/seedance-2.0-mini/image-to-video")).toBe(true);
+    // Hailuo 2.3 has no last-frame param; Kling v3.0 never did
+    expect(modelSupportsLastFrame("minimax/hailuo-2.3/i2v-standard")).toBe(false);
     expect(modelSupportsLastFrame("kwaivgi/kling-v3.0-std/image-to-video")).toBe(false);
     expect(modelSupportsLastFrame("")).toBe(false);
   });

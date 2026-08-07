@@ -22,6 +22,19 @@ import type {
   Model,
   MediaType,
 } from './types'
+import {
+  getVideoParamSpec,
+  buildAtlasVideoBody,
+  specFromOpenApiInput,
+  type AtlasVideoParamSpec,
+} from './atlas-video-params'
+import {
+  fetchAtlasCatalog,
+  fetchAtlasInputSchema,
+  getCachedAtlasEntry,
+  modesFromCatalogEntry,
+  dynamicVideoModels,
+} from './atlas-catalog'
 
 // ==================== Atlas Cloud API response types ====================
 
@@ -91,8 +104,30 @@ const ATLAS_MODELS: Array<Omit<Model, 'provider'>> = [
   { id: 'vidu/q3-pro/image-to-video', name: 'Vidu Q3 Pro (图生视频)', modes: ['image-to-video'], mediaType: 'video' },
   { id: 'vidu/q3-pro/start-end-to-video', name: 'Vidu Q3 Pro (首尾帧过渡)', description: '指定首尾帧生成过渡视频', modes: ['image-to-video'], mediaType: 'video' },
   { id: 'vidu/q3-turbo/image-to-video', name: 'Vidu Q3 Turbo (图生视频)', modes: ['image-to-video'], mediaType: 'video' },
+  // --- MiniMax H3 (Hailuo 3.0, launched 2026-07-31: omni-modal, native stereo, up to 2K/15s) ---
+  { id: 'minimax/h3/text-to-video', name: 'MiniMax H3 (文生视频)', description: '海螺 3.0 全模态模型，原生立体声，2K，4-15秒', modes: ['text-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'minimax/h3/image-to-video', name: 'MiniMax H3 (图生视频)', description: '首帧/尾帧图生视频，原生立体声，2K', modes: ['image-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'minimax/h3/reference-to-video', name: 'MiniMax H3 (参考生视频)', description: '图/视频/音频混合参考，保主体一致，2K', modes: ['image-to-video', 'video-to-video'], mediaType: 'video', supportsAudio: true },
+  // --- MiniMax Hailuo 2.3 (no native audio; 6/10s durations) ---
+  { id: 'minimax/hailuo-2.3/t2v-standard', name: 'Hailuo 2.3 Std (文生视频)', description: '海螺 2.3，运动物理逼真，6/10秒', modes: ['text-to-video'], mediaType: 'video' },
+  { id: 'minimax/hailuo-2.3/i2v-standard', name: 'Hailuo 2.3 Std (图生视频)', modes: ['image-to-video'], mediaType: 'video' },
+  { id: 'minimax/hailuo-2.3/i2v-pro', name: 'Hailuo 2.3 Pro (图生视频)', description: '高保真场景演化与角色连续性', modes: ['image-to-video'], mediaType: 'video' },
+  // --- Kling Video O3 (Kuaishou omni-modal, MVL) ---
+  { id: 'kwaivgi/kling-video-o3-std/text-to-video', name: 'Kling O3 Std (文生视频)', description: '快手全模态视频模型，多镜头叙事，带声音', modes: ['text-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'kwaivgi/kling-video-o3-std/image-to-video', name: 'Kling O3 Std (图生视频)', description: '首帧/尾帧，带声音', modes: ['image-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'kwaivgi/kling-video-o3-std/reference-to-video', name: 'Kling O3 Std (参考生视频)', description: '角色/道具/场景参考生成', modes: ['image-to-video', 'video-to-video'], mediaType: 'video', supportsAudio: true },
+  // --- Google Veo 3.1 ---
+  { id: 'google/veo3.1/text-to-video', name: 'Veo 3.1 (文生视频)', description: 'Google 旗舰视频模型，4/6/8秒，最高 4K', modes: ['text-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'google/veo3.1/image-to-video', name: 'Veo 3.1 (图生视频)', description: '首帧/尾帧图生视频，可选音频', modes: ['image-to-video'], mediaType: 'video', supportsAudio: true },
   // --- Wan (Wanxiang) ---
+  { id: 'alibaba/wan-2.7/text-to-video', name: '万相 2.7 (文生视频)', description: '多镜头叙事 + 音画同步', modes: ['text-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'alibaba/wan-2.7/image-to-video', name: '万相 2.7 (图生视频)', description: '首帧/尾帧/视频续写', modes: ['image-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'alibaba/wan-2.7/reference-to-video', name: '万相 2.7 (参考生视频)', description: '多主体参考 + 声音克隆', modes: ['image-to-video', 'video-to-video'], mediaType: 'video', supportsAudio: true },
   { id: 'alibaba/wan-2.6/image-to-video-flash', name: '万相 2.6 Flash (图生视频)', modes: ['image-to-video'], mediaType: 'video' },
+  // --- Seedance 2.0 Mini (lightweight/economical, native audio) ---
+  { id: 'bytedance/seedance-2.0-mini/text-to-video', name: 'Seedance 2.0 Mini (文生视频)', description: '轻量经济版，原生音频', modes: ['text-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'bytedance/seedance-2.0-mini/image-to-video', name: 'Seedance 2.0 Mini (图生视频)', modes: ['image-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'bytedance/seedance-2.0-mini/reference-to-video', name: 'Seedance 2.0 Mini (参考生视频)', modes: ['image-to-video', 'video-to-video'], mediaType: 'video', supportsAudio: true },
   // ==================== Image generation ====================
   // --- OpenAI GPT Image 2 (latest) ---
   { id: 'openai/gpt-image-2/text-to-image', name: 'GPT Image 2 (文生图)', description: 'OpenAI 最新生图模型，支持任意分辨率，商品图质感好', modes: ['text-to-image'], mediaType: 'image' },
@@ -320,7 +355,15 @@ export class AtlasCloudProvider extends BaseProvider {
     }
 
     const isReference = options.mode === 'video-to-video'
-    const body = isReference
+    // Param-spec path: curated new families (MiniMax H3 / Hailuo 2.3 / Kling O3 /
+    // Veo 3.1 / Wan 2.7 / Seedance Mini) and dynamically discovered models get a body
+    // built strictly from their published input schema — vendors disagree on field
+    // names and enums, and foreign params risk post-billing rejections (issue #18).
+    // Legacy families (no spec) keep the original hardcoded body byte-for-byte.
+    const spec = await this.resolveParamSpec(modelId)
+    const body = spec
+      ? buildAtlasVideoBody(modelId, spec, options, prompt)
+      : isReference
       ? {
           // multimodal reference generation (Seedance 2.0 reference-to-video):
           // reference_videos/reference_images arrays with ordinal prompt references
@@ -439,14 +482,49 @@ export class AtlasCloudProvider extends BaseProvider {
   }
 
   /**
-   * List available models (from the shared static catalog)
+   * List available models: the curated static catalog first, then every additional
+   * video model discovered from the live Atlas catalog (public endpoint, 10-min cache).
+   * Discovery is strictly additive — offline or on any parse failure the static
+   * catalog is returned unchanged.
    */
   async listModels(mediaType?: MediaType): Promise<Model[]> {
     let models: Model[] = ATLAS_MODELS.map((m) => ({ ...m, provider: this.name }))
+    if (mediaType !== 'image') {
+      try {
+        const entries = await fetchAtlasCatalog(this.config.baseUrl, { apiKey: this.config.apiKey })
+        const curatedIds = new Set(ATLAS_MODELS.map((m) => m.id))
+        models = models.concat(
+          dynamicVideoModels(entries, curatedIds).map((m) => ({ ...m, provider: this.name }))
+        )
+      } catch {
+        // discovery must never break the static list
+      }
+    }
     if (mediaType) {
       models = models.filter((m) => m.mediaType === mediaType)
     }
     return models
+  }
+
+  /**
+   * Find the request-param spec for a model. Curated specs win; legacy curated
+   * families return undefined on purpose (their hardcoded body IS the contract);
+   * unknown models (dynamic discovery / hand-typed custom IDs) derive a spec from
+   * their published input schema, falling back to the legacy body when the schema
+   * cannot be fetched — which matches the pre-discovery behavior for custom models.
+   */
+  private async resolveParamSpec(modelId: string): Promise<AtlasVideoParamSpec | undefined> {
+    const curated = getVideoParamSpec(modelId)
+    if (curated) return curated
+    if (ATLAS_MODELS.some((m) => m.id === modelId)) return undefined
+    // dynamic models: the picker flow always lists models first, so the catalog cache
+    // is warm in any realistic submit; a cold process (e.g. direct MCP call with a
+    // hand-typed ID) deliberately falls back to the legacy body — the pre-discovery
+    // behavior for unknown models — instead of adding a network call to the pay path
+    const entry = getCachedAtlasEntry(modelId)
+    if (!entry?.schemaUrl) return undefined
+    const input = await fetchAtlasInputSchema(entry.schemaUrl)
+    return input ? specFromOpenApiInput(input) : undefined
   }
 
   // ==================== Private methods ====================
@@ -468,11 +546,19 @@ export class AtlasCloudProvider extends BaseProvider {
   private resolveVideoModel(options: VideoOptions): string {
     const { modelId, firstFrameUrl } = options
     const catalog = new Map(ATLAS_MODELS.map((m) => [m.id, m]))
-    const entry = catalog.get(modelId)
+    // capability info comes from the static catalog OR the cached dynamic catalog,
+    // so discovered models get the same pre-billing guard as curated ones
+    const knows = (id: string): boolean => catalog.has(id) || getCachedAtlasEntry(id) !== undefined
+    const modesOf = (id: string): Model['modes'] | undefined => {
+      const staticEntry = catalog.get(id)
+      if (staticEntry) return staticEntry.modes
+      const dynamicEntry = getCachedAtlasEntry(id)
+      return dynamicEntry ? modesFromCatalogEntry(dynamicEntry) : undefined
+    }
 
-    // multimodal reference mode (Seedance reference-to-video): needs at least one
-    // reference input, and a reference-capable model (remap the family sibling when
-    // an image/text variant was configured) — all validated BEFORE any billable call
+    // multimodal reference mode (reference-to-video): needs at least one reference
+    // input, and a reference-capable model (remap the family sibling when an
+    // image/text variant was configured) — all validated BEFORE any billable call
     if (options.mode === 'video-to-video') {
       if (!options.referenceVideoUrls?.length && !options.referenceImageUrls?.length) {
         throw new ProviderError(
@@ -483,9 +569,9 @@ export class AtlasCloudProvider extends BaseProvider {
       }
       if (modelId.includes('/reference-to-video')) return modelId
       const sibling = modelId.replace(/\/(?:text|image)-to-video$/, '/reference-to-video')
-      if (sibling !== modelId && catalog.has(sibling)) return sibling
+      if (sibling !== modelId && knows(sibling)) return sibling
       throw new ProviderError(
-        `模型 ${modelId} 不支持参考生视频。请选择 Seedance 2.0 系列模型（任务未提交，未产生费用）`,
+        `模型 ${modelId} 不支持参考生视频。请选择支持参考生视频的模型（Seedance 2.0 / MiniMax H3 / 万相 2.7 / Kling O3 系列；任务未提交，未产生费用）`,
         'MODEL_MODE_MISMATCH',
         this.name
       )
@@ -501,14 +587,17 @@ export class AtlasCloudProvider extends BaseProvider {
       )
     }
 
-    if (!entry) return modelId // custom model: no capability info, pass through
+    const modes = modesOf(modelId)
+    if (!modes) return modelId // custom model: no capability info, pass through
 
-    if (firstFrameUrl && !entry.modes.includes('image-to-video')) {
-      // remap to the image-to-video sibling of the same family, e.g.
-      // bytedance/seedance-2.0/text-to-video -> bytedance/seedance-2.0/image-to-video
-      const sibling = modelId.replace(/\/text-to-video$/, '/image-to-video')
-      if (sibling !== modelId && catalog.has(sibling)) {
-        return sibling
+    if (firstFrameUrl && !modes.includes('image-to-video')) {
+      // remap to the image-to-video sibling of the same family, covering both
+      // naming conventions:
+      //   bytedance/seedance-2.0/text-to-video -> .../image-to-video
+      //   minimax/hailuo-2.3/t2v-standard      -> .../i2v-standard
+      for (const [pattern, replacement] of AtlasCloudProvider.I2V_SIBLING_TRANSFORMS) {
+        const sibling = modelId.replace(pattern, replacement)
+        if (sibling !== modelId && knows(sibling)) return sibling
       }
       throw new ProviderError(
         `模型 ${modelId} 不支持图生视频，且没有对应的图生视频变体。请在设置中选择带「图生视频」标识的模型（任务未提交，未产生费用）`,
@@ -517,7 +606,7 @@ export class AtlasCloudProvider extends BaseProvider {
       )
     }
 
-    if (!firstFrameUrl && !entry.modes.includes('text-to-video')) {
+    if (!firstFrameUrl && !modes.includes('text-to-video')) {
       throw new ProviderError(
         `模型 ${modelId} 是图生视频模型，需要首帧图片才能生成（任务未提交，未产生费用）`,
         'MODEL_MODE_MISMATCH',
@@ -527,6 +616,13 @@ export class AtlasCloudProvider extends BaseProvider {
 
     return modelId
   }
+
+  /** Sibling ID rewrites used to find a family's image-to-video variant */
+  private static readonly I2V_SIBLING_TRANSFORMS: ReadonlyArray<[RegExp, string]> = [
+    [/\/text-to-video$/, '/image-to-video'],
+    // MiniMax Hailuo 2.x naming scheme (t2v-standard / i2v-standard / i2v-pro)
+    [/\/t2v-([a-z0-9-]+)$/, '/i2v-$1'],
+  ]
 
   /** Extract task ID from the create-task response (compatible with both wrapped and unwrapped formats) */
   private extractTaskId(response: AtlasCreateResponse): string {

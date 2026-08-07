@@ -123,14 +123,19 @@ export function buildReplicatePrompt(input: { productName: string; sellingPoints
 }
 
 /**
- * Map a configured Seedance 2.0 video model to its reference-to-video sibling
- * (only the 2.0 family has reference variants). Returns undefined when the model
- * family can't replicate — the UI disables the model-tier button with a hint.
+ * Map a configured video model to its reference-to-video sibling. Families with a
+ * reference variant on Atlas: Seedance 2.0 (incl. fast/mini), MiniMax H3, Wan 2.7,
+ * Kling Video O3. Returns undefined when the model family can't replicate — the UI
+ * disables the model-tier button with a hint.
  */
+const REFERENCE_FAMILY_PATTERN =
+  /^(bytedance\/seedance-2\.0(?:-fast|-mini)?|minimax\/h3|alibaba\/wan-2\.7|kwaivgi\/kling-video-o3-(?:std|pro))\//;
+
 export function referenceModelFor(modelId: string | undefined): string | undefined {
   if (!modelId) return undefined;
-  const m = modelId.match(/^(bytedance\/seedance-2\.0(?:-fast|-mini)?)\/(?:text|image)-to-video$/);
-  if (m) return `${m[1]}/reference-to-video`;
-  if (/^bytedance\/seedance-2\.0(?:-fast|-mini)?\/reference-to-video$/.test(modelId)) return modelId;
+  const family = modelId.match(REFERENCE_FAMILY_PATTERN)?.[1];
+  if (!family) return undefined;
+  if (modelId === `${family}/reference-to-video`) return modelId;
+  if (/\/(?:text|image)-to-video$/.test(modelId)) return `${family}/reference-to-video`;
   return undefined;
 }
