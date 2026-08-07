@@ -36,6 +36,7 @@
 | 🚦 **Don't get throttled** | AIGC labeling + ad-law banned-term scan + publish gate — compliance on by default |
 | 📦 **Batch + viral remix** | 10 products rendered in one click, re-shoot a competitor's viral with your product, A/B cuts |
 | 🤖 **One sentence via agents** | MCP / CLI / Skill — tell Claude / Cursor *"make a 9:16 from this product link"* |
+| 🔥 **What to post today** | Trend radar on the landing page: live Douyin hot search (Toutiao board as fallback; Google Trends on the English UI) — tap a trend and it prefills a one-sentence video. Never blank on ideas, no key, no login |
 | 🧩 **Infinite Canvas node** | [Canvas plugin](integrations/infinite-canvas/): connect product images on the canvas → run → the finished video lands back as a canvas video node for further remixing; topic & commerce modes, driven by your local instance (localhost-only cross-port CORS ships in v0.8.79) |
 | 💰 **Paid calls never wasted** | Cloud tasks persisted & recoverable, never auto-retried — every cent accounted for |
 

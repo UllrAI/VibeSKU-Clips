@@ -16,6 +16,10 @@ import { useT, useLocale, useSetLocale } from "@/lib/i18n";
 import { LOCALES, LOCALE_LABELS } from "@/lib/i18n/config";
 import { ATLAS_KEYS_URL } from "@/lib/atlas-onekey";
 import { formatRelativeTime } from "@/lib/relative-time";
+import type { TrendTopic } from "@/lib/trends";
+
+/** How many trend chips are shown at once; "shuffle" pages through the full board. */
+const TRENDS_PAGE_SIZE = 8;
 
 type Mode = "upload" | "topic" | "link";
 interface PickedImage {
@@ -59,8 +63,12 @@ export default function StartPage() {
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<string | null>(null);
   const [recent, setRecent] = useState<RecentProject[]>([]);
+  const [trends, setTrends] = useState<TrendTopic[]>([]);
+  const [trendsSource, setTrendsSource] = useState<string>("");
+  const [trendsPage, setTrendsPage] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const keyformRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   // fetch recent projects to give returning users a "continue" entry point (replaces the old homepage project list so they are not left stranded)
   useEffect(() => {
@@ -83,6 +91,42 @@ export default function StartPage() {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // trend radar ("what to post today"): Chinese UI reads domestic boards, English UI reads Google Trends.
+  // Failure or an empty board silently hides the section — the landing page must never block on it.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(locale === "zh" ? "/api/trends?source=cn&limit=48" : "/api/trends?geo=US&limit=48");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled || !Array.isArray(data.topics)) return;
+        setTrends(data.topics.filter((tp: TrendTopic) => typeof tp?.title === "string" && tp.title.trim()));
+        setTrendsSource(typeof data.source === "string" ? data.source : "");
+        setTrendsPage(0);
+      } catch {
+        /* keyless free endpoint — silent degradation */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [locale]);
+
+  // current slice of the board; "shuffle" cycles through pages
+  const trendsPageCount = Math.max(1, Math.ceil(trends.length / TRENDS_PAGE_SIZE));
+  const trendsShown = trends.slice(
+    (trendsPage % trendsPageCount) * TRENDS_PAGE_SIZE,
+    (trendsPage % trendsPageCount) * TRENDS_PAGE_SIZE + TRENDS_PAGE_SIZE
+  );
+  const trendsSourceLabel =
+    trendsSource === "douyin" ? t("trendsSourceDouyin") : trendsSource === "toutiao" ? t("trendsSourceToutiao") : "Google Trends";
+
+  // tap a trend → prefill it as a one-sentence topic and bring the action card into view
+  const pickTrend = (tp: TrendTopic) => {
+    setMode("topic");
+    setTopic(tp.title);
+    requestAnimationFrame(() => cardRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }));
+  };
 
   // navigate to the appropriate step based on project status
   const stepFor = (status: string) =>
@@ -362,6 +406,17 @@ export default function StartPage() {
         .cf-keyalt a:hover{color:var(--dim)}
         .cf-keyerr{margin-top:9px;color:#FCA5A5;font-size:12.5px}
         .cf-err{margin-top:12px;color:#FCA5A5;font-size:13px}
+        .cf-trends{max-width:620px;margin:26px auto 0;text-align:left}
+        .cf-trends-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+        .cf-trends-lbl{font-size:13px;font-weight:600;color:var(--dim);letter-spacing:.02em}
+        .cf-trends-more{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--bd);border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;transition:.18s}
+        .cf-trends-more:hover{color:var(--dim);border-color:var(--bd2)}
+        .cf-trends-row{display:flex;flex-wrap:wrap;gap:8px}
+        .cf-trend{display:inline-flex;align-items:center;gap:7px;max-width:100%}
+        .cf-trend .rk{font-size:11px;font-weight:700;font-style:normal;color:#FDA4AF;flex:none}
+        .cf-trend .tw{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .cf-trend .tv{font-size:11px;color:var(--muted);flex:none}
+        .cf-trends-src{margin-top:9px;font-size:11.5px;color:var(--muted)}
         .cf-examples{margin-top:24px;font-size:13px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
         .cf-chip{padding:6px 12px;border:1px solid var(--bd);border-radius:999px;background:var(--surface);color:var(--dim);font:inherit;cursor:pointer;transition:.18s}
         .cf-chip:hover{border-color:rgba(94,234,212,.4);color:var(--text)}
@@ -395,6 +450,7 @@ export default function StartPage() {
           </div>
           <div className="cf-nav-r">
             <button type="button" onClick={toggleLocale} className="cf-nlink" title={locale === "zh" ? "Switch to English" : "切换到中文"}>{LOCALE_LABELS[locale]}</button>
+            <Link href="/project/clone" className="cf-nlink">{t("navClone")}</Link>
             <Link href="/products" className="cf-nlink">{t("navProducts")}</Link>
             <Link href="/batch" className="cf-nlink">{t("navBatch")}</Link>
             <Link href="/settings" className="cf-gear" aria-label={t("navSettings")}>
@@ -408,7 +464,7 @@ export default function StartPage() {
           <h1 className="cf-h1">{t("h1Lead")}<span className="hl">{t("h1Highlight")}</span></h1>
           <p className="cf-sub">{t("sub")}</p>
 
-          <div className="cf-card">
+          <div className="cf-card" ref={cardRef}>
             <div className="cf-tabs">
               <button className={`cf-tab${mode === "upload" ? " on" : ""}`} onClick={() => setMode("upload")}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.6-3.6a2 2 0 0 0-2.8 0L6 20" /></svg>
@@ -516,6 +572,34 @@ export default function StartPage() {
             </div>
             {error && <div className="cf-err">{error}</div>}
           </div>
+
+          {trendsShown.length > 0 && (
+            <div className="cf-trends">
+              <div className="cf-trends-head">
+                <span className="cf-trends-lbl">{t("trendsLabel")}</span>
+                <button type="button" className="cf-trends-more" onClick={() => setTrendsPage((p) => p + 1)}>
+                  {t("trendsRefresh")}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
+                </button>
+              </div>
+              <div className="cf-trends-row">
+                {trendsShown.map((tp) => (
+                  <button
+                    key={`${tp.source || "t"}-${tp.rank ?? tp.title}`}
+                    type="button"
+                    className="cf-chip cf-trend"
+                    title={tp.context || tp.title}
+                    onClick={() => pickTrend(tp)}
+                  >
+                    {typeof tp.rank === "number" && tp.rank <= 3 && <b className="rk">{tp.rank}</b>}
+                    <span className="tw">{tp.title}</span>
+                    {tp.traffic && <span className="tv">{tp.traffic}</span>}
+                  </button>
+                ))}
+              </div>
+              <div className="cf-trends-src">{t("trendsSourceNote", { source: trendsSourceLabel })}</div>
+            </div>
+          )}
 
           <div className="cf-examples">
             {t("examplesLabel")}

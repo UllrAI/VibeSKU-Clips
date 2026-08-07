@@ -6,6 +6,7 @@ export const start: NamespaceMessages = {
     // 顶部导航
     navProducts: "商品库",
     navBatch: "批量",
+    navClone: "爆款复刻",
     navSettings: "设置",
     // 主视觉
     eyebrow: "AI 带货短视频工作台",
@@ -63,6 +64,12 @@ export const start: NamespaceMessages = {
     errGeneric: "出错了，请重试",
     // 示例
     examplesLabel: "没素材，先试试",
+    // 热点雷达（今天发什么）
+    trendsLabel: "🔥 今天发什么",
+    trendsRefresh: "换一批",
+    trendsSourceNote: "点一个热点直接写成视频 · 实时数据来自{source}，约 10 分钟更新",
+    trendsSourceDouyin: "抖音热搜",
+    trendsSourceToutiao: "今日头条热榜",
     // 最近项目
     recentLabel: "继续未完成的项目",
     untitledProject: "未命名项目",
@@ -80,6 +87,7 @@ export const start: NamespaceMessages = {
     // 顶部导航
     navProducts: "Products",
     navBatch: "Batch",
+    navClone: "Clone a hit",
     navSettings: "Settings",
     // 主视觉
     eyebrow: "AI Short-Video Studio",
@@ -137,6 +145,12 @@ export const start: NamespaceMessages = {
     errGeneric: "Something went wrong. Please try again",
     // 示例
     examplesLabel: "No assets? Try one",
+    // 热点雷达（今天发什么）
+    trendsLabel: "🔥 What to post today",
+    trendsRefresh: "Shuffle",
+    trendsSourceNote: "Tap a trend and turn it into a video · live data from {source}, refreshed ~10 min",
+    trendsSourceDouyin: "Douyin trending",
+    trendsSourceToutiao: "Toutiao hot board",
     // 最近项目
     recentLabel: "Continue an unfinished project",
     untitledProject: "Untitled project",
