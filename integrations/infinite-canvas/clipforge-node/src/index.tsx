@@ -19,8 +19,20 @@ type Cfg = { base: string; llmBaseUrl: string; llmApiKey: string; llmModel: stri
 const CFG_KEY = "clipforge-config";
 const DEFAULT_CFG: Cfg = { base: "http://localhost:3000", llmBaseUrl: "", llmApiKey: "", llmModel: "" };
 
+/** Loose JSON shape from the ClipForge API — only the fields this plugin reads, all runtime-checked */
+type ApiJson = {
+    id?: string;
+    projectId?: string;
+    filled?: number;
+    total?: number;
+    compositionId?: string;
+    composition?: { status?: string; url?: string };
+    error?: string;
+    raw?: string;
+};
+
 /** Minimal JSON client against the ClipForge HTTP API */
-async function api(base: string, path: string, init?: { method?: string; body?: unknown }): Promise<Record<string, any>> {
+async function api(base: string, path: string, init?: { method?: string; body?: unknown }): Promise<ApiJson> {
     let res: Response;
     try {
         res = await fetch(`${base}${path}`, {
@@ -32,9 +44,9 @@ async function api(base: string, path: string, init?: { method?: string; body?: 
         throw new Error(`连不上 ClipForge（${base}）。请先启动实例，并确认其版本 ≥ v0.8.79（含跨端口 CORS）。`);
     }
     const text = await res.text();
-    let data: Record<string, any>;
+    let data: ApiJson;
     try {
-        data = text ? JSON.parse(text) : {};
+        data = text ? (JSON.parse(text) as ApiJson) : {};
     } catch {
         data = { raw: text };
     }
@@ -119,7 +131,8 @@ function ClipForgeContent({ ctx }: CanvasNodeContentProps) {
                     method: "POST",
                     body: { name: name.trim(), productName: name.trim(), productDescription: points.trim(), productImages: [] },
                 });
-                projectId = proj.id;
+                projectId = String(proj.id || "");
+                if (!projectId) throw new Error("项目创建失败");
                 setStage(`上传商品图（${upstreamImages.length} 张）…`);
                 const fd = new FormData();
                 for (let i = 0; i < upstreamImages.length; i++) {
@@ -152,7 +165,8 @@ function ClipForgeContent({ ctx }: CanvasNodeContentProps) {
                     method: "POST",
                     body: { topic: [name.trim(), points.trim()].filter(Boolean).join("，"), narrationStyle: "knowledge", targetDuration: duration, llmConfig },
                 });
-                projectId = scriptRes.projectId;
+                projectId = String(scriptRes.projectId || "");
+                if (!projectId) throw new Error(String(scriptRes.error || "脚本生成失败"));
             }
 
             setStage("免费素材库配画面…");
@@ -167,7 +181,9 @@ function ClipForgeContent({ ctx }: CanvasNodeContentProps) {
             const voice = voiceFor(name);
             if (voice) (composeBody.freeTts as Record<string, unknown>).voice = voice;
             if (productMode) composeBody.productCard = true;
-            const { compositionId } = await api(base, `/api/project/${projectId}/compose`, { method: "POST", body: composeBody });
+            const submitted = await api(base, `/api/project/${projectId}/compose`, { method: "POST", body: composeBody });
+            const compositionId = String(submitted.compositionId || "");
+            if (!compositionId) throw new Error("合成提交失败");
             const videoUrl = await pollCompose(base, projectId, compositionId, setStage);
 
             // land the finished video on the canvas as a first-class builtin video node
