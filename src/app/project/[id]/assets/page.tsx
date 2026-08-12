@@ -111,6 +111,9 @@ export default function AssetsPage() {
   const [editingCameraShot, setEditingCameraShot] = useState<number | null>(null);
   const [cameraDraft, setCameraDraft] = useState("");
   const [savingCameraShot, setSavingCameraShot] = useState<number | null>(null);
+  // storyboard grid: one generation renders all shots in a 3x3 grid → cells become keyframes
+  const [isGridGenerating, setIsGridGenerating] = useState(false);
+  const [gridNotice, setGridNotice] = useState<string | null>(null);
 
   const doneCount = assets.filter((a) => a.status === "done").length;
   const allDone = assets.length > 0 && doneCount === assets.length;
@@ -700,6 +703,38 @@ export default function AssetsPage() {
     [assets, modelTarget, productImages, productSafe, imageParams, autoMotion, videoModelTarget, visualLook, generateMotion]
   );
 
+  // storyboard grid: ONE image generation renders every shot as a 3x3 grid cell (person /
+  // outfit / room / light physically identical), the server crops cells into per-shot
+  // keyframes — then the normal per-shot "animate" i2v pass takes over
+  const runStoryboardGrid = useCallback(async () => {
+    if (!modelTarget || !scriptId || isGridGenerating) return;
+    setIsGridGenerating(true);
+    setGridNotice(null);
+    try {
+      const res = await fetch(`/api/project/${id}/storyboard-grid`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scriptId,
+          provider: modelTarget.provider,
+          model: modelTarget.model,
+          apiKey: modelTarget.apiKey,
+          baseUrl: modelTarget.baseUrl,
+          // the grid itself is 9:16 so each of the 3x3 cells is exactly 9:16 too
+          options: buildImageOptions(imageParams ? { ...imageParams, aspectRatio: "9:16", count: 1 } : undefined),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t("gridFailed"));
+      await reloadAssets();
+      setGridNotice(t("gridDone").replace("{n}", String(data.count ?? "")));
+    } catch (e) {
+      setGridNotice(e instanceof Error ? e.message : t("gridFailed"));
+    } finally {
+      setIsGridGenerating(false);
+    }
+  }, [id, scriptId, modelTarget, imageParams, isGridGenerating, reloadAssets, t]);
+
   // generate all in one click (sequential, to avoid hitting platform rate limits with concurrent requests).
   // With auto-motion on, this runs TWO passes: (1) every static keyframe, (2) keyframe-chained i2v per shot —
   // chaining needs the NEXT shot's keyframe to exist, which a single interleaved pass can't provide.
@@ -879,6 +914,24 @@ export default function AssetsPage() {
                 )}
               </Button>
             )}
+            {modelTarget && assets.length >= 2 && assets.length <= 9 && (
+              <Button
+                onClick={runStoryboardGrid}
+                disabled={isGridGenerating || isBatchGenerating}
+                variant="outline"
+                className="text-xs"
+                title={t("gridTip")}
+              >
+                {isGridGenerating ? (
+                  <>
+                    <LuLoaderCircle className="animate-spin mr-1.5 h-3.5 w-3.5" />
+                    {t("gridRunning")}
+                  </>
+                ) : (
+                  <>{t("gridButton")}</>
+                )}
+              </Button>
+            )}
             <Button
               onClick={generateAll}
               disabled={isBatchGenerating || allDone || assets.length === 0}
@@ -900,6 +953,13 @@ export default function AssetsPage() {
             </Button>
           </div>
         </div>
+
+        {/* storyboard-grid outcome line (success count or error) */}
+        {gridNotice && (
+          <div className="mb-4 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+            {gridNotice}
+          </div>
+        )}
 
         {/* auto-fill visuals hint/result (free stock, no key required, preferred path for topic videos) */}
         {offerStockFill && (

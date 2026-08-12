@@ -79,13 +79,18 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 打包 agent skill（clipforge-skill.zip）
-        run: cd skills && zip -r ../clipforge-skill.zip clipforge-video
+      - name: 打包 agent skill（clipforge-skill.zip + clipforge-script-judges.zip）
+        run: |
+          cd skills
+          zip -r ../clipforge-skill.zip clipforge-video
+          zip -r ../clipforge-script-judges.zip script-judges
 
       - name: 上传 skill zip 到 Release
         uses: softprops/action-gh-release@v2
         with:
-          files: clipforge-skill.zip
+          files: |
+            clipforge-skill.zip
+            clipforge-script-judges.zip
           fail_on_unmatched_files: true
           draft: true
         env:

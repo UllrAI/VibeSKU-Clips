@@ -4,6 +4,8 @@
 
 It complements ClipForge's [MCP server](../mcp/README.md): the MCP exposes callable tools; this skill teaches an assistant *when and how* to use them (plus the CLI / HTTP API).
 
+`script-judges/SKILL.md` is a second, standalone skill: a **four-judge adversarial panel** (pacing / spoken-not-written voice / freshness / structure) that tears short-video script lines apart and rewrites them BEFORE any generation money is spent — feed the voice judge real creators' transcripts (never award-winning ad copy) and run every script through the panel first. Works in any agent host, no binaries needed; pairs with ClipForge's in-app ⚖️ judge panel and `POST /api/project/{id}/script-judge`.
+
 ## Install
 
 **One command** (any of the 70+ hosts supporting the agentskills.io installer):

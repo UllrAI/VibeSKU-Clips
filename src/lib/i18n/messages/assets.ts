@@ -29,6 +29,12 @@ export const assets: NamespaceMessages = {
     generatingAll: "生成中...",
     allDone: "全部完成",
     generateAll: "一键全部生成",
+    // 九宫格分镜（一图锁全片一致性）
+    gridButton: "🎬 九宫格分镜",
+    gridRunning: "九宫格生成中…",
+    gridDone: "九宫格完成：{n} 个分镜关键帧已就位（同人同景同光），逐镜「转动态」即可",
+    gridFailed: "九宫格分镜生成失败",
+    gridTip: "一次生图把全部分镜画进一张 3x3 九宫格——人物、服装、房间、光线天然一致，再裁成各分镜关键帧（适合 ≤9 镜的短脚本）",
     // 自动配画面（免费素材库，零 Key）
     stockFill: "自动配画面",
     stockFilling: "配画面中…",
@@ -139,6 +145,12 @@ export const assets: NamespaceMessages = {
     generatingAll: "Generating...",
     allDone: "All done",
     generateAll: "Generate all",
+    // 九宫格分镜（一图锁全片一致性）
+    gridButton: "🎬 Storyboard grid",
+    gridRunning: "Rendering the grid…",
+    gridDone: "Grid done: {n} shot keyframes in place (same person, room and light) — hit “Animate” per shot",
+    gridFailed: "Storyboard grid failed",
+    gridTip: "One generation paints every shot into a 3x3 grid — person, outfit, room and light are physically consistent — then cells are cropped into per-shot keyframes (best for scripts of ≤9 shots)",
     stockFill: "Auto-fill footage",
     stockFilling: "Filling…",
     stockFillHint: "Auto-fill each shot from free stock (Openverse images, no key needed) using its search terms",

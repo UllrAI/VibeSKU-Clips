@@ -6,6 +6,13 @@ const nextConfig: NextConfig = {
   output: "standalone",
   // better-sqlite3 is a native module; mark it external (loaded via require, so the bundler won't try to bundle its .node file)
   serverExternalPackages: ["better-sqlite3"],
+  // Keep the file trace honest: nft's conservative directory collection was dragging the local
+  // data/ (user uploads/outputs — 96MB of it), the docs site and other repo-only folders into
+  // .next/standalone, which then shipped inside every desktop installer (issue: 330MB dmg).
+  // data/ is a runtime-created directory (Electron uses userData anyway), never a build input.
+  outputFileTracingExcludes: {
+    "/**": ["./.git/**", "./.github/**", "./data/**", "./docs/**", "./tasks/**", "./release/**", "./integrations/**", "./e2e/**", "./remotion/**"],
+  },
 };
 
 export default nextConfig;

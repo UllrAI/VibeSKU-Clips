@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import type { Shot } from "@/lib/db/schema";
+import { JUDGE_META, type JudgeReport } from "@/lib/script-judge";
 import { useTemplateStore } from "@/lib/stores/template-store";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useT, useLocale } from "@/lib/i18n";
@@ -73,6 +74,12 @@ export default function ScriptPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState("");
   const { llm } = useSettingsStore();
+  // judge panel: four narrow judges tear the lines apart before generation money is spent
+  const [judging, setJudging] = useState(false);
+  const [judgeReport, setJudgeReport] = useState<JudgeReport | null>(null);
+  const [judgeError, setJudgeError] = useState("");
+  const [judgeApplying, setJudgeApplying] = useState(false);
+  const [judgeApplied, setJudgeApplied] = useState(false);
 
   // fetch real scripts by projectId (stored in the scripts table)
   const loadScripts = async () => {
@@ -368,6 +375,74 @@ export default function ScriptPage() {
     }
   };
 
+  // switching scripts invalidates the report — it was ruled on another script's lines
+  useEffect(() => {
+    setJudgeReport(null);
+    setJudgeError("");
+    setJudgeApplied(false);
+  }, [selectedScript]);
+
+  // run the judge panel on the current script's voiceover lines (one LLM call, four judges)
+  const runJudge = async () => {
+    if (!currentScript || judging) return;
+    setJudging(true);
+    setJudgeError("");
+    setJudgeReport(null);
+    setJudgeApplied(false);
+    try {
+      const res = await fetch(`/api/project/${id}/script-judge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scriptId: currentScript.id,
+          llmConfig: { baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t("judgeFailed"));
+      setJudgeReport(data as JudgeReport);
+    } catch (e) {
+      setJudgeError(e instanceof Error ? e.message : t("judgeFailed"));
+    } finally {
+      setJudging(false);
+    }
+  };
+
+  // apply the judges' rewrites through the existing shotTexts PATCH channel (+ optimistic update)
+  const applyJudgeRewrites = async () => {
+    if (!currentScript || !judgeReport || judgeReport.rewrites.length === 0 || judgeApplying) return;
+    setJudgeApplying(true);
+    setScripts((prev) =>
+      prev.map((s) =>
+        s.id === currentScript.id
+          ? {
+              ...s,
+              shots: s.shots.map((sh) => {
+                const rw = judgeReport.rewrites.find((r) => r.shotId === sh.shotId);
+                return rw ? { ...sh, voiceover: rw.voiceover } : sh;
+              }),
+            }
+          : s
+      )
+    );
+    try {
+      const res = await fetch(`/api/project/${id}/scripts`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scriptId: currentScript.id,
+          shotTexts: judgeReport.rewrites.map((r) => ({ shotId: r.shotId, voiceover: r.voiceover })),
+        }),
+      });
+      if (!res.ok) throw new Error("apply failed");
+      setJudgeApplied(true);
+    } catch {
+      setJudgeError(t("judgeApplyFailed"));
+    } finally {
+      setJudgeApplying(false);
+    }
+  };
+
   const saveEditShot = async (shotId: number) => {
     if (!currentScript) return;
     setEditStatus("saving");
@@ -573,6 +648,22 @@ export default function ScriptPage() {
                   <Button
                     variant="outline"
                     className="text-sm"
+                    disabled={judging}
+                    onClick={runJudge}
+                    title={t("judgeHint")}
+                  >
+                    {judging ? (
+                      <>
+                        <LuLoaderCircle className="w-4 h-4 mr-1 animate-spin" />
+                        {t("judging")}
+                      </>
+                    ) : (
+                      <>⚖️ {t("judgeButton")}</>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="text-sm"
                     disabled={autoFinishing}
                     onClick={autoFinish}
                     title={t("autoFinishHint")}
@@ -597,6 +688,67 @@ export default function ScriptPage() {
                   </Link>
                 </div>
               </div>
+
+              {/* judge-panel report: per-judge issues + before/after rewrites + one-click apply */}
+              {judgeError && (
+                <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-2.5 text-xs text-red-400">{judgeError}</div>
+              )}
+              {judgeReport && (
+                <Card className="glass-card mb-4">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold">⚖️ {t("judgeReportTitle")}</span>
+                      <div className="flex items-center gap-2">
+                        {judgeApplied ? (
+                          <span className="text-xs text-green-400">{t("judgeAppliedTip")}</span>
+                        ) : judgeReport.rewrites.length > 0 ? (
+                          <Button size="sm" className="h-7 text-xs brand-gradient text-white" disabled={judgeApplying} onClick={applyJudgeRewrites}>
+                            {judgeApplying ? t("judgeApplying") : t("judgeApply", { n: judgeReport.rewrites.length })}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-green-400">{t("judgeAllPass")}</span>
+                        )}
+                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setJudgeReport(null)}>{tc("cancel")}</Button>
+                      </div>
+                    </div>
+                    {judgeReport.summary && <p className="text-xs text-muted-foreground">{judgeReport.summary}</p>}
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {judgeReport.verdicts.map((v) => (
+                        <div key={v.judge} className="rounded-lg border border-border/60 p-2.5">
+                          <div className="text-xs font-medium mb-1">
+                            {locale === "zh" ? JUDGE_META[v.judge].zh : JUDGE_META[v.judge].en}
+                            {v.issues.length === 0 && <span className="ml-2 text-green-400">✓</span>}
+                          </div>
+                          {v.issues.length > 0 && (
+                            <ul className="space-y-1 text-xs text-muted-foreground">
+                              {v.issues.map((iss, i) => (
+                                <li key={i}>
+                                  {typeof iss.shotId === "number" && <span className="text-primary mr-1">#{iss.shotId}</span>}
+                                  {iss.issue}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {judgeReport.rewrites.length > 0 && !judgeApplied && (
+                      <div className="space-y-2">
+                        <div className="text-xs font-medium">{t("judgeRewrites")}</div>
+                        {judgeReport.rewrites.map((rw) => {
+                          const orig = currentScript?.shots.find((s) => s.shotId === rw.shotId)?.voiceover ?? "";
+                          return (
+                            <div key={rw.shotId} className="rounded-lg border border-border/60 p-2.5 text-xs space-y-1">
+                              <div className="text-muted-foreground line-through decoration-red-400/60">#{rw.shotId} {orig}</div>
+                              <div>#{rw.shotId} {rw.voiceover}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
 
               {autoFinishError && (
                 <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/5 px-4 py-2.5 text-xs text-red-400">

@@ -63,6 +63,7 @@
     "appId": "com.clipforge.app",
     "productName": "ClipForge",
     "npmRebuild": false,
+    "compression": "maximum",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -70,6 +71,7 @@
     "files": [
       "electron/**/*",
       "package.json",
+      "!node_modules/**",
       "node_modules/ffmpeg-static/**",
       "node_modules/@ffprobe-installer/**"
     ],
@@ -83,6 +85,9 @@
       "category": "public.app-category.video",
       "identity": null,
       "icon": "electron/icon.png"
+    },
+    "dmg": {
+      "format": "UDBZ"
     },
     "win": {
       "target": "nsis",

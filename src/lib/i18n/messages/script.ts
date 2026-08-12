@@ -53,6 +53,18 @@ export const script: NamespaceMessages = {
     readinessNeedsWork: "建议先改",
     // Tabs
     tabTimeline: "分镜时间线",
+    // 判官团（生成花钱前先撕台词）
+    judgeButton: "判官团",
+    judging: "判官团审稿中…",
+    judgeHint: "四位只管一件事的毒舌判官（节奏/口语/创意/结构）把台词撕一遍并给出重写——生成花钱之前先过这关",
+    judgeFailed: "判官团评审失败，请检查 LLM 配置",
+    judgeReportTitle: "判官团报告",
+    judgeAllPass: "全员放行，台词能打",
+    judgeApply: "应用重写（{n} 句）",
+    judgeApplying: "应用中…",
+    judgeAppliedTip: "已应用重写",
+    judgeApplyFailed: "重写应用失败，请重试",
+    judgeRewrites: "重写对照（原句 → 新句）",
     tabText: "文案编辑",
     nextStepAssets: "下一步：生成素材",
     // 画面来源
@@ -136,6 +148,18 @@ export const script: NamespaceMessages = {
     readinessNeedsWork: "Fix first",
     // Tabs
     tabTimeline: "Shot timeline",
+    // 判官团（生成花钱前先撕台词）
+    judgeButton: "Judge panel",
+    judging: "Judges deliberating…",
+    judgeHint: "Four narrow, bad-tempered judges (pacing / spoken voice / freshness / structure) tear the lines apart and rewrite them — before generation costs a cent",
+    judgeFailed: "Judge panel failed — check your LLM settings",
+    judgeReportTitle: "Judge panel report",
+    judgeAllPass: "All judges pass — the lines hold up",
+    judgeApply: "Apply rewrites ({n})",
+    judgeApplying: "Applying…",
+    judgeAppliedTip: "Rewrites applied",
+    judgeApplyFailed: "Failed to apply rewrites — try again",
+    judgeRewrites: "Rewrites (before → after)",
     tabText: "Edit copy",
     nextStepAssets: "Next: generate assets",
     // 画面来源
