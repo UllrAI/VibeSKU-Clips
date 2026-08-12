@@ -26,20 +26,34 @@
 
 | Exclusive | In one line |
 |---|---|
-| 🎯 **Product fidelity** | Swap the background / relight — the product itself stays pixel-identical, never "Photoshopped wrong" |
-| 🎬 **Real moving shots** | Image-to-video + seamless keyframe-chained transitions + 18 named camera presets pickable per shot (with Mix two-preset overlays) + 8 one-click visual looks + per-shot redo — not a still-image slideshow |
-| 🎁 **Ad templates** | 391 end-to-end commerce recipes (Turntable Hero / Factory Story / Meltdown Lit / Oyster Reveal / Egg-Drop Comfort Proof / Noon-to-Midnight Blackout / Clear Mom's Cart / Fresh-Catch Fishing Log / Ugly Ads / Perfect Loop / Sassy Granfluencer / AI UGC Actors…) spanning keyboards & earbuds, tea & coffee & low-proof drinks, home fragrance & lighting, hanfu & swimwear & sun-protective wear, books, instruments, collectibles and trading cards, through the festival marketing calendar and local-life & travel deals, browsable and searchable across six groups; product-aware recommendations from name/category/selling points, plus ✨AI-custom recipes with every enum clamped to the real preset vocabularies; one click pre-fills script style + camera plan + visual look + caption/BGM compose config, everything still editable; recipes travel: save AI-custom recipes to "My templates" for reuse, export any template as a shareable JSON and import others' recipes in one click (preset-vocabulary clamping + ad-law risk-term hints); export all "My templates" as one pack and import multi-recipe packs in one paste; fork any template via "Edit recipe" — name / camera plan / visual look / caption & BGM all adjustable, save as a new mine or update in place |
-| 🔁 **Viral replication** | Upload a reference video: ffmpeg detects real scene cuts into a rhythm skeleton and the generated script matches its shot count and durations; references ≤15s can also one-shot replicate via Seedance reference-to-video — keeping the reference's camera work and pacing while swapping in your product |
-| 🧪 **Variant matrix** | Same assets, hook copy × caption style × BGM mood combos batch-rendered as labeled outputs for A/B (compared in the export page's history list); compose-only reruns, zero AI-generation cost |
-| ⚖️ **Judge panel + storyboard grid + one-tap full film** | Lines get torn apart BEFORE generation money is spent: four narrow, bad-tempered judges (pacing / spoken voice / freshness / structure) flag issues per shot and produce length-preserving rewrites in one call, applied in one click (also a standalone [script-judges skill](skills/script-judges/SKILL.md) for any agent); **🎬 storyboard grid** paints ≤9 shots into one 3x3 image — person, outfit, room and light physically consistent — auto-cropped into per-shot keyframes; **🎞️ one-tap full film** feeds every keyframe into Seedance 2.5 reference-to-video and generates the whole film (≤30s) in one call — native cuts, lines spoken verbatim in the character's own voice, continuous audio (see samples above) |
-| 🎭 **Mini-drama selling** | Ten script styles with a free voice per character; **built-in ordinary-person presenter presets + a real-face constraint** so on-camera humans never look like polished AI influencers; **UGC realism trio** — lines that sound spoken, not written (hooks start mid-conversation, no punchline endings), first frames with named light sources and lived-in backgrounds, and behavior beats rotating per talking shot (repetition is the biggest AI tell) |
-| 🆓 **A full video at $0** | Free stock + free AI voiceover (EN / 中 / 日 / 韩 / ES) + local compositing — no API key needed, open-source, no watermark |
-| 🚦 **Don't get throttled** | AIGC labeling + ad-law banned-term scan + publish gate — compliance on by default |
-| 📦 **Batch + viral remix** | 10 products rendered in one click, re-shoot a competitor's viral with your product, A/B cuts |
-| 🤖 **One sentence via agents** | MCP / CLI / Skill — tell Claude / Cursor *"make a 9:16 from this product link"* |
-| 🔥 **What to post today** | Trend radar on the landing page: live Douyin hot search (Toutiao fallback; Google Trends on the English UI), **filterable by category** (entertainment/food/tech/gaming… keyword classifier); tap a trend to prefill a one-sentence video, or hit its **Remix** link straight into viral-clone; **📅 daily persona picker** — keywords in, today's best-matching trend out, cron the CLI for a hands-free daily machine. No key, no login |
-| 🧩 **Infinite Canvas node** | [Canvas plugin](integrations/infinite-canvas/): connect product images on the canvas → run → the finished video lands back as a canvas video node for further remixing; topic & commerce modes, driven by your local instance (localhost-only cross-port CORS ships in v0.8.79) |
-| 💰 **Paid calls never wasted** | Cloud tasks persisted & recoverable, never auto-retried — every cent accounted for |
+| 🎯 **Product fidelity** | Swap the background and relight — the product itself stays pixel-identical |
+| 🎞️ **One-tap full film** | Judges tear the lines → grid locks consistency → Seedance 2.5 renders the whole film, spoken in the character's own voice |
+| 🎬 **Real moving shots** | Image-to-video + seamless transitions + 18 camera presets — not a slideshow |
+| 🎭 **Mini-drama selling** | Ten script styles + ordinary-person presenters + UGC realism rules — no plastic AI-influencer look |
+| 🎁 **391 ad templates** | Product-aware recommendations, one-click full-pipeline apply; AI-customizable, shareable, forkable |
+| 🔥 **What to post today** | Live trend picks, tap a trend to render, cron it for a hands-free daily machine |
+| 🔁 **Viral replication** | Parse a reference video's rhythm skeleton shot by shot, swap in your product |
+| 🧪 **Variant matrix** | Hook × caption × BGM combos batch-rendered for A/B, zero AI-generation cost |
+| 🆓 **A full video at $0** | Free stock + free voiceover + local compositing — no key, no watermark |
+| 🚦 **Don't get throttled** | AIGC labeling + banned-term scan + publish gate, on by default |
+| 📦 **Batch rendering** | 10 products rendered in one click |
+| 🤖 **Agent-native** | MCP / CLI / Skill — one sentence in Claude / Cursor makes the video |
+| 💰 **Paid calls never wasted** | Cloud tasks persisted and recoverable, never auto-retried |
+
+<details>
+<summary><b>📖 Expand: the full details behind each line</b></summary>
+
+- 🎞️ **One-tap full film**: before generation costs a cent, four narrow judges (pacing / spoken voice / freshness / structure) tear the lines per shot and produce length-preserving rewrites, applied in one click (also a standalone [script-judges skill](skills/script-judges/SKILL.md)); the **storyboard grid** paints ≤9 shots into one 3x3 image — person, outfit, room and light physically consistent — auto-cropped into per-shot keyframes; all keyframes then ride one Seedance 2.5 reference-to-video call into a complete film (≤30s) — native cuts, lines spoken verbatim, continuous audio (real-product samples below).
+- 🎬 **Real moving shots**: i2v + keyframe-chained seamless transitions; 18 named camera presets per shot with Mix two-preset overlays; 8 one-click visual looks; redo any shot keeping its keyframe.
+- 🎭 **Mini-drama selling**: ten script styles across four forms with a free voice per character; six built-in ordinary-person presenters + a real-face constraint; UGC realism trio — spoken-not-written lines (hooks start mid-conversation, no punchline endings), named-light lived-in first frames, behavior beats rotating per talking shot.
+- 🎁 **Ad templates**: 391 commerce recipes (Turntable Hero / Factory Story / Egg-Drop Proof / Sassy Granfluencer…) from 3C to travel deals, browsable across six groups; product-aware recommendations plus ✨AI-custom recipes; one click pre-fills script style + camera plan + look + caption/BGM, all still editable; recipes travel — save to "My templates", export/import JSON, pack sharing, fork via "Edit recipe".
+- 🔥 **What to post today**: live Douyin hot search (Toutiao fallback; Google Trends on the English UI), filterable by category; tap to prefill a one-sentence video or jump into viral-clone; 📅 persona picker + cron recipe = hands-free daily machine. No key, no login.
+- 🔁 **Viral replication**: ffmpeg detects the reference's real scene cuts into a rhythm skeleton, the script matches its shot count and durations; ≤15s references can one-shot replicate via Seedance reference-to-video.
+- 🧪 **Variant matrix**: same assets, hook × caption × BGM mood combos batch-rendered as labeled outputs, compared in the export history; compose-only reruns.
+- 🧩 **Infinite Canvas**: [canvas plugin](integrations/infinite-canvas/) — product images in, finished video back as a canvas node for further remixing.
+- 🚦 **Compliance**: explicit + implicit AIGC labeling, ad-law banned-term scan, publish-gate report — all on by default.
+
+</details>
 
 Want higher quality? Add one key: a single interface aggregates **7 platforms, 30+ curated models** (GPT Image 2 / **Seedance 2.5** / **MiniMax H3** / Kling O3 / Veo 3.1…), plus **200+ video models dynamically discovered** from the whole Atlas catalog — new models show up without upgrading the app. Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
 
