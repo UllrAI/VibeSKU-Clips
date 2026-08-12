@@ -16,6 +16,8 @@ import type { Shot } from "@/lib/db/schema";
 import { JUDGE_META, type JudgeReport } from "@/lib/script-judge";
 import { useTemplateStore } from "@/lib/stores/template-store";
 import { useSettingsStore } from "@/lib/stores/settings-store";
+import { useCharacterStore } from "@/lib/stores/project-store";
+import { resolveDefaultModelTarget, buildImageOptions, buildVideoOptions, toEditVariant } from "@/lib/gen-params";
 import { useT, useLocale } from "@/lib/i18n";
 import { friendlyError } from "@/lib/friendly-error";
 import { ProjectHeader } from "@/components/project-header";
@@ -333,15 +335,25 @@ export default function ScriptPage() {
   // reveals the editor — the running chain is untouched.
   const [autoMode, setAutoMode] = useState(false);
   const [autoModeTriggered, setAutoModeTriggered] = useState(false);
+  // generation-task mode chosen on the studio card (?gen=ai): the free chain stays hands-off,
+  // the AI chain stops at the script gate — money is only spent after one explicit click here
+  const [genPref, setGenPref] = useState<"free" | "ai">("free");
+  // presenter picked at creation time (?presenter=<id>) — resolved to their sheet for identity locking
+  const [presenterParam, setPresenterParam] = useState("");
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("auto") === "1") setAutoMode(true);
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get("auto") === "1") setAutoMode(true);
+    if (qs.get("gen") === "ai") setGenPref("ai");
+    const p = qs.get("presenter");
+    if (p) setPresenterParam(p);
   }, []);
   useEffect(() => {
     if (!autoMode || autoModeTriggered || loading || !currentScript) return;
     setAutoModeTriggered(true);
-    autoFinish();
+    // the AI path lands on the "script ready" gate instead of auto-running the free chain
+    if (genPref !== "ai") autoFinish();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- autoFinish is a stable page-level handler; triggering once per auto entry
-  }, [autoMode, autoModeTriggered, loading, currentScript]);
+  }, [autoMode, autoModeTriggered, loading, currentScript, genPref]);
   const autoFinish = async () => {
     if (!currentScript || autoFinishing) return;
     setAutoFinishing(true);
@@ -388,6 +400,77 @@ export default function ScriptPage() {
     } catch (err) {
       setAutoFinishError(friendlyError(err, locale));
       setAutoFinishing(false);
+    }
+  };
+
+  // ---- AI film chain (grid → one-call film): the paid path. The free script above is the
+  // zero-cost "video plan" gate — money is only spent after this one explicit click, and the
+  // bill goes to the user's own model platform (open-source BYOK, ClipForge itself is free) ----
+  const { characters: presenterLib } = useCharacterStore();
+  const [aiFilming, setAiFilming] = useState(false);
+  const [aiFilmStage, setAiFilmStage] = useState("");
+  const [aiFilmError, setAiFilmError] = useState("");
+  const runAiFilm = async () => {
+    if (!currentScript || aiFilming || autoFinishing) return;
+    setAiFilming(true);
+    setAiFilmError("");
+    try {
+      // resolve the configured default image + video models to their providers
+      setAiFilmStage(t("aiFilmResolve"));
+      const s = useSettingsStore.getState();
+      const [imgTarget, vidTarget] = await Promise.all([
+        resolveDefaultModelTarget(s.providers, s.defaultImageModel, s.customModels, "image"),
+        resolveDefaultModelTarget(s.providers, s.defaultVideoModel, s.customModels, "video"),
+      ]);
+      if (!imgTarget || !vidTarget) throw new Error(t("aiFilmNeedModels"));
+      // make sure the picked variant is the one the pipeline uses
+      await fetch(`/api/project/${id}/scripts`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedScriptId: currentScript.id }),
+      }).catch(() => {});
+      // identity/product anchors: presenter sheet (picked at creation) + first product photo
+      const sheet = presenterLib.find((c) => c.id === presenterParam)?.referenceImages?.[0];
+      const productRef = projectMeta?.productImages?.[0];
+      // 1) storyboard grid: ONE image generation renders every shot as a keyframe (identity locked)
+      setAiFilmStage(t("aiFilmGrid"));
+      const gridRes = await fetch(`/api/project/${id}/storyboard-grid`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scriptId: currentScript.id,
+          provider: imgTarget.provider,
+          model: sheet || productRef ? toEditVariant(imgTarget.model) : imgTarget.model,
+          apiKey: imgTarget.apiKey,
+          baseUrl: imgTarget.baseUrl,
+          ...(sheet && { characterSheetUrl: sheet }),
+          ...(productRef && { productImageUrl: productRef }),
+          options: buildImageOptions(s.imageParams ? { ...s.imageParams, aspectRatio: "9:16", count: 1 } : undefined),
+        }),
+      });
+      const gridData = await gridRes.json().catch(() => ({}));
+      if (!gridRes.ok) throw new Error(gridData.error || t("aiFilmFailed"));
+      // 2) film pass: all keyframes ride one reference-to-video call — native cuts + spoken lines
+      setAiFilmStage(t("aiFilmRender"));
+      const filmRes = await fetch(`/api/project/${id}/storyboard-film`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scriptId: currentScript.id,
+          provider: vidTarget.provider,
+          model: vidTarget.model.includes("/reference-to-video")
+            ? vidTarget.model
+            : "bytedance/seedance-2.5/reference-to-video",
+          apiKey: vidTarget.apiKey,
+          baseUrl: vidTarget.baseUrl,
+          ...(sheet && { characterSheetUrl: sheet }),
+          options: buildVideoOptions(s.videoParams ? { ...s.videoParams, aspectRatio: "9:16" } : undefined),
+        }),
+      });
+      const filmData = await filmRes.json().catch(() => ({}));
+      if (!filmRes.ok) throw new Error(filmData.error || t("aiFilmFailed"));
+      // 3) the film landed in compositions — the export page shows it
+      router.push(`/project/${id}/export`);
+    } catch (err) {
+      setAiFilmError(friendlyError(err, locale));
+      setAiFilming(false);
     }
   };
 
@@ -560,8 +643,9 @@ export default function ScriptPage() {
     );
   }
 
-  // Hands-off takeover: while the auto chain runs, beginners see one progress card, not the editor
-  if (autoMode && !autoFinishError && (autoFinishing || !autoModeTriggered)) {
+  // Hands-off takeover: while the auto chain (free) or the AI film chain (paid) runs,
+  // beginners see one progress card, not the editor
+  if ((autoMode && !autoFinishError && (autoFinishing || !autoModeTriggered)) || aiFilming) {
     return (
       <div className="min-h-screen grid-bg">
         {headerBar}
@@ -573,11 +657,18 @@ export default function ScriptPage() {
             </svg>
           </div>
           <h2 className="text-xl font-bold">{t("autoModeTitle")}</h2>
-          <p className="mt-2 text-sm text-primary">{autoFinishStage || t("autoFinishSelecting")}</p>
-          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t("autoModeHint")}</p>
-          <Button variant="outline" size="sm" className="mt-8 text-xs" onClick={() => setAutoMode(false)}>
-            {t("autoModeManual")}
-          </Button>
+          <p className="mt-2 text-sm text-primary">
+            {aiFilming ? (aiFilmStage || t("aiFilmRender")) : (autoFinishStage || t("autoFinishSelecting"))}
+          </p>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+            {aiFilming ? t("aiFilmHint") : t("autoModeHint")}
+          </p>
+          {/* the paid film call keeps running server-side — no "go manual" escape mid-flight */}
+          {!aiFilming && (
+            <Button variant="outline" size="sm" className="mt-8 text-xs" onClick={() => setAutoMode(false)}>
+              {t("autoModeManual")}
+            </Button>
+          )}
         </main>
       </div>
     );
@@ -608,21 +699,36 @@ export default function ScriptPage() {
                 </p>
               </CardContent>
             </Card>
-            {autoFinishError && (
+            {(autoFinishError || aiFilmError) && (
               <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-xs text-destructive">
-                {autoFinishError}
+                {autoFinishError || aiFilmError}
               </div>
             )}
             <div className="flex flex-col items-center gap-3">
-              <Button
-                size="lg"
-                className="brand-gradient w-full text-white"
-                disabled={autoFinishing || !currentScript}
-                onClick={autoFinish}
-              >
-                {autoFinishing ? (autoFinishStage || t("autoFinish")) : `⚡ ${t("autoFinish")}`}
-              </Button>
+              {/* two finishing paths, primary = what was chosen on the studio card; the AI one
+                  is the single paid click (billed to the user's own model platform) */}
+              <div className="grid w-full gap-2 sm:grid-cols-2">
+                <Button
+                  size="lg"
+                  variant={genPref === "ai" ? "outline" : "default"}
+                  className={`w-full ${genPref === "ai" ? "" : "brand-gradient text-white"}`}
+                  disabled={autoFinishing || aiFilming || !currentScript}
+                  onClick={autoFinish}
+                >
+                  {autoFinishing ? (autoFinishStage || t("autoFinish")) : `⚡ ${t("autoFinish")}`}
+                </Button>
+                <Button
+                  size="lg"
+                  variant={genPref === "ai" ? "default" : "outline"}
+                  className={`w-full ${genPref === "ai" ? "brand-gradient text-white -order-1" : ""}`}
+                  disabled={autoFinishing || aiFilming || !currentScript}
+                  onClick={runAiFilm}
+                >
+                  {`✨ ${t("aiFilmCta")}`}
+                </Button>
+              </div>
               <p className="text-center text-xs text-muted-foreground">{t("autoFinishHint")}</p>
+              <p className="text-center text-xs text-muted-foreground/80">{t("aiFilmCostNote")}</p>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" className="text-xs" disabled={isGenerating} onClick={() => setRegenConfirmOpen(true)}>
                   {t("regenerate")}

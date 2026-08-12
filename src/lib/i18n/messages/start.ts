@@ -30,6 +30,23 @@ export const start: NamespaceMessages = {
     sellingPointsPlaceholder: "核心卖点（选填）——填了脚本更精准",
     // 一句话模式
     topicPlaceholder: "说个主题，如：3 个让租房变高级的小物 / 冬天必囤的护手霜",
+    // 出片方式（免费/付费分水岭，费用与 Key 要求写在选项上）
+    genFree: "🆓 免费快剪",
+    genFreeDesc: "真实素材混剪 + 免费配音 · 全程 ¥0 · 约 2 分钟",
+    genAi: "✨ AI 生成成片",
+    genAiDesc: "AI 生成画面与口播大片 · 用你的模型 Key 按秒计费（约 ¥5~35/条，付给模型平台）",
+    // 带货形式（仅 AI 档出现）
+    formLabel: "带货形式",
+    form_auto: "智能推荐",
+    form_auto_tip: "AI 按商品选风格，默认实物展示",
+    form_presenter: "真人口播",
+    form_presenter_tip: "AI 素人对镜口播种草，可选你的主播出镜",
+    form_drama: "情景短剧",
+    form_drama_tip: "有人物有剧情的种草小短剧",
+    form_montage: "图文混剪",
+    form_montage_tip: "节奏卡点的图文快剪",
+    presenterLabel: "出镜主播",
+    presenterAuto: "智能素人（默认）",
     // 未配 Key 提示
     keyboxText: "还没配 Key？脚本/画面需要先接一个 AI 平台。推荐 Atlas Cloud——一个 Key 搞定脚本+图+视频+配音。",
     keyboxCta: "去配置",
@@ -55,6 +72,9 @@ export const start: NamespaceMessages = {
     stageUpload: "上传商品图…",
     stageScript: "AI 写脚本…",
     stageIngest: "抓取商品信息…",
+    // 忙碌接管卡（点「开始生成」后整卡变进度清单）
+    progTitle: "正在为你生成",
+    progHint: "通常 20~60 秒 · 写完脚本会自动进入下一步，请别关页面",
     // 错误提示
     errTopicScript: "生成失败，请检查 LLM 配置",
     errProjectCreate: "项目创建失败，请重试",
@@ -141,6 +161,23 @@ export const start: NamespaceMessages = {
     sellingPointsPlaceholder: "Key selling points (optional) — sharper script if filled",
     // 一句话模式
     topicPlaceholder: "Type a topic, e.g. 3 small things that make a rental feel upscale / must-stock hand creams for winter",
+    // 出片方式（免费/付费分水岭，费用与 Key 要求写在选项上）
+    genFree: "🆓 Free quick cut",
+    genFreeDesc: "Real stock footage + free voice-over · $0 end to end · ~2 min",
+    genAi: "✨ AI-generated film",
+    genAiDesc: "AI visuals & spoken lines · billed to your own model key by the second (~$1–5 per video, paid to the platform)",
+    // 带货形式（仅 AI 档出现）
+    formLabel: "Format",
+    form_auto: "Smart pick",
+    form_auto_tip: "AI picks the style — defaults to product close-ups",
+    form_presenter: "Talking presenter",
+    form_presenter_tip: "A natural-looking person talks to camera — optionally your own presenter",
+    form_drama: "Mini drama",
+    form_drama_tip: "A short story-driven skit around the product",
+    form_montage: "Graphic montage",
+    form_montage_tip: "Beat-synced image-and-text quick cut",
+    presenterLabel: "Presenter",
+    presenterAuto: "Smart casting (default)",
     // 未配 Key 提示
     keyboxText: "No key yet? Scripts and visuals need an AI platform first. We recommend Atlas Cloud — one key covers script + image + video + voiceover.",
     keyboxCta: "Configure",
@@ -166,6 +203,9 @@ export const start: NamespaceMessages = {
     stageUpload: "Uploading product photos…",
     stageScript: "AI is writing the script…",
     stageIngest: "Fetching product info…",
+    // 忙碌接管卡（点「开始生成」后整卡变进度清单）
+    progTitle: "Generating for you",
+    progHint: "Usually 20–60s · you'll move to the next step automatically — keep this page open",
     // 错误提示
     errTopicScript: "Generation failed. Check your LLM settings",
     errProjectCreate: "Failed to create project. Please try again",

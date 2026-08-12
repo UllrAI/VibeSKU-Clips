@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { LuArrowLeft, LuUpload, LuX, LuCircleAlert, LuZap, LuUser, LuUserX, LuBox, LuLayoutGrid, LuEye, LuVideo, LuBookmark, LuLink2, LuLoader } from "react-icons/lu";
+import { LuUpload, LuX, LuCircleAlert, LuZap, LuUser, LuUserX, LuBox, LuLayoutGrid, LuEye, LuVideo, LuBookmark, LuLink2, LuLoader } from "react-icons/lu";
 import { useCharacterStore } from "@/lib/stores/project-store";
 import { useTemplateStore } from "@/lib/stores/template-store";
 import { useProductLibraryStore, type ProductItem } from "@/lib/stores/product-library-store";
@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/select";
 import { useT, useLocale } from "@/lib/i18n";
 import { friendlyError } from "@/lib/friendly-error";
-import { LanguageToggle } from "@/components/language-toggle";
 
 // product category options (label changed to i18n key, converted via t() at render time)
 const categoryOptions = [
@@ -106,13 +105,11 @@ const styleOptions = [
 export default function NewProjectPage() {
   const router = useRouter();
   const t = useT("newProject");
-  const tc = useT("common");
   const locale = useLocale();
 
   // check LLM API configuration status
-  const { llm, providers, setVisualLook } = useSettingsStore();
+  const { llm, setVisualLook } = useSettingsStore();
   const isLLMConfigured = llm.apiKey.length > 0;
-  const hasProvider = Object.values(providers).some((p: { enabled: boolean; apiKey: string }) => p.enabled && p.apiKey.length > 0);
 
   // form state
   const [productName, setProductName] = useState("");
@@ -480,6 +477,16 @@ export default function NewProjectPage() {
   // form validation
   const isValid = productName.trim().length > 0 && images.length >= 1;
 
+  // summary badge for the folded templates drawer: surfaces what's currently applied while closed
+  const pickedAdTpl = resolveAdTemplate(selectedAdTemplateId);
+  const pickedViralTpl = selectedTemplateId ? templates.find((x) => x.id === selectedTemplateId) : null;
+  const pickedTemplateNames = [
+    pickedViralTpl?.name,
+    pickedAdTpl ? (locale === "zh" ? pickedAdTpl.name.zh : pickedAdTpl.name.en) : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
   // submission handler
   // paste product link → backend scrapes and parses (title / price / images) + creates a commerce project → navigate directly to the script page
   const handleIngest = async () => {
@@ -659,74 +666,18 @@ export default function NewProjectPage() {
         )}
 
         <div className="space-y-6">
-          {/* quick start: one-click fill with example product (zero-barrier trial for beginners) */}
-          <Card className="glass-card border-primary/20">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-1">
-                <LuZap className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold">{t("quickStartTitle")}</span>
-                <Badge variant="secondary" className="text-[10px]">{t("exampleBadge")}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground mb-4">{t("quickStartDesc")}</p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {getExampleProducts(locale).map((ex) => (
-                  <button
-                    key={ex.id}
-                    type="button"
-                    onClick={() => fillExample(ex)}
-                    className="group flex items-center gap-3 p-2.5 rounded-lg border border-border/50 bg-muted/10 text-left hover:border-primary/50 hover:bg-primary/5 transition-all"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={ex.image} alt={ex.name} className="h-12 w-12 shrink-0 rounded-md object-cover border border-border/30" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">{ex.name}</p>
-                      <p className="text-xs text-muted-foreground">¥{ex.price}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* paste product link for one-click import (standard 2026 commerce entry: paste link → auto-scrape title/price/images → create project) */}
-          <Card className="glass-card border-primary/20">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-1">
-                <LuLink2 className="w-4 h-4 text-primary" />
-                <span className="text-sm font-semibold">{t("ingestTitle")}</span>
-                <Badge variant="secondary" className="text-[10px]">{t("ingestBadge")}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">{t("ingestDesc")}</p>
-              <div className="flex gap-2">
-                <Input
-                  value={ingestUrl}
-                  onChange={(e) => setIngestUrl(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleIngest();
-                  }}
-                  placeholder={t("ingestPlaceholder")}
-                  disabled={ingesting}
-                />
-                <Button type="button" onClick={handleIngest} disabled={ingesting || !ingestUrl.trim()} className="shrink-0">
-                  {ingesting ? <LuLoader className="w-4 h-4 animate-spin" /> : t("ingestBtn")}
-                </Button>
-              </div>
-              {ingestError && <p className="text-xs text-destructive mt-2">{ingestError}</p>}
-            </CardContent>
-          </Card>
-
-          {/* product image upload area */}
+          {/* step 1 — product source: upload / paste a link / one-tap example, all in ONE card
+              (was three stacked cards competing for the same "where do I start" decision) */}
           <Card className="glass-card">
             <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
-                <span className="text-sm font-semibold">{t("stepUploadTitle")}</span>
-              </div>
               <div className="flex items-center justify-between mb-4">
-                <Label className="text-sm font-medium">
-                  {t("imageLabel")}
-                  <span className="text-destructive ml-0.5">*</span>
-                </Label>
+                <div className="flex items-center gap-2">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+                  <span className="text-sm font-semibold">
+                    {t("stepUploadTitle")}
+                    <span className="text-destructive ml-0.5">*</span>
+                  </span>
+                </div>
                 <span className="text-xs text-muted-foreground">
                   {t("imageCount", { n: images.length })}
                 </span>
@@ -800,6 +751,44 @@ export default function NewProjectPage() {
                   ))}
                 </div>
               )}
+
+              {/* alternative source: paste a product URL (auto-grabs title / price / images and creates the project) */}
+              <div className="mt-4 pt-4 border-t border-border/40">
+                <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <LuLink2 className="w-3.5 h-3.5" />
+                  {t("sourceIngestLead")}
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    value={ingestUrl}
+                    onChange={(e) => setIngestUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleIngest();
+                    }}
+                    placeholder={t("ingestPlaceholder")}
+                    disabled={ingesting}
+                  />
+                  <Button type="button" onClick={handleIngest} disabled={ingesting || !ingestUrl.trim()} className="shrink-0">
+                    {ingesting ? <LuLoader className="w-4 h-4 animate-spin" /> : t("ingestBtn")}
+                  </Button>
+                </div>
+                {ingestError && <p className="text-xs text-destructive mt-2">{ingestError}</p>}
+              </div>
+
+              {/* alternative source: one-tap example products (zero-barrier trial) */}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">{t("sourceExampleLead")}</span>
+                {getExampleProducts(locale).map((ex) => (
+                  <button
+                    key={ex.id}
+                    type="button"
+                    onClick={() => fillExample(ex)}
+                    className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-all"
+                  >
+                    {ex.name} ¥{ex.price}
+                  </button>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
@@ -825,29 +814,6 @@ export default function NewProjectPage() {
                 />
               </div>
 
-              {/* product category */}
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">{t("categoryLabel")}</Label>
-                <Select value={category} onValueChange={(val) => setCategory(val ?? "")}>
-                  <SelectTrigger className="w-full bg-muted/30 border-border/50">
-                    {/* Base UI's Select.Value shows the raw value by default; use a function child to map it to the translated label */}
-                    <SelectValue>
-                      {(value: string) => {
-                        const opt = categoryOptions.find((o) => o.value === value);
-                        return opt ? t(opt.labelKey) : t("categoryPlaceholder");
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categoryOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        {t(opt.labelKey)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
               {/* product selling points */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -865,6 +831,41 @@ export default function NewProjectPage() {
                   className="bg-muted/30 border-border/50 focus:border-primary resize-none"
                 />
               </div>
+
+              {/* optional detail fields folded away: they sharpen the script but must not
+                  gate the flow — the default view stays name + selling points only */}
+              <details className="group pt-1">
+                <summary className="flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  <span>{t("moreInfoSummary")}</span>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 transition-transform group-open:rotate-180">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </summary>
+                <div className="mt-4 space-y-5">
+                  <p className="text-xs text-muted-foreground">{t("moreInfoHint")}</p>
+
+                  {/* product category */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">{t("categoryLabel")}</Label>
+                    <Select value={category} onValueChange={(val) => setCategory(val ?? "")}>
+                      <SelectTrigger className="w-full bg-muted/30 border-border/50">
+                        {/* Base UI's Select.Value shows the raw value by default; use a function child to map it to the translated label */}
+                        <SelectValue>
+                          {(value: string) => {
+                            const opt = categoryOptions.find((o) => o.value === value);
+                            return opt ? t(opt.labelKey) : t("categoryPlaceholder");
+                          }}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            {t(opt.labelKey)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
               {/* price range */}
               <div className="space-y-2">
@@ -961,6 +962,8 @@ export default function NewProjectPage() {
                   className="bg-muted/30 border-border/50 focus:border-primary resize-none"
                 />
               </div>
+                </div>
+              </details>
             </CardContent>
           </Card>
 
@@ -1036,6 +1039,58 @@ export default function NewProjectPage() {
                   );
                 })}
               </div>
+
+              {/* presenter character lives right under the mode picker: choosing
+                  "live presenter" reveals it in place instead of a far-away card */}
+              {videoMode === "live_presenter" && characters.length > 0 && (
+                <>
+                  <div className="my-5 border-t border-border/40" />
+                  <div className="flex items-center justify-between mb-3">
+                    <Label className="text-sm font-medium">{t("characterTitle")}</Label>
+                    <span className="text-xs text-muted-foreground">{t("characterOptional")}</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {/* no character */}
+                    <button
+                      onClick={() => setSelectedCharacterId(null)}
+                      className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
+                        selectedCharacterId === null
+                          ? "border-primary bg-primary/10"
+                          : "border-border/50 bg-muted/20 hover:border-primary/40"
+                      }`}
+                    >
+                      <LuUserX className="w-5 h-5 text-muted-foreground shrink-0" />
+                      <div>
+                        <span className="text-sm font-medium block">{t("characterNone")}</span>
+                        <span className="text-[11px] text-muted-foreground">{t("characterNoneDesc")}</span>
+                      </div>
+                    </button>
+
+                    {/* existing characters */}
+                    {characters.map((char) => (
+                      <button
+                        key={char.id}
+                        onClick={() => setSelectedCharacterId(char.id)}
+                        className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
+                          selectedCharacterId === char.id
+                            ? "border-primary bg-primary/10"
+                            : "border-border/50 bg-muted/20 hover:border-primary/40"
+                        }`}
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                          <LuUser className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-sm font-medium block truncate">{char.name}</span>
+                          {char.description && (
+                            <span className="text-[11px] text-muted-foreground truncate block">{char.description}</span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -1083,10 +1138,31 @@ export default function NewProjectPage() {
             </CardContent>
           </Card>
 
+          {/* templates drawer: hit-structure templates + ad recipes, folded by default —
+              powerful but optional, so they no longer dominate the create flow */}
+          <Card className="glass-card">
+            <CardContent className="p-5">
+              <details className="group">
+                <summary className="flex items-center justify-between gap-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium flex items-center gap-1.5">
+                      <LuZap className="w-4 h-4 text-primary" />
+                      {t("templatesSummary")}
+                      {pickedTemplateNames && (
+                        <Badge variant="secondary" className="text-[10px] max-w-48 truncate">{pickedTemplateNames}</Badge>
+                      )}
+                    </span>
+                    <p className="text-xs text-muted-foreground mt-1">{t("templatesSummaryDesc")}</p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180">
+                    <path d="m6 9 6 6 6-6" />
+                  </svg>
+                </summary>
+                <div className="mt-5 space-y-6">
+
           {/* use a viral template (shown only when templates exist) */}
           {templates.length > 0 && (
-            <Card className="glass-card">
-              <CardContent className="p-5">
+            <div>
                 <div className="mb-3">
                   <Label className="text-sm font-medium flex items-center gap-1.5">
                     <LuBookmark className="w-4 h-4 text-primary" />
@@ -1131,14 +1207,12 @@ export default function NewProjectPage() {
                     </button>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+            </div>
           )}
 
           {/* ad templates (Higgsfield-Ads-style one-click finished-video recipes):
               picking one pre-fills style/mode/look/camera-plan/compose across the pipeline */}
-          <Card className="glass-card">
-            <CardContent className="p-5">
+          <div>
               <div className="mb-3">
                 <Label className="text-sm font-medium flex items-center gap-1.5">
                   <LuZap className="w-4 h-4 text-primary" />
@@ -1595,60 +1669,11 @@ export default function NewProjectPage() {
                   </button>
                 ))}
               </div>
+          </div>
+                </div>
+              </details>
             </CardContent>
           </Card>
-
-          {/* presenter character (only shown in live presenter mode) */}
-          {videoMode === "live_presenter" && characters.length > 0 && (
-            <Card className="glass-card">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <Label className="text-sm font-medium">{t("characterTitle")}</Label>
-                  <span className="text-xs text-muted-foreground">{t("characterOptional")}</span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {/* no character */}
-                  <button
-                    onClick={() => setSelectedCharacterId(null)}
-                    className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
-                      selectedCharacterId === null
-                        ? "border-primary bg-primary/10"
-                        : "border-border/50 bg-muted/20 hover:border-primary/40"
-                    }`}
-                  >
-                    <LuUserX className="w-5 h-5 text-muted-foreground shrink-0" />
-                    <div>
-                      <span className="text-sm font-medium block">{t("characterNone")}</span>
-                      <span className="text-[11px] text-muted-foreground">{t("characterNoneDesc")}</span>
-                    </div>
-                  </button>
-
-                  {/* existing characters */}
-                  {characters.map((char) => (
-                    <button
-                      key={char.id}
-                      onClick={() => setSelectedCharacterId(char.id)}
-                      className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
-                        selectedCharacterId === char.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border/50 bg-muted/20 hover:border-primary/40"
-                      }`}
-                    >
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <LuUser className="w-4 h-4 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <span className="text-sm font-medium block truncate">{char.name}</span>
-                        {char.description && (
-                          <span className="text-[11px] text-muted-foreground truncate block">{char.description}</span>
-                        )}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
           {/* submit button */}
           <div className="pt-2 pb-10">

@@ -19,6 +19,8 @@ interface NavItem {
   key: string;
   href: string;
   icon: string;
+  /** Director-mode-only entrance: hidden in beginner mode so creation stays a single path (工作台) */
+  proOnly?: boolean;
 }
 
 // Sidebar navigation model: two labeled sections + settings pinned at the bottom.
@@ -28,9 +30,9 @@ const NAV_SECTIONS: { labelKey: string; items: NavItem[] }[] = [
     labelKey: "navSectionCreate",
     items: [
       { key: "navHome", href: "/start", icon: "home" },
-      { key: "navNew", href: "/project/new", icon: "plus" },
+      { key: "navNew", href: "/project/new", icon: "plus", proOnly: true },
       { key: "navClone", href: "/project/clone", icon: "flame" },
-      { key: "navBatch", href: "/batch", icon: "layers" },
+      { key: "navBatch", href: "/batch", icon: "layers", proOnly: true },
     ],
   },
   {
@@ -42,8 +44,6 @@ const NAV_SECTIONS: { labelKey: string; items: NavItem[] }[] = [
     ],
   },
 ];
-
-const ALL_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);
 
 // localStorage key for the collapsed-sidebar preference
 const NAV_COLLAPSED_KEY = "clipforge_nav_collapsed";
@@ -120,7 +120,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const active = ALL_ITEMS.reduce<string | null>((best, item) => {
+  // beginner mode keeps ONE creation entrance (工作台); pro-only entrances stay in director mode
+  const sections = NAV_SECTIONS.map((s) => ({
+    ...s,
+    items: s.items.filter((i) => uiMode === "pro" || !i.proOnly),
+  })).filter((s) => s.items.length > 0);
+  const visibleItems = sections.flatMap((s) => s.items);
+
+  const active = visibleItems.reduce<string | null>((best, item) => {
     if (!pathname?.startsWith(item.href)) return best;
     return best && best.length >= item.href.length ? best : item.href;
   }, null);
@@ -151,7 +158,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {!collapsed && <span className="text-base font-bold tracking-tight">ClipForge</span>}
         </Link>
         <nav className={`flex-1 space-y-5 overflow-y-auto py-2 ${collapsed ? "px-2" : "px-3"}`}>
-          {NAV_SECTIONS.map((section) => (
+          {sections.map((section) => (
             <div key={section.labelKey} className="space-y-0.5">
               {!collapsed && (
                 <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
@@ -231,7 +238,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {/* Base UI menu items don't take asChild — navigate via router */}
-                {ALL_ITEMS.map((item) => (
+                {visibleItems.map((item) => (
                   <DropdownMenuItem key={item.key} onClick={() => router.push(item.href)}>
                     {t(item.key)}
                   </DropdownMenuItem>

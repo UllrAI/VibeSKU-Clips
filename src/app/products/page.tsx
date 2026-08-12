@@ -21,6 +21,7 @@ import {
   type ProductItem,
 } from "@/lib/stores/product-library-store";
 import { getExampleProducts } from "@/lib/examples";
+import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useT, useLocale } from "@/lib/i18n";
 
 // Category options (label uses an i18n key; resolved at runtime via t())
@@ -50,6 +51,8 @@ const categoryLabelKeyMap: Record<string, string> = Object.fromEntries(
 
 export default function ProductsPage() {
   const t = useT("products");
+  // "make video" destination depends on the workspace mode (single beginner path vs. full form)
+  const uiMode = useSettingsStore((s) => s.uiMode);
   const locale = useLocale();
   const { products, addProduct, updateProduct, removeProduct } =
     useProductLibraryStore();
@@ -611,8 +614,8 @@ export default function ProductsPage() {
                             {t("videoCount", { n: product.videoCount })}
                           </span>
                         </div>
-                        {/* Make video: navigate to new-project page with productId so product info is pre-filled (core purpose of the product library) */}
-                        <Link href={`/project/new?productId=${product.id}`} className="block mt-3">
+                        {/* Make video: beginner mode routes to the one-tap studio, director mode to the full advanced form — both pre-fill via productId */}
+                        <Link href={`${uiMode === "pro" ? "/project/new" : "/start"}?productId=${product.id}`} className="block mt-3">
                           <Button size="sm" className="w-full brand-gradient text-white border-0">
                             <LuVideo className="w-3.5 h-3.5 mr-1.5" />
                             {t("makeVideo")}

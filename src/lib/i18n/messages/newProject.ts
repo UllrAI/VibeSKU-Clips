@@ -52,6 +52,15 @@ export const newProject: NamespaceMessages = {
     llmWarnDesc: "脚本生成需要 LLM（如 GPT-4o），请先在设置中配置 API Key。",
     llmWarnCta: "前往设置 →",
     // 快速开始
+    // 第 1 步「商品来源」合卡后的引导词
+    sourceIngestLead: "或粘贴商品链接自动导入（自动抓标题 / 价格 / 商品图）",
+    sourceExampleLead: "没素材？点个示例直接试：",
+    // 商品信息折叠区
+    moreInfoSummary: "更多商品信息（选填）：品类 / 价格带 / 人群 / 平台 / 使用场景",
+    moreInfoHint: "填得越全，脚本卖点越准——都不填也能出片。",
+    // 模板抽屉
+    templatesSummary: "用模板出片（选填）",
+    templatesSummaryDesc: "一键套用爆款结构或完整成片配方（风格 + 运镜 + Look + 合成配置），不选也能出片",
     quickStartTitle: "快速开始",
     exampleBadge: "示例",
     quickStartDesc: "没有素材？点一个示例商品，自动填好商品信息和示例图，直接体验生成流程。",
@@ -240,6 +249,15 @@ export const newProject: NamespaceMessages = {
     llmWarnDesc: "Script generation needs an LLM (such as GPT-4o). Add your API key in Settings first.",
     llmWarnCta: "Go to Settings →",
     // 快速开始
+    // 第 1 步「商品来源」合卡后的引导词
+    sourceIngestLead: "Or paste a product URL to auto-import (title / price / images)",
+    sourceExampleLead: "No assets? Try an example:",
+    // 商品信息折叠区
+    moreInfoSummary: "More product details (optional): category / price / audience / platforms / usage",
+    moreInfoHint: "The more you fill in, the sharper the script — everything works empty too.",
+    // 模板抽屉
+    templatesSummary: "Use a template (optional)",
+    templatesSummaryDesc: "One tap applies a hit structure or a full recipe (style + camera + look + compose) — optional either way",
     quickStartTitle: "Quick start",
     exampleBadge: "Demo",
     quickStartDesc: "No assets yet? Pick a sample product to auto-fill its info and image, and try the full flow right away.",

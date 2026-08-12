@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSettingsStore } from "@/lib/stores/settings-store";
-import { mergeCustomModels, buildImageOptions, buildVideoOptions } from "@/lib/gen-params";
+import { mergeCustomModels, buildImageOptions, buildVideoOptions, toEditVariant } from "@/lib/gen-params";
 import { useCharacterStore } from "@/lib/stores/project-store";
 import type { Shot } from "@/lib/db/schema";
 import { buildAssetRows, shouldOfferStockFill, needsImageModelWarning, nextChainKeyframe, type AssetItem } from "@/lib/assets-view";
@@ -61,18 +61,6 @@ interface PendingAiTask {
 
 // shot types that "feature the product": when product fidelity is enabled, these AI shots use image-to-image (redraw with product photo to lock in the subject)
 const PRODUCT_SHOT_TYPES = new Set(["product_reveal", "demo", "cta"]);
-
-// map a text-to-image model to its corresponding edit / image-to-image variant (product fidelity redraw)
-function toEditVariant(modelId: string): string {
-  if (modelId === "openai/gpt-image-2") return "openai/gpt-image-2/image-to-image";
-  if (modelId === "fal-ai/gpt-image-1.5") return "fal-ai/gpt-image-1.5/edit";
-  // Replicate FLUX text-to-image → Kontext edit model
-  if (modelId.startsWith("black-forest-labs/flux") && !modelId.includes("kontext")) {
-    return "black-forest-labs/flux-kontext-pro";
-  }
-  // other models (Seedream / Tongyi Wanxiang, etc.) mostly support reference-image image-to-image natively, keep the original model
-  return modelId;
-}
 
 export default function AssetsPage() {
   const t = useT("assets");

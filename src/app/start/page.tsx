@@ -11,6 +11,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSettingsStore } from "@/lib/stores/settings-store";
+import { useProductLibraryStore } from "@/lib/stores/product-library-store";
+import { useCharacterStore } from "@/lib/stores/project-store";
 import { getExampleProducts, type ExampleProduct } from "@/lib/examples";
 import { useT, useLocale } from "@/lib/i18n";
 import { ATLAS_KEYS_URL } from "@/lib/atlas-onekey";
@@ -32,6 +34,16 @@ function localDateStamp(): string {
 }
 
 type Mode = "upload" | "topic" | "link";
+
+/** AI-mode commerce form → engine vocab: beginner-facing words map onto script style + video mode */
+const FORM_PRESETS = {
+  auto: { styleType: "auto", videoMode: "product_closeup" },
+  presenter: { styleType: "talking_head", videoMode: "live_presenter" },
+  drama: { styleType: "drama", videoMode: "live_presenter" },
+  montage: { styleType: "auto", videoMode: "graphic_montage" },
+} as const;
+type FormId = keyof typeof FORM_PRESETS;
+
 interface PickedImage {
   id: string;
   url: string;
@@ -56,6 +68,13 @@ export default function StartPage() {
   const examples = getExampleProducts(locale);
 
   const [mode, setMode] = useState<Mode>("upload");
+  // generation-task mode: the free/paid fork, explicit with cost up front
+  // (open-source BYOK — AI charges go to the user's own model platform, never to us)
+  const [genMode, setGenMode] = useState<"free" | "ai">("free");
+  // commerce form (AI mode only): what the finished video looks like
+  const [form, setForm] = useState<FormId>("auto");
+  const { characters } = useCharacterStore();
+  const [presenterId, setPresenterId] = useState("");
   const [images, setImages] = useState<PickedImage[]>([]);
   const [productName, setProductName] = useState("");
   const [sellingPoints, setSellingPoints] = useState("");
@@ -64,6 +83,8 @@ export default function StartPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [stage, setStage] = useState("");
+  // which step of the busy takeover is running (index into busySteps)
+  const [stageIdx, setStageIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [needKey, setNeedKey] = useState(false);
   const [atlasKey, setAtlasKey] = useState("");
@@ -99,6 +120,44 @@ export default function StartPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const keyformRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+
+  // product-library hand-off: /start?productId=x pre-fills the upload tab, so the
+  // library's "make video" button lands beginners on the same single creation path
+  const { products: libraryProducts } = useProductLibraryStore();
+  const prefilledRef = useRef(false);
+  useEffect(() => {
+    if (prefilledRef.current) return;
+    const productId = new URLSearchParams(window.location.search).get("productId");
+    if (!productId) return;
+    const product = libraryProducts.find((p) => p.id === productId);
+    if (!product) return; // store not hydrated yet (effect re-runs) or stale id
+    prefilledRef.current = true;
+    queueMicrotask(() => {
+      setMode("upload");
+      setProductName(product.name);
+      if (product.description) setSellingPoints(product.description);
+    });
+    // fetch library images into File objects; local blob URLs from other pages may be dead — text stays filled either way
+    (async () => {
+      const files: PickedImage[] = [];
+      for (const [i, src] of product.images.slice(0, 5).entries()) {
+        try {
+          const res = await fetch(src);
+          const blob = await res.blob();
+          const file = new File([blob], `product-${i}.png`, { type: blob.type || "image/png" });
+          files.push({ id: crypto.randomUUID(), url: URL.createObjectURL(file), file });
+        } catch {
+          /* non-fatal per image */
+        }
+      }
+      if (files.length) {
+        setImages((prev) => {
+          prev.forEach((p) => URL.revokeObjectURL(p.url));
+          return files;
+        });
+      }
+    })();
+  }, [libraryProducts]);
 
   // fetch recent projects to give returning users a "continue" entry point (replaces the old homepage project list so they are not left stranded)
   useEffect(() => {
@@ -273,7 +332,33 @@ export default function StartPage() {
     return { baseUrl: l.baseUrl, apiKey: l.apiKey, model: l.model, visionModel: l.visionModel };
   };
 
+  // creation-time choices flow into script generation and the script page's finishing gate
+  const creationPreset = () => (genMode === "ai" ? FORM_PRESETS[form] : FORM_PRESETS.auto);
+  const genQuery = () => {
+    if (genMode !== "ai") return "";
+    const p =
+      (form === "presenter" || form === "drama") && presenterId
+        ? `&presenter=${encodeURIComponent(presenterId)}`
+        : "";
+    return `&gen=ai${p}`;
+  };
+  const creationCharacter = () => {
+    if (genMode !== "ai" || (form !== "presenter" && form !== "drama") || !presenterId) return null;
+    const c = characters.find((x) => x.id === presenterId);
+    return c ? { id: c.id, name: c.name, appearance: c.appearance || "", voiceStyle: c.voiceProfile?.style } : null;
+  };
+
+  // step labels for the busy takeover, per entry mode (rendered as a live checklist)
+  const busySteps =
+    mode === "upload"
+      ? [t("stageCreate"), t("stageUpload"), t("stageScript")]
+      : mode === "link"
+      ? [t("stageIngest"), t("stageScript")]
+      : [t("stageScript")];
+
   const startTopic = async () => {
+    setStageIdx(0);
+    setStage(t("stageScript"));
     const res = await fetch("/api/topic/script", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -281,10 +366,11 @@ export default function StartPage() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok && !data.projectId) throw new Error(data.error || t("errTopicScript"));
-    router.push(`/project/${data.projectId}/script?auto=1`);
+    router.push(`/project/${data.projectId}/script?auto=1${genQuery()}`);
   };
 
   const startUpload = async () => {
+    setStageIdx(0);
     setStage(t("stageCreate"));
     const projectRes = await fetch("/api/project", {
       method: "POST",
@@ -297,6 +383,7 @@ export default function StartPage() {
     }
     const project = await projectRes.json();
 
+    setStageIdx(1);
     setStage(t("stageUpload"));
     const fd = new FormData();
     images.forEach((i) => fd.append("files", i.file));
@@ -310,6 +397,7 @@ export default function StartPage() {
       body: JSON.stringify({ productImages: paths }),
     });
 
+    setStageIdx(2);
     setStage(t("stageScript"));
     const scriptRes = await fetch("/api/llm/script", {
       method: "POST",
@@ -320,21 +408,23 @@ export default function StartPage() {
         category: "other",
         productDescription: sellingPoints,
         targetDuration: 30,
-        styleType: "auto",
-        videoMode: "product_closeup",
+        styleType: creationPreset().styleType,
+        videoMode: creationPreset().videoMode,
         productImages: paths,
         llmConfig: llmConfig(),
+        ...(creationCharacter() && { character: creationCharacter() }),
       }),
     });
     if (!scriptRes.ok) {
       const errData = await scriptRes.json().catch(() => ({}));
       throw new Error(errData.error ? `${t("errScript")}: ${errData.error}` : t("errScript"));
     }
-    router.push(`/project/${project.id}/script?auto=1`);
+    router.push(`/project/${project.id}/script?auto=1${genQuery()}`);
   };
 
   // paste a product URL → ingest (fetch page, parse title/price/images, create project) → auto-generate script → script page
   const startLink = async () => {
+    setStageIdx(0);
     setStage(t("stageIngest"));
     const ingestRes = await fetch("/api/ingest/product", {
       method: "POST",
@@ -344,8 +434,10 @@ export default function StartPage() {
     const data = await ingestRes.json().catch(() => ({}));
     if (!ingestRes.ok || !data.projectId) throw new Error(data.error || t("errIngest"));
     const p = data.product || {};
+    setStageIdx(1);
     setStage(t("stageScript"));
-    const scriptRes = await fetch("/api/llm/script", {
+    // even if script gen fails, the project exists with product data — the script page offers retry
+    await fetch("/api/llm/script", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -354,18 +446,14 @@ export default function StartPage() {
         category: "other",
         productDescription: p.description || "",
         targetDuration: 30,
-        styleType: "auto",
-        videoMode: "product_closeup",
+        styleType: creationPreset().styleType,
+        videoMode: creationPreset().videoMode,
         productImages: data.productImages || [],
         llmConfig: llmConfig(),
+        ...(creationCharacter() && { character: creationCharacter() }),
       }),
     });
-    // even if script gen fails, the project exists with product data — land on the script page so the user can retry
-    if (!scriptRes.ok) {
-      router.push(`/project/${data.projectId}/script?auto=1`);
-      return;
-    }
-    router.push(`/project/${data.projectId}/script?auto=1`);
+    router.push(`/project/${data.projectId}/script?auto=1${genQuery()}`);
   };
 
   // actually run generation (shared by all modes); restore busy/stage on failure
@@ -380,6 +468,7 @@ export default function StartPage() {
       setError(e instanceof Error ? e.message : t("errGeneric"));
       setBusy(false);
       setStage("");
+      setStageIdx(0);
     }
   };
 
@@ -466,6 +555,19 @@ export default function StartPage() {
         .cf-cta:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
         .cf-reassure{font-size:12.5px;color:var(--muted);line-height:1.5}
         .cf-reassure b{color:var(--dim);font-weight:600}
+        .cf-genrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+        .cf-gen{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:rgba(0,0,0,.2);font:inherit;text-align:left;cursor:pointer;transition:.18s}
+        .cf-gen b{font-size:13.5px;font-weight:600;color:var(--text)}
+        .cf-gen span{font-size:11.5px;line-height:1.5;color:var(--muted)}
+        .cf-gen:hover{border-color:var(--bd2)}
+        .cf-gen.on{border-color:rgba(139,92,246,.55);background:rgba(139,92,246,.08)}
+        .cf-gen.on b{color:var(--teal)}
+        .cf-formrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+        .cf-form-lbl{font-size:12px;color:var(--muted);flex:none;margin-right:2px}
+        .cf-fchip{padding:5px 11px;border:1px solid var(--bd);border-radius:999px;background:transparent;color:var(--dim);font:inherit;font-size:12.5px;cursor:pointer;transition:.18s}
+        .cf-fchip:hover{border-color:var(--bd2);color:var(--text)}
+        .cf-fchip.on{border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.1);color:var(--text)}
+        .cf-form-select{background:rgba(0,0,0,.25);border:1px solid var(--bd);border-radius:9px;color:var(--text);font:inherit;font-size:12.5px;padding:5px 9px;outline:none}
         .cf-keybox{margin-top:12px;border:1px solid rgba(139,92,246,.3);background:rgba(139,92,246,.07);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--dim);display:flex;align-items:center;justify-content:space-between;gap:12px}
         .cf-keybox a{color:var(--ink);background:linear-gradient(100deg,#6366f1,#8b5cf6);padding:7px 13px;border-radius:9px;font-weight:600;text-decoration:none;white-space:nowrap}
         .cf-keyform{margin-top:12px;border:1px solid rgba(139,92,246,.32);background:rgba(139,92,246,.06);border-radius:14px;padding:14px}
@@ -487,6 +589,19 @@ export default function StartPage() {
         .cf-keyalt a:hover{color:var(--dim)}
         .cf-keyerr{margin-top:9px;color:#FCA5A5;font-size:12.5px}
         .cf-err{margin-top:12px;color:#FCA5A5;font-size:13px}
+        .cf-prog{padding:30px 18px 22px;display:flex;flex-direction:column;align-items:center;gap:18px}
+        .cf-prog-title{font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px}
+        .cf-spin{width:18px;height:18px;flex:none;border-radius:999px;border:2px solid rgba(139,92,246,.25);border-top-color:var(--teal);animation:cfSpin .8s linear infinite}
+        .cf-spin.sm{width:10px;height:10px;border-width:1.5px}
+        @keyframes cfSpin{to{transform:rotate(360deg)}}
+        .cf-prog-steps{display:flex;flex-direction:column;gap:10px;width:min(320px,100%)}
+        .cf-prog-step{display:flex;align-items:center;gap:11px;font-size:13.5px;color:var(--muted);transition:color .2s}
+        .cf-prog-step.on{color:var(--text)}
+        .cf-prog-step.done{color:var(--dim)}
+        .cf-prog-step .ic{width:20px;height:20px;flex:none;display:grid;place-items:center;border-radius:999px;border:1px solid var(--bd2);font-size:11px;font-style:normal}
+        .cf-prog-step.on .ic{border-color:rgba(139,92,246,.6)}
+        .cf-prog-step.done .ic{border-color:rgba(139,92,246,.5);color:var(--teal)}
+        .cf-prog-hint{font-size:12px;color:var(--muted);text-align:center;line-height:1.6}
         .cf-guide{max-width:620px;margin:14px auto 0;text-align:left;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.25);border-radius:16px;padding:14px 16px;position:relative}
         .cf-guide-title{font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:10px}
         .cf-guide-close{position:absolute;top:10px;right:10px;width:24px;height:24px;border:0;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;transition:.15s}
@@ -548,6 +663,34 @@ export default function StartPage() {
           <p className="cf-sub">{t("sub")}</p>
 
           <div className="cf-card" ref={cardRef}>
+            {busy ? (
+              /* busy takeover: the whole card becomes a live checklist so the 20–60s
+                 creation wait reads as progress, not a frozen button */
+              <div className="cf-prog">
+                <div className="cf-prog-title">
+                  <span className="cf-spin" />
+                  {t("progTitle")}
+                </div>
+                <div className="cf-prog-steps">
+                  {busySteps.map((label, i) => (
+                    <div key={label} className={`cf-prog-step${i < stageIdx ? " done" : i === stageIdx ? " on" : ""}`}>
+                      <span className="ic">
+                        {i < stageIdx ? (
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l5 5L20 6" /></svg>
+                        ) : i === stageIdx ? (
+                          <span className="cf-spin sm" />
+                        ) : (
+                          i + 1
+                        )}
+                      </span>
+                      {label}
+                    </div>
+                  ))}
+                </div>
+                <div className="cf-prog-hint">{t("progHint")}</div>
+              </div>
+            ) : (
+              <>
             <div className="cf-tabs">
               <button className={`cf-tab${mode === "upload" ? " on" : ""}`} onClick={() => setMode("upload")}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.6-3.6a2 2 0 0 0-2.8 0L6 20" /></svg>
@@ -612,6 +755,47 @@ export default function StartPage() {
               </div>
             )}
 
+            {/* generation-task mode: the free/paid fork every mature product makes explicit —
+                cost and key requirements live ON the option, never behind it */}
+            <div className="cf-genrow">
+              {(["free", "ai"] as const).map((g) => (
+                <button key={g} type="button" className={`cf-gen${genMode === g ? " on" : ""}`} onClick={() => setGenMode(g)}>
+                  <b>{t(g === "free" ? "genFree" : "genAi")}</b>
+                  <span>{t(g === "free" ? "genFreeDesc" : "genAiDesc")}</span>
+                </button>
+              ))}
+            </div>
+            {/* commerce form: only asked when it actually changes the outcome (AI visuals);
+                the free quick cut uses generic stock footage where this choice is moot */}
+            {genMode === "ai" && mode !== "topic" && (
+              <div className="cf-formrow">
+                <span className="cf-form-lbl">{t("formLabel")}</span>
+                {(Object.keys(FORM_PRESETS) as FormId[]).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    className={`cf-fchip${form === f ? " on" : ""}`}
+                    title={t(`form_${f}_tip`)}
+                    onClick={() => setForm(f)}
+                  >
+                    {t(`form_${f}`)}
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* presenter picking follows the domestic digital-human convention: face → lines → voice */}
+            {genMode === "ai" && mode !== "topic" && (form === "presenter" || form === "drama") && characters.length > 0 && (
+              <div className="cf-formrow">
+                <span className="cf-form-lbl">{t("presenterLabel")}</span>
+                <select className="cf-form-select" value={presenterId} onChange={(e) => setPresenterId(e.target.value)}>
+                  <option value="">{t("presenterAuto")}</option>
+                  {characters.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {needKey && !llmReady && (
               <div className="cf-keyform" ref={keyformRef}>
                 <div className="cf-keyhead">
@@ -654,6 +838,8 @@ export default function StartPage() {
               <div className="cf-reassure">{t("reassureLead")}<b>Atlas Cloud</b>{t("reassureTail")}</div>
             </div>
             {error && <div className="cf-err">{error}</div>}
+              </>
+            )}
           </div>
 
           {showGuide && (

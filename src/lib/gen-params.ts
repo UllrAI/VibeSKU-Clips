@@ -140,6 +140,18 @@ export function buildVideoOptions(p: VideoGenParams | undefined): Record<string,
   };
 }
 
+/** Map a text-to-image model to its edit / image-to-image variant (product-fidelity redraw with reference images) */
+export function toEditVariant(modelId: string): string {
+  if (modelId === "openai/gpt-image-2") return "openai/gpt-image-2/image-to-image";
+  if (modelId === "fal-ai/gpt-image-1.5") return "fal-ai/gpt-image-1.5/edit";
+  // Replicate FLUX text-to-image → Kontext edit model
+  if (modelId.startsWith("black-forest-labs/flux") && !modelId.includes("kontext")) {
+    return "black-forest-labs/flux-kontext-pro";
+  }
+  // other models (Seedream / Tongyi Wanxiang, etc.) mostly support reference-image image-to-image natively, keep the original model
+  return modelId;
+}
+
 /** A resolved generation target: which provider (with key) serves the chosen model */
 export interface GenModelTarget {
   provider: string;
