@@ -95,6 +95,13 @@ export const start: NamespaceMessages = {
     dailyAutoHint: "想全自动日更？用 MCP/CLI 配 cron，README 有配方",
     // 最近项目
     recentLabel: "继续未完成的项目",
+    recentAll: "查看全部",
+    guideTitle: "第一次用？三步出片",
+    guideStep1: "丢一张商品图，或用「一句话成片」说个主题（没素材点下面的示例商品）",
+    guideStep2: "AI 自动写脚本、配画面、配音——不用改任何设置，默认就能出片",
+    guideStep3: "等 1–3 分钟直接看成片、下载发布；想精修再进编辑",
+    guideFoot: "免费素材和配音不要钱；用到 AI 生成画面时才需要配一次 Key。",
+    guideClose: "不再显示",
     untitledProject: "未命名项目",
     // 最近项目卡片的阶段标签（区别于上方 stage* 生成进行时文案）
     pjStageScript: "脚本",
@@ -199,6 +206,13 @@ export const start: NamespaceMessages = {
     dailyAutoHint: "Want hands-free daily posts? Cron the MCP/CLI — recipe in the README",
     // 最近项目
     recentLabel: "Continue an unfinished project",
+    recentAll: "View all",
+    guideTitle: "First time? Three steps to a video",
+    guideStep1: "Drop a product photo, or describe a topic via One-sentence video (no assets? tap an example below)",
+    guideStep2: "AI writes the script, fills the visuals and voices it \u2014 defaults just work",
+    guideStep3: "Wait 1\u20133 minutes, watch and download; open the editor only if you want to fine-tune",
+    guideFoot: "Free stock footage and voice-over cost nothing; a key is only needed once AI image/video generation kicks in.",
+    guideClose: "Dismiss",
     untitledProject: "Untitled project",
     // 最近项目卡片的阶段标签（区别于上方 stage* 生成进行时文案）
     pjStageScript: "Script",

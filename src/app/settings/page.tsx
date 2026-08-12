@@ -1,13 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Separator } from "@/components/ui/separator";
 import {
   Select,
   SelectContent,
@@ -16,12 +13,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { LuPlus, LuTrash2, LuUser, LuStar, LuUpload, LuPalette, LuZap, LuCheck, LuTriangleAlert } from "react-icons/lu";
+import { LuUpload, LuPalette, LuZap, LuCheck, LuTriangleAlert } from "react-icons/lu";
 import { ATLAS_KEYS_URL } from "@/lib/atlas-onekey";
 import { useT } from "@/lib/i18n";
-import { LanguageToggle } from "@/components/language-toggle";
 import { useSettingsStore } from "@/lib/stores/settings-store";
-import { useCharacterStore, type Character } from "@/lib/stores/project-store";
 import { useBrandStore } from "@/lib/stores/brand-store";
 import {
   TTS_PROVIDERS,
@@ -31,10 +26,11 @@ import {
   isPaidTTSReady,
   type TTSProvider,
 } from "@/lib/tts-presets";
-import { mergeCustomModels, resolveDefaultModelTarget, buildImageOptions } from "@/lib/gen-params";
+import { mergeCustomModels } from "@/lib/gen-params";
 import { LLM_PRESETS } from "@/lib/llm-presets";
 import { ModelPicker } from "@/components/settings/model-picker";
 import { GenerationSettings } from "@/components/generation-settings";
+import { PresenterManager } from "@/components/presenter-manager";
 
 // default resolution options
 const resolutionOptions = [
@@ -48,6 +44,18 @@ const aspectRatioOptions = [
   { value: "16:9", labelKey: "aspect169" },
   { value: "1:1", labelKey: "aspect11" },
 ];
+
+// Settings sections, in display order (id doubles as the ?tab= value)
+const SETTINGS_SECTIONS = [
+  { id: "providers", labelKey: "tabProviders" },
+  { id: "llm", labelKey: "tabLlm" },
+  { id: "image", labelKey: "tabImage" },
+  { id: "video", labelKey: "tabVideo" },
+  { id: "tts", labelKey: "tabTts" },
+  { id: "characters", labelKey: "tabCharacters" },
+  { id: "brand", labelKey: "tabBrand" },
+];
+const SETTINGS_TABS: string[] = SETTINGS_SECTIONS.map((s) => s.id);
 
 // AI platform configuration list
 const AI_PROVIDERS = [
@@ -315,7 +323,6 @@ export default function SettingsPage() {
   };
 
   // save feedback state
-  const [saved, setSaved] = useState(false);
 
   // available model list (fetched from backend aggregated by enabled providers)
   const [imageModels, setImageModels] = useState<{ id: string; name: string; provider: string }[]>([]);
@@ -389,6 +396,19 @@ export default function SettingsPage() {
   // LLM connection test state
   const [llmTestStatus, setLlmTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
 
+  // Active tab, synced with ?tab= so "go to settings" links can deep-link a section
+  const [tab, setTab] = useState("providers");
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("tab");
+    if (q && SETTINGS_TABS.includes(q)) setTab(q);
+  }, []);
+  const switchTab = (v: string) => {
+    setTab(v);
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", v);
+    window.history.replaceState(null, "", url.toString());
+  };
+
   // 系统诊断信息（/api/health），报障截图用
   const [diagnostics, setDiagnostics] = useState("");
   const loadDiagnostics = async () => {
@@ -429,43 +449,10 @@ export default function SettingsPage() {
 
   // compute AI provider configuration status
   const hasAnyProvider = Object.values(providers).some(p => p.enabled && p.apiKey);
-  const enabledCount = Object.values(providers).filter(p => p.enabled && p.apiKey).length;
 
-  // handle save (zustand persist saves automatically; this is mainly for UI feedback)
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
 
   return (
     <div className="min-h-screen grid-bg">
-      {/* top navigation */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg brand-gradient">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="23 7 16 12 23 17 23 7" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-              </svg>
-            </div>
-            <span className="text-lg font-bold tracking-tight">ClipForge</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <LanguageToggle />
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M19 12H5" />
-                  <polyline points="12 19 5 12 12 5" />
-                </svg>
-                <span className="ml-1.5">{t("backHome")}</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-4xl px-6 py-10">
         {/* page title */}
         <div className="mb-8">
@@ -522,41 +509,28 @@ export default function SettingsPage() {
         </div>
 
         {/* tabs */}
-        <Tabs defaultValue={0}>
-          <TabsList className="mb-6 max-w-full overflow-x-auto">
-            <TabsTrigger value={0}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="4" width="16" height="16" rx="2" />
-                <rect x="9" y="9" width="6" height="6" />
-                <path d="M15 2v2" />
-                <path d="M15 20v2" />
-                <path d="M2 15h2" />
-                <path d="M2 9h2" />
-                <path d="M20 15h2" />
-                <path d="M20 9h2" />
-                <path d="M9 2v2" />
-                <path d="M9 20v2" />
-              </svg>
-              {t("tabProviders")}
-            </TabsTrigger>
-            <TabsTrigger value={1}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              {t("tabLlm")}
-            </TabsTrigger>
-            <TabsTrigger value={2}>
-              <LuUser className="w-3.5 h-3.5" />
-              {t("tabCharacters")}
-            </TabsTrigger>
-            <TabsTrigger value={3}>
-              <LuPalette className="w-3.5 h-3.5" />
-              {t("tabBrand")}
-            </TabsTrigger>
-          </TabsList>
+        <div className="md:flex md:items-start md:gap-8">
+          {/* Section rail: vertical on desktop (native settings-window feel), horizontal scroll on mobile */}
+          <nav className="mb-6 flex gap-1 overflow-x-auto md:sticky md:top-6 md:mb-0 md:w-44 md:shrink-0 md:flex-col">
+            {SETTINGS_SECTIONS.map((sec) => (
+              <button
+                key={sec.id}
+                type="button"
+                onClick={() => switchTab(sec.id)}
+                className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  tab === sec.id
+                    ? "bg-primary/15 font-medium text-primary"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                }`}
+              >
+                {t(sec.labelKey)}
+              </button>
+            ))}
+          </nav>
 
           {/* Tab 1: AI provider configuration */}
-          <TabsContent value={0}>
+          {tab === "providers" && (
+          <section className="min-w-0 flex-1">
             <div className="space-y-4">
               {AI_PROVIDERS.map((platform) => {
                 const provider = providers[platform.key] ?? {
@@ -665,10 +639,12 @@ export default function SettingsPage() {
                 );
               })}
             </div>
-          </TabsContent>
+          </section>
+          )}
 
           {/* Tab 2: LLM configuration */}
-          <TabsContent value={1}>
+          {tab === "llm" && (
+          <section className="min-w-0 flex-1">
             <div className="space-y-6">
               {/* LLM Provider configuration */}
               <Card className="glass-card">
@@ -824,9 +800,14 @@ export default function SettingsPage() {
                   </div>
                 </CardContent>
               </Card>
+            </div>
+          </section>
+          )}
 
-              <Separator />
-
+          {/* Tab: TTS voice-over */}
+          {tab === "tts" && (
+          <section className="min-w-0 flex-1">
+            <div className="space-y-6">
               {/* TTS voiceover */}
               <Card className="glass-card">
                 <CardContent className="p-5">
@@ -972,23 +953,90 @@ export default function SettingsPage() {
                   )}
                 </CardContent>
               </Card>
+            </div>
+          </section>
+          )}
 
-              <Separator />
-
-              {/* default settings */}
+          {/* Tab: image generation — pick the default model (keys live under Platform keys) */}
+          {tab === "image" && (
+          <section className="min-w-0 flex-1">
+            <div className="space-y-6">
               <Card className="glass-card">
                 <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 text-white">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
+                  <h3 className="font-semibold text-sm mb-4">{t("imageCardTitle")}</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {/* default image generation model */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        {t("defaultImageModel")}
+                      </Label>
+                      <Select
+                        value={defaultImageModel}
+                        onValueChange={(val) => setDefaultImageModel(val ?? "")}
+                        disabled={imageModelOptions.length === 0}
+                      >
+                        <SelectTrigger className="w-full">
+                          {/* Base UI Select.Value shows the raw value by default; use a function child to map it to the model name */}
+                          <SelectValue>
+                            {(value: string) =>
+                              imageModelOptions.find((m) => m.id === value)?.name ??
+                              (modelsLoading ? t("modelsLoading") : enabledProviders.length === 0 ? t("enableProviderFirst") : t("selectImageModel"))
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {imageModelOptions.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name}{m.custom ? t("customModelSuffix") : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <h3 className="font-semibold text-sm">{t("defaultsTitle")}</h3>
                   </div>
+                  <p className="mt-3 text-xs text-muted-foreground">{t("modelsFromProvidersHint")}</p>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+          )}
 
+          {/* Tab: video generation — default model + output format */}
+          {tab === "video" && (
+          <section className="min-w-0 flex-1">
+            <div className="space-y-6">
+              <Card className="glass-card">
+                <CardContent className="p-5">
+                  <h3 className="font-semibold text-sm mb-4">{t("videoCardTitle")}</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* default video generation model */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        {t("defaultVideoModel")}
+                      </Label>
+                      <Select
+                        value={defaultVideoModel}
+                        onValueChange={(val) => setDefaultVideoModel(val ?? "")}
+                        disabled={videoModelOptions.length === 0}
+                      >
+                        <SelectTrigger className="w-full">
+                          {/* Base UI Select.Value shows the raw value by default; use a function child to map it to the model name */}
+                          <SelectValue>
+                            {(value: string) =>
+                              videoModelOptions.find((m) => m.id === value)?.name ??
+                              (modelsLoading ? t("modelsLoading") : enabledProviders.length === 0 ? t("enableProviderFirst") : t("selectVideoModel"))
+                            }
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {videoModelOptions.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name}{m.custom ? t("customModelSuffix") : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     {/* default resolution */}
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">
@@ -1015,7 +1063,6 @@ export default function SettingsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-
                     {/* default aspect ratio */}
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground">
@@ -1047,68 +1094,29 @@ export default function SettingsPage() {
                         </SelectContent>
                       </Select>
                     </div>
-
-                    {/* default image generation model */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {t("defaultImageModel")}
-                      </Label>
-                      <Select
-                        value={defaultImageModel}
-                        onValueChange={(val) => setDefaultImageModel(val ?? "")}
-                        disabled={imageModelOptions.length === 0}
-                      >
-                        <SelectTrigger className="w-full">
-                          {/* Base UI Select.Value shows the raw value by default; use a function child to map it to the model name */}
-                          <SelectValue>
-                            {(value: string) =>
-                              imageModelOptions.find((m) => m.id === value)?.name ??
-                              (modelsLoading ? t("modelsLoading") : enabledProviders.length === 0 ? t("enableProviderFirst") : t("selectImageModel"))
-                            }
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {imageModelOptions.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name}{m.custom ? t("customModelSuffix") : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* default video generation model */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {t("defaultVideoModel")}
-                      </Label>
-                      <Select
-                        value={defaultVideoModel}
-                        onValueChange={(val) => setDefaultVideoModel(val ?? "")}
-                        disabled={videoModelOptions.length === 0}
-                      >
-                        <SelectTrigger className="w-full">
-                          {/* Base UI Select.Value shows the raw value by default; use a function child to map it to the model name */}
-                          <SelectValue>
-                            {(value: string) =>
-                              videoModelOptions.find((m) => m.id === value)?.name ??
-                              (modelsLoading ? t("modelsLoading") : enabledProviders.length === 0 ? t("enableProviderFirst") : t("selectVideoModel"))
-                            }
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {videoModelOptions.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name}{m.custom ? t("customModelSuffix") : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                   </div>
+                  <p className="mt-3 text-xs text-muted-foreground">{t("modelsFromProvidersHint")}</p>
                 </CardContent>
               </Card>
+            </div>
+          </section>
+          )}
+          {/* Tab 3: character management */}
+          {tab === "characters" && (
+          <section className="min-w-0 flex-1">
+            <PresenterManager />
+          </section>
+          )}
+          {/* Tab 4: brand settings */}
+          {tab === "brand" && (
+          <section className="min-w-0 flex-1">
+            <BrandSettings />
+          </section>
+          )}
+        </div>
 
+        {/* custom model endpoints + generation params (advanced, cross-cutting, collapsed) */}
+        <div className="mt-6">
               {/* custom model endpoints + generation params (advanced, collapsed by default, does not disturb beginners) */}
               <details className="group rounded-xl border border-border/50 bg-card/30">
                 <summary className="flex items-center justify-between cursor-pointer list-none select-none px-5 py-3.5 text-sm font-medium text-muted-foreground hover:text-foreground">
@@ -1119,55 +1127,18 @@ export default function SettingsPage() {
                   <GenerationSettings />
                 </div>
               </details>
-            </div>
-          </TabsContent>
-          {/* Tab 3: character management */}
-          <TabsContent value={2}>
-            <CharacterManager />
-          </TabsContent>
-          {/* Tab 4: brand settings */}
-          <TabsContent value={3}>
-            <BrandSettings />
-          </TabsContent>
-        </Tabs>
-
-        {/* bottom save button */}
-        <div className="mt-8 flex items-center justify-between gap-3">
-          {/* configuration status summary */}
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p className={llm.apiKey ? "text-emerald-600" : "text-amber-600"}>
-              {llm.apiKey ? t("llmConfigured") : t("llmNotConfigured")}
-            </p>
-            <p className={hasAnyProvider ? "text-emerald-600" : "text-amber-600"}>
-              {hasAnyProvider ? t("providerCount", { n: enabledCount }) : t("noProvider")}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {saved && (
-              <span className="text-sm text-emerald-400 animate-in fade-in slide-in-from-right-2">
-                {t("settingsSaved")}
-              </span>
-            )}
-            <Button
-              onClick={handleSave}
-              className="brand-gradient text-white px-6"
-              size="lg"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                <polyline points="17 21 17 13 7 13 7 21" />
-                <polyline points="7 3 7 8 15 8" />
-              </svg>
-              {t("saveSettings")}
-            </Button>
-          </div>
         </div>
 
-        {/* 系统诊断：报障时让用户点开截图/复制，一次拿到版本、数据库、迁移、ffmpeg 状态（替代来回追问日志） */}
-        <div className="mt-6 rounded-lg border border-border/40 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">{t("diagnosticsTitle")}</span>
+        {/* zustand persists every change instantly — say so instead of showing a fake save button */}
+        <p className="mt-8 text-xs text-muted-foreground">{t("autoSaveHint")}</p>
+
+        {/* 系统诊断：报障时让用户点开截图/复制，一次拿到版本、数据库、迁移、ffmpeg 状态（折叠，不与设置项抢注意力） */}
+        <details className="group mt-4 rounded-lg border border-border/40">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
+            <span>{t("diagnosticsTitle")}</span>
+            <svg className="size-4 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div className="px-4 pb-4">
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={loadDiagnostics}>
                 {diagnostics ? t("diagnosticsRefresh") : t("diagnosticsShow")}
@@ -1178,228 +1149,18 @@ export default function SettingsPage() {
                 </Button>
               )}
             </div>
+            {diagnostics && (
+              <pre className="mt-3 max-h-64 overflow-auto rounded bg-muted/30 p-3 text-xs leading-relaxed whitespace-pre-wrap break-all">{diagnostics}</pre>
+            )}
+            <p className="mt-2 text-xs text-muted-foreground">{t("diagnosticsHint")}</p>
           </div>
-          {diagnostics && (
-            <pre className="mt-3 max-h-64 overflow-auto rounded bg-muted/30 p-3 text-xs leading-relaxed whitespace-pre-wrap break-all">{diagnostics}</pre>
-          )}
-          <p className="mt-2 text-xs text-muted-foreground">{t("diagnosticsHint")}</p>
-        </div>
+        </details>
       </main>
     </div>
   );
 }
 
 // ==================== character management component ====================
-
-function CharacterManager() {
-  const t = useT("settings");
-  const { characters, addCharacter, updateCharacter, removeCharacter } = useCharacterStore();
-  const { providers, defaultImageModel, customModels, imageParams } = useSettingsStore();
-  const [isCreating, setIsCreating] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name: "", description: "", appearance: "", voiceStyle: "" });
-  // multi-view sheet generation state (one at a time; the result lands in referenceImages[0])
-  const [sheetGenId, setSheetGenId] = useState<string | null>(null);
-  const [sheetNotice, setSheetNotice] = useState<string | null>(null);
-
-  // generate the 2x2 turnaround sheet: same person from four angles in ONE generation,
-  // then every downstream pass (grid / film / keyframes) can pin the identity to it
-  const generateSheet = async (char: Character) => {
-    if (!char.appearance?.trim()) {
-      setSheetNotice(t("characterSheetNeedsAppearance"));
-      return;
-    }
-    if (sheetGenId) return;
-    setSheetGenId(char.id);
-    setSheetNotice(null);
-    try {
-      const target = await resolveDefaultModelTarget(providers, defaultImageModel, customModels, "image");
-      if (!target) throw new Error(t("characterSheetNoModel"));
-      const res = await fetch("/api/characters/sheet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          appearance: char.appearance,
-          name: char.name,
-          provider: target.provider,
-          model: target.model,
-          apiKey: target.apiKey,
-          baseUrl: target.baseUrl,
-          // the sheet is a square 2x2 grid, regardless of the user's video aspect default
-          options: buildImageOptions(imageParams ? { ...imageParams, aspectRatio: "1:1", count: 1 } : undefined),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || t("characterSheetFailed"));
-      updateCharacter(char.id, { referenceImages: [data.url, ...(char.referenceImages ?? []).slice(1)] });
-      setSheetNotice(t("characterSheetDone", { name: char.name }));
-    } catch (e) {
-      setSheetNotice(e instanceof Error ? e.message : t("characterSheetFailed"));
-    } finally {
-      setSheetGenId(null);
-    }
-  };
-
-  const resetForm = () => {
-    setForm({ name: "", description: "", appearance: "", voiceStyle: "" });
-    setIsCreating(false);
-    setEditingId(null);
-  };
-
-  const handleSave = () => {
-    if (!form.name.trim()) return;
-    if (editingId) {
-      updateCharacter(editingId, {
-        name: form.name,
-        description: form.description,
-        appearance: form.appearance,
-        voiceProfile: form.voiceStyle ? { style: form.voiceStyle } : undefined,
-      });
-    } else {
-      addCharacter({
-        id: crypto.randomUUID(),
-        name: form.name,
-        description: form.description,
-        appearance: form.appearance,
-        referenceImages: [],
-        voiceProfile: form.voiceStyle ? { style: form.voiceStyle } : undefined,
-        isDefault: characters.length === 0,
-      });
-    }
-    resetForm();
-  };
-
-  const startEdit = (char: Character) => {
-    setEditingId(char.id);
-    setIsCreating(true);
-    setForm({
-      name: char.name,
-      description: char.description || "",
-      appearance: char.appearance || "",
-      voiceStyle: char.voiceProfile?.style || "",
-    });
-  };
-
-  const setAsDefault = (id: string) => {
-    characters.forEach((c) => updateCharacter(c.id, { isDefault: c.id === id }));
-  };
-
-  return (
-    <div className="space-y-4">
-      <Card className="glass-card">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {t("characterIntro")}
-          </p>
-        </CardContent>
-      </Card>
-
-      {sheetNotice && (
-        <div className="rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
-          {sheetNotice}
-        </div>
-      )}
-
-      {characters.length > 0 && (
-        <div className="space-y-3">
-          {characters.map((char) => (
-            <Card key={char.id} className={`glass-card ${char.isDefault ? "ring-1 ring-primary/50" : ""}`}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 flex-1 min-w-0">
-                    {char.referenceImages?.[0] ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={char.referenceImages[0]}
-                        alt={t("characterSheetAlt", { name: char.name })}
-                        className="h-16 w-16 shrink-0 rounded-lg object-cover ring-1 ring-border"
-                      />
-                    ) : (
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                        <LuUser className="w-5 h-5 text-primary" />
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-sm">{char.name}</h3>
-                        {char.isDefault && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
-                            <LuStar className="w-3 h-3" />
-                            {t("characterDefault")}
-                          </span>
-                        )}
-                      </div>
-                      {char.description && <p className="text-xs text-muted-foreground mb-1">{char.description}</p>}
-                      {char.appearance && <p className="text-xs text-muted-foreground/70 line-clamp-1">{t("characterAppearancePrefix", { appearance: char.appearance })}</p>}
-                      {char.voiceProfile?.style && <p className="text-xs text-muted-foreground/70 mt-0.5">{t("characterVoicePrefix", { voice: char.voiceProfile.style })}</p>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-xs h-7 px-2 text-primary"
-                      disabled={sheetGenId !== null}
-                      onClick={() => generateSheet(char)}
-                      title={t("characterSheetTip")}
-                    >
-                      {sheetGenId === char.id ? t("characterSheetRunning") : char.referenceImages?.[0] ? t("characterSheetRedo") : t("characterSheetBtn")}
-                    </Button>
-                    {!char.isDefault && (
-                      <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => setAsDefault(char.id)}>
-                        <LuStar className="w-3 h-3" />
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => startEdit(char)}>{t("characterEdit")}</Button>
-                    <Button variant="ghost" size="sm" className="text-xs h-7 px-2 text-destructive hover:text-destructive" onClick={() => removeCharacter(char.id)}>
-                      <LuTrash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {isCreating ? (
-        <Card className="glass-card ring-1 ring-primary/30">
-          <CardContent className="p-5 space-y-4">
-            <h3 className="text-sm font-semibold">{editingId ? t("characterFormEditTitle") : t("characterFormAddTitle")}</h3>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t("characterNameLabel")}</Label>
-              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("characterNamePlaceholder")} className="text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t("characterDescLabel")}</Label>
-              <Input value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder={t("characterDescPlaceholder")} className="text-sm" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t("characterAppearanceLabel")}</Label>
-              <Textarea value={form.appearance} onChange={(e) => setForm((f) => ({ ...f, appearance: e.target.value }))} placeholder={t("characterAppearancePlaceholder")} rows={3} className="text-sm resize-none" />
-              <p className="text-[11px] text-muted-foreground/60">{t("characterAppearanceTip")}</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t("characterVoiceLabel")}</Label>
-              <Input value={form.voiceStyle} onChange={(e) => setForm((f) => ({ ...f, voiceStyle: e.target.value }))} placeholder={t("characterVoicePlaceholder")} className="text-sm" />
-            </div>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <Button variant="outline" size="sm" onClick={resetForm}>{t("characterCancel")}</Button>
-              <Button size="sm" className="brand-gradient text-white" onClick={handleSave} disabled={!form.name.trim()}>
-                {editingId ? t("characterSaveEdit") : t("characterAddSubmit")}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <Button variant="outline" className="w-full h-12 border-dashed" onClick={() => setIsCreating(true)}>
-          <LuPlus className="w-4 h-4 mr-2" />
-          {t("characterAddButton")}
-        </Button>
-      )}
-    </div>
-  );
-}
 
 // ==================== brand settings component ====================
 

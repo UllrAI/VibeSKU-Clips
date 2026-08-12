@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { LuPlus, LuTrash2, LuPencil, LuPackage, LuArrowLeft, LuImage, LuX, LuVideo, LuCircleAlert } from "react-icons/lu";
+import { LuPlus, LuTrash2, LuPencil, LuPackage, LuImage, LuX, LuVideo, LuCircleAlert } from "react-icons/lu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,6 @@ import {
 } from "@/lib/stores/product-library-store";
 import { getExampleProducts } from "@/lib/examples";
 import { useT, useLocale } from "@/lib/i18n";
-import { LanguageToggle } from "@/components/language-toggle";
 
 // Category options (label uses an i18n key; resolved at runtime via t())
 const categoryOptions = [
@@ -260,44 +259,6 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      {/* Top navigation */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            {/* Logo */}
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg brand-gradient">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polygon points="23 7 16 12 23 17 23 7" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-              </svg>
-            </div>
-            <span className="text-lg font-bold tracking-tight">{t("navTitle")}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <LanguageToggle />
-            <Link href="/">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <LuArrowLeft className="w-4 h-4" />
-                <span className="ml-1.5">{t("backHome")}</span>
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-6xl px-6 py-10">
         {/* Page title + add button */}
         <div className="flex items-center justify-between mb-8">
@@ -466,7 +427,7 @@ export default function ProductsPage() {
                         {/* Delete button */}
                         <button
                           onClick={() => removeImage(img.id)}
-                          className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                          className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-500"
                         >
                           <LuX className="w-3 h-3" />
                         </button>
@@ -614,7 +575,7 @@ export default function ProductsPage() {
                           </Badge>
                         </div>
                         {/* Floating action buttons */}
-                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

@@ -112,7 +112,8 @@ describe("classifyTrendTitle", () => {
     expect(classifyTrendTitle("台风白海豚实时路径")).toBe("life");
     expect(classifyTrendTitle("四川宜宾高县发生4.9级地震")).toBe("society");
     expect(classifyTrendTitle("河南三支一扶笔试存在组织作弊")).toBe("society");
-    expect(classifyTrendTitle("新闻联播")).toBe("ent");
+    // state TV news is not creator content — must stay unclassified so the curated board drops it
+    expect(classifyTrendTitle("新闻联播")).toBe(null);
     expect(classifyTrendTitle("iPhone 17 发布会定档")).toBe("tech");
     expect(classifyTrendTitle("女排世锦赛决赛")).toBe("sports");
     expect(classifyTrendTitle("大熊猫花花营业")).toBe("pets");

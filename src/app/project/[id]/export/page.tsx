@@ -11,8 +11,7 @@ import { useSettingsStore } from "@/lib/stores/settings-store";
 import { buildPublishPack, buildAiDeclaration } from "@/lib/publish-pack";
 import { buildShopLink } from "@/lib/shop-link";
 import { useT, useLocale } from "@/lib/i18n";
-import { LanguageToggle } from "@/components/language-toggle";
-import { ProjectStepper } from "@/components/project-stepper";
+import { ProjectHeader } from "@/components/project-header";
 import { PerformanceFeedback } from "@/components/performance-feedback";
 
 // platform export config (planned feature, for display). name uses an i18n key (nameKey) resolved to the translated text at render time
@@ -424,30 +423,8 @@ export default function ExportPage() {
     ? new Date(composition.createdAt).toLocaleDateString("zh-CN")
     : "";
 
-  const headerBar = (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg brand-gradient">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="23 7 16 12 23 17 23 7" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-              </svg>
-            </div>
-            <span className="text-lg font-bold tracking-tight">ClipForge</span>
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <span className="text-sm text-muted-foreground truncate max-w-[40vw] sm:max-w-xs">{projectName || t("projectFallback")}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <LanguageToggle />
-          {/* step progress: clickable pills (mobile shows a compact badge inside the component) */}
-          <ProjectStepper />
-        </div>
-      </div>
-    </header>
-  );
+  // slim context strip (shared by loading, empty and normal states); global chrome lives in AppShell
+  const headerBar = <ProjectHeader projectName={projectName || t("projectFallback")} />;
 
   if (loading) {
     return (
@@ -478,7 +455,7 @@ export default function ExportPage() {
             <Link href={`/project/${id}/video`}>
               <Button className="brand-gradient text-white">{t("goCompose")}</Button>
             </Link>
-            <Link href="/">
+            <Link href="/projects">
               <Button variant="outline">{t("backToProjects")}</Button>
             </Link>
           </div>
@@ -1074,7 +1051,7 @@ export default function ExportPage() {
               {t("makeAnother")}
             </Button>
           </Link>
-          <Link href="/">
+          <Link href="/projects">
             <Button variant="outline">
               <LuHouse className="w-4 h-4 mr-1.5" />
               {t("backToProjects")}

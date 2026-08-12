@@ -18,8 +18,7 @@ import { useTemplateStore } from "@/lib/stores/template-store";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useT, useLocale } from "@/lib/i18n";
 import { friendlyError } from "@/lib/friendly-error";
-import { LanguageToggle } from "@/components/language-toggle";
-import { ProjectStepper } from "@/components/project-stepper";
+import { ProjectHeader } from "@/components/project-header";
 
 // shot type labels (label changed to i18n key, resolved per locale at render time)
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
@@ -74,6 +73,9 @@ export default function ScriptPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState("");
   const { llm } = useSettingsStore();
+  // beginner/director split: simple mode swaps the 3-column editor for a read-and-go card
+  const uiMode = useSettingsStore((st) => st.uiMode);
+  const setUiMode = useSettingsStore((st) => st.setUiMode);
   // judge panel: four narrow judges tear the lines apart before generation money is spent
   const [judging, setJudging] = useState(false);
   const [judgeReport, setJudgeReport] = useState<JudgeReport | null>(null);
@@ -326,6 +328,20 @@ export default function ScriptPage() {
   const [autoFinishing, setAutoFinishing] = useState(false);
   const [autoFinishStage, setAutoFinishStage] = useState("");
   const [autoFinishError, setAutoFinishError] = useState("");
+  // Hands-off mode (?auto=1, set by the /start hero flows): auto-run the same chain and show a
+  // takeover progress card instead of dropping beginners into the full editor. "转手动" simply
+  // reveals the editor — the running chain is untouched.
+  const [autoMode, setAutoMode] = useState(false);
+  const [autoModeTriggered, setAutoModeTriggered] = useState(false);
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("auto") === "1") setAutoMode(true);
+  }, []);
+  useEffect(() => {
+    if (!autoMode || autoModeTriggered || loading || !currentScript) return;
+    setAutoModeTriggered(true);
+    autoFinish();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- autoFinish is a stable page-level handler; triggering once per auto entry
+  }, [autoMode, autoModeTriggered, loading, currentScript]);
   const autoFinish = async () => {
     if (!currentScript || autoFinishing) return;
     setAutoFinishing(true);
@@ -469,31 +485,8 @@ export default function ScriptPage() {
     }
   };
 
-  // top navigation bar (shared by loading, empty and normal states)
-  const headerBar = (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg brand-gradient">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="23 7 16 12 23 17 23 7" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-              </svg>
-            </div>
-            <span className="text-lg font-bold tracking-tight">ClipForge</span>
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <span className="text-sm text-muted-foreground truncate max-w-[40vw] sm:max-w-xs">{projectName || t("defaultProjectName")}</span>
-        </div>
-        {/* step progress: clickable pills (mobile shows a compact badge inside the component) */}
-        <div className="flex items-center gap-1">
-          <ProjectStepper />
-          <LanguageToggle />
-        </div>
-      </div>
-    </header>
-  );
+  // slim context strip (shared by loading, empty and normal states); global chrome lives in AppShell
+  const headerBar = <ProjectHeader projectName={projectName || t("defaultProjectName")} />;
 
   // loading: skeleton screen (mimics the script card layout; feels faster than a spinner and reduces perceived wait)
   if (loading) {
@@ -539,7 +532,7 @@ export default function ScriptPage() {
             <div className="mb-4 flex flex-col items-center gap-2">
               <p className="text-sm text-destructive">{genError}</p>
               {/* most generation errors are LLM-config related — offer a direct jump to Settings */}
-              <Link href="/settings" className="text-xs text-primary underline underline-offset-2 hover:text-primary/80">
+              <Link href="/settings?tab=llm" className="text-xs text-primary underline underline-offset-2 hover:text-primary/80">
                 {t("goToSettings")}
               </Link>
             </div>
@@ -558,11 +551,34 @@ export default function ScriptPage() {
                 </>
               )}
             </Button>
-            <Link href="/">
+            <Link href="/projects">
               <Button variant="outline">{t("backToProjects")}</Button>
             </Link>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  // Hands-off takeover: while the auto chain runs, beginners see one progress card, not the editor
+  if (autoMode && !autoFinishError && (autoFinishing || !autoModeTriggered)) {
+    return (
+      <div className="min-h-screen grid-bg">
+        {headerBar}
+        <main className="mx-auto flex max-w-lg flex-col items-center px-6 py-24 text-center">
+          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl brand-gradient">
+            <svg className="h-6 w-6 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold">{t("autoModeTitle")}</h2>
+          <p className="mt-2 text-sm text-primary">{autoFinishStage || t("autoFinishSelecting")}</p>
+          <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t("autoModeHint")}</p>
+          <Button variant="outline" size="sm" className="mt-8 text-xs" onClick={() => setAutoMode(false)}>
+            {t("autoModeManual")}
+          </Button>
+        </main>
       </div>
     );
   }
@@ -572,6 +588,52 @@ export default function ScriptPage() {
       {headerBar}
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {uiMode === "simple" ? (
+          /* Beginner view: script text + one big button. No storyboard, no panels. */
+          <div className="mx-auto max-w-2xl space-y-4">
+            <div className="text-center">
+              <h2 className="text-xl font-bold">{t("simpleTitle")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("simpleSubtitle")}</p>
+            </div>
+            <Card className="glass-card">
+              <CardContent className="p-5">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <h3 className="min-w-0 truncate text-sm font-semibold">{currentScript?.title}</h3>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {currentScript ? `${currentScript.totalDuration}s` : ""}
+                  </span>
+                </div>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                  {currentScript?.shots.map((sh) => sh.voiceover).filter(Boolean).join("\n\n")}
+                </p>
+              </CardContent>
+            </Card>
+            {autoFinishError && (
+              <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-xs text-destructive">
+                {autoFinishError}
+              </div>
+            )}
+            <div className="flex flex-col items-center gap-3">
+              <Button
+                size="lg"
+                className="brand-gradient w-full text-white"
+                disabled={autoFinishing || !currentScript}
+                onClick={autoFinish}
+              >
+                {autoFinishing ? (autoFinishStage || t("autoFinish")) : `⚡ ${t("autoFinish")}`}
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">{t("autoFinishHint")}</p>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" size="sm" className="text-xs" disabled={isGenerating} onClick={() => setRegenConfirmOpen(true)}>
+                  {t("regenerate")}
+                </Button>
+                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => setUiMode("pro")}>
+                  {t("simpleGoPro")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* left panel: script option selection */}
           <div className="lg:col-span-1">
@@ -760,7 +822,7 @@ export default function ScriptPage() {
               {genError && (
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-4 py-2.5 text-xs text-red-400">
                   <span>{genError}</span>
-                  <Link href="/settings" className="shrink-0 text-primary underline underline-offset-2 hover:text-primary/80">
+                  <Link href="/settings?tab=llm" className="shrink-0 text-primary underline underline-offset-2 hover:text-primary/80">
                     {t("goToSettings")}
                   </Link>
                 </div>
@@ -966,6 +1028,7 @@ export default function ScriptPage() {
             </Tabs>
           </div>
         </div>
+        )}
       </main>
 
       {/* save template dialog */}

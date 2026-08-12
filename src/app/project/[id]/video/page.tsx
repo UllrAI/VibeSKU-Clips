@@ -18,7 +18,7 @@ import { decodeStoredAdTemplate, adTemplateStorageKey, adTemplateAppliedKey } fr
 import { buildHookVariants } from "@/lib/script-engine/hook-variants";
 import type { ProductCategory } from "@/lib/script-engine/templates";
 import { CAPTION_PRESET_IDS } from "@/lib/caption-presets";
-import { LanguageToggle } from "@/components/language-toggle";
+import { ProjectHeader } from "@/components/project-header";
 import {
   Select,
   SelectContent,
@@ -556,46 +556,28 @@ export default function VideoPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      {/* 顶部导航 */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg brand-gradient">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="23 7 16 12 23 17 23 7" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                </svg>
-              </div>
-              <span className="text-lg font-bold tracking-tight">ClipForge</span>
-            </Link>
-            <span className="text-muted-foreground">/</span>
-            <span className="text-sm text-muted-foreground truncate max-w-[40vw] sm:max-w-xs">{projectName || t("defaultProjectName")}</span>
-          </div>
-
-          {/* 步骤进度 */}
-          <div className="flex items-center gap-1">
-            <LanguageToggle />
-            {/* 步骤胶囊在窄屏放不下，移动端隐藏（仅进度展示、非导航） */}
-            <div className="hidden sm:flex items-center gap-1">
-            {[t("stepScript"), t("stepAssets"), t("stepVideo"), t("stepExport")].map((step, i) => (
-              <div key={step} className="flex items-center">
-                <div className={`flex h-7 items-center gap-1.5 rounded-full px-3 text-xs font-medium ${i === 2 ? "bg-primary text-primary-foreground" : i < 2 ? "text-primary" : "text-muted-foreground"}`}>
-                  <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${i === 2 ? "bg-white/20" : i < 2 ? "bg-primary/20" : "bg-muted"}`}>
-                    {i < 2 ? "✓" : i + 1}
-                  </span>
-                  {step}
-                </div>
-                {i < 3 && <div className="mx-1 h-px w-4 bg-border" />}
-              </div>
-            ))}
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* project context strip: name + CLICKABLE step navigation — replaces the legacy
+          inline non-clickable stepper this page carried while owned by a parallel session */}
+      <ProjectHeader projectName={projectName || t("defaultProjectName")} />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* page-level load feedback: these states existed but were never rendered,
+            leaving an empty timeline with no explanation */}
+        {loading && (
+          <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted-foreground">
+            <LuLoaderCircle className="h-4 w-4 animate-spin" />
+            {t("stateLoading")}
+          </div>
+        )}
+        {!loading && loadError && (
+          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+            <p className="text-sm text-muted-foreground">{loadError}</p>
+            <Link href={`/project/${id}/assets`}>
+              <Button variant="outline" size="sm">{t("backToAssets")}</Button>
+            </Link>
+          </div>
+        )}
+        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${loading || loadError ? "hidden" : ""}`}>
           {/* 左侧：视频时间线 */}
           <div className="lg:col-span-2">
             <div className="flex items-center justify-between mb-4">

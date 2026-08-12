@@ -14,6 +14,8 @@ import { script } from "./script";
 import { assets } from "./assets";
 import { video } from "./video";
 import { exportPage } from "./exportPage";
+import { projectsPage } from "./projectsPage";
+import { presenters } from "./presenters";
 
 // 所有命名空间集中注册（新增页面时在此追加一行）
 const namespaces = {
@@ -32,6 +34,8 @@ const namespaces = {
   assets,
   video,
   exportPage,
+  projectsPage,
+  presenters,
 };
 
 /** messages[locale][namespace][key] = 翻译文本 */

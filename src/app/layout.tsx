@@ -5,6 +5,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { LocaleInitializer } from "@/components/locale-initializer";
+import { AppShell } from "@/components/app-shell";
 
 const geistSans = GeistSans;
 const geistMono = GeistMono;
@@ -41,7 +42,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <LocaleInitializer />
-        {children}
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

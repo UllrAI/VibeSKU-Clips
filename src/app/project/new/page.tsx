@@ -634,33 +634,6 @@ export default function NewProjectPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      {/* top navigation */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            {/* back button */}
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground -ml-2">
-                <LuArrowLeft className="w-4 h-4" />
-                <span className="ml-1">{tc("back")}</span>
-              </Button>
-            </Link>
-            <div className="h-5 w-px bg-border/50" />
-            {/* logo */}
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md brand-gradient">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="23 7 16 12 23 17 23 7" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                </svg>
-              </div>
-              <span className="text-sm font-semibold tracking-tight">ClipForge</span>
-            </div>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
-
       <main className="mx-auto max-w-2xl px-6 py-10">
         {/* page title */}
         <div className="mb-8">
@@ -674,12 +647,12 @@ export default function NewProjectPage() {
 
         {/* LLM not configured warning */}
         {!isLLMConfigured && (
-          <Link href="/settings">
-            <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3 cursor-pointer hover:bg-amber-100 transition-colors">
-              <LuCircleAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <Link href="/settings?tab=llm">
+            <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 cursor-pointer hover:bg-amber-500/15 transition-colors">
+              <LuCircleAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-amber-900">{t("llmWarnTitle")}</p>
-                <p className="text-xs text-amber-700 mt-0.5">{t("llmWarnDesc")}<span className="underline">{t("llmWarnCta")}</span></p>
+                <p className="text-sm font-medium text-amber-200">{t("llmWarnTitle")}</p>
+                <p className="text-xs text-amber-300/80 mt-0.5">{t("llmWarnDesc")}<span className="underline">{t("llmWarnCta")}</span></p>
               </div>
             </div>
           </Link>
@@ -1066,6 +1039,50 @@ export default function NewProjectPage() {
             </CardContent>
           </Card>
 
+          {/* script style */}
+          <Card className="glass-card">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">4</span>
+                <span className="text-sm font-semibold">{t("stepStyleTitle")}</span>
+              </div>
+              <Label className="text-sm font-medium mb-3 block">{t("scriptStyleLabel")}</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {styleOptions.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setScriptStyle(opt.value)}
+                    className={`relative flex flex-col items-start p-3.5 rounded-lg border text-left transition-all ${
+                      scriptStyle === opt.value
+                        ? "border-primary bg-primary/10"
+                        : "border-border/50 bg-muted/20 hover:border-primary/40"
+                    }`}
+                  >
+                    <span
+                      className={`text-sm font-medium ${
+                        scriptStyle === opt.value ? "text-primary" : "text-foreground"
+                      }`}
+                    >
+                      {t(opt.labelKey)}
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-0.5">
+                      {t(opt.descKey)}
+                    </span>
+                    {/* selected indicator */}
+                    {scriptStyle === opt.value && (
+                      <div className="absolute top-2.5 right-2.5">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-primary">
+                          <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15" />
+                          <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* use a viral template (shown only when templates exist) */}
           {templates.length > 0 && (
             <Card className="glass-card">
@@ -1189,7 +1206,7 @@ export default function NewProjectPage() {
                   value={adTemplateQuery}
                   onChange={(e) => setAdTemplateQuery(e.target.value)}
                   placeholder={t("adTemplateSearch")}
-                  className="ml-auto w-36 px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 outline-none focus:border-primary/60 placeholder:text-muted-foreground/60"
+                  className="w-48 px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 outline-none focus:border-primary/60 placeholder:text-muted-foreground/60"
                 />
                 {/* AI custom recipe: one LLM call picks from the real preset vocabularies for THIS product */}
                 <button
@@ -1476,7 +1493,7 @@ export default function NewProjectPage() {
               {aiTplError && <p className="text-xs text-destructive mb-2">{aiTplError}</p>}
               {mineNotice && <p className="text-xs text-muted-foreground mb-2">{mineNotice}</p>}
               {/* wrapping grid capped in height — a 100-card library can't live on one scroll row */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-80 overflow-y-auto pb-1 pr-1">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[30rem] overflow-y-auto pb-1 pr-1">
                 <button
                   onClick={() => setSelectedAdTemplateId("")}
                   className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
@@ -1575,50 +1592,6 @@ export default function NewProjectPage() {
                     <span className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
                       {locale === "zh" ? tpl.tagline.zh : tpl.tagline.en}
                     </span>
-                  </button>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* script style */}
-          <Card className="glass-card">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">4</span>
-                <span className="text-sm font-semibold">{t("stepStyleTitle")}</span>
-              </div>
-              <Label className="text-sm font-medium mb-3 block">{t("scriptStyleLabel")}</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {styleOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setScriptStyle(opt.value)}
-                    className={`relative flex flex-col items-start p-3.5 rounded-lg border text-left transition-all ${
-                      scriptStyle === opt.value
-                        ? "border-primary bg-primary/10"
-                        : "border-border/50 bg-muted/20 hover:border-primary/40"
-                    }`}
-                  >
-                    <span
-                      className={`text-sm font-medium ${
-                        scriptStyle === opt.value ? "text-primary" : "text-foreground"
-                      }`}
-                    >
-                      {t(opt.labelKey)}
-                    </span>
-                    <span className="text-xs text-muted-foreground mt-0.5">
-                      {t(opt.descKey)}
-                    </span>
-                    {/* selected indicator */}
-                    {scriptStyle === opt.value && (
-                      <div className="absolute top-2.5 right-2.5">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-primary">
-                          <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15" />
-                          <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                    )}
                   </button>
                 ))}
               </div>

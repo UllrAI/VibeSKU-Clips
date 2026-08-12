@@ -12,8 +12,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { getExampleProducts, type ExampleProduct } from "@/lib/examples";
-import { useT, useLocale, useSetLocale } from "@/lib/i18n";
-import { LOCALES, LOCALE_LABELS } from "@/lib/i18n/config";
+import { useT, useLocale } from "@/lib/i18n";
 import { ATLAS_KEYS_URL } from "@/lib/atlas-onekey";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { classifyTrendTitle, pickDailyTrend, TREND_CATEGORY_IDS } from "@/lib/trends";
@@ -50,14 +49,11 @@ export default function StartPage() {
   const router = useRouter();
   const t = useT("start");
   const locale = useLocale();
-  const setLocale = useSetLocale();
   const { llm } = useSettingsStore();
   const applyAtlasOneKey = useSettingsStore((s) => s.applyAtlasOneKey);
   const llmReady = llm.apiKey.trim().length > 0;
   // example products follow the UI language
   const examples = getExampleProducts(locale);
-  // language toggle (Chinese ⇄ English)
-  const toggleLocale = () => setLocale(LOCALES[(LOCALES.indexOf(locale) + 1) % LOCALES.length]);
 
   const [mode, setMode] = useState<Mode>("upload");
   const [images, setImages] = useState<PickedImage[]>([]);
@@ -82,6 +78,24 @@ export default function StartPage() {
   const [dailyPersona, setDailyPersona] = useState("");
   const [dailyLast, setDailyLast] = useState<{ date: string; topic: string } | null>(null);
   const [dailyMsg, setDailyMsg] = useState<string>("");
+  // first-visit guide card (dismiss persists per device; read after mount to keep SSR stable)
+  const [showGuide, setShowGuide] = useState(false);
+  useEffect(() => {
+    // deferred to a microtask: same pattern as the daily-persona loader (no sync setState in effect)
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      try {
+        if (localStorage.getItem("clipforge_guide_dismissed") !== "1") setShowGuide(true);
+      } catch { /* storage unavailable → keep hidden */ }
+    });
+    return () => { cancelled = true; };
+  }, []);
+  const dismissGuide = () => {
+    setShowGuide(false);
+    try { localStorage.setItem("clipforge_guide_dismissed", "1"); } catch { /* ignore */ }
+  };
+
   const fileRef = useRef<HTMLInputElement>(null);
   const keyformRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -118,7 +132,17 @@ export default function StartPage() {
         if (!res.ok) return;
         const data = await res.json();
         if (cancelled || !Array.isArray(data.topics)) return;
-        setTrends(data.topics.filter((tp: TrendTopic) => typeof tp?.title === "string" && tp.title.trim()));
+        // Curate for sellable content: keep only topics that classify into a creator
+        // category, and drop "society" (news/incidents/politics) — raw boards lead with
+        // headlines that make no sense as commerce videos and are a compliance risk for
+        // AI-generated content.
+        setTrends(
+          data.topics.filter((tp: TrendTopic) => {
+            if (typeof tp?.title !== "string" || !tp.title.trim()) return false;
+            const cat = classifyTrendTitle(tp.title);
+            return cat !== null && cat !== "society";
+          })
+        );
         setTrendsSource(typeof data.source === "string" ? data.source : "");
         setTrendsPage(0);
       } catch {
@@ -257,7 +281,7 @@ export default function StartPage() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok && !data.projectId) throw new Error(data.error || t("errTopicScript"));
-    router.push(`/project/${data.projectId}/script`);
+    router.push(`/project/${data.projectId}/script?auto=1`);
   };
 
   const startUpload = async () => {
@@ -306,7 +330,7 @@ export default function StartPage() {
       const errData = await scriptRes.json().catch(() => ({}));
       throw new Error(errData.error ? `${t("errScript")}: ${errData.error}` : t("errScript"));
     }
-    router.push(`/project/${project.id}/script`);
+    router.push(`/project/${project.id}/script?auto=1`);
   };
 
   // paste a product URL → ingest (fetch page, parse title/price/images, create project) → auto-generate script → script page
@@ -338,10 +362,10 @@ export default function StartPage() {
     });
     // even if script gen fails, the project exists with product data — land on the script page so the user can retry
     if (!scriptRes.ok) {
-      router.push(`/project/${data.projectId}/script`);
+      router.push(`/project/${data.projectId}/script?auto=1`);
       return;
     }
-    router.push(`/project/${data.projectId}/script`);
+    router.push(`/project/${data.projectId}/script?auto=1`);
   };
 
   // actually run generation (shared by all modes); restore busy/stage on failure
@@ -413,12 +437,7 @@ export default function StartPage() {
         .cf-amb{position:absolute;inset:0;pointer-events:none;background:radial-gradient(900px 420px at 50% -8%,rgba(139,92,246,.10),transparent 70%),radial-gradient(700px 500px at 85% 0%,rgba(124,92,255,.07),transparent 65%);}
         .cf-grid{position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:64px 64px;-webkit-mask-image:radial-gradient(circle at 50% 22%,#000,transparent 72%);mask-image:radial-gradient(circle at 50% 22%,#000,transparent 72%);}
         .cf-wrap{position:relative;max-width:980px;margin:0 auto;padding:0 24px}
-        .cf-nav{display:flex;align-items:center;justify-content:space-between;height:72px}
-        .cf-brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:18px;letter-spacing:-.01em}
-        .cf-mark{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;overflow:hidden;box-shadow:0 0 22px -6px rgba(139,92,246,.5)}
-        .cf-gear{width:34px;height:34px;border-radius:999px;border:1px solid var(--bd);background:var(--surface);color:var(--dim);display:grid;place-items:center;transition:.18s}
-        .cf-gear:hover{color:var(--text);border-color:var(--bd2)}
-        .cf-hero{padding:46px 0 36px;text-align:center}
+        .cf-hero{padding:52px 0 56px;text-align:center}
         .cf-eyebrow{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--teal);opacity:.85;margin-bottom:18px}
         .cf-h1{font-weight:700;font-size:clamp(34px,5.6vw,60px);line-height:1.04;letter-spacing:-.02em;margin-bottom:16px}
         .cf-h1 .hl{color:var(--teal);text-shadow:0 0 34px rgba(139,92,246,.35)}
@@ -468,26 +487,35 @@ export default function StartPage() {
         .cf-keyalt a:hover{color:var(--dim)}
         .cf-keyerr{margin-top:9px;color:#FCA5A5;font-size:12.5px}
         .cf-err{margin-top:12px;color:#FCA5A5;font-size:13px}
-        .cf-trends{max-width:620px;margin:26px auto 0;text-align:left}
-        .cf-trends-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px}
+        .cf-guide{max-width:620px;margin:14px auto 0;text-align:left;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.25);border-radius:16px;padding:14px 16px;position:relative}
+        .cf-guide-title{font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:10px}
+        .cf-guide-close{position:absolute;top:10px;right:10px;width:24px;height:24px;border:0;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;transition:.15s}
+        .cf-guide-close:hover{color:var(--text);background:var(--surface2)}
+        .cf-guide-steps{display:flex;flex-direction:column;gap:7px}
+        .cf-guide-step{display:flex;align-items:baseline;gap:9px;font-size:13px;color:var(--dim);line-height:1.55}
+        .cf-guide-step b{flex:none;width:18px;height:18px;border-radius:999px;background:rgba(139,92,246,.18);color:var(--teal);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;transform:translateY(2px)}
+        .cf-guide-foot{margin-top:10px;font-size:12px;color:var(--muted)}
+        .cf-trends{max-width:620px;margin:26px auto 0;text-align:left;background:var(--surface);border:1px solid var(--bd);border-radius:16px;padding:14px 16px}
+        .cf-trends-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
         .cf-trends-lbl{font-size:13px;font-weight:600;color:var(--dim);letter-spacing:.02em}
         .cf-trends-more{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--bd);border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;transition:.18s}
         .cf-trends-more:hover{color:var(--dim);border-color:var(--bd2)}
-        .cf-trends-row{display:flex;flex-wrap:wrap;gap:8px}
-        .cf-trend{display:inline-flex;align-items:center;gap:7px;max-width:100%}
-        .cf-trend .rk{font-size:11px;font-weight:700;font-style:normal;color:#FDA4AF;flex:none}
-        .cf-trend .tw{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .cf-trend .tv{font-size:11px;color:var(--muted);flex:none}
+        .cf-trend-list{display:flex;flex-direction:column;margin:0 -8px}
+        .cf-trow{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;transition:.15s}
+        .cf-trow:hover{background:var(--surface2)}
+        .cf-trow .trk{flex:none;width:18px;text-align:center;font-size:12px;font-style:normal;font-weight:700;color:var(--muted)}
+        .cf-trow .trk.hot{color:#FDA4AF}
+        .cf-trow .ttl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;background:none;border:0;color:var(--text);font:inherit;font-size:13.5px;cursor:pointer;padding:0}
+        .cf-trow .ttl:hover{color:var(--teal)}
+        .cf-trow .tv{flex:none;font-size:11px;color:var(--muted)}
+        .cf-trow .tclone{flex:none;font-size:11.5px;color:var(--muted);text-decoration:none;padding:3px 9px;border:1px solid var(--bd);border-radius:999px;transition:.15s}
+        .cf-trow .tclone:hover{color:var(--teal);border-color:rgba(139,92,246,.4)}
         .cf-trends-src{margin-top:9px;font-size:11.5px;color:var(--muted)}
         .cf-trends-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
         .cf-cat{padding:4px 10px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;transition:.18s}
         .cf-cat:hover{color:var(--dim)}
         .cf-cat.on{border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.08);color:var(--text)}
-        .cf-trend-wrap{display:inline-flex;align-items:stretch;max-width:100%}
-        .cf-trend-wrap .cf-trend{border-top-right-radius:0;border-bottom-right-radius:0;border-right:0}
-        .cf-trend-clone{display:inline-flex;align-items:center;padding:0 9px;border:1px solid var(--bd);border-left:1px dashed var(--bd);border-radius:0 999px 999px 0;color:var(--muted);font-size:11px;text-decoration:none;transition:.18s;flex:none}
-        .cf-trend-clone:hover{color:var(--teal);border-color:rgba(139,92,246,.4)}
-        .cf-daily{display:flex;align-items:center;gap:8px;margin-top:14px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--surface)}
+        .cf-daily{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)}
         .cf-daily-lbl{font-size:12.5px;font-weight:600;color:var(--dim);flex:none}
         .cf-daily-input{flex:1;min-width:0;background:rgba(0,0,0,.25);border:1px solid var(--bd);border-radius:9px;color:var(--text);font:inherit;font-size:13px;padding:7px 11px;outline:none;transition:.18s}
         .cf-daily-input:focus{border-color:rgba(139,92,246,.45)}
@@ -497,14 +525,10 @@ export default function StartPage() {
         .cf-examples{margin-top:24px;font-size:13px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
         .cf-chip{padding:6px 12px;border:1px solid var(--bd);border-radius:999px;background:var(--surface);color:var(--dim);font:inherit;cursor:pointer;transition:.18s}
         .cf-chip:hover{border-color:rgba(139,92,246,.4);color:var(--text)}
-        .cf-adv{display:flex;justify-content:center;padding:30px 0 50px}
-        .cf-adv a{font-size:12.5px;color:var(--muted);text-decoration:none;padding:8px 14px;border:1px solid transparent;border-radius:999px;transition:.18s}
-        .cf-adv a:hover{color:var(--dim);border-color:var(--bd)}
-        .cf-nav-r{display:flex;align-items:center;gap:8px}
-        .cf-nlink{font-size:13px;color:var(--dim);text-decoration:none;padding:7px 12px;border-radius:999px;border:1px solid transparent;transition:.18s}
-        .cf-nlink:hover{color:var(--text);border-color:var(--bd)}
         .cf-recent{max-width:620px;margin:22px auto 0;text-align:left}
-        .cf-recent .lbl{font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:.02em}
+        .cf-recent .lbl{font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:.02em;display:flex;align-items:center;justify-content:space-between}
+        .cf-recent .lbl-all{color:var(--muted);text-decoration:none;transition:.18s}
+        .cf-recent .lbl-all:hover{color:var(--dim)}
         .cf-recent .row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
         .cf-pj{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1px solid var(--bd);border-radius:12px;background:var(--surface);text-decoration:none;transition:.18s}
         .cf-pj:hover{border-color:var(--bd2);background:var(--surface2)}
@@ -518,26 +542,6 @@ export default function StartPage() {
       <div className="cf-amb" />
       <div className="cf-grid" />
       <div className="cf-wrap">
-        <nav className="cf-nav">
-          <div className="cf-brand">
-            <span className="cf-mark">
-              {/* the official brand mark — same asset as the favicon and the website logo */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon.svg" alt="" width={30} height={30} style={{ display: "block" }} />
-            </span>
-            ClipForge
-          </div>
-          <div className="cf-nav-r">
-            <button type="button" onClick={toggleLocale} className="cf-nlink" title={locale === "zh" ? "Switch to English" : "切换到中文"}>{LOCALE_LABELS[locale]}</button>
-            <Link href="/project/clone" className="cf-nlink">{t("navClone")}</Link>
-            <Link href="/products" className="cf-nlink">{t("navProducts")}</Link>
-            <Link href="/batch" className="cf-nlink">{t("navBatch")}</Link>
-            <Link href="/settings" className="cf-gear" aria-label={t("navSettings")}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
-            </Link>
-          </div>
-        </nav>
-
         <section className="cf-hero">
           <div className="cf-eyebrow">{t("eyebrow")}</div>
           <h1 className="cf-h1">{t("h1Lead")}<span className="hl">{t("h1Highlight")}</span></h1>
@@ -638,7 +642,7 @@ export default function StartPage() {
                 </div>
                 {connectError && <div className="cf-keyerr">{connectError}</div>}
                 <div className="cf-keyalt">
-                  <Link href="/settings">{t("atlasUseOther")}</Link>
+                  <Link href="/settings?tab=llm">{t("atlasUseOther")}</Link>
                 </div>
               </div>
             )}
@@ -651,6 +655,42 @@ export default function StartPage() {
             </div>
             {error && <div className="cf-err">{error}</div>}
           </div>
+
+          {showGuide && (
+            <div className="cf-guide">
+              <button type="button" className="cf-guide-close" onClick={dismissGuide} aria-label={t("guideClose")}>✕</button>
+              <div className="cf-guide-title">{t("guideTitle")}</div>
+              <div className="cf-guide-steps">
+                <div className="cf-guide-step"><b>1</b>{t("guideStep1")}</div>
+                <div className="cf-guide-step"><b>2</b>{t("guideStep2")}</div>
+                <div className="cf-guide-step"><b>3</b>{t("guideStep3")}</div>
+              </div>
+              <div className="cf-guide-foot">{t("guideFoot")}</div>
+            </div>
+          )}
+
+          {recent.length > 0 && (
+            <div className="cf-recent">
+              <div className="lbl">
+                {t("recentLabel")}
+                <Link href="/projects" className="lbl-all">{t("recentAll")} →</Link>
+              </div>
+              <div className="row">
+                {recent.map((p) => {
+                  const rel = formatRelativeTime(p.updatedAt, locale);
+                  return (
+                    <Link key={p.id} href={`/project/${p.id}/${stepFor(p.status)}`} className="cf-pj">
+                      <span className="dot" />
+                      <span className="col">
+                        <span className="nm">{p.name || p.productName || t("untitledProject")}</span>
+                        <span className="cf-pj-meta">{t(stageKeyFor(p.status))}{rel ? ` · ${rel}` : ""}</span>
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {trends.length > 0 && (
             <div className="cf-trends">
@@ -675,28 +715,31 @@ export default function StartPage() {
                   ))}
                 </div>
               )}
-              <div className="cf-trends-row">
-                {trendsShown.map((tp) => (
-                  <span key={`${tp.source || "t"}-${tp.rank ?? tp.title}`} className="cf-trend-wrap">
+              {/* ranked list rows: scan-friendly, one action per row (was a wall of glued pills) */}
+              <div className="cf-trend-list">
+                {trendsShown.map((tp, i) => (
+                  <div key={`${tp.source || "t"}-${tp.rank ?? tp.title}`} className="cf-trow">
+                    <b className={`trk${typeof tp.rank === "number" && tp.rank <= 3 ? " hot" : ""}`}>
+                      {typeof tp.rank === "number" ? tp.rank : i + 1}
+                    </b>
                     <button
                       type="button"
-                      className="cf-chip cf-trend"
+                      className="ttl"
                       title={tp.context || tp.title}
                       onClick={() => pickTrend(tp)}
                     >
-                      {typeof tp.rank === "number" && tp.rank <= 3 && <b className="rk">{tp.rank}</b>}
-                      <span className="tw">{tp.title}</span>
-                      {tp.traffic && <span className="tv">{tp.traffic}</span>}
+                      {tp.title}
                     </button>
+                    {tp.traffic && <span className="tv">{tp.traffic}</span>}
                     <Link
                       href={`/project/clone?trend=${encodeURIComponent(tp.title)}`}
-                      className="cf-trend-clone"
+                      className="tclone"
                       title={t("trendCloneAria")}
                       aria-label={t("trendCloneAria")}
                     >
                       {t("trendCloneLabel")}
                     </Link>
-                  </span>
+                  </div>
                 ))}
               </div>
               <div className="cf-trends-src">{t("trendsSourceNote", { source: trendsSourceLabel })}</div>
@@ -727,30 +770,7 @@ export default function StartPage() {
             ))}
           </div>
 
-          {recent.length > 0 && (
-            <div className="cf-recent">
-              <div className="lbl">{t("recentLabel")}</div>
-              <div className="row">
-                {recent.map((p) => {
-                  const rel = formatRelativeTime(p.updatedAt, locale);
-                  return (
-                    <Link key={p.id} href={`/project/${p.id}/${stepFor(p.status)}`} className="cf-pj">
-                      <span className="dot" />
-                      <span className="col">
-                        <span className="nm">{p.name || p.productName || t("untitledProject")}</span>
-                        <span className="cf-pj-meta">{t(stageKeyFor(p.status))}{rel ? ` · ${rel}` : ""}</span>
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </section>
-
-        <div className="cf-adv">
-          <Link href="/settings">{t("advLink")}</Link>
-        </div>
       </div>
     </div>
   );

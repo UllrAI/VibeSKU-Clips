@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { LuArrowLeft, LuPlus } from "react-icons/lu";
+import { LuPlus } from "react-icons/lu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getExampleShowcase, getExampleTemplates } from "@/lib/examples";
 import type { Shot } from "@/lib/db/schema";
 import { useT, useLocale } from "@/lib/i18n";
-import { LanguageToggle } from "@/components/language-toggle";
 
 // Shot type labels (label uses a showcase-namespace i18n key, resolved per language)
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
@@ -22,38 +21,12 @@ const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> 
 
 export default function ShowcasePage() {
   const t = useT("showcase");
-  const tc = useT("common");
   const locale = useLocale();
   const sc = getExampleShowcase(locale);
 
   return (
     <div className="min-h-screen grid-bg">
       {/* Top navigation */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground -ml-2">
-                <LuArrowLeft className="w-4 h-4" />
-                <span className="ml-1">{tc("back")}</span>
-              </Button>
-            </Link>
-            {/* Divider + title + badge don't fit on narrow screens — hidden on mobile, keeping back button and "make similar" CTA */}
-            <div className="hidden sm:block h-5 w-px bg-border/50" />
-            <span className="hidden sm:inline text-sm font-semibold">{t("navTitle")}</span>
-            <Badge variant="secondary" className="hidden sm:inline-flex text-[10px]">{t("navBadge")}</Badge>
-          </div>
-          <div className="flex items-center gap-1">
-            <LanguageToggle />
-            <Link href="/project/new">
-              <Button size="sm" className="brand-gradient text-white">
-                <LuPlus className="w-4 h-4 mr-1" />
-                {t("makeSimilar")}
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         {/* Description */}

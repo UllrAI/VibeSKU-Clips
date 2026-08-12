@@ -13,7 +13,6 @@ import { useSettingsStore } from "@/lib/stores/settings-store";
 import { mergeCustomModels, buildVideoOptions } from "@/lib/gen-params";
 import { referenceModelFor, buildReplicatePrompt, REPLICATE_MAX_REF_SEC, type ReplicateShot } from "@/lib/replicate-plan";
 import { useT } from "@/lib/i18n";
-import { LanguageToggle } from "@/components/language-toggle";
 
 /** storyboard card data */
 interface StoryboardCard {
@@ -375,56 +374,6 @@ export default function ClonePage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      {/* top navigation bar */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            {/* back button */}
-            <Link href="/">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M19 12H5" />
-                  <path d="M12 19l-7-7 7-7" />
-                </svg>
-              </Button>
-            </Link>
-            {/* logo */}
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg brand-gradient">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polygon points="23 7 16 12 23 17 23 7" />
-                <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-              </svg>
-            </div>
-            <span className="text-lg font-bold tracking-tight">ClipForge</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <LanguageToggle />
-          </div>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-4xl px-6 py-10">
         {/* page title */}
         <div className="mb-10 text-center">

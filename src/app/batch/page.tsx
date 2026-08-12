@@ -3,7 +3,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import {
-  LuArrowLeft,
   LuCheck,
   LuLoader,
   LuPackage,
@@ -22,7 +21,6 @@ import { useSettingsStore } from "@/lib/stores/settings-store";
 import { getExampleProducts } from "@/lib/examples";
 import { buildVariationPlan, describeSlot } from "@/lib/variation-plan";
 import { useT, useLocale } from "@/lib/i18n";
-import { LanguageToggle } from "@/components/language-toggle";
 
 // Video mode options (labelKey refers to a batch-namespace i18n key; resolved at render time)
 const videoModeOptions = [
@@ -120,7 +118,6 @@ const statusColors: Record<TaskStatus, string> = {
 
 export default function BatchPage() {
   const t = useT("batch");
-  const tc = useT("common");
   const locale = useLocale();
   // Real product library + LLM config
   const { products, incrementVideoCount, addProduct } = useProductLibraryStore();
@@ -338,35 +335,6 @@ export default function BatchPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      {/* Top navigation */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            {/* Back button */}
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground -ml-2">
-                <LuArrowLeft className="w-4 h-4" />
-                <span className="ml-1">{tc("back")}</span>
-              </Button>
-            </Link>
-            <div className="h-5 w-px bg-border/50" />
-            {/* Logo */}
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md brand-gradient">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="23 7 16 12 23 17 23 7" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                </svg>
-              </div>
-              <span className="text-sm font-semibold tracking-tight">ClipForge</span>
-            </div>
-            <div className="h-5 w-px bg-border/50" />
-            <span className="text-sm font-medium">{t("navTitle")}</span>
-          </div>
-          <LanguageToggle />
-        </div>
-      </header>
-
       <main className="mx-auto max-w-2xl px-6 py-10">
         {/* Page title */}
         <div className="mb-8">
@@ -655,7 +623,7 @@ export default function BatchPage() {
             {configError && (
               <p className="text-sm text-destructive text-center mb-3">
                 {configError}
-                <Link href="/settings" className="underline underline-offset-2 ml-1.5 hover:text-foreground">
+                <Link href="/settings?tab=llm" className="underline underline-offset-2 ml-1.5 hover:text-foreground">
                   {t("errorNoLlmCta")}
                 </Link>
               </p>

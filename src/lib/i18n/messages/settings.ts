@@ -17,8 +17,8 @@ export const settings: NamespaceMessages = {
     oneKeyGetKey: "没有 Key？前往 Atlas Cloud 获取 →",
 
     // 标签页
-    tabProviders: "AI 平台",
-    tabLlm: "LLM 配置",
+    tabProviders: "平台 Key",
+    tabLlm: "脚本模型",
     tabCharacters: "出镜人物",
     tabBrand: "品牌设置",
 
@@ -127,6 +127,13 @@ export const settings: NamespaceMessages = {
     providerCount: "✓ {n} 个 AI 平台已启用",
     noProvider: "⚠ 无 AI 平台启用（素材生成需要）",
     settingsSaved: "设置已保存",
+    autoSaveHint: "所有设置修改即存，无需手动保存。",
+    tabTts: "配音",
+    tabImage: "生图模型",
+    tabVideo: "视频模型",
+    imageCardTitle: "生图 · 默认模型",
+    videoCardTitle: "视频 · 默认模型与画幅",
+    modelsFromProvidersHint: "可选模型来自「平台 Key」里已启用的平台；填好 Key 后这里会自动出现对应模型。",
     diagnosticsTitle: "系统诊断",
     diagnosticsShow: "查看诊断信息",
     diagnosticsRefresh: "刷新",
@@ -204,8 +211,8 @@ export const settings: NamespaceMessages = {
     oneKeyGetKey: "No key? Get one from Atlas Cloud →",
 
     // Tabs
-    tabProviders: "AI platforms",
-    tabLlm: "LLM config",
+    tabProviders: "Platform keys",
+    tabLlm: "Script model",
     tabCharacters: "Characters",
     tabBrand: "Branding",
 
@@ -314,6 +321,13 @@ export const settings: NamespaceMessages = {
     providerCount: "✓ {n} AI platforms enabled",
     noProvider: "⚠ No AI platform enabled (required for asset generation)",
     settingsSaved: "Settings saved",
+    autoSaveHint: "Every change is saved instantly — no save button needed.",
+    tabTts: "Voice-over",
+    tabImage: "Image model",
+    tabVideo: "Video model",
+    imageCardTitle: "Image · default model",
+    videoCardTitle: "Video · default model & format",
+    modelsFromProvidersHint: "Models come from platforms enabled under Platform keys — add a key there and they show up here.",
     diagnosticsTitle: "Diagnostics",
     diagnosticsShow: "Show diagnostics",
     diagnosticsRefresh: "Refresh",

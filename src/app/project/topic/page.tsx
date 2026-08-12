@@ -3,10 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LuArrowLeft, LuSparkles, LuCircleAlert, LuLoaderCircle, LuWandSparkles } from "react-icons/lu";
+import { LuSparkles, LuCircleAlert, LuLoaderCircle, LuWandSparkles } from "react-icons/lu";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useT } from "@/lib/i18n";
-import { LanguageToggle } from "@/components/language-toggle";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -35,7 +34,6 @@ const exampleTopicKeys = ["exampleTopic1", "exampleTopic2", "exampleTopic3", "ex
 
 export default function TopicProjectPage() {
   const t = useT("topic");
-  const tc = useT("common");
   const router = useRouter();
   const { llm } = useSettingsStore();
   const isLLMConfigured = llm.apiKey.length > 0;
@@ -91,33 +89,6 @@ export default function TopicProjectPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      {/* top navigation */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground -ml-2">
-                <LuArrowLeft className="w-4 h-4" />
-                <span className="ml-1">{tc("back")}</span>
-              </Button>
-            </Link>
-            <div className="h-5 w-px bg-border/50" />
-            <div className="flex items-center gap-2">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md brand-gradient">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="23 7 16 12 23 17 23 7" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                </svg>
-              </div>
-              <span className="text-sm font-semibold tracking-tight">ClipForge</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <LanguageToggle />
-          </div>
-        </div>
-      </header>
-
       <main className="mx-auto max-w-2xl px-6 py-10">
         {/* page title */}
         <div className="mb-8">
@@ -133,12 +104,12 @@ export default function TopicProjectPage() {
 
         {/* LLM not configured guidance */}
         {!isLLMConfigured && (
-          <Link href="/settings">
-            <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3 cursor-pointer hover:bg-amber-100 transition-colors">
+          <Link href="/settings?tab=llm">
+            <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 cursor-pointer hover:bg-amber-500/15 transition-colors">
               <LuCircleAlert className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-amber-900 text-sm">{t("llmBannerTitle")}</h3>
-                <p className="text-xs text-amber-700 mt-0.5">
+                <h3 className="font-semibold text-amber-200 text-sm">{t("llmBannerTitle")}</h3>
+                <p className="text-xs text-amber-300/80 mt-0.5">
                   {t("llmBannerDesc")}
                   <span className="underline ml-1">{t("llmBannerCta")}</span>
                 </p>

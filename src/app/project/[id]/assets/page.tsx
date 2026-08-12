@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { LuArrowLeft, LuZap, LuCheck, LuCircleX, LuImage, LuArrowRight, LuLoaderCircle, LuTriangleAlert, LuUpload } from "react-icons/lu";
+import { LuZap, LuCheck, LuCircleX, LuImage, LuArrowRight, LuLoaderCircle, LuTriangleAlert, LuUpload } from "react-icons/lu";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,7 @@ import { LOOK_PRESETS, getLookPreset, lookImageSuffix } from "@/lib/look-presets
 import { realFaceLine } from "@/lib/presenters";
 import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
 import { useT, useLocale } from "@/lib/i18n";
-import { LanguageToggle } from "@/components/language-toggle";
-import { ProjectStepper } from "@/components/project-stepper";
+import { ProjectHeader } from "@/components/project-header";
 
 // shot type labels (label changed to i18n key in the assets namespace, resolved per locale)
 const shotTypeLabels: Record<Shot["type"], { key: string; color: string }> = {
@@ -81,6 +80,9 @@ export default function AssetsPage() {
   const locale = useLocale();
   const { id } = useParams<{ id: string }>();
   const { providers, defaultImageModel, defaultVideoModel, customModels, imageParams, videoParams, llm, motionIntensity, setMotionIntensity, visualLook, setVisualLook } = useSettingsStore();
+  // beginner/director split: simple mode hides the director panel, the storyboard-grid button
+  // and per-shot camera tooling — beginners see shots + generate, nothing else
+  const uiMode = useSettingsStore((st) => st.uiMode);
 
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [productImages, setProductImages] = useState<string[]>([]);
@@ -820,30 +822,8 @@ export default function AssetsPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      {/* top navigation */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-6">
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg brand-gradient">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="23 7 16 12 23 17 23 7" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                </svg>
-              </div>
-              <span className="text-lg font-bold tracking-tight">ClipForge</span>
-            </Link>
-            <span className="text-muted-foreground">/</span>
-            <span className="text-sm text-muted-foreground truncate max-w-[20vw] sm:max-w-xs">{projectName || t("untitledProject")}</span>
-          </div>
-
-          {/* step progress: clickable pills (mobile shows a compact badge inside the component) */}
-          <div className="flex items-center gap-1">
-            <LanguageToggle className="mr-1" />
-            <ProjectStepper />
-          </div>
-        </div>
-      </header>
+      {/* project context strip: name + step navigation (global chrome lives in AppShell) */}
+      <ProjectHeader projectName={projectName || t("untitledProject")} />
 
       {/* single hidden input reused for every per-shot upload; target shot tracked in pendingUploadShot */}
       <input
@@ -855,116 +835,16 @@ export default function AssetsPage() {
       />
 
       <main className="mx-auto max-w-4xl px-6 py-8">
-        {/* action bar: wraps on mobile so the button cluster never overflows the viewport */}
-        <div className="flex flex-wrap items-center justify-between gap-y-3 mb-6">
+        {/* Action bar: title + generation ACTIONS only. Creative settings live in the
+            director panel below so this row stays a stable, scannable set of verbs. */}
+        <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
           <div>
             <h2 className="text-lg font-semibold">{t("title")}</h2>
             <p className="text-sm text-muted-foreground mt-0.5">
               {loading ? tc("loading") : t("assetsReady", { done: doneCount, total: assets.length })}
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {productImages.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setProductSafe((v) => !v)}
-                title={t("productSafeTip")}
-                className={`flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-medium transition-all ${
-                  productSafe
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border/60 bg-muted/20 text-muted-foreground"
-                }`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${productSafe ? "bg-primary" : "bg-muted-foreground/40"}`} />
-                {t("productSafe")}{productSafe ? t("on") : t("off")}
-              </button>
-            )}
-            {/* Presenter picker: characters from the library; ones with a multi-view sheet
-                anchor the person's identity through the grid and film passes */}
-            {presenterLib.length > 0 && (
-              <div
-                className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1.5 h-8"
-                title={t("presenterTip")}
-              >
-                <span className="text-xs font-medium text-muted-foreground">{t("presenterLabel")}</span>
-                <select
-                  value={presenterId}
-                  onChange={(e) => setPresenterId(e.target.value)}
-                  className="bg-transparent text-xs outline-none h-6 max-w-28 text-foreground"
-                >
-                  <option value="">{t("presenterNone")}</option>
-                  {presenterLib.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                      {c.referenceImages?.[0] ? ` ${t("presenterSheetBadge")}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {/* Visual-look picker (Higgsfield Cinema Studio-style enumerated lighting/palette
-                panel): applies to keyframe image prompts AND pins lighting through the i2v pass */}
-            <div
-              className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1.5 h-8"
-              title={t("lookTip")}
-            >
-              <span className="text-xs font-medium text-muted-foreground">{t("lookLabel")}</span>
-              <select
-                value={visualLook}
-                onChange={(e) => setVisualLook(e.target.value)}
-                className="bg-transparent text-xs outline-none h-6 max-w-28 text-foreground"
-              >
-                <option value="none">{t("lookNone")}</option>
-                {LOOK_PRESETS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {locale === "zh" ? p.name.zh : p.name.en}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {videoModelTarget && (
-              <div
-                className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1 h-8"
-                title={t("motionIntensityTip")}
-              >
-                <span className="text-xs font-medium text-muted-foreground mr-1">{t("motionIntensity")}</span>
-                {(["subtle", "normal", "strong"] as const).map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setMotionIntensity(v)}
-                    className={`rounded-full px-2 h-6 text-xs font-medium transition-all ${
-                      motionIntensity === v
-                        ? "bg-primary/15 text-primary"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {t(`motionIntensity_${v}`)}
-                  </button>
-                ))}
-              </div>
-            )}
-            {videoModelTarget && (
-              <button
-                type="button"
-                onClick={() => setAutoMotion((v) => !v)}
-                title={t("autoMotionTip")}
-                className={`flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-medium transition-all ${
-                  autoMotion
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border/60 bg-muted/20 text-muted-foreground"
-                }`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full ${autoMotion ? "bg-primary" : "bg-muted-foreground/40"}`} />
-                {t("autoMotion")}{autoMotion ? t("on") : t("off")}
-              </button>
-            )}
-            <Link href={`/project/${id}/script`}>
-              <Button variant="outline" size="sm" className="text-xs">
-                <LuArrowLeft className="w-3.5 h-3.5 mr-1" />
-                {t("backToScript")}
-              </Button>
-            </Link>
+          <div className="flex flex-wrap items-center gap-2">
             {offerStockFill && (
               <Button
                 onClick={fillStock}
@@ -987,42 +867,54 @@ export default function AssetsPage() {
                 )}
               </Button>
             )}
-            {modelTarget && assets.length >= 2 && assets.length <= 9 && (
-              <Button
-                onClick={runStoryboardGrid}
-                disabled={isGridGenerating || isBatchGenerating}
-                variant="outline"
-                className="text-xs"
-                title={t("gridTip")}
-              >
-                {isGridGenerating ? (
-                  <>
-                    <LuLoaderCircle className="animate-spin mr-1.5 h-3.5 w-3.5" />
-                    {t("gridRunning")}
-                  </>
-                ) : (
-                  <>{t("gridButton")}</>
-                )}
-              </Button>
-            )}
-            {videoModelTarget && assets.length >= 2 && assets.length <= 9 && assets.every((a) => a.status === "done") && (
-              <Button
-                onClick={runStoryboardFilm}
-                disabled={isFilmGenerating || isGridGenerating || isBatchGenerating}
-                variant="outline"
-                className="text-xs border-primary/50 text-primary hover:bg-primary/10"
-                title={t("filmTip")}
-              >
-                {isFilmGenerating ? (
-                  <>
-                    <LuLoaderCircle className="animate-spin mr-1.5 h-3.5 w-3.5" />
-                    {t("filmRunning")}
-                  </>
-                ) : (
-                  <>{t("filmButton")}</>
-                )}
-              </Button>
-            )}
+            {/* Grid & film stay VISIBLE when their prerequisites are unmet (disabled with the
+                reason in the tooltip) — hiding them made the features undiscoverable. */}
+            {(() => {
+              const shotsOk = assets.length >= 2 && assets.length <= 9;
+              const gridReady = Boolean(modelTarget) && shotsOk;
+              const gridReason = !modelTarget ? t("gridNeedModel") : !shotsOk ? t("gridNeedShots") : t("gridTip");
+              const allShotsDone = shotsOk && assets.every((a) => a.status === "done");
+              const filmReady = Boolean(videoModelTarget) && allShotsDone;
+              const filmReason = !videoModelTarget ? t("filmNeedModel") : !allShotsDone ? t("filmNeedReady") : t("filmTip");
+              return (
+                <>
+                  {uiMode === "pro" && (
+                  <Button
+                    onClick={runStoryboardGrid}
+                    disabled={!gridReady || isGridGenerating || isBatchGenerating}
+                    variant="outline"
+                    className="text-xs"
+                    title={gridReason}
+                  >
+                    {isGridGenerating ? (
+                      <>
+                        <LuLoaderCircle className="animate-spin mr-1.5 h-3.5 w-3.5" />
+                        {t("gridRunning")}
+                      </>
+                    ) : (
+                      <>{t("gridButton")}</>
+                    )}
+                  </Button>
+                  )}
+                  <Button
+                    onClick={runStoryboardFilm}
+                    disabled={!filmReady || isFilmGenerating || isGridGenerating || isBatchGenerating}
+                    variant="outline"
+                    className="text-xs border-primary/50 text-primary hover:bg-primary/10 disabled:border-border/60 disabled:text-muted-foreground"
+                    title={filmReason}
+                  >
+                    {isFilmGenerating ? (
+                      <>
+                        <LuLoaderCircle className="animate-spin mr-1.5 h-3.5 w-3.5" />
+                        {t("filmRunning")}
+                      </>
+                    ) : (
+                      <>{t("filmButton")}</>
+                    )}
+                  </Button>
+                </>
+              );
+            })()}
             <Button
               onClick={generateAll}
               disabled={isBatchGenerating || allDone || assets.length === 0}
@@ -1045,6 +937,110 @@ export default function AssetsPage() {
           </div>
         </div>
 
+        {/* Director panel: global creative settings applied to every generation pass.
+            One labeled container instead of loose pills scattered through the action bar.
+            Pro mode only — beginners get working defaults without the vocabulary. */}
+        {uiMode === "pro" && (
+        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-border/50 bg-muted/10 px-3 py-2.5">
+          <span className="mr-1 text-xs font-semibold tracking-wide text-muted-foreground">{t("directorPanel")}</span>
+          {/* Presenter picker: characters from the library; ones with a multi-view sheet
+              anchor the person's identity through the grid and film passes */}
+          {presenterLib.length > 0 && (
+            <div
+              className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1.5 h-8"
+              title={t("presenterTip")}
+            >
+              <span className="text-xs font-medium text-muted-foreground">{t("presenterLabel")}</span>
+              <select
+                value={presenterId}
+                onChange={(e) => setPresenterId(e.target.value)}
+                className="bg-transparent text-xs outline-none h-6 max-w-28 text-foreground"
+              >
+                <option value="">{t("presenterNone")}</option>
+                {presenterLib.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                    {c.referenceImages?.[0] ? ` ${t("presenterSheetBadge")}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {/* Visual-look picker (Higgsfield Cinema Studio-style enumerated lighting/palette
+              panel): applies to keyframe image prompts AND pins lighting through the i2v pass */}
+          <div
+            className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1.5 h-8"
+            title={t("lookTip")}
+          >
+            <span className="text-xs font-medium text-muted-foreground">{t("lookLabel")}</span>
+            <select
+              value={visualLook}
+              onChange={(e) => setVisualLook(e.target.value)}
+              className="bg-transparent text-xs outline-none h-6 max-w-28 text-foreground"
+            >
+              <option value="none">{t("lookNone")}</option>
+              {LOOK_PRESETS.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {locale === "zh" ? p.name.zh : p.name.en}
+                </option>
+              ))}
+            </select>
+          </div>
+          {videoModelTarget && (
+            <div
+              className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1 h-8"
+              title={t("motionIntensityTip")}
+            >
+              <span className="text-xs font-medium text-muted-foreground mr-1">{t("motionIntensity")}</span>
+              {(["subtle", "normal", "strong"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setMotionIntensity(v)}
+                  className={`rounded-full px-2 h-6 text-xs font-medium transition-all ${
+                    motionIntensity === v
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t(`motionIntensity_${v}`)}
+                </button>
+              ))}
+            </div>
+          )}
+          {videoModelTarget && (
+            <button
+              type="button"
+              onClick={() => setAutoMotion((v) => !v)}
+              title={t("autoMotionTip")}
+              className={`flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-medium transition-all ${
+                autoMotion
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border/60 bg-muted/20 text-muted-foreground"
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${autoMotion ? "bg-primary" : "bg-muted-foreground/40"}`} />
+              {t("autoMotion")}{autoMotion ? t("on") : t("off")}
+            </button>
+          )}
+          {productImages.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setProductSafe((v) => !v)}
+              title={t("productSafeTip")}
+              className={`flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-medium transition-all ${
+                productSafe
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border/60 bg-muted/20 text-muted-foreground"
+              }`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${productSafe ? "bg-primary" : "bg-muted-foreground/40"}`} />
+              {t("productSafe")}{productSafe ? t("on") : t("off")}
+            </button>
+          )}
+        </div>
+        )}
+
         {/* storyboard-grid outcome line (success count or error) */}
         {gridNotice && (
           <div className="mb-4 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
@@ -1062,8 +1058,10 @@ export default function AssetsPage() {
           </div>
         )}
 
-        {/* auto-fill visuals hint/result (free stock, no key required, preferred path for topic videos) */}
-        {offerStockFill && (
+        {/* auto-fill visuals hint/result (free stock, no key required, preferred path for topic
+            videos). Also renders when stockMsg is set alone — per-shot upload errors land there
+            and must stay visible even when the stock-fill offer itself is hidden. */}
+        {(offerStockFill || stockMsg) && (
           <div className="mb-4 flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/15 px-3 py-2 text-xs text-muted-foreground">
             <LuImage className="w-3.5 h-3.5 text-primary/70 shrink-0" />
             <span>{stockMsg ?? t("stockFillTip")}</span>
@@ -1073,17 +1071,17 @@ export default function AssetsPage() {
         {/* cloud paid-task recovery (issue #16): submitted tasks whose results were never
             retrieved — offer resume instead of a duplicate (billed) resubmit */}
         {pendingTasks.length > 0 && (
-          <div className="mb-6 p-4 rounded-xl bg-blue-50 border border-blue-200">
+          <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
             <div className="flex items-start gap-3">
-              <LuLoaderCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <LuLoaderCircle className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-blue-900">
+                <p className="text-sm font-medium text-blue-200">
                   {t("pendingTasksTitle", { n: pendingTasks.length })}
                 </p>
-                <p className="text-xs text-blue-700 mt-0.5">{t("pendingTasksDesc")}</p>
+                <p className="text-xs text-blue-300/80 mt-0.5">{t("pendingTasksDesc")}</p>
                 <div className="mt-2 space-y-1.5">
                   {pendingTasks.map((task) => (
-                    <div key={task.id} className="flex items-center gap-2 text-xs text-blue-800">
+                    <div key={task.id} className="flex items-center gap-2 text-xs text-blue-200/90">
                       <span className="truncate">
                         {t("taskLabel", { shot: task.shotId ?? "-", model: task.model, taskId: task.taskId })}
                       </span>
@@ -1092,7 +1090,7 @@ export default function AssetsPage() {
                         disabled={resumingTasks.has(task.id)}
                         variant="outline"
                         size="sm"
-                        className="h-6 px-2 text-[11px] border-blue-300 text-blue-700 hover:bg-blue-100 shrink-0"
+                        className="h-6 px-2 text-[11px] border-blue-500/40 text-blue-300 hover:bg-blue-500/15 shrink-0"
                       >
                         {resumingTasks.has(task.id) ? (
                           <>
@@ -1106,7 +1104,7 @@ export default function AssetsPage() {
                     </div>
                   ))}
                 </div>
-                {taskMsg && <p className="text-xs text-blue-700 mt-2">{taskMsg}</p>}
+                {taskMsg && <p className="text-xs text-blue-300/80 mt-2">{taskMsg}</p>}
               </div>
             </div>
           </div>
@@ -1114,13 +1112,13 @@ export default function AssetsPage() {
 
         {/* no image model configured warning (only shown when there are still AI shots pending generation) */}
         {showModelWarning && (
-          <div className="mb-6 p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-3">
-            <LuTriangleAlert className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
+            <LuTriangleAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-amber-900">{t("noModelTitle")}</p>
-              <p className="text-xs text-amber-700 mt-0.5">
+              <p className="text-sm font-medium text-amber-200">{t("noModelTitle")}</p>
+              <p className="text-xs text-amber-300/80 mt-0.5">
                 {t("noModelDesc")}
-                <Link href="/settings" className="underline ml-1">{t("goToSettings")}</Link>
+                <Link href="/settings?tab=image" className="underline ml-1">{t("goToSettings")}</Link>
               </p>
             </div>
           </div>
@@ -1208,6 +1206,7 @@ export default function AssetsPage() {
                           {/* per-shot camera move: named-preset picker + inline free-text edit
                               (Higgsfield "Click-to-Video": curated moves instead of prompt guessing).
                               Edits persist into the script and apply on the next motion generation */}
+                          {uiMode === "pro" && (
                           <div className="flex items-center gap-1.5 mb-2 text-xs min-w-0">
                             <span className="shrink-0 text-muted-foreground/70">🎥</span>
                             {editingCameraShot === asset.shotId ? (
@@ -1288,6 +1287,7 @@ export default function AssetsPage() {
                               );
                             })()}
                           </div>
+                          )}
                           {asset.prompt && (
                             <p className="text-xs text-muted-foreground bg-muted/20 rounded px-2 py-1.5 mb-2 line-clamp-2">
                               {t("promptLabel", { prompt: asset.prompt })}
@@ -1304,7 +1304,9 @@ export default function AssetsPage() {
                                 : t("sourceUserUpload")}
                             </span>
                           </div>
-                          {asset.status === "failed" && asset.error && (
+                          {/* single error slot for the whole card: generation failures AND
+                              non-fatal errors (camera save / i2v) that keep status "done" */}
+                          {asset.error && (
                             <p className="text-xs text-destructive mt-2">⚠ {asset.error}</p>
                           )}
                         </div>
@@ -1314,8 +1316,13 @@ export default function AssetsPage() {
                           {/* thumbnail area */}
                           <div className="w-24 h-16 bg-muted/30 rounded-md flex items-center justify-center border border-border/30 overflow-hidden">
                             {asset.status === "done" && asset.thumbnailUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={asset.thumbnailUrl} alt={t("assetPreviewAlt")} className="w-full h-full object-cover" />
+                              // i2v shots may carry an mp4 as their preview — render it muted instead of a broken <img>
+                              asset.isVideo && /\.(mp4|webm|mov)(\?|$)/i.test(asset.thumbnailUrl) ? (
+                                <video src={asset.thumbnailUrl} muted playsInline className="w-full h-full object-cover" />
+                              ) : (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={asset.thumbnailUrl} alt={t("assetPreviewAlt")} className="w-full h-full object-cover" />
+                              )
                             ) : asset.status === "done" ? (
                               <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                                 <LuCheck className="w-5 h-5 text-primary" />
@@ -1400,9 +1407,7 @@ export default function AssetsPage() {
                               {motionShots.has(asset.shotId) ? t("btnConvertingMotion") : t("btnRedoMotion")}
                             </Button>
                           )}
-                          {asset.error && (
-                            <span className="text-[10px] text-destructive max-w-24 text-center">{asset.error}</span>
-                          )}
+                          {/* error text lives in the middle column next to the shot content; not repeated here */}
                         </div>
                       </div>
                     </CardContent>
