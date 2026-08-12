@@ -108,11 +108,13 @@ Open `http://localhost:3000` — **render your first video with no key at all** 
 
 ## UI preview
 
-| Home · one photo / one sentence | New project · paste a URL or upload | Script · 3 variants |
+| Studio · free-vs-AI fork | Script gate · one paid click | Advanced form (Director) |
 |:---:|:---:|:---:|
-| ![Home](docs/screenshots/01-home.en.png) | ![New project](docs/screenshots/03-new.en.png) | ![Script](docs/screenshots/04-script.en.png) |
+| ![Studio](docs/screenshots/01-home.en.png) | ![Script ready](docs/screenshots/04-script.en.png) | ![Advanced form](docs/screenshots/03-new.en.png) |
 | **Compose · voiceover/subtitles/BGM** | **Export · multi-platform** | **Batch production** |
 | ![Compose](docs/screenshots/04b-video.en.png) | ![Export](docs/screenshots/05-export.en.png) | ![Batch](docs/screenshots/06-batch.en.png) |
+
+> Top-left is the whole creation flow: photo / URL / topic → pick a path (🆓 free quick cut at $0 / ✨ AI film with the per-second price on the option) → pick a format → start. Full tutorial: [User Guide](https://xixihhhh.github.io/clipforge/guide.en.html).
 
 <p align="center"><img src="docs/showcase-platforms.en.png" alt="ClipForge produces faceless vertical shopping videos for TikTok Shop, Reels, Shorts, Douyin, Kuaishou and Xiaohongshu — never showing a real face" width="820"/></p>
 

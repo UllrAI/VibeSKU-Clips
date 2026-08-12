@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>免费 AI 视频生成:0 元无水印出整片 — ClipForge 开源短视频工具</title>
+<meta name="description" content="免费 AI 视频生成工具 ClipForge:开源 AGPL-3.0,免费素材+Edge TTS 配音+本地 FFmpeg 合成,0 元出 1080p 竖屏无水印整片,不限条数、数据全在本机;脚本只需一个 LLM Key(DeepSeek 约 0.001 元/次),2~3 分钟出可发布短视频,附在线工具对比与三步上手。">
+<link rel="canonical" href="https://xixihhhh.github.io/clipforge/feature-free.html">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+<meta property="og:type" content="article">
+<meta property="og:title" content="免费 AI 视频生成:0 元无水印出整片 — ClipForge">
+<meta property="og:description" content="免费素材 + 免费 Edge TTS 配音 + 本地 FFmpeg 合成 = 全程 0 元;1080p 竖屏无水印、不限条数、数据全在本机。开源 AGPL-3.0,2~3 分钟出一条。">
+<meta property="og:image" content="https://xixihhhh.github.io/clipforge/banner.png">
+<meta property="og:url" content="https://xixihhhh.github.io/clipforge/feature-free.html">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "ClipForge 首页", "item": "https://xixihhhh.github.io/clipforge/" },
+    { "@type": "ListItem", "position": 2, "name": "免费 AI 视频生成", "item": "https://xixihhhh.github.io/clipforge/feature-free.html" }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": "免费 AI 视频生成:0 元无水印出整片",
+  "description": "开源工具 ClipForge 的免费快剪链路拆解:免费图库素材 + 免费微软 Edge TTS 配音 + 本地 FFmpeg 合成,0 元产出 1080p 竖屏无水印短视频,不限条数,数据全在本机;唯一前置是一个写脚本的 LLM Key(DeepSeek 单次约 0.001 元)。",
+  "image": "https://xixihhhh.github.io/clipforge/banner.png",
+  "inLanguage": "zh-CN",
+  "author": { "@type": "Organization", "name": "ClipForge", "url": "https://github.com/xixihhhh/clipforge" },
+  "publisher": { "@type": "Organization", "name": "ClipForge", "url": "https://xixihhhh.github.io/clipforge/" },
+  "datePublished": "2026-08-12",
+  "dateModified": "2026-08-12",
+  "mainEntityOfPage": "https://xixihhhh.github.io/clipforge/feature-free.html"
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "ClipForge 真的完全免费吗?", "acceptedAnswer": { "@type": "Answer", "text": "免费出片链路全程 0 元:免费图库素材 + 免费微软 Edge TTS 配音 + 本地 FFmpeg 合成,不需要任何视频/生图 Key。唯一前置是写脚本用的一个 LLM Key(如 DeepSeek,单次约 0.001 元),这笔钱付给模型平台而不是 ClipForge。" } },
+    { "@type": "Question", "name": "为什么 ClipForge 能免费?会不会以后收费?", "acceptedAnswer": { "@type": "Answer", "text": "因为它是开源软件(AGPL-3.0)而不是 SaaS:代码公开,可自部署,软件本身不收费。采用 BYOK(自带 Key)模式,想用 AI 生成时费用按量直接付给你自己选的模型平台,ClipForge 不加价不抽成,也没有会员或订阅。" } },
+    { "@type": "Question", "name": "免费生成的视频有水印吗?有条数限制吗?", "acceptedAnswer": { "@type": "Answer", "text": "没有水印,也不限条数。免费快剪链路在本机用 FFmpeg 合成 1080p 竖屏 MP4,成片就是干净的原始文件;唯一默认写入的是对齐国标 GB 45438-2025 的 AIGC 标识——按平台规则标识的 AI 内容属于有条件允许。" } },
+    { "@type": "Question", "name": "和在线免费 AI 视频工具有什么区别?", "acceptedAnswer": { "@type": "Answer", "text": "多数在线工具的免费档带水印、限条数或限时长,素材要上传云端,想去水印得付费订阅。ClipForge 开源免费、无水印、不限条数,视频在本机合成,商品图和成片数据全部留在自己电脑上(SQLite + 本地文件)。" } }
+  ]
+}
+</script>
+<style>
+  .doc{max-width:860px;margin:0 auto;padding:48px 0 40px}
+  .doc h1{font-size:clamp(28px,4.5vw,40px);line-height:1.2;letter-spacing:-.02em;margin-bottom:14px}
+  .doc .lead{color:var(--dim,#98A2B3);font-size:16px;line-height:1.8;margin-bottom:26px}
+  .doc h2{font-size:24px;margin:44px 0 12px;letter-spacing:-.01em}
+  .doc h3{font-size:17px;margin:24px 0 8px}
+  .doc p,.doc li{color:var(--dim,#98A2B3);font-size:15px;line-height:1.85}
+  .doc b,.doc strong{color:#EDEFF4}
+  .doc ol,.doc ul{padding-left:22px;margin:8px 0 14px}
+  .doc li{margin:4px 0}
+  .doc img.shot{width:100%;border-radius:14px;border:1px solid rgba(255,255,255,.1);margin:14px 0 4px}
+  .doc figcaption{font-size:12.5px;color:rgba(152,162,179,.7);margin-bottom:10px}
+  .doc table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  .doc th,.doc td{border:1px solid rgba(255,255,255,.1);padding:9px 12px;text-align:left;color:var(--dim,#98A2B3);line-height:1.6}
+  .doc th{color:#EDEFF4;background:rgba(255,255,255,.04)}
+  .doc code{background:rgba(255,255,255,.07);border-radius:6px;padding:2px 7px;font-size:13px;color:#EDEFF4}
+  .doc pre{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px;overflow-x:auto;margin:10px 0 16px}
+  .doc pre code{background:none;padding:0;display:block;line-height:1.7}
+  .toc{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 20px;margin:20px 0 8px}
+  .toc b{display:block;margin-bottom:8px;color:#EDEFF4;font-size:14px}
+  .toc a{display:inline-block;margin:3px 14px 3px 0;font-size:13.5px;color:#a78bfa;text-decoration:none}
+  .toc a:hover{text-decoration:underline;text-underline-offset:3px}
+  .tip{border-left:3px solid #8b5cf6;background:rgba(139,92,246,.07);border-radius:0 12px 12px 0;padding:10px 16px;margin:12px 0}
+  .tip p{margin:0;font-size:14px}
+  .doc a{color:#a78bfa}
+</style>
+</head>
+<body>
+<div class="container">
+
+<nav>
+  <img src="logo.svg" alt="ClipForge logo">
+  <span class="name">ClipForge<em>免费出片</em></span>
+  <span class="spacer"></span>
+  <a class="plain" href="index.html">首页</a>
+  <a class="plain" href="guide.html">使用手册</a>
+  <a class="plain" href="faq.html">常见问题</a>
+  <a class="plain keep" href="https://github.com/xixihhhh/clipforge" rel="noopener">GitHub</a>
+  <a class="btn btn-brand" href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">免费下载</a>
+</nav>
+
+<article class="doc">
+<h1>免费 AI 视频生成:0 元、无水印,出完整短视频</h1>
+<p class="lead"><b>先说结论:ClipForge 的免费快剪链路全程 0 元,2~3 分钟出一条 1080p 竖屏无水印成片,不限条数。</b>它是开源(AGPL-3.0)的短视频工具:上传商品图或说一句话主题,AI 写脚本,免费图库素材配画面,免费配音,本地合成——图文成片这条路完全免费。本页拆解「免费」是怎么做到的、唯一的成本在哪、和在线免费工具差在哪,完整操作见<a href="guide.html">使用手册</a>。</p>
+
+<div class="toc">
+  <b>目录</b>
+  <a href="#how-free">一、0 元是怎么做到的</a>
+  <a href="#only-cost">二、唯一的成本:一个 LLM Key</a>
+  <a href="#spec">三、出片规格与数据安全</a>
+  <a href="#compare">四、和在线「免费」工具的区别</a>
+  <a href="#steps">五、三步上手</a>
+  <a href="#faq">六、常见问题</a>
+</div>
+
+<h2 id="how-free">一、免费 AI 视频生成,0 元是怎么做到的</h2>
+<p><b>答案:整条链路的三个环节都不产生费用。</b>ClipForge 的「免费快剪」档把出片拆成画面、声音、合成三段,每一段都选了免费方案:</p>
+<ul>
+  <li><b>画面:免费图库素材</b>——按脚本内容自动匹配真实图库素材做混剪,不调用任何付费生图/视频模型;</li>
+  <li><b>声音:免费微软 Edge TTS 配音</b>——AI 配音不花钱,口播和字幕自动对齐;</li>
+  <li><b>合成:本地 FFmpeg</b>——在你自己的电脑上合成视频,不经过任何云端渲染服务,自然也没有渲染费。</li>
+</ul>
+<p>没有付费环节,所以不需要靠水印、条数限制或会员订阅来「变现」——这是开源短视频工具和在线免费工具最根本的差别。</p>
+<figure><img class="shot" src="screenshots/01-home.png" alt="ClipForge 工作台截图:上传商品图,免费快剪档 0 元出片,AI 生成成片费用标在选项上" loading="lazy"><figcaption>工作台:出片方式二选一,「免费快剪」全程 ¥0,AI 档费用直接标在选项上</figcaption></figure>
+
+<h2 id="only-cost">二、唯一的成本:一个写脚本的 LLM Key</h2>
+<p><b>答案:只有「写脚本」这一步需要一个 LLM Key,DeepSeek 单次约 ¥0.001。</b>ClipForge 是 BYOK(自带 Key)模式:你在任何 OpenAI 协议的平台注册一个 Key 粘贴进设置即可,费用按量付给模型平台,ClipForge 不加价不抽成。</p>
+<div class="tip"><p>一条视频的脚本调用成本约 <b>¥0.001</b>(DeepSeek),日更 30 天也不过几分钱。之后若想解锁 AI 生成成片,同一个 Atlas Cloud Key 可以覆盖 7 大平台 30+ 模型的生图和视频,详见<a href="guide.html#keys">使用手册第三节</a>。</p></div>
+
+<h2 id="spec">三、出片规格:1080p 竖屏、无水印、不限条数</h2>
+<p><b>答案:免费档的成片就是干净的 1080p 竖屏 MP4 原始文件,没有水印,想出多少条出多少条。</b></p>
+<ul>
+  <li><b>耗时</b>:单条约 2~3 分钟,从脚本到成片一张进度卡全托管;</li>
+  <li><b>无水印不限条数</b>:开源软件没有「免费额度」概念,本地合成的文件不打任何标记性水印;</li>
+  <li><b>数据全在本机</b>:商品图、脚本、成片都存在本地(SQLite + 本地文件),不上传任何服务器;</li>
+  <li><b>合规默认开</b>:成片默认写入对齐国标 GB 45438-2025 的 AIGC 标识——按平台规则标识的 AI 内容属于有条件允许。</li>
+</ul>
+<figure><img class="shot" src="screenshots/05-export.png" alt="ClipForge 成片导出页截图:1080p 无水印 MP4,抖音、小红书多平台规格一键切换" loading="lazy"><figcaption>导出页:1080p 无水印成片 + 多平台规格 + 文案包</figcaption></figure>
+
+<h2 id="compare">四、和「免费但带水印 / 限条数」的在线工具有什么区别</h2>
+<p>很多在线 AI 视频工具也号称免费,但免费的方式不一样:</p>
+<table>
+  <thead><tr><th>你在意的</th><th>ClipForge(开源)</th><th>常见在线免费工具</th></tr></thead>
+  <tbody>
+    <tr><td>水印</td><td><b>无水印</b>,成片即干净文件</td><td>免费档常带水印,去水印需付费</td></tr>
+    <tr><td>条数 / 时长</td><td><b>不限条数</b></td><td>每天 / 每月限额,超出要订阅</td></tr>
+    <tr><td>数据</td><td><b>全在本机</b>,本地合成</td><td>素材上传云端处理</td></tr>
+    <tr><td>费用去向</td><td>软件免费;AI 用量按量付给模型平台,不加价</td><td>订阅费付给平台,价格随套餐变化</td></tr>
+    <tr><td>代码</td><td>开源 AGPL-3.0,可审计可自部署(Docker)</td><td>闭源,服务随时可能调整</td></tr>
+  </tbody>
+</table>
+<p class="tbl-note" style="font-size:12.5px;color:rgba(152,162,179,.7)">以各产品公开资料为准,功能随版本演进,仅作选型参考。</p>
+
+<h2 id="steps">五、三步上手,今天就出第一条</h2>
+<ol>
+  <li><b>安装</b>:到 <a href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">GitHub Releases</a> 下载 Windows / macOS 桌面版,或 Docker 一行命令拉起 <code>ghcr.io/xixihhhh/clipforge</code>;</li>
+  <li><b>把商品丢进来</b>:上传商品图或点「一句话成片」说个主题,出片方式保持默认的「🆓 免费快剪」;</li>
+  <li><b>点开始生成</b>:AI 写好脚本后自动开跑,2~3 分钟直达成片页下载发布。</li>
+</ol>
+<p>更完整的安装与进阶玩法(AI 生成成片、真人口播、批量出片)见<a href="guide.html">使用手册</a>;费用、质量、合规相关的更多疑问见<a href="faq.html">常见问题大全</a>。</p>
+
+<h2 id="faq">六、常见问题</h2>
+<div class="faq-list">
+  <details open><summary>真的完全免费吗?</summary><p>免费出片链路全程 0 元:免费素材 + 免费 Edge TTS 配音 + 本地 FFmpeg 合成,不需要任何视频/生图 Key。唯一前置是写脚本用的一个 LLM Key(DeepSeek 单次约 ¥0.001),这笔钱付给模型平台而不是 ClipForge。</p></details>
+  <details><summary>为什么能免费?会不会以后收费?</summary><p>因为它是开源软件(AGPL-3.0)而不是 SaaS:代码公开、可自部署,软件本身不收费。BYOK 模式下,想用 AI 生成时费用按量直接付给你自己选的模型平台,ClipForge 不加价不抽成,也没有会员或订阅。</p></details>
+  <details><summary>有水印吗?有条数限制吗?</summary><p>没有水印,也不限条数。本机 FFmpeg 合成的 1080p 竖屏 MP4 就是干净的原始文件;唯一默认写入的是对齐国标 GB 45438-2025 的 AIGC 标识——按平台规则标识的 AI 内容属于有条件允许。</p></details>
+  <details><summary>和在线免费 AI 视频工具的区别?</summary><p>在线工具的免费档常带水印、限条数,素材要上传云端;ClipForge 开源、无水印、不限条数、数据全在本机,详见上方对比表。更多问题见 <a href="faq.html">FAQ 大全</a>。</p></details>
+</div>
+
+<div class="last-call reveal" style="margin-top:48px">
+  <h2>0 元出你的<span class="hl">第一条无水印成片</span></h2>
+  <p>免费 · 开源 · 无水印,数据全在本机。</p>
+  <div class="cta">
+    <a class="btn btn-primary" href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">免费下载 Windows / macOS</a>
+    <a class="btn btn-ghost" href="guide.html">看三分钟上手教程</a>
+  </div>
+</div>
+</article>
+
+<footer>
+  <p>ClipForge(原带货剪手)· 开源 AGPL-3.0 · <a href="https://github.com/xixihhhh/clipforge" rel="noopener">GitHub</a> · <a href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">下载</a> · <a href="index.html">首页</a> · <a href="guide.html">使用手册</a> · <a href="faq.html">常见问题</a></p>
+  <p style="margin-top:8px">请遵守各平台广告与 AIGC 标识规则,对发布内容负责。</p>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClipForge 常见问题大全 — 费用 / 上手 / 质量 / 合规 / 技术 17 问一页讲清</title>
+<meta name="description" content="ClipForge 常见问题大全:真的免费吗、AI 生成一条多少钱(九宫格约 1.3 元、Seedance 2.5 整片 12 秒实测约 26 元)、不会剪辑能不能用、商品会不会变形、AI 内容会不会被限流、数据存在哪里、支持哪些模型、失败会不会白扣费、怎么自动化——17 个高频问题一页讲清,附教程与下载链接。">
+<link rel="canonical" href="https://xixihhhh.github.io/clipforge/faq.html">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ClipForge 常见问题大全 — 17 问一页讲清">
+<meta property="og:description" content="费用与开源 · 上手 · 质量 · 合规 · 技术,五组 17 个高频问题:免费吗 / AI 一条多少钱 / 商品会不会变形 / 会不会被限流 / 数据存哪 / 怎么自动化。">
+<meta property="og:image" content="https://xixihhhh.github.io/clipforge/banner.png">
+<meta property="og:url" content="https://xixihhhh.github.io/clipforge/faq.html">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "ClipForge 首页", "item": "https://xixihhhh.github.io/clipforge/" },
+    { "@type": "ListItem", "position": 2, "name": "常见问题大全", "item": "https://xixihhhh.github.io/clipforge/faq.html" }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "ClipForge 真的免费吗?", "acceptedAnswer": { "@type": "Answer", "text": "免费。开源(AGPL-3.0)、无水印、不限条数:免费快剪链路 = 免费图库素材 + 免费微软 Edge TTS 配音 + 本地 FFmpeg 合成,全程 0 元出 1080p 竖屏整片;只有写脚本需要一个 LLM Key(DeepSeek 单次约 0.001 元),费用付给模型平台。" } },
+    { "@type": "Question", "name": "AI 生成一条视频要多少钱?", "acceptedAnswer": { "@type": "Answer", "text": "按秒计费、标在选项上:九宫格分镜一次生图约 1.3 元;Seedance 2.5 一键整片 12 秒实测约 26 元;换 Mini 档约 0.28 元/秒。脚本免费生成,确认后一次点击才开始计费,费用按量付给你选的模型平台。" } },
+    { "@type": "Question", "name": "为什么要自带 Key(BYOK)?", "acceptedAnswer": { "@type": "Answer", "text": "因为 ClipForge 是开源工具而不是 SaaS:软件永远免费,AI 用量直接付给你自己选的模型平台(Atlas Cloud、火山方舟、fal.ai、OpenAI、DeepSeek 等),ClipForge 不加价不抽成。好处是价格透明、不被套餐绑架,数据也全在本机。" } },
+    { "@type": "Question", "name": "免费快剪和 AI 生成成片怎么选?", "acceptedAnswer": { "@type": "Answer", "text": "出片方式二选一,费用直接标在选项上:免费快剪 = 免费素材混剪 + 免费配音,全程 0 元,约 2~3 分钟;AI 生成成片 = AI 按分镜生成画面,按秒计费,脚本确认后一次点击才计费。建议先用免费档跑通流程,再决定是否上 AI 档。" } },
+    { "@type": "Question", "name": "不会剪辑能用吗?", "acceptedAnswer": { "@type": "Answer", "text": "能,这是默认体验。小白模式全托管:丢商品图或说一句话主题 → 看一眼脚本 → 直达成片,全程一张进度卡,不见分镜不见术语;想要专业控制再切导演模式,解锁分镜编辑、判官团、18 款运镜预设、九宫格、一键整片、变体矩阵。" } },
+    { "@type": "Question", "name": "需要真人出镜吗?", "acceptedAnswer": { "@type": "Answer", "text": "不需要。带货形式四选:智能推荐、真人口播、情景短剧、图文混剪——选真人口播时由 AI 生成素人形象对镜口播,免费档则是无真人脸的图文混剪,全程不用自己出镜或拍摄。" } },
+    { "@type": "Question", "name": "支持英文视频吗?", "acceptedAnswer": { "@type": "Answer", "text": "支持。界面与成片都是中英双语:界面可切英文,同一条流程直接产出英文口播成片,适合 TikTok 等出海场景。" } },
+    { "@type": "Question", "name": "怎么安装部署?", "acceptedAnswer": { "@type": "Answer", "text": "三种方式任选:下载 Windows / macOS 桌面版双击即用;Docker 一行命令拉起镜像 ghcr.io/xixihhhh/clipforge;或克隆源码运行。详细步骤见使用手册。" } },
+    { "@type": "Question", "name": "商品会变形吗?", "acceptedAnswer": { "@type": "Answer", "text": "不会。image-to-image 锁定商品原图,换背景、打光都不改商品本体,避免「货不对板」带来的转化损失与售后风险。" } },
+    { "@type": "Question", "name": "生成的视频会像静图拼接吗?", "acceptedAnswer": { "@type": "Answer", "text": "AI 生成成片档不会:走图生视频质量主路,每个分镜都是真动态镜头,链式首尾帧让转场在镜头内生成、拼接不跳切。免费快剪档是真实素材混剪,定位是 0 元跑量,追求质感请选 AI 档。" } },
+    { "@type": "Question", "name": "AI 生成的人脸会不会一眼假?", "acceptedAnswer": { "@type": "Answer", "text": "有两层约束:一是素人真实感规则(口语台词、生活痕迹背景、行为节拍),不出「网红假脸」;二是主播库四视图定妆照——正/侧/背/特写一次生成保证同一个人,之后生成都拿定妆照当身份锚,跨镜头、跨条视频不换脸。" } },
+    { "@type": "Question", "name": "有现成模板吗?", "acceptedAnswer": { "@type": "Answer", "text": "有。391 款成片模板,按商品自动推荐;导演模式的高级新建里可对品类、人群、平台、模板逐项调整。" } },
+    { "@type": "Question", "name": "发 AI 视频会被限流吗?", "acceptedAnswer": { "@type": "Answer", "text": "按平台规则标识的 AI 内容属于有条件允许,刻意隐瞒 AI 属性才是高风险行为。ClipForge 合规默认开:成片默认写入对齐国标 GB 45438-2025 的 AIGC 标识,发布前有限流自检(风险词/钩子/时长/字幕/CTA 逐项检查)和广告法违禁词扫描。" } },
+    { "@type": "Question", "name": "数据存在哪里?", "acceptedAnswer": { "@type": "Answer", "text": "全在本机:项目数据存本地 SQLite,素材与成片存本地文件,不上传任何服务器;Docker 自部署同理,数据留在你自己的机器上。" } },
+    { "@type": "Question", "name": "支持哪些 AI 模型平台?", "acceptedAnswer": { "@type": "Answer", "text": "一个接口聚合 7 大平台 30+ 模型:Atlas Cloud(推荐,一个 Key 覆盖脚本+生图+视频+配音)、火山方舟、fal.ai、OpenAI、DeepSeek 等。" } },
+    { "@type": "Question", "name": "生成失败会白扣费吗?", "acceptedAnswer": { "@type": "Answer", "text": "不会白扣。付费任务走两阶段任务表:已提交的云端任务记录在案,可在素材页恢复领取结果,不会因为页面关闭或中断而重复提交扣费;免费链路则可以随便重试。" } },
+    { "@type": "Question", "name": "怎么自动化批量出片?", "acceptedAnswer": { "@type": "Answer", "text": "三个入口:MCP Server(在 Claude / Cursor 等 agent 里一句话出片)、CLI(脚本化出片,配 cron 就是全自动日更机)、agent Skill。项目有 986 个单元测试保障链路稳定。" } }
+  ]
+}
+</script>
+<style>
+  .doc{max-width:860px;margin:0 auto;padding:48px 0 40px}
+  .doc h1{font-size:clamp(28px,4.5vw,40px);line-height:1.2;letter-spacing:-.02em;margin-bottom:14px}
+  .doc .lead{color:var(--dim,#98A2B3);font-size:16px;line-height:1.8;margin-bottom:26px}
+  .doc h2{font-size:24px;margin:44px 0 12px;letter-spacing:-.01em}
+  .doc h3{font-size:17px;margin:24px 0 8px}
+  .doc p,.doc li{color:var(--dim,#98A2B3);font-size:15px;line-height:1.85}
+  .doc b,.doc strong{color:#EDEFF4}
+  .doc ol,.doc ul{padding-left:22px;margin:8px 0 14px}
+  .doc li{margin:4px 0}
+  .doc img.shot{width:100%;border-radius:14px;border:1px solid rgba(255,255,255,.1);margin:14px 0 4px}
+  .doc figcaption{font-size:12.5px;color:rgba(152,162,179,.7);margin-bottom:10px}
+  .doc table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  .doc th,.doc td{border:1px solid rgba(255,255,255,.1);padding:9px 12px;text-align:left;color:var(--dim,#98A2B3);line-height:1.6}
+  .doc th{color:#EDEFF4;background:rgba(255,255,255,.04)}
+  .doc code{background:rgba(255,255,255,.07);border-radius:6px;padding:2px 7px;font-size:13px;color:#EDEFF4}
+  .doc pre{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px;overflow-x:auto;margin:10px 0 16px}
+  .doc pre code{background:none;padding:0;display:block;line-height:1.7}
+  .toc{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 20px;margin:20px 0 8px}
+  .toc b{display:block;margin-bottom:8px;color:#EDEFF4;font-size:14px}
+  .toc a{display:inline-block;margin:3px 14px 3px 0;font-size:13.5px;color:#a78bfa;text-decoration:none}
+  .toc a:hover{text-decoration:underline;text-underline-offset:3px}
+  .tip{border-left:3px solid #8b5cf6;background:rgba(139,92,246,.07);border-radius:0 12px 12px 0;padding:10px 16px;margin:12px 0}
+  .tip p{margin:0;font-size:14px}
+  .doc a{color:#a78bfa}
+</style>
+</head>
+<body>
+<div class="container">
+
+<nav>
+  <img src="logo.svg" alt="ClipForge logo">
+  <span class="name">ClipForge<em>常见问题</em></span>
+  <span class="spacer"></span>
+  <a class="plain" href="index.html">首页</a>
+  <a class="plain" href="guide.html">使用手册</a>
+  <a class="plain" href="feature-free.html">免费出片</a>
+  <a class="plain keep" href="https://github.com/xixihhhh/clipforge" rel="noopener">GitHub</a>
+  <a class="btn btn-brand" href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">免费下载</a>
+</nav>
+
+<article class="doc">
+<h1>ClipForge 常见问题大全:费用、上手、质量、合规、技术 17 问</h1>
+<p class="lead"><b>先说最常被问的三件事:ClipForge 免费(开源 AGPL-3.0、无水印、不限条数);AI 生成按秒计费且标在选项上,脚本确认后一次点击才花钱;不会剪辑也能用(小白模式全托管)。</b>本页把 17 个高频问题按费用、上手、质量、合规、技术五组一次讲清。想看完整操作流程去<a href="guide.html">使用手册</a>,想了解 0 元出片链路去<a href="feature-free.html">免费 AI 视频生成</a>,产品全貌见<a href="index.html">首页</a>。</p>
+
+<div class="toc">
+  <b>目录</b>
+  <a href="#cost">一、费用与开源</a>
+  <a href="#start">二、上手</a>
+  <a href="#quality">三、质量</a>
+  <a href="#compliance">四、合规</a>
+  <a href="#tech">五、技术</a>
+</div>
+
+<h2 id="cost">一、费用与开源</h2>
+<div class="faq-list">
+  <details open><summary>ClipForge 真的免费吗?</summary><p>免费。开源(AGPL-3.0)、无水印、不限条数:免费快剪链路 = 免费图库素材 + 免费微软 Edge TTS 配音 + 本地 FFmpeg 合成,全程 ¥0 出 1080p 竖屏整片;只有写脚本需要一个 LLM Key(DeepSeek 单次约 ¥0.001),费用付给模型平台。0 元链路的完整拆解见<a href="feature-free.html">免费 AI 视频生成</a>。</p></details>
+  <details><summary>AI 生成一条视频要多少钱?</summary><p>按秒计费、标在选项上:<b>九宫格分镜一次生图约 ¥1.3</b>;<b>Seedance 2.5 一键整片 12 秒实测约 ¥26</b>;换 <b>Mini 档约 ¥0.28/秒</b>。脚本免费生成,确认后一次点击才开始计费,费用按量付给你选的模型平台。</p></details>
+  <details><summary>为什么要自带 Key(BYOK)?</summary><p>因为 ClipForge 是开源工具而不是 SaaS:软件永远免费,AI 用量直接付给你自己选的模型平台(Atlas Cloud、火山方舟、fal.ai、OpenAI、DeepSeek 等),ClipForge 不加价不抽成。好处是价格透明、不被套餐绑架,数据也全在本机。</p></details>
+  <details><summary>免费快剪和 AI 生成成片怎么选?</summary><p>出片方式二选一,费用直接标在选项上:<b>免费快剪</b> = 免费素材混剪 + 免费配音,全程 ¥0,约 2~3 分钟;<b>AI 生成成片</b> = AI 按分镜生成画面,按秒计费,脚本确认后一次点击才计费。建议先用免费档跑通流程,再决定是否上 AI 档,详见<a href="guide.html#modes">使用手册第四节</a>。</p></details>
+</div>
+
+<h2 id="start">二、上手</h2>
+<div class="faq-list">
+  <details><summary>不会剪辑能用吗?</summary><p>能,这是默认体验。<b>小白模式全托管</b>:丢商品图或说一句话主题 → 看一眼脚本 → 直达成片,全程一张进度卡,不见分镜不见术语;想要专业控制再切导演模式,解锁分镜编辑、判官团、18 款运镜预设、九宫格、一键整片、变体矩阵。</p></details>
+  <details><summary>需要真人出镜吗?</summary><p>不需要。带货形式四选:<b>智能推荐 / 真人口播 / 情景短剧 / 图文混剪</b>——选真人口播时由 AI 生成素人形象对镜口播,免费档则是无真人脸的图文混剪,全程不用自己出镜或拍摄。</p></details>
+  <details><summary>支持英文视频吗?</summary><p>支持。<b>界面与成片都是中英双语</b>:界面可切英文,同一条流程直接产出英文口播成片,适合 TikTok 等出海场景。</p></details>
+  <details><summary>怎么安装部署?</summary><p>三种方式任选:下载 <a href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">Windows / macOS 桌面版</a>双击即用;Docker 一行命令拉起镜像 <code>ghcr.io/xixihhhh/clipforge</code>;或克隆源码运行。详细步骤见<a href="guide.html#install">使用手册第一节</a>。</p></details>
+</div>
+
+<h2 id="quality">三、质量</h2>
+<div class="faq-list">
+  <details><summary>商品会变形吗?</summary><p>不会。<b>image-to-image 锁定商品原图</b>,换背景、打光都不改商品本体,避免「货不对板」带来的转化损失与售后风险。</p></details>
+  <details><summary>生成的视频会像静图拼接吗?</summary><p>AI 生成成片档不会:走<b>图生视频</b>质量主路,每个分镜都是真动态镜头,<b>链式首尾帧</b>让转场在镜头内生成、拼接不跳切。免费快剪档是真实素材混剪,定位是 0 元跑量,追求质感请选 AI 档。</p></details>
+  <details><summary>AI 生成的人脸会不会一眼假?</summary><p>有两层约束:一是<b>素人真实感规则</b>(口语台词、生活痕迹背景、行为节拍),不出「网红假脸」;二是<b>主播库四视图定妆照</b>——正/侧/背/特写一次生成保证同一个人,之后生成都拿定妆照当身份锚,跨镜头、跨条视频不换脸。</p></details>
+  <details><summary>有现成模板吗?</summary><p>有。<b>391 款成片模板</b>,按商品自动推荐;导演模式的高级新建里可对品类、人群、平台、模板逐项调整。</p></details>
+</div>
+
+<h2 id="compliance">四、合规</h2>
+<div class="faq-list">
+  <details><summary>发 AI 视频会被限流吗?</summary><p><b>按平台规则标识的 AI 内容属于有条件允许</b>,刻意隐瞒 AI 属性才是高风险行为。ClipForge 合规默认开:成片默认写入对齐国标 <b>GB 45438-2025</b> 的 AIGC 标识,发布前有<b>限流自检</b>(风险词/钩子/时长/字幕/CTA 逐项检查)和<b>广告法违禁词扫描</b>附替换建议。请遵守各平台规则,对发布内容负责。</p></details>
+</div>
+
+<h2 id="tech">五、技术</h2>
+<div class="faq-list">
+  <details><summary>数据存在哪里?</summary><p>全在本机:项目数据存<b>本地 SQLite</b>,素材与成片存本地文件,不上传任何服务器;Docker 自部署同理,数据留在你自己的机器上。</p></details>
+  <details><summary>支持哪些 AI 模型平台?</summary><p>一个接口聚合 <b>7 大平台 30+ 模型</b>:Atlas Cloud(推荐,一个 Key 覆盖脚本+生图+视频+配音)、火山方舟、fal.ai、OpenAI、DeepSeek 等,配置方法见<a href="guide.html#keys">使用手册第三节</a>。</p></details>
+  <details><summary>生成失败会白扣费吗?</summary><p>不会白扣。付费任务走<b>两阶段任务表</b>:已提交的云端任务记录在案,可在素材页<b>恢复领取</b>结果,不会因为页面关闭或中断而重复提交扣费;免费链路则可以随便重试。</p></details>
+  <details><summary>怎么自动化批量出片?</summary><p>三个入口:<b>MCP Server</b>(在 Claude / Cursor 等 agent 里一句话出片)、<b>CLI</b>(脚本化出片,配 cron 就是全自动日更机)、<b>agent Skill</b>。项目有 <b>986 个单元测试</b>保障链路稳定。</p></details>
+</div>
+
+<div class="tip" style="margin-top:28px"><p>没找到你的问题?去 <a href="https://github.com/xixihhhh/clipforge/issues" rel="noopener">GitHub Issues</a> 或 <a href="https://github.com/xixihhhh/clipforge/discussions" rel="noopener">Discussions</a> 提问,中英文都可以。</p></div>
+
+<div class="last-call reveal" style="margin-top:48px">
+  <h2>问题都清楚了?<span class="hl">现在就试试</span></h2>
+  <p>免费 · 开源 · 无水印,0 元也能出整片。</p>
+  <div class="cta">
+    <a class="btn btn-primary" href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">免费下载 Windows / macOS</a>
+    <a class="btn btn-ghost" href="guide.html">看使用手册</a>
+  </div>
+</div>
+</article>
+
+<footer>
+  <p>ClipForge(原带货剪手)· 开源 AGPL-3.0 · <a href="https://github.com/xixihhhh/clipforge" rel="noopener">GitHub</a> · <a href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">下载</a> · <a href="index.html">首页</a> · <a href="guide.html">使用手册</a> · <a href="feature-free.html">免费出片</a></p>
+  <p style="margin-top:8px">请遵守各平台广告与 AIGC 标识规则,对发布内容负责。</p>
+</footer>
+
+</div>
+</body>
+</html>

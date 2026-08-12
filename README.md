@@ -108,13 +108,13 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 
 ## 界面预览
 
-| 首页·一句话/商品图成片 | 新建·粘贴链接或传图 | 分镜脚本·3 套方案 |
+| 工作台·免费/AI 双档明选 | 脚本闸门·一次点击才花钱 | 高级新建（导演模式） |
 |:---:|:---:|:---:|
-| ![首页](docs/screenshots/01-home.png) | ![新建](docs/screenshots/03-new.png) | ![脚本](docs/screenshots/04-script.png) |
+| ![工作台](docs/screenshots/01-home.png) | ![脚本好了](docs/screenshots/04-script.png) | ![高级新建](docs/screenshots/03-new.png) |
 | **视频合成·配音/字幕/BGM** | **成片导出·多平台** | **批量出片** |
 | ![合成](docs/screenshots/04b-video.png) | ![导出](docs/screenshots/05-export.png) | ![批量](docs/screenshots/06-batch.png) |
 
-> 示例「云柔加厚抽纸」：真实商品图 + 运镜 + 中文字幕 + 价格贴 + 配音，一条带货短视频全自动生成。
+> 左上就是完整创建流程：传图/贴链接/说主题 → 选出片方式（🆓 免费快剪 ¥0 / ✨ AI 生成成片·按秒标价）→ 选带货形式 → 开始生成。完整教程见[官网使用手册](https://xixihhhh.github.io/clipforge/guide.html)。
 
 <p align="center"><img src="docs/showcase-platforms.png" alt="ClipForge 一键产出抖音 / 快手 / 小红书 / TikTok 竖屏带货短视频，全程不出真人脸" width="820"/></p>
 

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ClipForge User Guide — From Install to Your First AI Product Video (Free Quick Cut / AI Film Tutorial)</title>
+<meta name="description" content="Complete tutorial for ClipForge, the open-source AI e-commerce video generator: 3 install options (desktop/Docker/source), a $0 key-free first video in 3 minutes, one key to unlock AI generation, free-vs-AI cost comparison, talking-presenter and mini-drama formats, Easy/Director modes, storyboard grid & one-call film, viral-video cloning, batch mode, MCP one-line generation, and compliant publishing for TikTok, Reels and Shorts.">
+<link rel="canonical" href="https://xixihhhh.github.io/clipforge/guide.en.html">
+<link rel="alternate" hreflang="zh-CN" href="https://xixihhhh.github.io/clipforge/guide.html">
+<link rel="alternate" hreflang="en" href="https://xixihhhh.github.io/clipforge/guide.en.html">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ClipForge User Guide — From Install to Your First AI Product Video">
+<meta property="og:description" content="3 install options · $0 key-free first video · free-vs-AI cost table · talking presenter & mini drama · Easy/Director modes · viral cloning · batch & MCP · compliant publishing.">
+<meta property="og:image" content="https://xixihhhh.github.io/clipforge/banner.en.png">
+<meta property="og:url" content="https://xixihhhh.github.io/clipforge/guide.en.html">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    { "@type": "ListItem", "position": 1, "name": "ClipForge Home", "item": "https://xixihhhh.github.io/clipforge/en.html" },
+    { "@type": "ListItem", "position": 2, "name": "User Guide", "item": "https://xixihhhh.github.io/clipforge/guide.en.html" }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "HowTo",
+  "name": "Make your first AI product video with ClipForge for free",
+  "description": "The zero-cost path in the open-source tool ClipForge: drop a product photo or type a topic, AI writes the script, free stock footage plus free voice-over compose locally — an unwatermarked vertical video in about 3 minutes.",
+  "totalTime": "PT5M",
+  "estimatedCost": { "@type": "MonetaryAmount", "currency": "USD", "value": "0" },
+  "tool": [{ "@type": "HowToTool", "name": "ClipForge (open source, Windows/macOS/Docker)" }],
+  "step": [
+    { "@type": "HowToStep", "name": "Drop the product in", "text": "Open the studio, upload a product photo, paste a product URL (title/price/images auto-extracted) or type a one-sentence topic; keep the default Free quick cut path." },
+    { "@type": "HowToStep", "name": "Skim the script", "text": "Hit Start — AI writes the voice-over in ~30s, then runs hands-off: free stock visuals → free Edge TTS voice-over → local FFmpeg compose, all behind one progress card." },
+    { "@type": "HowToStep", "name": "Download & publish", "text": "In 1–3 minutes you land on the export page: 1080p vertical, no watermark, AIGC labels embedded, with a caption pack ready for TikTok / Reels / Shorts." }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Can ClipForge produce a video completely free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The free quick-cut path uses free stock footage, free Microsoft Edge TTS voice-over and local FFmpeg composition — no image or video API key needed — producing an unwatermarked 1080p vertical video in about 2–3 minutes. Only script writing needs one LLM key (about $0.0002 per call on DeepSeek)." } },
+    { "@type": "Question", "name": "How much does an AI-generated film cost?", "acceptedAnswer": { "@type": "Answer", "text": "Billed by the second to your own model key: the storyboard grid costs about $0.18 per generation, and a 12-second Seedance 2.5 film measured about $3.60; cheaper tiers (Seedance Mini, ~$0.04/s) bring an 8-second clip to about $0.31. The price is printed on the option and only one confirmed click spends money." } },
+    { "@type": "Question", "name": "Does the talking-presenter format need a real person?", "acceptedAnswer": { "@type": "Answer", "text": "No. AI generates a natural-looking presenter who speaks your script verbatim with synced lips; you can also build presenters in the library with 4-view identity sheets that lock the same face across shots and videos." } },
+    { "@type": "Question", "name": "Which AI platforms are supported?", "acceptedAnswer": { "@type": "Answer", "text": "One interface aggregates 30+ models across 7 platforms: Atlas Cloud (recommended — one key covers script, image, video and voice), Volcengine Ark, fal.ai, OpenAI, DeepSeek and more, including GPT Image 2, the full Seedance 2.5/2.0 family and Kling 3.0; custom model IDs are supported too." } }
+  ]
+}
+</script>
+<style>
+  .doc{max-width:860px;margin:0 auto;padding:48px 0 40px}
+  .doc h1{font-size:clamp(28px,4.5vw,40px);line-height:1.2;letter-spacing:-.02em;margin-bottom:14px}
+  .doc .lead{color:var(--dim,#98A2B3);font-size:16px;line-height:1.8;margin-bottom:26px}
+  .doc h2{font-size:24px;margin:44px 0 12px;letter-spacing:-.01em}
+  .doc h3{font-size:17px;margin:24px 0 8px}
+  .doc p,.doc li{color:var(--dim,#98A2B3);font-size:15px;line-height:1.85}
+  .doc b,.doc strong{color:#EDEFF4}
+  .doc ol,.doc ul{padding-left:22px;margin:8px 0 14px}
+  .doc li{margin:4px 0}
+  .doc img.shot{width:100%;border-radius:14px;border:1px solid rgba(255,255,255,.1);margin:14px 0 4px}
+  .doc figcaption{font-size:12.5px;color:rgba(152,162,179,.7);margin-bottom:10px}
+  .doc table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  .doc th,.doc td{border:1px solid rgba(255,255,255,.1);padding:9px 12px;text-align:left;color:var(--dim,#98A2B3);line-height:1.6}
+  .doc th{color:#EDEFF4;background:rgba(255,255,255,.04)}
+  .doc code{background:rgba(255,255,255,.07);border-radius:6px;padding:2px 7px;font-size:13px;color:#EDEFF4}
+  .doc pre{background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px 16px;overflow-x:auto;margin:10px 0 16px}
+  .doc pre code{background:none;padding:0;display:block;line-height:1.7}
+  .toc{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 20px;margin:20px 0 8px}
+  .toc b{display:block;margin-bottom:8px;color:#EDEFF4;font-size:14px}
+  .toc a{display:inline-block;margin:3px 14px 3px 0;font-size:13.5px;color:#a78bfa;text-decoration:none}
+  .toc a:hover{text-decoration:underline;text-underline-offset:3px}
+  .tip{border-left:3px solid #8b5cf6;background:rgba(139,92,246,.07);border-radius:0 12px 12px 0;padding:10px 16px;margin:12px 0}
+  .tip p{margin:0;font-size:14px}
+  .doc a{color:#a78bfa}
+</style>
+</head>
+<body>
+<div class="container">
+
+<nav>
+  <img src="logo.svg" alt="ClipForge logo">
+  <span class="name">ClipForge<em>User Guide</em></span>
+  <span class="spacer"></span>
+  <a class="plain" href="en.html">Home</a>
+  <a class="plain" href="en.html#features">Features</a>
+  <a class="plain" href="en.html#faq">FAQ</a>
+  <a class="plain keep" href="guide.html">中文</a>
+  <a class="plain keep" href="https://github.com/xixihhhh/clipforge">GitHub</a>
+  <a class="btn btn-brand" href="https://github.com/xixihhhh/clipforge/releases/latest">Download free</a>
+</nav>
+
+<article class="doc">
+<h1>ClipForge User Guide: From Install to Your First AI Product Video</h1>
+<p class="lead"><b>Bottom line first: 3 minutes and $0 gets you your first unwatermarked product video after install.</b> ClipForge is an open-source (AGPL-3.0) AI short-video generator — drop a product photo or type a topic, and AI writes the script, fills the visuals, voices it and composes a vertical video. This guide covers install, the free path, AI films, commerce formats, the two workspace modes, viral cloning, batch and compliant publishing.</p>
+
+<div class="toc">
+  <b>Contents</b>
+  <a href="#install">1. Install</a>
+  <a href="#first">2. First video in 3 min ($0)</a>
+  <a href="#keys">3. One key for AI generation</a>
+  <a href="#modes">4. Free quick cut vs AI film</a>
+  <a href="#forms">5. Formats & presenters</a>
+  <a href="#pro">6. Easy & Director modes</a>
+  <a href="#clone">7. Viral cloning & trends</a>
+  <a href="#batch">8. Batch / MCP / CLI</a>
+  <a href="#publish">9. Export & publishing</a>
+  <a href="#faq">10. FAQ</a>
+</div>
+
+<h2 id="install">1. Install: pick any of three ways</h2>
+<h3>Option 1: Desktop app (easiest)</h3>
+<p>Grab the Windows / macOS installer from <a href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">GitHub Releases</a> — double-click and go; all data stays on your machine.</p>
+<h3>Option 2: Docker, one line</h3>
+<pre><code>docker run -d -p 3000:3000 -v clipforge-data:/app/data ghcr.io/xixihhhh/clipforge:latest</code></pre>
+<h3>Option 3: From source (developers)</h3>
+<pre><code>git clone https://github.com/xixihhhh/clipforge.git
+cd clipforge &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
+<div class="tip"><p><b>FFmpeg</b> is required for the free local compose path; the desktop build bundles it.</p></div>
+
+<h2 id="first">2. Your first video in 3 minutes: the free quick cut ($0)</h2>
+<ol>
+  <li><b>Drop the product in</b>: upload photos (up to 5), paste a product URL (title/price/images auto-extracted), or type a one-sentence topic. No assets? Tap an example product.</li>
+  <li><b>Keep the default 🆓 Free quick cut</b>: real stock footage + free AI voice-over, $0 end to end, ~2 minutes.</li>
+  <li>Hit <b>Start</b> — script → free stock visuals → voice-over &amp; compose, all behind one progress card, landing on the export page.</li>
+</ol>
+<figure><img class="shot" src="screenshots/01-home.en.png" alt="ClipForge studio screenshot: product photo upload, free quick cut vs AI-generated film fork, four commerce formats" loading="lazy"><figcaption>The studio: input + generation fork + format, three rows total</figcaption></figure>
+<div class="tip"><p>The only prerequisite: one <b>LLM key</b> for script writing (any OpenAI-protocol platform; ~$0.0002 per call on DeepSeek. Atlas Cloud is recommended — the same key later covers AI generation too). The page prompts inline on first use.</p></div>
+
+<h2 id="keys">3. One key to unlock AI generation</h2>
+<p>ClipForge is open-source BYOK: <b>the software is free forever; AI usage is billed by your chosen model platform</b> — no markup, no middleman. One interface aggregates 30+ models across 7 platforms:</p>
+<ul>
+  <li><b>Atlas Cloud (recommended)</b>: one key covers script + image (GPT Image 2) + video (full Seedance 2.5/2.0 family) + voice; paste it under <b>Settings → Platform keys</b>;</li>
+  <li>Volcengine Ark, fal.ai, OpenAI, DeepSeek and more are supported — pick defaults under <b>Settings → Image model / Video model</b>;</li>
+  <li>Model lists refresh at runtime, and custom model IDs are supported.</li>
+</ul>
+
+<h2 id="modes">4. Free quick cut vs AI-generated film</h2>
+<table>
+  <thead><tr><th></th><th>🆓 Free quick cut</th><th>✨ AI-generated film</th></tr></thead>
+  <tbody>
+    <tr><td>Visuals</td><td>Real stock footage montage</td><td>AI-generated frames &amp; talking presenter</td></tr>
+    <tr><td>Cost</td><td><b>$0</b> (footage/voice/compose all free)</td><td>Per second: a 12s Seedance 2.5 film measured ~$3.60; budget tiers ~$0.3–0.7 per clip</td></tr>
+    <tr><td>Time</td><td>~2–3 min</td><td>~4–8 min</td></tr>
+    <tr><td>Best for</td><td>Topic content, daily volume, first try</td><td>Product-on-screen, UGC talking head, quality ceiling</td></tr>
+    <tr><td>Keys needed</td><td>LLM only</td><td>LLM + image + video model</td></tr>
+  </tbody>
+</table>
+<p><b>The AI path spends money on exactly one click</b>: the free script is your text-level plan — read it on the “Script ready” gate, click “Generate with AI”, and the <b>storyboard grid</b> (one image generation locks person/room/light across all shots) → <b>one-call film</b> (Seedance 2.5 native cuts, lines spoken verbatim) runs hands-off to the export page.</p>
+<figure><img class="shot" src="screenshots/04-script.en.png" alt="ClipForge script gate screenshot: read the voice-over for free, one paid click to generate the AI film" loading="lazy"><figcaption>The script is the zero-cost confirmation gate</figcaption></figure>
+
+<h2 id="forms">5. Commerce formats &amp; the presenter library</h2>
+<ul>
+  <li><b>Smart pick</b> (default): AI chooses, product close-ups first;</li>
+  <li><b>Talking presenter</b>: a natural-looking person talks to camera — UGC realism rules baked in (spoken-language lines, lived-in backgrounds, behavior beats);</li>
+  <li><b>Mini drama</b>: a story-driven skit with per-character voices;</li>
+  <li><b>Graphic montage</b>: beat-synced image-and-text cuts.</li>
+</ul>
+<p>For presenter formats you can pick from your <b>presenter library</b>: 4-view identity sheets (front/side/back/close-up in one generation) anchor the same face across shots and across videos.</p>
+
+<h2 id="pro">6. Easy mode &amp; Director mode</h2>
+<ul>
+  <li><b>Easy mode</b> (default): one creation path, script → film hands-off, no storyboard, no jargon;</li>
+  <li><b>Director mode</b>: per-shot editing, the <b>judge panel</b> (four blunt judges tear the lines apart and rewrite at equal length), 18 camera presets + Mix overlays, visual looks, the grid, one-call film, the advanced form (category/audience/391 recipes) and the A/B variant matrix.</li>
+</ul>
+<figure><img class="shot" src="screenshots/03-new.en.png" alt="ClipForge Director-mode advanced form screenshot" loading="lazy"><figcaption>Director mode's advanced form: everything adjustable, optional fields folded</figcaption></figure>
+
+<h2 id="clone">7. Viral cloning &amp; trend picks</h2>
+<ul>
+  <li><b>Clone a hit</b>: feed a reference video — its cut points and rhythm are parsed and rebuilt around your product (mind footage licensing);</li>
+  <li><b>What to post today</b>: a live trend board on the studio page; tap a trend to turn it into a video;</li>
+  <li><b>Daily persona picks</b> + cron + CLI = a hands-free daily posting machine.</li>
+</ul>
+
+<h2 id="batch">8. Batch / MCP / CLI</h2>
+<ul>
+  <li><b>Batch mode</b> (Director): queue 10 products before a sale;</li>
+  <li><b>MCP Server</b>: wire <code>clipforge-mcp</code> into Claude / Cursor and generate a video from one pasted product link;</li>
+  <li><b>CLI</b>: <code>npm run cli -- create --topic "..."</code> for scripted or scheduled runs.</li>
+</ul>
+
+<h2 id="publish">9. Export &amp; compliant publishing</h2>
+<ul>
+  <li>1080p unwatermarked MP4; 9:16 / 3:4 presets per platform plus a caption pack;</li>
+  <li>AIGC provenance labels embedded by default (aligned with China's GB 45438-2025; visible "AI-generated" badge burned in);</li>
+  <li>Pre-publish checks: throttling-risk self-check and an ad-law banned-word scan with rewrite suggestions.</li>
+</ul>
+<figure><img class="shot" src="screenshots/05-export.en.png" alt="ClipForge export page screenshot: finished video with platform presets and caption pack" loading="lazy"><figcaption>Export: the finished video + platform presets + caption pack</figcaption></figure>
+
+<h2 id="faq">10. FAQ</h2>
+<div class="faq-list">
+  <details open><summary>Can I really produce a video for $0?</summary><p>Yes — free stock + free Edge TTS + local FFmpeg, unwatermarked and unlimited. Only script writing needs one LLM key (~$0.0002/call on DeepSeek).</p></details>
+  <details><summary>How much is an AI film?</summary><p>Billed by the second, printed on the option: the grid ≈ $0.18, a 12s Seedance 2.5 film ≈ $3.60; Mini tier ≈ $0.04/s. One confirmed click, billed to your own key.</p></details>
+  <details><summary>Where is my data stored?</summary><p>Entirely on your machine (SQLite + local files); Docker self-hosting works the same way.</p></details>
+  <details><summary>Where do I ask questions?</summary><p><a href="https://github.com/xixihhhh/clipforge/issues" rel="noopener">GitHub Issues</a> or <a href="https://github.com/xixihhhh/clipforge/discussions" rel="noopener">Discussions</a> — Chinese and English both welcome.</p></details>
+</div>
+
+<div class="last-call reveal" style="margin-top:48px">
+  <h2>Ship your <span class="hl">first video</span> now</h2>
+  <p>Free · open source · no watermark — a full video with zero keys.</p>
+  <div class="cta">
+    <a class="btn btn-primary" href="https://github.com/xixihhhh/clipforge/releases/latest">Download for Windows / macOS</a>
+    <a class="btn btn-ghost" href="en.html">Back to home</a>
+  </div>
+</div>
+</article>
+
+<footer>
+  <p>ClipForge · Open source AGPL-3.0 · <a href="https://github.com/xixihhhh/clipforge">GitHub</a> · <a href="https://github.com/xixihhhh/clipforge/releases/latest">Download</a> · <a href="en.html">Home</a> · <a href="guide.html">中文手册</a></p>
+  <p style="margin-top:8px">Follow each platform's advertising and AIGC labeling rules; you are responsible for what you publish.</p>
+</footer>
+
+</div>
+</body>
+</html>
