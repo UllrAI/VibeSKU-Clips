@@ -317,4 +317,11 @@ describe("migrateSettings v2（老用户本地存着已停用的 Pollinations �
     const v1 = migrateSettings(build({ baseUrl: "https://api.deepseek.com", apiKey: "k", model: "deepseek-v3.2" }));
     expect(v1.llm.model).toBe("deepseek-v4-flash");
   });
+
+  it("Atlas 旧默认 v3.2（思考文本弄脏 JSON）→ V4 Pro；用户自选的其他模型不动", () => {
+    const migrated = migrateSettings(build({ baseUrl: "https://api.atlascloud.ai/v1", apiKey: "k", model: "deepseek-ai/deepseek-v3.2" }));
+    expect(migrated.llm.model).toBe("deepseek-ai/deepseek-v4-pro");
+    const userPicked = migrateSettings(build({ baseUrl: "https://api.atlascloud.ai/v1", apiKey: "k", model: "zai-org/glm-5.2" }));
+    expect(userPicked.llm.model).toBe("zai-org/glm-5.2");
+  });
 });

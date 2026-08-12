@@ -78,12 +78,18 @@ export function buildStoryboardFilmPrompt(
     const label = SHOT_TYPE_LABELS[String(s.type)]?.[zh ? "zh" : "en"] ?? (zh ? "分镜" : "shot");
     const line = (s.voiceover ?? "").trim();
     const imgN = i + 1 + offset;
+    // camera moves come from the script (LLM writes them with the e-commerce preset vocabulary,
+    // or the user picks a preset per shot) — dropping them here would flatten every shot to a
+    // static frame, so the film pass carries them through
+    const cam = (s.camera ?? "").trim();
     if (zh) {
       const dialogue = line ? `台词（逐字说出）：「${line}」` : "（无台词，只保留环境音与动作声）";
-      return `[${fmtSec(start)}-${fmtSec(cursor)}秒] 镜头${i + 1}（${label}，画面以 @图片${imgN} 为基准）：${s.description ?? ""}。${dialogue}`;
+      const camPart = cam ? `运镜：${cam}。` : "";
+      return `[${fmtSec(start)}-${fmtSec(cursor)}秒] 镜头${i + 1}（${label}，画面以 @图片${imgN} 为基准）：${s.description ?? ""}。${camPart}${dialogue}`;
     }
     const dialogue = line ? `Dialogue (spoken verbatim): "${line}"` : "(no dialogue — ambient and action sounds only)";
-    return `[${fmtSec(start)}-${fmtSec(cursor)}s] Shot ${i + 1} (${label}, framing follows @Image${imgN}): ${s.description ?? ""}. ${dialogue}`;
+    const camPart = cam ? `Camera: ${cam}. ` : "";
+    return `[${fmtSec(start)}-${fmtSec(cursor)}s] Shot ${i + 1} (${label}, framing follows @Image${imgN}): ${s.description ?? ""}. ${camPart}${dialogue}`;
   });
 
   if (zh) {

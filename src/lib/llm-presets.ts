@@ -20,7 +20,9 @@ export interface LLMPreset {
 }
 
 export const LLM_PRESETS: LLMPreset[] = [
-  { label: "Atlas Cloud", baseUrl: "https://api.atlascloud.ai/v1", model: "claude-sonnet-4-20250514", tipKey: "presetAtlasTip" },
+  // DeepSeek V4 Pro: flagship writing quality with clean JSON output (real-request verified
+  // 2026-08; the v3.2 default before it leaked thinking text into JSON and broke generation)
+  { label: "Atlas Cloud", baseUrl: "https://api.atlascloud.ai/v1", model: "deepseek-ai/deepseek-v4-pro", tipKey: "presetAtlasTip" },
   { label: "OpenRouter", baseUrl: "https://openrouter.ai/api/v1", model: "openai/gpt-4o", tipKey: "presetOpenrouterTip" },
   { label: "DeepSeek", baseUrl: "https://api.deepseek.com", model: "deepseek-v4-flash", tipKey: "presetDeepseekTip" },
   { label: "Kimi", baseUrl: "https://api.moonshot.cn/v1", model: "kimi-k2.5", tipKey: "presetKimiTip" },

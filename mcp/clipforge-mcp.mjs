@@ -11,7 +11,7 @@
  *   CLIPFORGE_BASE_URL     ClipForge instance URL (default http://localhost:3000; run `pnpm dev` / `pnpm start` first)
  *   CLIPFORGE_LLM_BASE_URL LLM endpoint (OpenAI-compatible, e.g. https://api.atlascloud.ai/v1)
  *   CLIPFORGE_LLM_API_KEY  LLM key (required for script generation; omitting it gives a clear prompt in create_video / generate_script)
- *   CLIPFORGE_LLM_MODEL    LLM model name (e.g. deepseek-ai/deepseek-v3.2)
+ *   CLIPFORGE_LLM_MODEL    LLM model name (e.g. deepseek-ai/deepseek-v4-pro)
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -204,7 +204,7 @@ const TOOLS = [
   {
     name: "clipforge_create_video",
     description:
-      "一句话成片：输入一个主题，自动写旁白脚本→从免费素材库配齐画面→免费 AI 配音+字幕→FFmpeg 合成竖屏短视频，返回可下载的视频地址。需要为 MCP 配置 LLM 环境变量；素材与配音全程免 Key。",
+      "一句话成片：输入一个主题，自动写旁白脚本→判官团（节奏/口语/创意/结构四判官）自动挑刺并重写弱句→从免费素材库配齐画面→免费 AI 配音+字幕→FFmpeg 合成竖屏短视频，返回可下载的视频地址。需要为 MCP 配置 LLM 环境变量；素材与配音全程免 Key。",
     inputSchema: {
       type: "object",
       properties: {
@@ -555,6 +555,29 @@ async function handleCreateVideo(args) {
   const projectId = scriptRes.projectId;
   const shots = scriptRes?.scripts?.[0]?.shots ?? [];
 
+  // 1.5) judge pass: four narrow judges (pacing/spoken-voice/freshness/structure) tear the lines
+  // apart and weak ones are rewritten in place — the hands-off chain keeps the quality bar, the
+  // agent never operates the panel. Best-effort: a failed pass never blocks the video.
+  let judgeRewrites = 0;
+  const scriptId = scriptRes?.scripts?.[0]?.id;
+  if (scriptId) {
+    try {
+      const report = await api(`/api/project/${projectId}/script-judge`, {
+        method: "POST",
+        body: { scriptId, llmConfig: LLM },
+      });
+      if (Array.isArray(report?.rewrites) && report.rewrites.length) {
+        await api(`/api/project/${projectId}/scripts`, {
+          method: "PATCH",
+          body: { scriptId, shotTexts: report.rewrites.map((r) => ({ shotId: r.shotId, voiceover: r.voiceover })) },
+        });
+        judgeRewrites = report.rewrites.length;
+      }
+    } catch {
+      /* quality pass is best-effort */
+    }
+  }
+
   // 2) match visuals: free Openverse images by default; with Pexels/Pixabay keys, fetches video B-roll per footage setting
   const mediaType = resolveMediaType(args.footage);
   const fill = await api(`/api/project/${projectId}/stock-fill`, {
@@ -595,6 +618,8 @@ async function handleCreateVideo(args) {
     voice: usedVoice,
     aspectRatio: ASPECT_RATIOS.includes(args.aspectRatio) ? args.aspectRatio : "9:16",
     shots: shots.length,
+    // judge panel: how many weak lines were auto-rewritten before composing
+    ...(judgeRewrites ? { judgeRewrites } : {}),
     footageFilled: `${fill.filled}/${fill.total}`,
     // material continuity: how many shots reused a provider+author already picked by a same-entity shot
     ...(fill.sameSourceHits ? { sameSourceShots: fill.sameSourceHits } : {}),

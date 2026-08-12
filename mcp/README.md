@@ -39,7 +39,7 @@ Drive ClipForge's text-to-video pipeline from any MCP client (Claude Desktop / C
 | `CLIPFORGE_BASE_URL` | — | ClipForge 实例地址，默认 `http://localhost:3000` |
 | `CLIPFORGE_LLM_BASE_URL` | 写脚本时 | OpenAI 兼容接口，如 `https://api.atlascloud.ai/v1` |
 | `CLIPFORGE_LLM_API_KEY` | 写脚本时 | LLM Key |
-| `CLIPFORGE_LLM_MODEL` | 写脚本时 | 模型名，如 `deepseek-ai/deepseek-v3.2` |
+| `CLIPFORGE_LLM_MODEL` | 写脚本时 | 模型名，如 `deepseek-ai/deepseek-v4-pro` |
 | `CLIPFORGE_PEXELS_KEY` | — | 配了才用 Pexels 实拍**视频** B-roll（免费申请） |
 | `CLIPFORGE_PIXABAY_KEY` | — | 配了才用 Pixabay 实拍**视频** B-roll（免费申请） |
 
@@ -57,7 +57,7 @@ Drive ClipForge's text-to-video pipeline from any MCP client (Claude Desktop / C
         "CLIPFORGE_BASE_URL": "http://localhost:3000",
         "CLIPFORGE_LLM_BASE_URL": "https://api.atlascloud.ai/v1",
         "CLIPFORGE_LLM_API_KEY": "sk-...",
-        "CLIPFORGE_LLM_MODEL": "deepseek-ai/deepseek-v3.2"
+        "CLIPFORGE_LLM_MODEL": "deepseek-ai/deepseek-v4-pro"
       }
     }
   }
@@ -85,7 +85,7 @@ claude mcp add clipforge -- node /绝对路径/clipforge/mcp/clipforge-mcp.mjs
         "CLIPFORGE_BASE_URL": "http://localhost:3000",
         "CLIPFORGE_LLM_BASE_URL": "https://api.atlascloud.ai/v1",
         "CLIPFORGE_LLM_API_KEY": "sk-...",
-        "CLIPFORGE_LLM_MODEL": "deepseek-ai/deepseek-v3.2"
+        "CLIPFORGE_LLM_MODEL": "deepseek-ai/deepseek-v4-pro"
       }
     }
   }

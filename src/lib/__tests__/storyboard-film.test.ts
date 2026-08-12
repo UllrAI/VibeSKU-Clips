@@ -70,6 +70,16 @@ describe("中文整片 prompt", () => {
     const withCast = buildStoryboardFilmPrompt(zhShots, [{ name: "小夏", appearance: "邻家" } as never]);
     expect(withCast).toContain("小夏对着镜头自然说话");
   });
+
+  it("脚本里的运镜逐段带进整片（有才带，空 camera 不出现残段）", () => {
+    const withCam = buildStoryboardFilmPrompt([
+      mkShot({ shotId: 1, camera: "缓慢推近", voiceover: "开场" }),
+      mkShot({ shotId: 2, camera: "", voiceover: "" }),
+    ]);
+    expect(withCam).toContain("运镜：缓慢推近。");
+    // 第二镜没有运镜 → 不该出现空的「运镜：」残段
+    expect(withCam.match(/运镜：/g)?.length).toBe(1);
+  });
 });
 
 describe("英文整片 prompt（台词无中文时整体切英文）", () => {
@@ -84,6 +94,13 @@ describe("英文整片 prompt（台词无中文时整体切英文）", () => {
     expect(prompt).toContain('Dialogue (spoken verbatim): "This thing saved my wallet"');
     expect(prompt).toContain("(no dialogue — ambient and action sounds only)");
     expect(prompt).not.toContain("镜头");
+  });
+
+  it("英文段落同样带运镜", () => {
+    const withCam = buildStoryboardFilmPrompt([
+      mkShot({ shotId: 1, description: "kitchen", camera: "slow push-in", voiceover: "Hi" }),
+    ]);
+    expect(withCam).toContain("Camera: slow push-in. ");
   });
 });
 

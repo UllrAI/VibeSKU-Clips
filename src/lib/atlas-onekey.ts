@@ -18,8 +18,13 @@ export const ATLAS_BASE_URL = "https://api.atlascloud.ai/api/v1";
 export const ATLAS_KEYS_URL = "https://www.atlascloud.ai/console/api-keys";
 
 export const ATLAS_ONEKEY_MODELS = {
-  /** Script (LLM): DeepSeek V3.2 — high cost-efficiency, strong Chinese e-commerce copy */
-  llm: "deepseek-ai/deepseek-v3.2",
+  /**
+   * Script (LLM): DeepSeek V4 Pro — flagship-tier writing quality for scripts and the judge
+   * panel. Field lesson (2026-08): v3.2's thinking mode leaks reasoning text into the JSON
+   * output and breaks script parsing, so the default steers to a clean-JSON flagship; users
+   * can still pick any model themselves via the settings model picker.
+   */
+  llm: "deepseek-ai/deepseek-v4-pro",
   /** Product-image analysis (Vision): Qwen VL multimodal */
   vision: "qwen/qwen3-vl-30b-a3b-instruct",
   /** Image generation: GPT Image 2 — excellent product-image quality */

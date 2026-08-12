@@ -172,6 +172,31 @@ function requireLlm() {
   }
 }
 
+/**
+ * Judge pass — the same quality bar the web hands-off chains run: four narrow judges
+ * (pacing / spoken voice / freshness / structure) tear the voiceover lines apart and
+ * their length-preserving rewrites are applied in place BEFORE footage/voice work.
+ * Best-effort: any failure returns 0 and the chain continues with the original lines.
+ * Returns the number of rewritten lines.
+ */
+async function judgePass(projectId, scriptId) {
+  if (!scriptId) return 0;
+  try {
+    const report = await api(`/api/project/${projectId}/script-judge`, {
+      method: "POST",
+      body: { scriptId, llmConfig: LLM },
+    });
+    if (!Array.isArray(report?.rewrites) || report.rewrites.length === 0) return 0;
+    await api(`/api/project/${projectId}/scripts`, {
+      method: "PATCH",
+      body: { scriptId, shotTexts: report.rewrites.map((r) => ({ shotId: r.shotId, voiceover: r.voiceover })) },
+    });
+    return report.rewrites.length;
+  } catch {
+    return 0;
+  }
+}
+
 async function cmdCreate(flags) {
   requireLlm();
   const topic = String(flags.topic || "").trim();
@@ -188,6 +213,10 @@ async function cmdCreate(flags) {
   const projectId = scriptRes.projectId;
   const shots = scriptRes?.scripts?.[0]?.shots ?? [];
   step(`脚本完成：${shots.length} 个分镜 · 项目 ${projectId}`);
+
+  // judge pass: weak lines get rewritten before any footage/voice work (best-effort, never fatal)
+  const judged = await judgePass(projectId, scriptRes?.scripts?.[0]?.id);
+  if (judged) step(`判官团过词：重写 ${judged} 句`);
 
   step(`配画面（${mediaType}，免费素材库）…`);
   const fill = await api(`/api/project/${projectId}/stock-fill`, {
@@ -266,6 +295,10 @@ async function cmdProduct(flags) {
   }
 
   // --compose: go all the way to a rendered video (product-image + free stock fill)
+  // judge pass on the selected (first) variant — the compose below reads the same one
+  const judged = await judgePass(projectId, scripts[0]?.id);
+  if (judged) step(`判官团过词：重写 ${judged} 句`);
+
   const mediaType = FOOTAGE_KINDS.includes(flags.footage) ? flags.footage : "auto";
   step(`配画面（${mediaType}，商品图 + 免费素材库）…`);
   const fill = await api(`/api/project/${projectId}/stock-fill`, {

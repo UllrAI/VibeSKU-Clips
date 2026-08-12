@@ -121,6 +121,10 @@ export function migrateSettings(state: SettingsState): SettingsState {
     const fixes: Array<{ hostRe: RegExp; from: string; to: string }> = [
       { hostRe: /api\.deepseek\.com/i, from: "deepseek-v3.2", to: "deepseek-v4-flash" },
       { hostRe: /volces\.com/i, from: "doubao-seed-2.0-pro", to: "doubao-seed-2-0-pro-260215" },
+      // Atlas one-key's old default: v3.2's thinking mode leaks reasoning text into JSON output
+      // and breaks script generation (2026-08 field test) — move to the clean-JSON V4 flagship.
+      // Only the exact old default is migrated; a model the user picked themselves stays put.
+      { hostRe: /api\.atlascloud\.ai/i, from: "deepseek-ai/deepseek-v3.2", to: "deepseek-ai/deepseek-v4-pro" },
     ];
     for (const f of fixes) {
       if (!f.hostRe.test(llm.baseUrl)) continue;

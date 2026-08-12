@@ -354,6 +354,55 @@ export default function ScriptPage() {
     if (genPref !== "ai") autoFinish();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- autoFinish is a stable page-level handler; triggering once per auto entry
   }, [autoMode, autoModeTriggered, loading, currentScript, genPref]);
+  // Judge pass — the quality bar runs in BOTH hands-off chains, not just the pro editor.
+  // Four narrow judges tear the voiceover lines apart and their rewrites are applied
+  // automatically BEFORE any footage matching / generation money. Beginners never operate
+  // the panel — they just get the reworked lines (and the report stays visible in the
+  // editor). Missing LLM config or a failed pass skips silently: quality is best-effort,
+  // never a new failure mode for the chain.
+  const runJudgePass = async (scriptId: string, setStage: (s: string) => void) => {
+    if (!llm.baseUrl || !llm.model) return;
+    try {
+      setStage(t("autoJudging"));
+      const res = await fetch(`/api/project/${id}/script-judge`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scriptId,
+          llmConfig: { baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model },
+        }),
+      });
+      if (!res.ok) return;
+      const report = (await res.json()) as JudgeReport;
+      setJudgeReport(report);
+      if (!report.rewrites?.length) return;
+      const applied = await fetch(`/api/project/${id}/scripts`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scriptId,
+          shotTexts: report.rewrites.map((r) => ({ shotId: r.shotId, voiceover: r.voiceover })),
+        }),
+      });
+      if (!applied.ok) return;
+      setJudgeApplied(true);
+      // local mirror so the simple card / editor show the reworked lines, not the stale ones
+      setScripts((prev) =>
+        prev.map((s) =>
+          s.id === scriptId
+            ? {
+                ...s,
+                shots: s.shots.map((sh) => {
+                  const rw = report.rewrites.find((r) => r.shotId === sh.shotId);
+                  return rw ? { ...sh, voiceover: rw.voiceover } : sh;
+                }),
+              }
+            : s
+        )
+      );
+    } catch {
+      /* best-effort quality pass — the chain continues with the original lines */
+    }
+  };
+
   const autoFinish = async () => {
     if (!currentScript || autoFinishing) return;
     setAutoFinishing(true);
@@ -365,6 +414,8 @@ export default function ScriptPage() {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selectedScriptId: currentScript.id }),
       }).catch(() => {});
+      // 0.5) judge pass: rewrite weak lines before they get voiced (free chain still gets the quality bar)
+      await runJudgePass(currentScript.id, setAutoFinishStage);
       // 1) auto-match free footage (per-shot video, fall back to image) — non-fatal
       setAutoFinishStage(t("autoFinishAssets"));
       await fetch(`/api/project/${id}/stock-fill`, {
@@ -406,7 +457,7 @@ export default function ScriptPage() {
   // ---- AI film chain (grid → one-call film): the paid path. The free script above is the
   // zero-cost "video plan" gate — money is only spent after this one explicit click, and the
   // bill goes to the user's own model platform (open-source BYOK, ClipForge itself is free) ----
-  const { characters: presenterLib } = useCharacterStore();
+  const { characters: presenterLib, updateCharacter } = useCharacterStore();
   const [aiFilming, setAiFilming] = useState(false);
   const [aiFilmStage, setAiFilmStage] = useState("");
   const [aiFilmError, setAiFilmError] = useState("");
@@ -428,8 +479,39 @@ export default function ScriptPage() {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ selectedScriptId: currentScript.id }),
       }).catch(() => {});
+      // judge pass: rewrite weak lines BEFORE the paid grid/film calls spend anything
+      await runJudgePass(currentScript.id, setAiFilmStage);
       // identity/product anchors: presenter sheet (picked at creation) + first product photo
-      const sheet = presenterLib.find((c) => c.id === presenterParam)?.referenceImages?.[0];
+      const presenter = presenterLib.find((c) => c.id === presenterParam);
+      let sheet = presenter?.referenceImages?.[0];
+      // multi-view sheet on demand: a presenter picked at creation but never "sheeted" gets their
+      // 2x2 four-view reference generated right here (one square generation, physically the same
+      // person) and saved back to the library — identity stays locked across this film AND future
+      // ones. Needs an appearance description; failure just falls back to today's no-sheet path.
+      if (presenter && !sheet && presenter.appearance?.trim()) {
+        setAiFilmStage(t("aiFilmSheet"));
+        try {
+          const sheetRes = await fetch("/api/characters/sheet", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              appearance: presenter.appearance,
+              name: presenter.name,
+              provider: imgTarget.provider,
+              model: imgTarget.model,
+              apiKey: imgTarget.apiKey,
+              baseUrl: imgTarget.baseUrl,
+              options: buildImageOptions(s.imageParams ? { ...s.imageParams, aspectRatio: "1:1", count: 1 } : undefined),
+            }),
+          });
+          const sheetData = await sheetRes.json().catch(() => ({}));
+          if (sheetRes.ok && sheetData.url) {
+            sheet = sheetData.url as string;
+            updateCharacter(presenter.id, { referenceImages: [sheet, ...(presenter.referenceImages ?? []).slice(1)] });
+          }
+        } catch {
+          /* sheet is an upgrade, not a dependency — the grid still locks identity within this film */
+        }
+      }
       const productRef = projectMeta?.productImages?.[0];
       // 1) storyboard grid: ONE image generation renders every shot as a keyframe (identity locked)
       setAiFilmStage(t("aiFilmGrid"));
@@ -729,6 +811,9 @@ export default function ScriptPage() {
               </div>
               <p className="text-center text-xs text-muted-foreground">{t("autoFinishHint")}</p>
               <p className="text-center text-xs text-muted-foreground/80">{t("aiFilmCostNote")}</p>
+              {/* quality reassurance: both paths run the judge panel automatically — Easy mode
+                  hides the operation, never the quality features */}
+              <p className="text-center text-xs text-muted-foreground/80">⚖️ {t("autoJudgeNote")}</p>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" className="text-xs" disabled={isGenerating} onClick={() => setRegenConfirmOpen(true)}>
                   {t("regenerate")}

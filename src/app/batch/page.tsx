@@ -260,10 +260,36 @@ export default function BatchPage() {
           const e = await scriptRes.json().catch(() => ({}));
           throw new Error(e.error || t("errorScriptFailed"));
         }
+        const scriptData = await scriptRes.json().catch(() => ({}));
 
         // 3) Auto-render (free path): fill visuals (per-shot video preferred, fall back to image) → free Edge TTS → poll until video is done
         if (autoCompose && !abortRef.current) {
           setBatchTasks((prev) => prev.map((tk) => (tk.id === product.id ? { ...tk, status: "composing", projectId: project.id } : tk)));
+          // 2.5) judge pass on the selected (first) variant — the same quality bar as the
+          // single-project hands-off chains; best-effort, a failed pass never fails the batch item
+          const judgeScriptId = scriptData?.scripts?.[0]?.id;
+          if (judgeScriptId) {
+            try {
+              const judgeRes = await fetch(`/api/project/${project.id}/script-judge`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ scriptId: judgeScriptId, llmConfig: { baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model } }),
+              });
+              const judgeData = await judgeRes.json().catch(() => ({}));
+              if (judgeRes.ok && Array.isArray(judgeData?.rewrites) && judgeData.rewrites.length) {
+                await fetch(`/api/project/${project.id}/scripts`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    scriptId: judgeScriptId,
+                    shotTexts: judgeData.rewrites.map((r: { shotId: number; voiceover: string }) => ({ shotId: r.shotId, voiceover: r.voiceover })),
+                  }),
+                }).catch(() => {});
+              }
+            } catch {
+              /* quality pass is best-effort */
+            }
+          }
           await fetch(`/api/project/${project.id}/stock-fill`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

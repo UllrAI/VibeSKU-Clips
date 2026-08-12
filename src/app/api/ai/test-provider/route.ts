@@ -47,7 +47,8 @@ function buildProbe(name: string, apiKey: string, baseUrl?: string): Probe {
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       method: "POST",
       body: JSON.stringify({
-        model: "deepseek-ai/deepseek-v3.2",
+        // non-thinking flash tier: a thinking model can burn reasoning tokens even at max_tokens:1
+        model: "deepseek-ai/deepseek-v4-flash",
         messages: [{ role: "user", content: "hi" }],
         max_tokens: 1,
       }),
