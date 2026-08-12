@@ -520,6 +520,10 @@ export default function AssetsPage() {
         chainToNext: !!chainFrame,
         intensity: motionIntensity,
         personShot: !!asset?.characterId,
+        // a character WITH a line is a talking shot: mid-conversation direction + rotating
+        // behavior beats (seeded by shot position so a batch never repeats the same gestures)
+        talking: !!asset?.characterId && !!asset?.voiceover?.trim(),
+        beatSeed: assets.findIndex((a) => a.shotId === shotId),
         // global look: short lighting anchor keeps the palette from drifting through the i2v pass
         look: getLookPreset(visualLook)?.motion,
       });

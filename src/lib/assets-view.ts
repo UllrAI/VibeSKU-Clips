@@ -14,6 +14,8 @@ export interface AssetItem {
   camera?: string;
   /** Speaking cast character bound to this shot (dialogue styles) — triggers the real-face constraint */
   characterId?: string;
+  /** The shot's voiceover line — with characterId present it marks a talking shot for the i2v motion prompt */
+  voiceover?: string;
   visualSource: Shot["visualSource"];
   status: "pending" | "generating" | "done" | "failed";
   thumbnailUrl?: string;
@@ -75,6 +77,7 @@ export function buildAssetRows(
         prompt: s.prompt ?? "",
         camera: s.camera || undefined,
         characterId: s.characterId || undefined,
+        voiceover: s.voiceover || undefined,
         visualSource: s.visualSource,
         status: "done" as const,
         thumbnailUrl: isVideo && saved.thumbnailPath ? saved.thumbnailPath : saved.filePath,
@@ -91,6 +94,7 @@ export function buildAssetRows(
       prompt: s.prompt ?? "",
       camera: s.camera || undefined,
       characterId: s.characterId || undefined,
+      voiceover: s.voiceover || undefined,
       visualSource: s.visualSource,
       status: s.visualSource === "product_image" ? ("done" as const) : ("pending" as const),
       thumbnailUrl: s.visualSource === "product_image" ? firstProduct : undefined,

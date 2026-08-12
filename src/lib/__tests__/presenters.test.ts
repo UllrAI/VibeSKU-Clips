@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { PRESENTER_PRESETS, REAL_FACE_CONSTRAINT, realFaceLine, presenterPromptBlock } from "@/lib/presenters";
+import {PRESENTER_PRESETS, REAL_FACE_CONSTRAINT, realFaceLine, presenterPromptBlock, SPOKEN_VOICE_RULES, UGC_FIRST_FRAME_RULES } from "@/lib/presenters";
 import { buildMotionPrompt } from "@/lib/motion-prompt";
 import { stylePrompts } from "@/lib/script-engine/prompts";
 import { buildAssetRows } from "@/lib/assets-view";
@@ -57,5 +57,28 @@ describe("真实人脸约束的注入链路", () => {
     } as unknown as Shot;
     const rows = buildAssetRows([shot], [], []);
     expect(rows[0].characterId).toBe("char_a");
+  });
+
+  it("口语真实感铁律：说的不是写的（UGC 方法论核心断言）", () => {
+    expect(SPOKEN_VOICE_RULES).toContain("说出来的");
+    expect(SPOKEN_VOICE_RULES).toContain("对话中间开始");
+    expect(SPOKEN_VOICE_RULES).toContain("大家好");
+    expect(SPOKEN_VOICE_RULES).toContain("slogan");
+  });
+
+  it("首帧真实感规则：指名光源/生活痕迹/防重复，且不引入已被 A/B 否掉的瑕疵词", () => {
+    expect(UGC_FIRST_FRAME_RULES).toContain("光源要指名");
+    expect(UGC_FIRST_FRAME_RULES).toContain("一处不完美");
+    expect(UGC_FIRST_FRAME_RULES).toContain("换房间");
+    // 校准红线：脸部瑕疵词会矫枉过正（见 presenters.ts 注释），肤质表述只归 REAL_FACE_CONSTRAINT 管
+    expect(UGC_FIRST_FRAME_RULES).not.toContain("毛孔");
+    expect(UGC_FIRST_FRAME_RULES).not.toContain("眼袋");
+  });
+
+  it("presenterPromptBlock 捎带两组规则 → drama/interview/talking_head 三风格自动生效", () => {
+    for (const s of ["drama", "interview", "talking_head"] as const) {
+      expect(stylePrompts[s], s).toContain("口语真实感");
+      expect(stylePrompts[s], s).toContain("首帧真实感");
+    }
   });
 });

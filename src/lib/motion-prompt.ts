@@ -46,6 +46,15 @@ export interface MotionPromptInput {
    */
   personShot?: boolean;
   /**
+   * The on-camera character is SPEAKING this shot (has a voiceover line): replace the
+   * generic micro-action with talking direction (mouth movement, blinks, one micro-pause)
+   * plus two behavior beats. Beats rotate per shot via `beatSeed` — repeating the same
+   * gestures across a batch is the biggest AI tell.
+   */
+  talking?: boolean;
+  /** Deterministic seed (e.g. shot index) picking which two behavior beats this shot gets */
+  beatSeed?: number;
+  /**
    * Global visual-look lighting anchor (see look-presets.ts): a SHORT bilingual line that
    * pins the lighting/palette through the i2v pass — i2v models drift lighting when
    * unspecified, which breaks look consistency across chained shots.
@@ -81,6 +90,38 @@ const ACTION_DEFAULTS: Record<string, { zh: string; en: string }> = {
 };
 
 const ACTION_FALLBACK = { zh: "画面自然生动，主体动作连贯", en: "the scene comes alive naturally with coherent subject motion" };
+
+/**
+ * Talking-shot subject direction — replaces the per-type micro-action when the character
+ * speaks. Written as visible speech behavior (mouth movement, blinks, one beat of hesitation),
+ * NOT lip-sync to specific words: the voice track is TTS overlaid by the composer, so the clip
+ * only needs to read as "a person mid-conversation".
+ */
+const TALKING_ACTION = {
+  zh: "人物对着镜头自然说话：口型自然开合，自然眨眼与头部微动，说到一半有一次极短的停顿、一次视线短暂离开镜头再回来",
+  en: "the person talks naturally to camera: natural mouth movement, blinks and small head motions, one brief mid-sentence pause, eyes drift away once and return",
+};
+
+/**
+ * Behavior-beat pool for talking shots. Each shot gets two, rotated by beatSeed —
+ * identical gestures repeated across a batch read as AI immediately.
+ */
+const BEHAVIOR_BEATS: { zh: string; en: string }[] = [
+  { zh: "说话间瞥了一眼旁边", en: "glances off to the side mid-sentence" },
+  { zh: "身体往后靠了一下又坐直", en: "leans back briefly, then settles forward again" },
+  { zh: "轻轻耸了下肩", en: "gives a small shrug" },
+  { zh: "换了一只手拿东西", en: "switches the object to the other hand" },
+  { zh: "被画外的动静吸引看了一眼", en: "gets briefly distracted by something off-screen" },
+  { zh: "说完自己先半笑了一下", en: "breaks into a half-smile at their own words" },
+];
+
+/** Pick two distinct behavior beats deterministically from the seed (adjacent picks avoid repeats). */
+export function pickBehaviorBeats(seed: number, lang: "zh" | "en"): string[] {
+  const n = BEHAVIOR_BEATS.length;
+  const i = ((Math.floor(seed) % n) + n) % n;
+  const j = (i + 1 + (((Math.floor(seed / n) % (n - 1)) + (n - 1)) % (n - 1))) % n;
+  return [BEHAVIOR_BEATS[i][lang], BEHAVIOR_BEATS[j][lang]];
+}
 
 /** Product-fidelity constraint (printed text & logos are the first thing i2v models destroy). */
 const PRODUCT_CONSTRAINT = {
@@ -163,7 +204,11 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
   const scripted = input.camera?.trim();
   const camera =
     scripted && !hasCameraConflict(scripted) ? scripted : (CAMERA_DEFAULTS[type] ?? CAMERA_FALLBACK)[lang];
-  const action = (ACTION_DEFAULTS[type] ?? ACTION_FALLBACK)[lang];
+  // a speaking character overrides the per-type micro-action: the shot must read as
+  // "mid-conversation", with two rotating behavior beats against batch-level repetition
+  const action = input.talking
+    ? `${TALKING_ACTION[lang]}${lang === "zh" ? "；" : "; "}${pickBehaviorBeats(input.beatSeed ?? 0, lang).join(lang === "zh" ? "、" : ", ")}`
+    : (ACTION_DEFAULTS[type] ?? ACTION_FALLBACK)[lang];
   const anchor = (input.description ?? "").trim().slice(0, DESC_ANCHOR_MAX);
   const intensity = input.intensity && input.intensity !== "normal" ? INTENSITY_LINES[input.intensity][lang] : undefined;
 

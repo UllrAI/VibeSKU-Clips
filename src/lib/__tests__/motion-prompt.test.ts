@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildMotionPrompt, hasCameraConflict } from "@/lib/motion-prompt";
+import { buildMotionPrompt, hasCameraConflict, pickBehaviorBeats } from "@/lib/motion-prompt";
 
 describe("buildMotionPrompt（i2v 运镜提示词引擎）", () => {
   it("脚本 camera 字段优先，置于提示词开头（运镜是主信息）", () => {
@@ -99,5 +99,32 @@ describe("提示词工程包（强度三档 / 单镜头声明 / 音效 / 冲突�
     const p = buildMotionPrompt({ shotType: "product_reveal", camera: "固定镜头，环绕拍摄", description: "商品" });
     expect(p).not.toContain("固定镜头，环绕拍摄");
     expect(p).toContain("运镜：镜头围绕商品缓慢环绕移动");
+  });
+
+  it("talking 分镜换成对镜说话动作 + 两个行为节拍（UGC 反重复方法论）", () => {
+    const zh = buildMotionPrompt({ shotType: "hook", description: "小美对镜头说话", talking: true, beatSeed: 0 });
+    expect(zh).toContain("对着镜头自然说话");
+    expect(zh).toContain("极短的停顿");
+    const en = buildMotionPrompt({ shotType: "hook", description: "a woman talks", talking: true, beatSeed: 0 });
+    expect(en).toContain("talks naturally to camera");
+    // 非 talking 走原有分镜类型动作，完全不变
+    expect(buildMotionPrompt({ shotType: "hook", description: "开场" })).toContain("画面主体动态醒目");
+  });
+
+  it("行为节拍确定性轮换：同 seed 稳定、不同 seed 组合不同、两条不重复", () => {
+    expect(pickBehaviorBeats(3, "zh")).toEqual(pickBehaviorBeats(3, "zh"));
+    const a = pickBehaviorBeats(0, "zh");
+    const b = pickBehaviorBeats(1, "zh");
+    expect(a).not.toEqual(b);
+    for (const seed of [0, 1, 2, 3, 7, 12, 25]) {
+      const [x, y] = pickBehaviorBeats(seed, "en");
+      expect(x).not.toBe(y);
+    }
+  });
+
+  it("talking 与 personShot/音效互不干扰：肤质由 REAL_FACE 管、音效仍禁人声（TTS 管配音）", () => {
+    const p = buildMotionPrompt({ shotType: "hook", description: "小美说话", talking: true, personShot: true, beatSeed: 2 });
+    expect(p).toContain("网红脸"); // REAL_FACE 仍在
+    expect(p).toContain("无人声说话"); // clip 原生音频仍只要环境音
   });
 });

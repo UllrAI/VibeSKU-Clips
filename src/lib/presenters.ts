@@ -106,13 +106,44 @@ export const PRESENTER_PRESETS: PresenterPreset[] = [
 ];
 
 /**
+ * Spoken-voice realism rules for on-camera dialogue. The core UGC insight
+ * (Seedance-era): once viewers can't tell footage is AI, retention lives or dies
+ * on whether the LINES sound spoken or written — a rendered model will make a
+ * polished-ad script look exactly as pretty as a human one, so the tell moves
+ * to the words. Injected wherever real people speak on camera.
+ */
+export const SPOKEN_VOICE_RULES = `台词口语真实感（铁律——画面已经像真人了，露馅的只剩台词）：
+1. 台词必须像「说出来的」而不是「写出来的」：允许口头语（"就是"/"说真的"/"怎么说呢"），允许一句话说到一半收住——每条片最多一两处，别堆砌
+2. 开场钩子像从对话中间开始，观众是"中途刷到"的——禁止"大家好/今天给大家介绍/最近很多人问我"式起头
+3. 禁书面连接词（"因此/综上所述/首先其次"）；结尾不落道理、不写金句
+4. 行动号召像顺口一提（"反正链接我放这了，你们自己看"），绝不是口号式 slogan
+5. 写完逐句自查：读出来像文案的句子，全部改写成"说的"`;
+
+/**
+ * First-frame realism rules for person-on-camera image prompts. Stacked
+ * specificity beats adjectives: a NAMED light source, a lived-in background
+ * with one imperfection, and a mid-sentence pose kill the model's default
+ * polish. Deliberately does NOT add facial-blemish keywords (pores/eye bags) —
+ * real A/B calibration showed those over-correct into unappealing faces; skin
+ * wording stays owned by REAL_FACE_CONSTRAINT.
+ */
+export const UGC_FIRST_FRAME_RULES = `人物画面首帧真实感（写 description/prompt 时逐条叠加，压住模型默认的精修广告感）：
+1. 视角写具体：手机前摄自拍视角 / 手持怼脸机位，浅景深
+2. 光源要指名（"窗光从左侧来" / "身后一盏台灯"），绝不写"光线很好"这类空话
+3. 背景要有生活痕迹 + 一处不完美（桌上没收的水杯、搭在椅背的外套）
+4. 神态是"说话说到一半"：自然张口、眼神不必盯死镜头
+5. 同一批出多条视频必须换人物、换房间、换光线方向——重复感是 AI 的最大破绽`;
+
+/**
  * Prompt block offering the built-in presenters to the script LLM. Styles that
  * cast on-camera characters append this so generated casts start from ordinary,
- * believable looks instead of the model's default influencer face.
+ * believable looks instead of the model's default influencer face. The spoken-
+ * voice and first-frame realism rules ride along: every style that puts a person
+ * on camera needs all three.
  */
 export function presenterPromptBlock(): string {
   const lines = PRESENTER_PRESETS.map(
     (p) => `- ${p.name}（${p.gender === "female" ? "女" : "男"}，${p.persona}）：${p.appearance}（适合${p.goodFor}）`
   );
-  return `内置素人主播库（角色外观可直接选用其一或在其基础上微调，也可自创——但必须保持同样的"普通素人"真实感）：\n${lines.join("\n")}`;
+  return `内置素人主播库（角色外观可直接选用其一或在其基础上微调，也可自创——但必须保持同样的"普通素人"真实感）：\n${lines.join("\n")}\n\n${SPOKEN_VOICE_RULES}\n\n${UGC_FIRST_FRAME_RULES}`;
 }
