@@ -101,10 +101,12 @@ export class FalAIProvider extends BaseProvider {
       num_inference_steps: isGptImage ? undefined : options.steps,
       seed: options.seed,
       // edit/image-to-image: multi-image endpoints use image_urls array; regular image-to-image uses image_url
-      ...(options.referenceImageUrl && isEdit && {
-        image_urls: [options.referenceImageUrl],
+      ...((options.referenceImageUrls?.length || options.referenceImageUrl) && isEdit && {
+        image_urls: options.referenceImageUrls?.length
+          ? options.referenceImageUrls
+          : [options.referenceImageUrl!],
       }),
-      ...(options.referenceImageUrl && !isEdit && {
+      ...(options.referenceImageUrl && !options.referenceImageUrls?.length && !isEdit && {
         image_url: options.referenceImageUrl,
       }),
       ...options.extra,

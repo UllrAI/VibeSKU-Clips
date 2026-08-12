@@ -87,6 +87,22 @@ describe("英文整片 prompt（台词无中文时整体切英文）", () => {
   });
 });
 
+describe("定妆参考位（characterSheet 序号偏移）", () => {
+  it("sheet 领跑参考数组：@图片1=定妆照声明，分镜引用整体 +1", () => {
+    const prompt = buildStoryboardFilmPrompt(zhShots, undefined, { characterSheet: true });
+    expect(prompt).toContain("@图片1 是出镜人物的四视图定妆照");
+    expect(prompt).toContain("镜头1（钩子镜，画面以 @图片2 为基准）");
+    expect(prompt).toContain("镜头3（转化镜，画面以 @图片4 为基准）");
+    expect(prompt).not.toContain("画面以 @图片1 为基准");
+  });
+
+  it("无 sheet 时不出现定妆声明，分镜仍从 @图片1 起", () => {
+    const prompt = buildStoryboardFilmPrompt(zhShots);
+    expect(prompt).not.toContain("定妆照");
+    expect(prompt).toContain("画面以 @图片1 为基准");
+  });
+});
+
 describe("超长脚本的时间轴缩放", () => {
   it("原始 40 秒按比例压进 30 秒，最后一段结尾恰好等于总时长", () => {
     const long: Shot[] = [

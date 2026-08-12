@@ -6,7 +6,7 @@ import { apiError, errText } from "@/lib/api-error";
 // AI image generation
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { provider: providerName, model, prompt, imageUrl, mode, apiKey, baseUrl, options } = body;
+  const { provider: providerName, model, prompt, imageUrl, imageUrls, mode, apiKey, baseUrl, options } = body;
 
   if (!providerName || !model || !prompt) {
     return apiError(req, "缺少必要参数", "Missing required parameters");
@@ -19,14 +19,20 @@ export async function POST(req: NextRequest) {
   try {
     const provider = createProvider({ name: providerName, apiKey, baseUrl });
 
-    // For image-to-image mode, convert the local reference image to a data URI
+    // For image-to-image mode, convert local reference images to data URIs.
+    // imageUrls (plural) feeds multi-reference edits (e.g. character sheet + product photo);
+    // the array order is preserved so prompts can cite references by position.
     const referenceImageUrl = await toRemoteUsableImage(imageUrl);
+    const referenceImageUrls = Array.isArray(imageUrls) && imageUrls.length > 0
+      ? (await Promise.all((imageUrls as string[]).map(toRemoteUsableImage))).filter((u): u is string => !!u)
+      : undefined;
 
     const result = await provider.generateImage({
       modelId: model,
       mode: mode || "text-to-image",
       prompt,
       referenceImageUrl,
+      ...(referenceImageUrls?.length && { referenceImageUrls }),
       ...options,
     });
     return NextResponse.json(result);

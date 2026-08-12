@@ -8,6 +8,7 @@ import { getDb } from "@/lib/db";
 import { scripts, assets } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { createProvider } from "@/lib/providers";
+import { toRemoteUsableImage } from "@/lib/remote-image";
 import { buildStoryboardGridPrompt, computeGridCells, GRID_MAX_SHOTS } from "@/lib/storyboard-grid";
 import { ffmpegBin } from "@/lib/ffmpeg-path";
 import { probeMedia } from "@/lib/media-probe";
@@ -64,13 +65,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return apiError(req, "无效的项目ID", "Invalid project id", 400);
     }
     const body = await req.json();
-    const { scriptId, provider: providerName, model, apiKey, baseUrl, options } = body as {
+    const { scriptId, provider: providerName, model, apiKey, baseUrl, options, characterSheetUrl, productImageUrl } = body as {
       scriptId?: string;
       provider?: string;
       model?: string;
       apiKey?: string;
       baseUrl?: string;
       options?: Record<string, unknown>;
+      /** Presenter's multi-view sheet — locks the person's identity across all nine cells */
+      characterSheetUrl?: string;
+      /** Product photo — locks the product's appearance across all nine cells */
+      productImageUrl?: string;
     };
     if (!scriptId || !providerName || !model) {
       return apiError(req, "缺少 scriptId / provider / model", "Missing scriptId / provider / model", 400);
@@ -98,13 +103,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       );
     }
 
-    // 1) one generation renders every shot — consistency is physical, not prompted
-    const prompt = buildStoryboardGridPrompt(shots, script.characters);
+    // reference images (order matters — the prompt cites them by position):
+    // [character sheet?, product photo?]; local /api/files paths travel as Base64
+    const refInputs = [characterSheetUrl, productImageUrl].filter((u): u is string => !!u);
+    const referenceImageUrls = (await Promise.all(refInputs.map(toRemoteUsableImage))).filter(
+      (u): u is string => !!u
+    );
+
+    // 1) one generation renders every shot — consistency is physical, not prompted;
+    // with references attached the sheet pins the person and the photo pins the product
+    const prompt = buildStoryboardGridPrompt(shots, script.characters, {
+      characterSheet: !!characterSheetUrl,
+      productImage: !!productImageUrl,
+    });
     const provider = createProvider({ name: providerName, apiKey, baseUrl: baseUrl ?? "" });
     const result = await provider.generateImage({
       ...(options ?? {}),
       modelId: model,
-      mode: "text-to-image",
+      mode: referenceImageUrls.length > 0 ? "image-to-image" : "text-to-image",
+      ...(referenceImageUrls.length > 0 && { referenceImageUrls }),
       prompt,
     });
     const gridUrl = result.imageUrls?.[0];

@@ -29,6 +29,17 @@ describe("buildStoryboardGridPrompt", () => {
     expect(p).not.toContain("第 10 格");
     expect(p).not.toContain("人物设定");
   });
+
+  it("参考图约定：定妆照+商品图按序编号；只有商品图时商品是第 1 张", () => {
+    const both = buildStoryboardGridPrompt(shots, cast, { characterSheet: true, productImage: true });
+    expect(both).toContain("第 1 张参考图是出镜人物的四视图定妆照");
+    expect(both).toContain("第 2 张参考图是商品实拍图");
+    const productOnly = buildStoryboardGridPrompt(shots, cast, { productImage: true });
+    expect(productOnly).toContain("第 1 张参考图是商品实拍图");
+    expect(productOnly).not.toContain("定妆照");
+    const none = buildStoryboardGridPrompt(shots, cast);
+    expect(none).not.toContain("参考图");
+  });
 });
 
 describe("computeGridCells", () => {

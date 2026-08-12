@@ -288,9 +288,10 @@ export class AtlasCloudProvider extends BaseProvider {
       ...buildImageSizeParams(options.modelId, options.width, options.height),
       ...(options.negativePrompt && { negative_prompt: options.negativePrompt }),
       ...(options.seed !== undefined && { seed: options.seed }),
-      // image-to-image / edit mode (e.g. openai/gpt-image-2/edit) passes the reference image as an images array
-      ...(options.referenceImageUrl && {
-        images: [options.referenceImageUrl],
+      // image-to-image / edit mode (e.g. openai/gpt-image-2/edit) passes references as an images array;
+      // multi-reference (character sheet + product photo) keeps the caller's order — prompts cite by position
+      ...((options.referenceImageUrls?.length || options.referenceImageUrl) && {
+        images: [...(options.referenceImageUrls ?? []), ...(options.referenceImageUrl && !options.referenceImageUrls?.length ? [options.referenceImageUrl] : [])],
       }),
       ...options.extra,
     }

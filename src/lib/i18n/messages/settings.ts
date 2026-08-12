@@ -136,8 +136,17 @@ export const settings: NamespaceMessages = {
 
     // 出镜人物
     characterIntro:
-      "添加出镜人物后，AI 生成脚本和素材时会自动注入人物外貌描述，确保不同分镜中人物形象保持一致。",
+      "添加出镜人物后，AI 生成脚本和素材时会自动注入人物外貌描述，确保不同分镜中人物形象保持一致。给主播生成「多视图定妆照」后，九宫格分镜与一键整片会把定妆照当人物参考——跨镜头、跨条视频都不换脸。",
     characterDefault: "默认",
+    characterSheetBtn: "✨ 多视图定妆",
+    characterSheetRedo: "重新定妆",
+    characterSheetRunning: "定妆中…",
+    characterSheetDone: "「{name}」的四视图定妆照已生成——素材页选中该主播后，九宫格和一键整片会自动锁定这张脸",
+    characterSheetFailed: "多视图定妆生成失败",
+    characterSheetTip: "用默认生图模型一次生成 正面/侧面/背面/特写 四视图——同一次生成保证是同一个人，后续所有生成以它为准",
+    characterSheetNeedsAppearance: "先给这位主播填写外观描述，再生成定妆照",
+    characterSheetNoModel: "未配置生图模型——先在「AI 平台」里启用平台并选默认生图模型",
+    characterSheetAlt: "{name} 的多视图定妆照",
     characterAppearancePrefix: "外貌: {appearance}",
     characterVoicePrefix: "声音: {voice}",
     characterEdit: "编辑",
@@ -314,8 +323,17 @@ export const settings: NamespaceMessages = {
 
     // Characters
     characterIntro:
-      "Once you add a character, AI automatically injects their appearance into scripts and assets, keeping the character consistent across shots.",
+      "Once you add a character, AI automatically injects their appearance into scripts and assets, keeping the character consistent across shots. Generate a multi-view reference sheet and the storyboard grid + one-tap film passes pin the presenter's identity to it — the same face across shots and across videos.",
     characterDefault: "Default",
+    characterSheetBtn: "✨ Multi-view sheet",
+    characterSheetRedo: "Redo sheet",
+    characterSheetRunning: "Generating…",
+    characterSheetDone: "{name}'s four-view sheet is ready — pick this presenter on the assets page and the grid/film passes lock onto this face",
+    characterSheetFailed: "Multi-view sheet generation failed",
+    characterSheetTip: "One generation renders front / side / back / close-up views — physically the same person, and every later pass anchors to it",
+    characterSheetNeedsAppearance: "Describe this presenter's appearance first, then generate the sheet",
+    characterSheetNoModel: "No image model configured — enable a provider and pick a default image model under AI Platforms first",
+    characterSheetAlt: "{name}'s multi-view reference sheet",
     characterAppearancePrefix: "Appearance: {appearance}",
     characterVoicePrefix: "Voice: {voice}",
     characterEdit: "Edit",

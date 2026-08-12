@@ -48,13 +48,23 @@ function fmtSec(x: number): string {
  * Build the single-call multi-shot film prompt. Language follows the script:
  * any CJK in descriptions/voiceovers → Chinese, otherwise English (the model
  * speaks the dialogue verbatim, so the prompt must match the dialogue language).
+ *
+ * With refs.characterSheet the reference_images array leads with the presenter's
+ * multi-view sheet, so @Image1 becomes the identity anchor and the shot keyframes
+ * shift to @Image2..N+1 — the prompt's citations follow the same offset.
  */
-export function buildStoryboardFilmPrompt(shots: Shot[], characters?: ScriptCharacter[] | null): string {
+export function buildStoryboardFilmPrompt(
+  shots: Shot[],
+  characters?: ScriptCharacter[] | null,
+  refs?: { characterSheet?: boolean }
+): string {
   const zh = shots.some((s) => CJK_RE.test(`${s.description ?? ""}${s.voiceover ?? ""}`));
   const total = filmRequestSeconds(shots);
   // single named character → attribute dialogue to them; otherwise a generic on-camera creator
   const soloName = (characters ?? []).length === 1 ? (characters![0].name ?? "").trim() : "";
   const speaker = soloName || (zh ? "出镜人物" : "the on-camera creator");
+  // shot keyframes start at @Image1, or @Image2 when the character sheet leads the array
+  const offset = refs?.characterSheet ? 1 : 0;
 
   // timecode boundaries follow the script's own durations, proportionally scaled
   // onto the requested total so segments always tile the full film exactly
@@ -67,30 +77,41 @@ export function buildStoryboardFilmPrompt(shots: Shot[], characters?: ScriptChar
     cursor = i === shots.length - 1 ? total : Math.min(total, cursor + rawLen * scale);
     const label = SHOT_TYPE_LABELS[String(s.type)]?.[zh ? "zh" : "en"] ?? (zh ? "分镜" : "shot");
     const line = (s.voiceover ?? "").trim();
+    const imgN = i + 1 + offset;
     if (zh) {
       const dialogue = line ? `台词（逐字说出）：「${line}」` : "（无台词，只保留环境音与动作声）";
-      return `[${fmtSec(start)}-${fmtSec(cursor)}秒] 镜头${i + 1}（${label}，画面以 @图片${i + 1} 为基准）：${s.description ?? ""}。${dialogue}`;
+      return `[${fmtSec(start)}-${fmtSec(cursor)}秒] 镜头${i + 1}（${label}，画面以 @图片${imgN} 为基准）：${s.description ?? ""}。${dialogue}`;
     }
     const dialogue = line ? `Dialogue (spoken verbatim): "${line}"` : "(no dialogue — ambient and action sounds only)";
-    return `[${fmtSec(start)}-${fmtSec(cursor)}s] Shot ${i + 1} (${label}, framing follows @Image${i + 1}): ${s.description ?? ""}. ${dialogue}`;
+    return `[${fmtSec(start)}-${fmtSec(cursor)}s] Shot ${i + 1} (${label}, framing follows @Image${imgN}): ${s.description ?? ""}. ${dialogue}`;
   });
 
   if (zh) {
     return [
       `竖屏 9:16 UGC 手机实拍感带货短视频，总时长约 ${total} 秒，共 ${shots.length} 个镜头，严格按下面的时间段硬切，一次生成整片。`,
       `全局一致性：所有镜头是同一支视频——同一人物、同一发型与同一身衣服、同一场景与光线方向；商品外观在所有镜头中保持完全一致。`,
+      refs?.characterSheet
+        ? `@图片1 是出镜人物的四视图定妆照——全片人物的脸型、发型、体型与服装必须与其完全一致（定妆照只作人物参考，不作为任何分镜画面）。`
+        : "",
       `有台词的镜头：${speaker}对着镜头自然说话，原声逐字说出该镜台词，口型与语速对齐，语气像日常聊天而不是播音腔；无台词的镜头不要出现说话声。`,
       `画面中不出现任何字幕、文字、编号或水印。`,
-      `分镜（@图片N 是第 N 镜的画面基准，人物、场景与构图以其为准）：`,
+      `分镜（@图片N 是对应镜头的画面基准，人物、场景与构图以其为准）：`,
       ...segments,
-    ].join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
   }
   return [
     `Vertical 9:16 UGC phone-shot style short video, about ${total} seconds total, ${shots.length} shots with hard cuts exactly at the timecodes below, generated as one continuous film.`,
     `Global consistency: every shot belongs to the same video — same person, same hair and outfit, same location and light direction; the product looks identical in every shot.`,
+    refs?.characterSheet
+      ? `@Image1 is the presenter's four-view reference sheet — the person's face, hair, build and outfit must match it exactly throughout (identity reference only, never a shot frame).`
+      : "",
     `Shots with dialogue: ${speaker} talks to the camera naturally and speaks the lines verbatim with matching lip sync, casual everyday tone rather than announcer voice; shots without dialogue must contain no speech.`,
     `No captions, on-screen text, numbers or watermarks anywhere in the frame.`,
-    `Shot list (@ImageN anchors shot N's framing — person, scene and composition follow it):`,
+    `Shot list (@ImageN anchors the corresponding shot's framing — person, scene and composition follow it):`,
     ...segments,
-  ].join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

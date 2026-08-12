@@ -140,6 +140,47 @@ export function buildVideoOptions(p: VideoGenParams | undefined): Record<string,
   };
 }
 
+/** A resolved generation target: which provider (with key) serves the chosen model */
+export interface GenModelTarget {
+  provider: string;
+  model: string;
+  apiKey: string;
+  baseUrl?: string;
+}
+
+/**
+ * Resolve the configured default model to its provider + key by asking
+ * /api/ai/models (same flow the assets page uses). Returns null when nothing
+ * is configured — callers surface their own "configure a provider" message.
+ */
+export async function resolveDefaultModelTarget(
+  providers: Record<string, { enabled?: boolean; apiKey?: string; baseUrl?: string }>,
+  defaultModel: string | undefined,
+  customModels: CustomModel[],
+  mediaType: GenMediaType
+): Promise<GenModelTarget | null> {
+  const enabled = Object.entries(providers)
+    .filter(([, p]) => p.enabled && p.apiKey)
+    .map(([name, p]) => ({ name, apiKey: p.apiKey!, baseUrl: p.baseUrl }));
+  if (enabled.length === 0 || !defaultModel) return null;
+  try {
+    const res = await fetch("/api/ai/models", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ providers: enabled, mediaType }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const merged = mergeCustomModels(data.models ?? [], customModels, mediaType, new Set(enabled.map((e) => e.name)));
+    const model = merged.find((m) => m.id === defaultModel);
+    if (!model) return null;
+    const prov = enabled.find((e) => e.name === model.provider);
+    return prov ? { provider: prov.name, model: defaultModel, apiKey: prov.apiKey, baseUrl: prov.baseUrl } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Model list entry (a subset of fields aligned with the Model returned by /api/ai/models; mediaType may be omitted for official list items) */
 export interface ModelLike {
   id: string;

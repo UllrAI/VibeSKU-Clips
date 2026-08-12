@@ -31,7 +31,7 @@ import {
   isPaidTTSReady,
   type TTSProvider,
 } from "@/lib/tts-presets";
-import { mergeCustomModels } from "@/lib/gen-params";
+import { mergeCustomModels, resolveDefaultModelTarget, buildImageOptions } from "@/lib/gen-params";
 import { LLM_PRESETS } from "@/lib/llm-presets";
 import { ModelPicker } from "@/components/settings/model-picker";
 import { GenerationSettings } from "@/components/generation-settings";
@@ -1194,9 +1194,51 @@ export default function SettingsPage() {
 function CharacterManager() {
   const t = useT("settings");
   const { characters, addCharacter, updateCharacter, removeCharacter } = useCharacterStore();
+  const { providers, defaultImageModel, customModels, imageParams } = useSettingsStore();
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", description: "", appearance: "", voiceStyle: "" });
+  // multi-view sheet generation state (one at a time; the result lands in referenceImages[0])
+  const [sheetGenId, setSheetGenId] = useState<string | null>(null);
+  const [sheetNotice, setSheetNotice] = useState<string | null>(null);
+
+  // generate the 2x2 turnaround sheet: same person from four angles in ONE generation,
+  // then every downstream pass (grid / film / keyframes) can pin the identity to it
+  const generateSheet = async (char: Character) => {
+    if (!char.appearance?.trim()) {
+      setSheetNotice(t("characterSheetNeedsAppearance"));
+      return;
+    }
+    if (sheetGenId) return;
+    setSheetGenId(char.id);
+    setSheetNotice(null);
+    try {
+      const target = await resolveDefaultModelTarget(providers, defaultImageModel, customModels, "image");
+      if (!target) throw new Error(t("characterSheetNoModel"));
+      const res = await fetch("/api/characters/sheet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appearance: char.appearance,
+          name: char.name,
+          provider: target.provider,
+          model: target.model,
+          apiKey: target.apiKey,
+          baseUrl: target.baseUrl,
+          // the sheet is a square 2x2 grid, regardless of the user's video aspect default
+          options: buildImageOptions(imageParams ? { ...imageParams, aspectRatio: "1:1", count: 1 } : undefined),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t("characterSheetFailed"));
+      updateCharacter(char.id, { referenceImages: [data.url, ...(char.referenceImages ?? []).slice(1)] });
+      setSheetNotice(t("characterSheetDone", { name: char.name }));
+    } catch (e) {
+      setSheetNotice(e instanceof Error ? e.message : t("characterSheetFailed"));
+    } finally {
+      setSheetGenId(null);
+    }
+  };
 
   const resetForm = () => {
     setForm({ name: "", description: "", appearance: "", voiceStyle: "" });
@@ -1252,6 +1294,12 @@ function CharacterManager() {
         </CardContent>
       </Card>
 
+      {sheetNotice && (
+        <div className="rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+          {sheetNotice}
+        </div>
+      )}
+
       {characters.length > 0 && (
         <div className="space-y-3">
           {characters.map((char) => (
@@ -1259,9 +1307,18 @@ function CharacterManager() {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                      <LuUser className="w-5 h-5 text-primary" />
-                    </div>
+                    {char.referenceImages?.[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={char.referenceImages[0]}
+                        alt={t("characterSheetAlt", { name: char.name })}
+                        className="h-16 w-16 shrink-0 rounded-lg object-cover ring-1 ring-border"
+                      />
+                    ) : (
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                        <LuUser className="w-5 h-5 text-primary" />
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-semibold text-sm">{char.name}</h3>
@@ -1278,6 +1335,16 @@ function CharacterManager() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs h-7 px-2 text-primary"
+                      disabled={sheetGenId !== null}
+                      onClick={() => generateSheet(char)}
+                      title={t("characterSheetTip")}
+                    >
+                      {sheetGenId === char.id ? t("characterSheetRunning") : char.referenceImages?.[0] ? t("characterSheetRedo") : t("characterSheetBtn")}
+                    </Button>
                     {!char.isDefault && (
                       <Button variant="ghost" size="sm" className="text-xs h-7 px-2" onClick={() => setAsDefault(char.id)}>
                         <LuStar className="w-3 h-3" />

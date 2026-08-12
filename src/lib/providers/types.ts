@@ -84,6 +84,8 @@ export interface ImageOptions {
   count?: number
   /** Reference image URL (image-to-image mode) */
   referenceImageUrl?: string
+  /** Multiple reference images (multi-image edit models, e.g. gpt-image-2/edit: character sheet + product photo) */
+  referenceImageUrls?: string[]
   /** Guidance scale; controls how closely the output follows the prompt */
   guidanceScale?: number
   /** Number of inference steps */

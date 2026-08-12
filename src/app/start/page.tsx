@@ -407,29 +407,29 @@ export default function StartPage() {
   return (
     <div className="cf-root">
       <style>{`
-        .cf-root{--teal:#5EEAD4;--ink:#04221E;--text:#EDEFF4;--dim:#98A2B3;--muted:#5A6473;--surface:rgba(255,255,255,.035);--surface2:rgba(255,255,255,.06);--bd:rgba(255,255,255,.08);--bd2:rgba(255,255,255,.14);
+        .cf-root{--teal:#a78bfa;--ink:#ffffff;--text:#EDEFF4;--dim:#98A2B3;--muted:#5A6473;--surface:rgba(255,255,255,.035);--surface2:rgba(255,255,255,.06);--bd:rgba(255,255,255,.08);--bd2:rgba(255,255,255,.14);
           min-height:100vh;background:#0B0D12;color:var(--text);position:relative;overflow-x:hidden;
           font-family:ui-sans-serif,"PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;}
-        .cf-amb{position:absolute;inset:0;pointer-events:none;background:radial-gradient(900px 420px at 50% -8%,rgba(94,234,212,.10),transparent 70%),radial-gradient(700px 500px at 85% 0%,rgba(124,92,255,.07),transparent 65%);}
+        .cf-amb{position:absolute;inset:0;pointer-events:none;background:radial-gradient(900px 420px at 50% -8%,rgba(139,92,246,.10),transparent 70%),radial-gradient(700px 500px at 85% 0%,rgba(124,92,255,.07),transparent 65%);}
         .cf-grid{position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:64px 64px;-webkit-mask-image:radial-gradient(circle at 50% 22%,#000,transparent 72%);mask-image:radial-gradient(circle at 50% 22%,#000,transparent 72%);}
         .cf-wrap{position:relative;max-width:980px;margin:0 auto;padding:0 24px}
         .cf-nav{display:flex;align-items:center;justify-content:space-between;height:72px}
         .cf-brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:18px;letter-spacing:-.01em}
-        .cf-mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--teal),#6CA8FF);display:grid;place-items:center;box-shadow:0 0 22px -6px rgba(94,234,212,.5)}
+        .cf-mark{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;overflow:hidden;box-shadow:0 0 22px -6px rgba(139,92,246,.5)}
         .cf-gear{width:34px;height:34px;border-radius:999px;border:1px solid var(--bd);background:var(--surface);color:var(--dim);display:grid;place-items:center;transition:.18s}
         .cf-gear:hover{color:var(--text);border-color:var(--bd2)}
         .cf-hero{padding:46px 0 36px;text-align:center}
         .cf-eyebrow{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--teal);opacity:.85;margin-bottom:18px}
         .cf-h1{font-weight:700;font-size:clamp(34px,5.6vw,60px);line-height:1.04;letter-spacing:-.02em;margin-bottom:16px}
-        .cf-h1 .hl{color:var(--teal);text-shadow:0 0 34px rgba(94,234,212,.35)}
+        .cf-h1 .hl{color:var(--teal);text-shadow:0 0 34px rgba(139,92,246,.35)}
         .cf-sub{color:var(--dim);font-size:16px;line-height:1.7;max-width:560px;margin:0 auto 34px}
         .cf-card{max-width:620px;margin:0 auto;background:var(--surface);border:1px solid var(--bd);border-radius:20px;padding:14px;backdrop-filter:blur(14px);box-shadow:0 30px 80px -40px rgba(0,0,0,.8);text-align:left}
         .cf-tabs{display:flex;gap:6px;background:rgba(0,0,0,.25);border-radius:13px;padding:5px;margin-bottom:14px}
         .cf-tab{flex:1;height:40px;border:0;border-radius:9px;background:transparent;color:var(--dim);font:inherit;font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.18s}
         .cf-tab.on{background:var(--surface2);color:var(--text);box-shadow:inset 0 0 0 1px var(--bd2)}
-        .cf-drop{position:relative;border:1.5px dashed rgba(94,234,212,.40);border-radius:14px;background:radial-gradient(420px 160px at 50% 30%,rgba(94,234,212,.16),transparent 70%);padding:34px 24px 26px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;animation:cfBreathe 4.6s ease-in-out infinite;transition:border-color .18s}
+        .cf-drop{position:relative;border:1.5px dashed rgba(139,92,246,.40);border-radius:14px;background:radial-gradient(420px 160px at 50% 30%,rgba(139,92,246,.16),transparent 70%);padding:34px 24px 26px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;animation:cfBreathe 4.6s ease-in-out infinite;transition:border-color .18s}
         .cf-drop.drag{border-color:var(--teal)}
-        @keyframes cfBreathe{0%,100%{box-shadow:0 0 46px -16px rgba(94,234,212,.30)}50%{box-shadow:0 0 78px -14px rgba(94,234,212,.5)}}
+        @keyframes cfBreathe{0%,100%{box-shadow:0 0 46px -16px rgba(139,92,246,.30)}50%{box-shadow:0 0 78px -14px rgba(139,92,246,.5)}}
         .cf-dic{width:50px;height:50px;border-radius:16px;background:var(--surface2);border:1px solid var(--bd2);display:grid;place-items:center;color:var(--teal);margin-bottom:6px}
         .cf-dt{font-size:16px;font-weight:500}
         .cf-ds{font-size:13px;color:var(--muted)}
@@ -439,19 +439,19 @@ export default function StartPage() {
         .cf-thumb button{position:absolute;top:2px;right:2px;width:18px;height:18px;border:0;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:12px;line-height:1;display:grid;place-items:center}
         .cf-field{margin-top:12px}
         .cf-input,.cf-area{width:100%;background:rgba(0,0,0,.25);border:1px solid var(--bd);border-radius:11px;color:var(--text);font:inherit;font-size:14px;padding:11px 13px;outline:none;transition:.18s}
-        .cf-input:focus,.cf-area:focus{border-color:rgba(94,234,212,.45)}
+        .cf-input:focus,.cf-area:focus{border-color:rgba(139,92,246,.45)}
         .cf-area{resize:none;min-height:84px;line-height:1.6}
         .cf-cta-row{display:flex;align-items:center;gap:14px;margin-top:14px;padding:2px 2px 2px}
-        .cf-cta{height:48px;padding:0 24px;border:0;border-radius:12px;background:var(--teal);color:var(--ink);font:inherit;font-size:15px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 12px 30px -12px rgba(94,234,212,.4);transition:.18s}
+        .cf-cta{height:48px;padding:0 24px;border:0;border-radius:12px;background:linear-gradient(100deg,#6366f1,#8b5cf6 55%,#d946ef);color:var(--ink);font:inherit;font-size:15px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 12px 30px -12px rgba(139,92,246,.4);transition:.18s}
         .cf-cta:hover:not(:disabled){transform:translateY(-1px)}
         .cf-cta:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
         .cf-reassure{font-size:12.5px;color:var(--muted);line-height:1.5}
         .cf-reassure b{color:var(--dim);font-weight:600}
-        .cf-keybox{margin-top:12px;border:1px solid rgba(94,234,212,.3);background:rgba(94,234,212,.07);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--dim);display:flex;align-items:center;justify-content:space-between;gap:12px}
-        .cf-keybox a{color:var(--ink);background:var(--teal);padding:7px 13px;border-radius:9px;font-weight:600;text-decoration:none;white-space:nowrap}
-        .cf-keyform{margin-top:12px;border:1px solid rgba(94,234,212,.32);background:rgba(94,234,212,.06);border-radius:14px;padding:14px}
+        .cf-keybox{margin-top:12px;border:1px solid rgba(139,92,246,.3);background:rgba(139,92,246,.07);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--dim);display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .cf-keybox a{color:var(--ink);background:linear-gradient(100deg,#6366f1,#8b5cf6);padding:7px 13px;border-radius:9px;font-weight:600;text-decoration:none;white-space:nowrap}
+        .cf-keyform{margin-top:12px;border:1px solid rgba(139,92,246,.32);background:rgba(139,92,246,.06);border-radius:14px;padding:14px}
         .cf-keyhead{font-size:14.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:9px;margin-bottom:5px}
-        .cf-keyhead .badge{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--ink);background:var(--teal);border-radius:6px;padding:2px 8px}
+        .cf-keyhead .badge{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--ink);background:linear-gradient(100deg,#6366f1,#8b5cf6);border-radius:6px;padding:2px 8px}
         .cf-keyclose{margin-left:auto;width:26px;height:26px;flex:none;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center;transition:.18s}
         .cf-keyclose:hover{color:var(--text);border-color:var(--bd2);background:var(--surface2)}
         .cf-keydesc{font-size:12.5px;color:var(--dim);line-height:1.55;margin-bottom:11px}
@@ -459,8 +459,8 @@ export default function StartPage() {
         .cf-keydesc a:hover{text-decoration:underline;text-underline-offset:2px}
         .cf-keyrow{display:flex;gap:8px}
         .cf-keyinput{flex:1;min-width:0;background:rgba(0,0,0,.3);border:1px solid var(--bd);border-radius:10px;color:var(--text);font:inherit;font-size:14px;padding:11px 13px;outline:none;transition:.18s}
-        .cf-keyinput:focus{border-color:rgba(94,234,212,.5)}
-        .cf-keybtn{padding:0 18px;border:0;border-radius:10px;background:var(--teal);color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;transition:.18s}
+        .cf-keyinput:focus{border-color:rgba(139,92,246,.5)}
+        .cf-keybtn{padding:0 18px;border:0;border-radius:10px;background:linear-gradient(100deg,#6366f1,#8b5cf6 55%,#d946ef);color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;transition:.18s}
         .cf-keybtn:hover:not(:disabled){transform:translateY(-1px)}
         .cf-keybtn:disabled{opacity:.5;cursor:not-allowed}
         .cf-keyalt{margin-top:10px;font-size:12px}
@@ -482,21 +482,21 @@ export default function StartPage() {
         .cf-trends-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
         .cf-cat{padding:4px 10px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;transition:.18s}
         .cf-cat:hover{color:var(--dim)}
-        .cf-cat.on{border-color:rgba(94,234,212,.4);background:rgba(94,234,212,.08);color:var(--text)}
+        .cf-cat.on{border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.08);color:var(--text)}
         .cf-trend-wrap{display:inline-flex;align-items:stretch;max-width:100%}
         .cf-trend-wrap .cf-trend{border-top-right-radius:0;border-bottom-right-radius:0;border-right:0}
         .cf-trend-clone{display:inline-flex;align-items:center;padding:0 9px;border:1px solid var(--bd);border-left:1px dashed var(--bd);border-radius:0 999px 999px 0;color:var(--muted);font-size:11px;text-decoration:none;transition:.18s;flex:none}
-        .cf-trend-clone:hover{color:var(--teal);border-color:rgba(94,234,212,.4)}
+        .cf-trend-clone:hover{color:var(--teal);border-color:rgba(139,92,246,.4)}
         .cf-daily{display:flex;align-items:center;gap:8px;margin-top:14px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:var(--surface)}
         .cf-daily-lbl{font-size:12.5px;font-weight:600;color:var(--dim);flex:none}
         .cf-daily-input{flex:1;min-width:0;background:rgba(0,0,0,.25);border:1px solid var(--bd);border-radius:9px;color:var(--text);font:inherit;font-size:13px;padding:7px 11px;outline:none;transition:.18s}
-        .cf-daily-input:focus{border-color:rgba(94,234,212,.45)}
+        .cf-daily-input:focus{border-color:rgba(139,92,246,.45)}
         .cf-daily-btn{padding:7px 14px;border:0;border-radius:9px;background:var(--surface2);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;box-shadow:inset 0 0 0 1px var(--bd2);transition:.18s;flex:none}
-        .cf-daily-btn:hover{box-shadow:inset 0 0 0 1px rgba(94,234,212,.45)}
+        .cf-daily-btn:hover{box-shadow:inset 0 0 0 1px rgba(139,92,246,.45)}
         .cf-daily-msg{margin-top:8px;font-size:12px;color:var(--dim)}
         .cf-examples{margin-top:24px;font-size:13px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
         .cf-chip{padding:6px 12px;border:1px solid var(--bd);border-radius:999px;background:var(--surface);color:var(--dim);font:inherit;cursor:pointer;transition:.18s}
-        .cf-chip:hover{border-color:rgba(94,234,212,.4);color:var(--text)}
+        .cf-chip:hover{border-color:rgba(139,92,246,.4);color:var(--text)}
         .cf-adv{display:flex;justify-content:center;padding:30px 0 50px}
         .cf-adv a{font-size:12.5px;color:var(--muted);text-decoration:none;padding:8px 14px;border:1px solid transparent;border-radius:999px;transition:.18s}
         .cf-adv a:hover{color:var(--dim);border-color:var(--bd)}
@@ -521,7 +521,9 @@ export default function StartPage() {
         <nav className="cf-nav">
           <div className="cf-brand">
             <span className="cf-mark">
-              <svg width="16" height="16" viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7" fill="#04221E" /><rect x="1" y="5" width="15" height="14" rx="3" fill="#04221E" /></svg>
+              {/* the official brand mark — same asset as the favicon and the website logo */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icon.svg" alt="" width={30} height={30} style={{ display: "block" }} />
             </span>
             ClipForge
           </div>

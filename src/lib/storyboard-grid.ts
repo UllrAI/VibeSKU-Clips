@@ -35,7 +35,11 @@ const SHOT_TYPE_LABELS: Record<string, string> = {
  * rules + hard grid-layout constraints (equal cells, thin gutters, no text —
  * cells get cropped into keyframes, so any text or borders would poison them).
  */
-export function buildStoryboardGridPrompt(shots: Shot[], characters?: ScriptCharacter[] | null): string {
+export function buildStoryboardGridPrompt(
+  shots: Shot[],
+  characters?: ScriptCharacter[] | null,
+  refs?: { characterSheet?: boolean; productImage?: boolean }
+): string {
   const cells = shots.slice(0, GRID_MAX_SHOTS);
   const cast = (characters ?? [])
     .map((c) => `${c.name}：${c.appearance}`)
@@ -47,9 +51,25 @@ export function buildStoryboardGridPrompt(shots: Shot[], characters?: ScriptChar
     return `第 ${i + 1} 格（${label}）：${s.description}`;
   });
 
+  // reference-image contract: the images array order is [character sheet?, product photo?],
+  // so the prompt cites them by position (field-proven with gpt-image-2/edit)
+  const refLines: string[] = [];
+  if (refs?.characterSheet || refs?.productImage) {
+    let n = 0;
+    if (refs.characterSheet) {
+      n += 1;
+      refLines.push(`第 ${n} 张参考图是出镜人物的四视图定妆照——九格中的人物脸型、发型、体型与服装必须与其完全一致（定妆照只作人物参考，不作为分镜画面）。`);
+    }
+    if (refs.productImage) {
+      n += 1;
+      refLines.push(`第 ${n} 张参考图是商品实拍图——九格中的商品外观、配色与包装必须与其完全一致。`);
+    }
+  }
+
   return [
     `一张 ${GRID_ROWS}x${GRID_COLS} 等分九宫格分镜图，整图 9:16 竖版，格与格之间只留极细的白色分隔缝。`,
     `全局一致性（最重要）：九格是同一支视频的分镜——同一人物、同一发型与同一身衣服、同一房间、同一光线方向与色调，道具与商品在各格间保持完全一致。`,
+    ...refLines,
     cast ? `人物设定：${cast}。` : "",
     `各格内容（每格是一个独立镜头的画面，构图按竖屏 9:16 设计）：`,
     ...cellLines,

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { mergeCustomModels, buildImageOptions, buildVideoOptions } from "@/lib/gen-params";
+import { useCharacterStore } from "@/lib/stores/project-store";
 import type { Shot } from "@/lib/db/schema";
 import { buildAssetRows, shouldOfferStockFill, needsImageModelWarning, nextChainKeyframe, type AssetItem } from "@/lib/assets-view";
 import { realMixFromRows, shotReality } from "@/lib/real-mix";
@@ -117,6 +118,11 @@ export default function AssetsPage() {
   // grid→film: one reference-to-video call turns all keyframes into a full multi-shot film
   const [isFilmGenerating, setIsFilmGenerating] = useState(false);
   const [filmNotice, setFilmNotice] = useState<{ text: string; url?: string } | null>(null);
+  // on-camera presenter from the character library; their multi-view sheet rides the
+  // grid and film passes as an identity reference so the person stops morphing
+  const { characters: presenterLib } = useCharacterStore();
+  const [presenterId, setPresenterId] = useState("");
+  const presenterSheet = presenterLib.find((c) => c.id === presenterId)?.referenceImages?.[0];
 
   const doneCount = assets.filter((a) => a.status === "done").length;
   const allDone = assets.length > 0 && doneCount === assets.length;
@@ -714,15 +720,21 @@ export default function AssetsPage() {
     setIsGridGenerating(true);
     setGridNotice(null);
     try {
+      // identity/product anchoring: with a presenter sheet or product photo attached the
+      // grid runs in edit mode (multi-reference) — field-proven to lock person AND product
+      const productRef = productSafe ? productImages[0] : undefined;
+      const hasRefs = !!presenterSheet || !!productRef;
       const res = await fetch(`/api/project/${id}/storyboard-grid`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scriptId,
           provider: modelTarget.provider,
-          model: modelTarget.model,
+          model: hasRefs ? toEditVariant(modelTarget.model) : modelTarget.model,
           apiKey: modelTarget.apiKey,
           baseUrl: modelTarget.baseUrl,
+          ...(presenterSheet && { characterSheetUrl: presenterSheet }),
+          ...(productRef && { productImageUrl: productRef }),
           // the grid itself is 9:16 so each of the 3x3 cells is exactly 9:16 too
           options: buildImageOptions(imageParams ? { ...imageParams, aspectRatio: "9:16", count: 1 } : undefined),
         }),
@@ -736,7 +748,7 @@ export default function AssetsPage() {
     } finally {
       setIsGridGenerating(false);
     }
-  }, [id, scriptId, modelTarget, imageParams, isGridGenerating, reloadAssets, t]);
+  }, [id, scriptId, modelTarget, imageParams, isGridGenerating, presenterSheet, productSafe, productImages, reloadAssets, t]);
 
   // grid→film (field-proven 2026-08): every shot keyframe rides ONE Seedance 2.5
   // reference-to-video call with a timecoded multi-shot prompt — native cuts, dialogue
@@ -758,6 +770,8 @@ export default function AssetsPage() {
             : "bytedance/seedance-2.5/reference-to-video",
           apiKey: videoModelTarget.apiKey,
           baseUrl: videoModelTarget.baseUrl,
+          // presenter sheet leads reference_images as the identity anchor (@Image1)
+          ...(presenterSheet && { characterSheetUrl: presenterSheet }),
           options: buildVideoOptions(videoParams ? { ...videoParams, aspectRatio: "9:16" } : undefined),
         }),
       });
@@ -769,7 +783,7 @@ export default function AssetsPage() {
     } finally {
       setIsFilmGenerating(false);
     }
-  }, [id, scriptId, videoModelTarget, videoParams, isFilmGenerating, t]);
+  }, [id, scriptId, videoModelTarget, videoParams, isFilmGenerating, presenterSheet, t]);
 
   // generate all in one click (sequential, to avoid hitting platform rate limits with concurrent requests).
   // With auto-motion on, this runs TWO passes: (1) every static keyframe, (2) keyframe-chained i2v per shot —
@@ -864,6 +878,29 @@ export default function AssetsPage() {
                 <span className={`h-1.5 w-1.5 rounded-full ${productSafe ? "bg-primary" : "bg-muted-foreground/40"}`} />
                 {t("productSafe")}{productSafe ? t("on") : t("off")}
               </button>
+            )}
+            {/* Presenter picker: characters from the library; ones with a multi-view sheet
+                anchor the person's identity through the grid and film passes */}
+            {presenterLib.length > 0 && (
+              <div
+                className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1.5 h-8"
+                title={t("presenterTip")}
+              >
+                <span className="text-xs font-medium text-muted-foreground">{t("presenterLabel")}</span>
+                <select
+                  value={presenterId}
+                  onChange={(e) => setPresenterId(e.target.value)}
+                  className="bg-transparent text-xs outline-none h-6 max-w-28 text-foreground"
+                >
+                  <option value="">{t("presenterNone")}</option>
+                  {presenterLib.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.referenceImages?.[0] ? ` ${t("presenterSheetBadge")}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
             )}
             {/* Visual-look picker (Higgsfield Cinema Studio-style enumerated lighting/palette
                 panel): applies to keyframe image prompts AND pins lighting through the i2v pass */}

@@ -126,8 +126,8 @@
   --card-foreground: #edeff4;
   --popover: #12151c;
   --popover-foreground: #edeff4;
-  --primary: #5eead4;
-  --primary-foreground: #04221e;
+  --primary: #8b5cf6;
+  --primary-foreground: #ffffff;
   --secondary: #171b24;
   --secondary-foreground: #c7cdd8;
   --muted: #161a22;
@@ -137,21 +137,21 @@
   --destructive: #f87171;
   --border: #222834;
   --input: #1a1f29;
-  --ring: #5eead4;
-  --chart-1: #5eead4;
-  --chart-2: #6ca8ff;
+  --ring: #8b5cf6;
+  --chart-1: #8b5cf6;
+  --chart-2: #d946ef;
   --chart-3: #a78bfa;
   --chart-4: #fbbf24;
   --chart-5: #34d399;
   --sidebar: #0e1117;
   --sidebar-foreground: #edeff4;
-  --sidebar-primary: #5eead4;
+  --sidebar-primary: #8b5cf6;
   --sidebar-primary-foreground: #04221e;
   --sidebar-accent: #1b212b;
   --sidebar-accent-foreground: #edeff4;
   --sidebar-border: #222834;
-  --sidebar-ring: #5eead4;
-  --brand: #5eead4;
+  --sidebar-ring: #8b5cf6;
+  --brand: #8b5cf6;
   --brand-foreground: #04221e;
   --amber: #fbbf24;
 }
@@ -170,11 +170,11 @@
 
 /* ==================== 品牌渐变 ==================== */
 .brand-gradient {
-  background: linear-gradient(135deg, #5eead4, #6ca8ff);
+  background: linear-gradient(100deg, #6366f1, #8b5cf6 55%, #d946ef);
 }
 
 .brand-gradient-text {
-  background: linear-gradient(135deg, #5eead4, #6ca8ff);
+  background: linear-gradient(100deg, #6366f1, #8b5cf6 55%, #d946ef);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;

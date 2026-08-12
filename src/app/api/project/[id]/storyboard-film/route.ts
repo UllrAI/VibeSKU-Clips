@@ -45,13 +45,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return apiError(req, "无效的项目ID", "Invalid project id", 400);
     }
     const body = await req.json();
-    const { scriptId, provider: providerName, model, apiKey, baseUrl, options } = body as {
+    const { scriptId, provider: providerName, model, apiKey, baseUrl, options, characterSheetUrl } = body as {
       scriptId?: string;
       provider?: string;
       model?: string;
       apiKey?: string;
       baseUrl?: string;
       options?: Record<string, unknown>;
+      /** Presenter's multi-view sheet — leads reference_images as the identity anchor (@Image1) */
+      characterSheetUrl?: string;
     };
     if (!scriptId || !providerName) {
       return apiError(req, "缺少 scriptId / provider", "Missing scriptId / provider", 400);
@@ -106,12 +108,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         400
       );
     }
-    // remote providers can't reach localhost: local /api/files keyframes travel as Base64
-    const referenceImageUrls = (await Promise.all(keyframes.map(toRemoteUsableImage))).filter(
+    // remote providers can't reach localhost: local /api/files keyframes travel as Base64.
+    // With a character sheet it leads the array (@Image1 = identity anchor, shots shift to @Image2..)
+    const refInputs = [...(characterSheetUrl ? [characterSheetUrl] : []), ...keyframes];
+    const referenceImageUrls = (await Promise.all(refInputs.map(toRemoteUsableImage))).filter(
       (u): u is string => !!u
     );
 
-    const prompt = buildStoryboardFilmPrompt(shots, script.characters);
+    const prompt = buildStoryboardFilmPrompt(shots, script.characters, { characterSheet: !!characterSheetUrl });
     const duration = filmRequestSeconds(shots);
     const provider = createProvider({ name: providerName, apiKey, baseUrl: baseUrl ?? "" });
 
