@@ -103,9 +103,11 @@ describe("链式首尾帧辅助函数", () => {
     expect(nextChainKeyframe(rows, 1)).toBe("/api/files/p/kf2.png");
   });
 
-  it("modelSupportsLastFrame：Seedance 2.0 家族与 ai_start_end 白名单支持，其他不支持", () => {
+  it("modelSupportsLastFrame：Seedance 2.0/2.5 家族与 ai_start_end 白名单支持，其他不支持", () => {
     expect(modelSupportsLastFrame("bytedance/seedance-2.0-fast/image-to-video")).toBe(true);
     expect(modelSupportsLastFrame("bytedance/seedance-2.0/image-to-video")).toBe(true);
+    // Seedance 2.5 schema exposes last_image too (verified via official MCP, 2026-08)
+    expect(modelSupportsLastFrame("bytedance/seedance-2.5/image-to-video")).toBe(true);
     expect(modelSupportsLastFrame("vidu/q3-pro/start-end-to-video")).toBe(true);
     // v0.8.76 new families with a pinned-last-frame param per published schema
     expect(modelSupportsLastFrame("minimax/h3/image-to-video")).toBe(true);

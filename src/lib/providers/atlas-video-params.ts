@@ -66,6 +66,10 @@ const KLING_O3_DURATIONS = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 const SEEDANCE_MINI_DURATIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 const SEEDANCE_MINI_RESOLUTIONS = ['480p', '720p', '720p-SR', '1080p-SR', '1440p-SR']
 const SEEDANCE_MINI_RATIOS = ['16:9', '4:3', '1:1', '3:4', '9:16', '21:9', 'adaptive']
+// Seedance 2.5: schema also allows -1 (model decides), deliberately excluded — we always send explicit durations
+const SEEDANCE_25_DURATIONS = Array.from({ length: 27 }, (_, i) => i + 4) // 4..30
+const SEEDANCE_25_RESOLUTIONS = ['480p', '720p', '720p-sr', '1080p-sr', '1440p-sr', '4k-sr', '1080p-sr & 60fps']
+const SEEDANCE_25_RATIOS = ['16:9', '4:3', '1:1', '3:4', '9:16', '21:9', 'adaptive']
 
 export const ATLAS_VIDEO_PARAM_SPECS: Record<string, AtlasVideoParamSpec> = {
   // --- MiniMax H3 (Hailuo 3.0): native stereo audio, no audio toggle ---
@@ -155,6 +159,34 @@ export const ATLAS_VIDEO_PARAM_SPECS: Record<string, AtlasVideoParamSpec> = {
     ratioKey: 'ratio',
     ratioEnum: ['16:9', '9:16', '1:1', '4:3', '3:4'],
     supportsSeed: true,
+  },
+  // --- ByteDance Seedance 2.5 (flagship: 4-30s durations, no seed param in schema; i2v ratio is adaptive-only) ---
+  'bytedance/seedance-2.5/text-to-video': {
+    durationEnum: SEEDANCE_25_DURATIONS,
+    resolutionEnum: SEEDANCE_25_RESOLUTIONS,
+    ratioKey: 'ratio',
+    ratioEnum: SEEDANCE_25_RATIOS,
+    audioKey: 'generate_audio',
+    supportsWatermark: true,
+  },
+  'bytedance/seedance-2.5/image-to-video': {
+    firstFrameKey: 'image',
+    lastFrameKey: 'last_image',
+    durationEnum: SEEDANCE_25_DURATIONS,
+    resolutionEnum: SEEDANCE_25_RESOLUTIONS,
+    ratioKey: 'ratio',
+    ratioEnum: ['adaptive'], // output preserves the source image's aspect ratio
+    audioKey: 'generate_audio',
+    supportsWatermark: true,
+  },
+  'bytedance/seedance-2.5/reference-to-video': {
+    referenceShape: 'paired-arrays',
+    durationEnum: SEEDANCE_25_DURATIONS,
+    resolutionEnum: SEEDANCE_25_RESOLUTIONS,
+    ratioKey: 'ratio',
+    ratioEnum: SEEDANCE_25_RATIOS,
+    audioKey: 'generate_audio',
+    supportsWatermark: true,
   },
   // --- ByteDance Seedance 2.0 Mini (Seedance protocol but resolution enum has no plain "1080p") ---
   'bytedance/seedance-2.0-mini/text-to-video': {

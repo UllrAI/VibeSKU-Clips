@@ -85,7 +85,11 @@ interface AtlasPrediction {
  */
 const ATLAS_MODELS: Array<Omit<Model, 'provider'>> = [
   // ==================== Video generation ====================
-  // --- Doubao Seedance 2.0 (latest, native audio) ---
+  // --- Doubao Seedance 2.5 (flagship: 4-30s, native speech; billed per second on top of base) ---
+  { id: 'bytedance/seedance-2.5/text-to-video', name: 'Seedance 2.5 (文生视频)', description: '字节旗舰视频模型，原生音频/人声，4-30秒', modes: ['text-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'bytedance/seedance-2.5/image-to-video', name: 'Seedance 2.5 (图生视频)', description: '首帧/尾帧图生视频，原生音频/人声，4-30秒', modes: ['image-to-video'], mediaType: 'video', supportsAudio: true },
+  { id: 'bytedance/seedance-2.5/reference-to-video', name: 'Seedance 2.5 (参考生视频)', description: '多模态参考生成（图≤30/视频/音频），4-30秒，多镜整片首选', modes: ['image-to-video', 'video-to-video'], mediaType: 'video', supportsAudio: true },
+  // --- Doubao Seedance 2.0 (native audio) ---
   { id: 'bytedance/seedance-2.0/text-to-video', name: 'Seedance 2.0 (文生视频)', description: '字节最新视频模型，原生音频，4-15秒，最高1440p', modes: ['text-to-video'], mediaType: 'video', supportsAudio: true },
   { id: 'bytedance/seedance-2.0/image-to-video', name: 'Seedance 2.0 (图生视频)', description: '首帧/尾帧图生视频，原生音频', modes: ['image-to-video'], mediaType: 'video', supportsAudio: true },
   { id: 'bytedance/seedance-2.0/reference-to-video', name: 'Seedance 2.0 (参考生视频)', description: '多模态参考图/视频/音频生成，支持视频编辑', modes: ['image-to-video', 'video-to-video'], mediaType: 'video', supportsAudio: true },

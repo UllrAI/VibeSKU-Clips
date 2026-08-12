@@ -307,6 +307,27 @@ export class FalAIProvider extends BaseProvider {
       },
 
       // ==================== video generation ====================
+      // --- ByteDance Seedance 2.5 (flagship: 4-30s, native audio/speech; fal endpoint has no fal-ai/ prefix) ---
+      // reference-to-video deliberately not listed: fal's variant needs a dedicated reference_image_urls
+      // body this provider doesn't build — the grid-to-film pass runs on Atlas Cloud instead
+      {
+        id: 'bytedance/seedance-2.5/text-to-video',
+        name: 'Seedance 2.5 (文生视频)',
+        description: '字节旗舰视频模型，原生音频/人声，4-30秒',
+        modes: ['text-to-video'],
+        mediaType: 'video',
+        provider: this.name,
+        supportsAudio: true,
+      },
+      {
+        id: 'bytedance/seedance-2.5/image-to-video',
+        name: 'Seedance 2.5 (图生视频)',
+        description: '首帧/尾帧图生视频，原生音频/人声，4-30秒',
+        modes: ['image-to-video'],
+        mediaType: 'video',
+        provider: this.name,
+        supportsAudio: true,
+      },
       // --- Kling series ---
       {
         id: 'fal-ai/kling-video/v3/pro/text-to-video',

@@ -211,6 +211,55 @@ describe("其余新家族请求体差异", () => {
   });
 });
 
+describe("Seedance 2.5 请求体（旗舰 4-30s，schema 无 seed 参数）", () => {
+  it("i2v：image/last_image、时长 4-30 整档直取、竖屏 1080 取 1080p-sr、ratio 仅 adaptive、seed 不发", () => {
+    const spec = getVideoParamSpec("bytedance/seedance-2.5/image-to-video")!;
+    const body = buildAtlasVideoBody("bytedance/seedance-2.5/image-to-video", spec, {
+      ...i2vBase,
+      modelId: "bytedance/seedance-2.5/image-to-video",
+      lastFrameUrl: "https://example.com/last.png",
+      duration: 22,
+      audioEnabled: true,
+      seed: 42,
+    }, "宣传片");
+    expect(body).toEqual({
+      model: "bytedance/seedance-2.5/image-to-video",
+      prompt: "宣传片",
+      image: "https://example.com/first.png",
+      last_image: "https://example.com/last.png",
+      duration: 22,
+      resolution: "1080p-sr",
+      ratio: "adaptive",
+      generate_audio: true,
+      watermark: false,
+    });
+  });
+
+  it("r2v：reference_images 数组、显式 ratio 9:16、超上限时长吸附回 30", () => {
+    const spec = getVideoParamSpec("bytedance/seedance-2.5/reference-to-video")!;
+    const body = buildAtlasVideoBody("bytedance/seedance-2.5/reference-to-video", spec, {
+      modelId: "bytedance/seedance-2.5/reference-to-video",
+      mode: "video-to-video",
+      prompt: "整片",
+      referenceImageUrls: ["data:image/png;base64,AAA", "data:image/png;base64,BBB"],
+      width: 720,
+      height: 1280,
+      duration: 35,
+      audioEnabled: true,
+    }, "整片");
+    expect(body).toEqual({
+      model: "bytedance/seedance-2.5/reference-to-video",
+      prompt: "整片",
+      reference_images: ["data:image/png;base64,AAA", "data:image/png;base64,BBB"],
+      duration: 30,
+      resolution: "720p",
+      ratio: "9:16",
+      generate_audio: true,
+      watermark: false,
+    });
+  });
+});
+
 describe("specFromOpenApiInput：动态模型 schema 派生（动态导入的提交侧）", () => {
   it("从 H3 i2v 真实 schema 派生的 spec 与手写 spec 一致", () => {
     // verbatim subset of static.atlascloud.ai/model/schema/minimax-h3-image-to-video.json

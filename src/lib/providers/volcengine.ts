@@ -225,6 +225,17 @@ export class VolcEngineProvider extends BaseProvider {
     const models: Model[] = [
       // ==================== Video generation (Seedance) ====================
       {
+        // Announced 2026-07-31; Ark API access is rolling out gradually — accounts
+        // without access yet should stay on 2.0 (id verified against Ark pricing mirrors)
+        id: 'doubao-seedance-2-5-260628',
+        name: 'Seedance 2.5',
+        description: '字节豆包视频生成 2.5，4-30 秒原生音频/人声（方舟陆续开放中，未开通可先用 2.0）',
+        modes: ['text-to-video', 'image-to-video'],
+        mediaType: 'video',
+        provider: this.name,
+        supportsAudio: true,
+      },
+      {
         id: 'doubao-seedance-2-0-260128',
         name: 'Seedance 2.0',
         description: '字节豆包视频生成 2.0，电影级画质，支持原生音频',

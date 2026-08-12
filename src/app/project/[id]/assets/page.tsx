@@ -114,6 +114,9 @@ export default function AssetsPage() {
   // storyboard grid: one generation renders all shots in a 3x3 grid → cells become keyframes
   const [isGridGenerating, setIsGridGenerating] = useState(false);
   const [gridNotice, setGridNotice] = useState<string | null>(null);
+  // grid→film: one reference-to-video call turns all keyframes into a full multi-shot film
+  const [isFilmGenerating, setIsFilmGenerating] = useState(false);
+  const [filmNotice, setFilmNotice] = useState<{ text: string; url?: string } | null>(null);
 
   const doneCount = assets.filter((a) => a.status === "done").length;
   const allDone = assets.length > 0 && doneCount === assets.length;
@@ -735,6 +738,39 @@ export default function AssetsPage() {
     }
   }, [id, scriptId, modelTarget, imageParams, isGridGenerating, reloadAssets, t]);
 
+  // grid→film (field-proven 2026-08): every shot keyframe rides ONE Seedance 2.5
+  // reference-to-video call with a timecoded multi-shot prompt — native cuts, dialogue
+  // spoken verbatim, continuous audio. Lands in compositions (export page shows it).
+  const runStoryboardFilm = useCallback(async () => {
+    if (!videoModelTarget || !scriptId || isFilmGenerating) return;
+    setIsFilmGenerating(true);
+    setFilmNotice(null);
+    try {
+      const res = await fetch(`/api/project/${id}/storyboard-film`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scriptId,
+          provider: videoModelTarget.provider,
+          // an explicitly configured reference-to-video model wins; anything else upgrades to the 2.5 film default
+          model: videoModelTarget.model.includes("/reference-to-video")
+            ? videoModelTarget.model
+            : "bytedance/seedance-2.5/reference-to-video",
+          apiKey: videoModelTarget.apiKey,
+          baseUrl: videoModelTarget.baseUrl,
+          options: buildVideoOptions(videoParams ? { ...videoParams, aspectRatio: "9:16" } : undefined),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || t("filmFailed"));
+      setFilmNotice({ text: t("filmDone"), url: data.url });
+    } catch (e) {
+      setFilmNotice({ text: e instanceof Error ? e.message : t("filmFailed") });
+    } finally {
+      setIsFilmGenerating(false);
+    }
+  }, [id, scriptId, videoModelTarget, videoParams, isFilmGenerating, t]);
+
   // generate all in one click (sequential, to avoid hitting platform rate limits with concurrent requests).
   // With auto-motion on, this runs TWO passes: (1) every static keyframe, (2) keyframe-chained i2v per shot —
   // chaining needs the NEXT shot's keyframe to exist, which a single interleaved pass can't provide.
@@ -932,6 +968,24 @@ export default function AssetsPage() {
                 )}
               </Button>
             )}
+            {videoModelTarget && assets.length >= 2 && assets.length <= 9 && assets.every((a) => a.status === "done") && (
+              <Button
+                onClick={runStoryboardFilm}
+                disabled={isFilmGenerating || isGridGenerating || isBatchGenerating}
+                variant="outline"
+                className="text-xs border-primary/50 text-primary hover:bg-primary/10"
+                title={t("filmTip")}
+              >
+                {isFilmGenerating ? (
+                  <>
+                    <LuLoaderCircle className="animate-spin mr-1.5 h-3.5 w-3.5" />
+                    {t("filmRunning")}
+                  </>
+                ) : (
+                  <>{t("filmButton")}</>
+                )}
+              </Button>
+            )}
             <Button
               onClick={generateAll}
               disabled={isBatchGenerating || allDone || assets.length === 0}
@@ -958,6 +1012,16 @@ export default function AssetsPage() {
         {gridNotice && (
           <div className="mb-4 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
             {gridNotice}
+          </div>
+        )}
+
+        {/* grid→film outcome: inline preview + export-page pointer, or the error verbatim */}
+        {filmNotice && (
+          <div className="mb-4 rounded-lg border border-border bg-muted/40 px-4 py-2.5 text-xs text-muted-foreground">
+            <div>{filmNotice.text}</div>
+            {filmNotice.url && (
+              <video src={filmNotice.url} controls className="mt-2 max-h-64 rounded-md" />
+            )}
           </div>
         )}
 

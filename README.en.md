@@ -31,7 +31,7 @@
 | 🎁 **Ad templates** | 391 end-to-end commerce recipes (Turntable Hero / Factory Story / Meltdown Lit / Oyster Reveal / Egg-Drop Comfort Proof / Noon-to-Midnight Blackout / Clear Mom's Cart / Fresh-Catch Fishing Log / Ugly Ads / Perfect Loop / Sassy Granfluencer / AI UGC Actors…) spanning keyboards & earbuds, tea & coffee & low-proof drinks, home fragrance & lighting, hanfu & swimwear & sun-protective wear, books, instruments, collectibles and trading cards, through the festival marketing calendar and local-life & travel deals, browsable and searchable across six groups; product-aware recommendations from name/category/selling points, plus ✨AI-custom recipes with every enum clamped to the real preset vocabularies; one click pre-fills script style + camera plan + visual look + caption/BGM compose config, everything still editable; recipes travel: save AI-custom recipes to "My templates" for reuse, export any template as a shareable JSON and import others' recipes in one click (preset-vocabulary clamping + ad-law risk-term hints); export all "My templates" as one pack and import multi-recipe packs in one paste; fork any template via "Edit recipe" — name / camera plan / visual look / caption & BGM all adjustable, save as a new mine or update in place |
 | 🔁 **Viral replication** | Upload a reference video: ffmpeg detects real scene cuts into a rhythm skeleton and the generated script matches its shot count and durations; references ≤15s can also one-shot replicate via Seedance reference-to-video — keeping the reference's camera work and pacing while swapping in your product |
 | 🧪 **Variant matrix** | Same assets, hook copy × caption style × BGM mood combos batch-rendered as labeled outputs for A/B (compared in the export page's history list); compose-only reruns, zero AI-generation cost |
-| ⚖️ **Judge panel + storyboard grid** | Lines get torn apart BEFORE generation money is spent: four narrow, bad-tempered judges (pacing / spoken voice / freshness / structure) flag issues per shot and produce length-preserving rewrites in one call, applied in one click (also a standalone [script-judges skill](skills/script-judges/SKILL.md) for any agent); **🎬 storyboard grid** paints ≤9 shots into one 3x3 image — person, outfit, room and light physically consistent — auto-cropped into per-shot keyframes for the i2v pass |
+| ⚖️ **Judge panel + storyboard grid + one-tap full film** | Lines get torn apart BEFORE generation money is spent: four narrow, bad-tempered judges (pacing / spoken voice / freshness / structure) flag issues per shot and produce length-preserving rewrites in one call, applied in one click (also a standalone [script-judges skill](skills/script-judges/SKILL.md) for any agent); **🎬 storyboard grid** paints ≤9 shots into one 3x3 image — person, outfit, room and light physically consistent — auto-cropped into per-shot keyframes; **🎞️ one-tap full film** feeds every keyframe into Seedance 2.5 reference-to-video and generates the whole film (≤30s) in one call — native cuts, lines spoken verbatim in the character's own voice, continuous audio (see samples above) |
 | 🎭 **Mini-drama selling** | Ten script styles with a free voice per character; **built-in ordinary-person presenter presets + a real-face constraint** so on-camera humans never look like polished AI influencers; **UGC realism trio** — lines that sound spoken, not written (hooks start mid-conversation, no punchline endings), first frames with named light sources and lived-in backgrounds, and behavior beats rotating per talking shot (repetition is the biggest AI tell) |
 | 🆓 **A full video at $0** | Free stock + free AI voiceover (EN / 中 / 日 / 韩 / ES) + local compositing — no API key needed, open-source, no watermark |
 | 🚦 **Don't get throttled** | AIGC labeling + ad-law banned-term scan + publish gate — compliance on by default |
@@ -41,7 +41,26 @@
 | 🧩 **Infinite Canvas node** | [Canvas plugin](integrations/infinite-canvas/): connect product images on the canvas → run → the finished video lands back as a canvas video node for further remixing; topic & commerce modes, driven by your local instance (localhost-only cross-port CORS ships in v0.8.79) |
 | 💰 **Paid calls never wasted** | Cloud tasks persisted & recoverable, never auto-retried — every cent accounted for |
 
-Want higher quality? Add one key: a single interface aggregates **7 platforms, 30+ curated models** (GPT Image 2 / Seedance 2.0 / **MiniMax H3** / Kling O3 / Veo 3.1…), plus **200+ video models dynamically discovered** from the whole Atlas catalog — new models show up without upgrading the app. Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
+Want higher quality? Add one key: a single interface aggregates **7 platforms, 30+ curated models** (GPT Image 2 / **Seedance 2.5** / **MiniMax H3** / Kling O3 / Veo 3.1…), plus **200+ video models dynamically discovered** from the whole Atlas catalog — new models show up without upgrading the app. Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
+
+## 🎬 Sample output: real products · Seedance 2.5 field test
+
+Raw output of the full pipeline on one product photo — judge panel tears the lines → storyboard grid → one-tap full film / per-shot animation. **Voices, dialogue and lip-sync are native model output, untouched:**
+
+<table>
+  <tr>
+    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="230" alt="One-tap full film sample: 4 native cuts"/></a></td>
+    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee-en.mp4"><img src="docs/videos/poster-coffee-en.jpg" width="230" alt="English UGC talking-head sample"/></a></td>
+    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="230" alt="Chinese talking-head sample"/></a></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>🎞️ One-tap full film · 4 native cuts</b><br/>15s: hook → pour → sip → box reveal<br/>grid keyframes → one generation</sub></td>
+    <td align="center"><sub><b>🌍 English UGC talking-head</b><br/>12s: hook starts mid-conversation<br/>behavior beats follow the lines</sub></td>
+    <td align="center"><sub><b>🎙️ Chinese market · talking-head</b><br/>12s: the same pipeline<br/>switched to Chinese</sub></td>
+  </tr>
+</table>
+
+▶️ Click a poster to play, or watch them autoplay on the <a href="https://xixihhhh.github.io/clipforge/en.html">website</a> (turn the sound on — the voices are part of the generation).
 
 ## 🚀 Run it in 30 seconds
 
@@ -101,7 +120,7 @@ Using the sample "Soft Thick Facial Tissue":
 
 > The whole thing is **fully automated, watermark-free**; before a big sale you can pick 10 products to **batch-render**, apply viral templates, and A/B multiple cuts.
 
-**Keywords**: AI shopping video · short-video ad maker · e-commerce short video · product-to-video · faceless UGC ads · TikTok Shop / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu · AI selling-point extraction · batch rendering · viral remix · product video generator · AI voiceover · open-source self-hosted · MCP · GPT Image 2 / Seedance 2.0
+**Keywords**: AI shopping video · short-video ad maker · e-commerce short video · product-to-video · faceless UGC ads · TikTok Shop / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu · AI selling-point extraction · batch rendering · viral remix · product video generator · AI voiceover · open-source self-hosted · MCP · GPT Image 2 / Seedance 2.5
 
 ---
 
@@ -183,7 +202,7 @@ One interface aggregates 7 image/video platforms + OpenRouter LLMs and 30+ curat
 
 | Platform | Image models | Video models | Highlights |
 |------|---------|---------|------|
-| **Atlas Cloud** ⭐ recommended | **GPT Image 2**, Seedream 5.0, Nano Banana 2 | **Seedance 2.0** (native audio), **MiniMax H3** (Hailuo 3.0 · 2K · native stereo), Kling O3, Veo 3.1, Wan 2.7, Hailuo 2.3, Vidu Q3 + 200+ discovered live | One key for LLM + image + video; widest models, best price |
+| **Atlas Cloud** ⭐ recommended | **GPT Image 2**, Seedream 5.0, Nano Banana 2 | **Seedance 2.5** (4-30s · native speech), Seedance 2.0, **MiniMax H3** (Hailuo 3.0 · 2K · native stereo), Kling O3, Veo 3.1, Wan 2.7, Hailuo 2.3, Vidu Q3 + 200+ discovered live | One key for LLM + image + video; widest models, best price |
 | **fal.ai** | **GPT Image 2** (+edit), FLUX.1/2 Pro, Recraft V4, Seedream V5 Edit | Kling 3.0 Pro, Veo 3, Hailuo 2.3, Luma Ray 2, Vidu Q2 | Broad model set, incl. OpenAI image gen & product-fidelity edit |
 | **Replicate** | FLUX 1.1 Pro/Kontext, Imagen 4, Seedream 4 | Kling v2.1, Seedance 1 Pro, Hailuo 02, Veo 3 Fast | Largest model library, unified predictions API |
 | **Volcengine (Ark)** | Seedream 5.0/4.0 | Seedance 2.0/1.0 Pro (native audio) | ByteDance flagship models, cinematic quality, fast |
@@ -319,7 +338,7 @@ open http://localhost:3000
 
 1. Click **Settings** (top-right) and configure at least one AI platform's API key (we recommend **Atlas Cloud** — one key for LLM + image + video)
 2. Configure the LLM (needed for script generation; any OpenAI-compatible endpoint works)
-3. In "Defaults," pick your default image / video models (e.g. GPT Image 2, Seedance 2.0)
+3. In "Defaults," pick your default image / video models (e.g. GPT Image 2, Seedance 2.5)
 4. (Optional) Add a character under "On-camera" and brand visuals under "Brand"
 5. Back on the home page, click **New project** to start
 
@@ -410,7 +429,8 @@ src/
 
 | Model | Platform | Audio | Mode | Notes |
 |------|------|------|------|------|
-| **Seedance 2.0** ⭐ | Atlas Cloud | Native | T2V / I2V / ref / first-last | ByteDance's latest, native audio, 4–15s, up to 1440p |
+| **Seedance 2.5** ⭐ | Atlas Cloud | Native | T2V / I2V / ref / first-last | ByteDance flagship, native audio & speech, 4–30s, default for one-tap full film |
+| **Seedance 2.0** | Atlas Cloud | Native | T2V / I2V / ref / first-last | Native audio, 4–15s, up to 1440p |
 | **MiniMax H3** 🆕 | Atlas Cloud | Native stereo | T2V / I2V / ref / first-last | Hailuo 3.0 omni-modal (launched 2026-07-31), 2K, 4–15s, mixed image/video/audio references |
 | **Kling O3** 🆕 | Atlas Cloud | Native | T2V / I2V / ref / first-last | Kuaishou omni-modal MVL, multi-shot narrative, 3–15s |
 | **Veo 3.1** 🆕 | Atlas Cloud / fal.ai | Native | T2V / I2V / first-last | Google flagship, 4/6/8s, up to 4K |

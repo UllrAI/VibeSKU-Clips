@@ -99,13 +99,13 @@ export function getTransitionList(): TransitionConfig[] {
 
 /**
  * Whether a video model accepts a pinned last frame (start/end-frame generation) — the gate for
- * keyframe-chained i2v. Conservative: the ai_start_end allowlist plus the Seedance 2.0 family
- * (their Atlas schema exposes `last_image`); unknown/custom models chain only if explicitly listed.
+ * keyframe-chained i2v. Conservative: the ai_start_end allowlist plus the Seedance 2.0/2.5
+ * families (their Atlas schemas expose `last_image`); unknown/custom models chain only if explicitly listed.
  */
 export function modelSupportsLastFrame(modelId: string): boolean {
   if (!modelId) return false;
   if (TRANSITIONS.ai_start_end.supportedModels.includes(modelId)) return true;
-  return /seedance-2\.0/.test(modelId);
+  return /seedance-2\.[05]/.test(modelId);
 }
 
 // recommend the best transition mode based on the user's configured providers
