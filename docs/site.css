@@ -267,6 +267,13 @@ section { padding: 92px 0 8px; position: relative; }
 .phones-note { text-align: center; color: var(--faint); font-size: 13px; margin-top: 18px; }
 .phones-note b { color: var(--sub); }
 
+/* input-to-output strip above the demo phones: product photo -> storyboard grid -> films below */
+.io-strip { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 26px 0 4px; }
+.io-strip figure { margin: 0; text-align: center; }
+.io-strip img { width: 84px; border-radius: 10px; border: 1px solid var(--line-2); display: block; }
+.io-strip figcaption { font-size: 11px; color: var(--sub); margin-top: 6px; }
+.io-arrow { color: var(--faint); font-size: 20px; }
+
 /* ---------- facts band ---------- */
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 8px; }
 .stat {

@@ -82,10 +82,17 @@
     <span class="fbadge b2"><b class="ok">✓</b> 广告法违禁词 0 处</span>
     <span class="fbadge b3"><b class="ai">AI</b> AIGC 标识已写入</span>
     <span class="fbadge b4"><b class="ok">✓</b> 全程无需真人出镜</span>
+    <div class="io-strip" aria-label="从输入到输出">
+      <figure><img src="videos/input-coffee.jpg" alt="输入:冷萃咖啡液商品图" loading="lazy"/><figcaption>① 输入:一张商品图</figcaption></figure>
+      <span class="io-arrow">→</span>
+      <figure><img src="videos/grid-coffee.jpg" alt="自动产出的九宫格分镜图" loading="lazy"/><figcaption>② 九宫格分镜(1 次生图)</figcaption></figure>
+      <span class="io-arrow">→</span>
+      <figure><figcaption>③ 输出<br/>↓ 下面的成片</figcaption></figure>
+    </div>
     <div class="phones">
       <figure class="ph side l">
         <video src="videos/demo-coffee.mp4" poster="videos/poster-coffee.jpg" autoplay muted loop playsinline preload="metadata"></video>
-        <figcaption>咖啡液 · 达人口播</figcaption>
+        <figcaption>同一张图 · 中文口播</figcaption>
         <button class="snd" type="button" aria-label="切换声音">🔇</button>
       </figure>
       <figure class="ph main">
@@ -94,12 +101,12 @@
         <button class="snd" type="button" aria-label="切换声音">🔇</button>
       </figure>
       <figure class="ph side r">
-        <video src="videos/demo-coffee-en.mp4" poster="videos/poster-coffee-en.jpg" autoplay muted loop playsinline preload="metadata"></video>
-        <figcaption>出海英文 · 口播带货</figcaption>
+        <video src="videos/demo-blender-en.mp4" poster="videos/poster-blender-en.jpg" autoplay muted loop playsinline preload="metadata"></video>
+        <figcaption>换个商品 · 出海英文口播</figcaption>
         <button class="snd" type="button" aria-label="切换声音">🔇</button>
       </figure>
     </div>
-    <p class="phones-note">↑ 三条演示均为真实商品 <b>Seedance 2.5 一次生成</b>(台词/人声/口型为模型原生输出,点 🔇 开声音);中间这条是「九宫格→一键整片」:口播、挤咖啡、举杯喝、举盒收尾 <b>4 个镜头一次生成原生切换</b>——这就是 ClipForge 生成链路的真实产出。</p>
+    <p class="phones-note">↑ 输入就是左上那<b>一张商品图</b>,台词/分镜/画面/人声全部自动产出(真实商品 <b>Seedance 2.5</b> 生成,点 🔇 开声音);台词先被判官团撕过——初稿「大家好,今天给大家推荐…」被改成成片里的<b>「就这玩意儿,把我星巴克的钱包给救了」</b>;中间这条「九宫格→一键整片」:口播、挤咖啡、举杯喝、举盒收尾 <b>4 个镜头一次生成原生切换</b>。右边是另一张商品图(便携榨汁杯)同流程直接切英文市场。</p>
   </div>
 
   <div class="marquee" aria-hidden="true">

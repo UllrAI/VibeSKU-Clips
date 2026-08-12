@@ -81,6 +81,13 @@
     <span class="fbadge b2"><b class="ok">✓</b> Ad-law banned terms: 0</span>
     <span class="fbadge b3"><b class="ai">AI</b> AIGC label written</span>
     <span class="fbadge b4"><b class="ok">✓</b> No human on camera</span>
+    <div class="io-strip" aria-label="from input to output">
+      <figure><img src="videos/input-blender.jpg" alt="Input: portable blender product photo" loading="lazy"/><figcaption>① Input: one product photo</figcaption></figure>
+      <span class="io-arrow">→</span>
+      <figure><img src="videos/grid-blender.jpg" alt="Auto-generated storyboard grid" loading="lazy"/><figcaption>② Storyboard grid (one generation)</figcaption></figure>
+      <span class="io-arrow">→</span>
+      <figure><figcaption>③ Output<br/>↓ the films below</figcaption></figure>
+    </div>
     <div class="phones">
       <figure class="ph side l">
         <video src="videos/demo-coffee-film.mp4" poster="videos/poster-coffee-film.jpg" autoplay muted loop playsinline preload="metadata"></video>
@@ -88,17 +95,17 @@
         <button class="snd" type="button" aria-label="toggle sound">🔇</button>
       </figure>
       <figure class="ph main">
-        <video src="videos/demo-coffee-en.mp4" poster="videos/poster-coffee-en.jpg" autoplay muted loop playsinline preload="metadata"></video>
-        <figcaption>Coffee · UGC talking-head</figcaption>
+        <video src="videos/demo-blender-en.mp4" poster="videos/poster-blender-en.jpg" autoplay muted loop playsinline preload="metadata"></video>
+        <figcaption>That photo → this UGC talking-head</figcaption>
         <button class="snd" type="button" aria-label="toggle sound">🔇</button>
       </figure>
       <figure class="ph side r">
         <video src="videos/demo-coffee.mp4" poster="videos/poster-coffee.jpg" autoplay muted loop playsinline preload="metadata"></video>
-        <figcaption>Chinese market · talking-head</figcaption>
+        <figcaption>Another product · Chinese market</figcaption>
         <button class="snd" type="button" aria-label="toggle sound">🔇</button>
       </figure>
     </div>
-    <p class="phones-note">↑ All three demos are real products generated with <b>Seedance 2.5</b> (speech, voices and lip-sync are native model output — tap 🔇 for audio). The left one is a "storyboard grid → one-tap full film" run: hook, pour, sip and box-reveal — <b>4 shots cut natively in a single generation</b>. This is the real output of ClipForge's generation path.</p>
+    <p class="phones-note">↑ The input is just <b>one product photo</b> — script, storyboard, visuals and voice are all generated (real products, <b>Seedance 2.5</b>, tap 🔇 for audio). The judge panel tears up the draft lines first; the left film is a "storyboard grid → one-tap full film" run: hook, pour, sip and box-reveal — <b>4 shots cut natively in a single generation</b>. The other two come from the coffee product photo through the same pipeline.</p>
   </div>
 
   <div class="marquee" aria-hidden="true">

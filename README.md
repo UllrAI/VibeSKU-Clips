@@ -43,24 +43,40 @@
 
 想更高画质再加 Key：一个接口聚合 **7 大平台 30+ 精选模型**（GPT Image 2 / **Seedance 2.5** / **MiniMax H3** / Kling O3 / Veo 3.1…），Atlas 全站 **200+ 视频模型动态直连**——平台新上的模型无需升级就能用；自部署开源（AGPL-3.0），数据全在本机不上云。
 
-## 🎬 示例成片：真实商品 · Seedance 2.5 实测
+## 🎬 示例：一张商品图进去，一条能发的片出来（Seedance 2.5 实测）
 
-同一张商品图跑完「判官团撕台词 → 九宫格分镜 → 一键整片 / 逐镜转动态」全流程的真实产出，**人声、台词、口型全部是模型原生输出，未经人工修片**：
+**输入只有下面这一张商品图 + 一句话需求。** 台词、分镜、画面、人声全部是 ClipForge 自动产出：判官团先把「大家好体」初稿台词撕掉重写 → 九宫格一次生图锁住人物/场景/商品 → 一键整片：
 
 <table>
   <tr>
-    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="230" alt="一键整片示例：咖啡液 4 镜整片"/></a></td>
-    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="230" alt="中文达人口播示例"/></a></td>
-    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee-en.mp4"><img src="docs/videos/poster-coffee-en.jpg" width="230" alt="出海英文口播示例"/></a></td>
+    <th align="center">① 输入：一张商品图</th>
+    <th align="center">② 自动九宫格分镜（1 次生图）</th>
+    <th align="center">③ 输出：一键整片（4 镜 · 人物原声）</th>
   </tr>
   <tr>
-    <td align="center"><sub><b>🎞️ 一键整片 · 原生 4 镜切换</b><br/>15s：口播钩子→挤咖啡→举杯喝→举盒收尾<br/>九宫格关键帧一次生成整片</sub></td>
-    <td align="center"><sub><b>🎙️ 达人口播 · 中文</b><br/>12s：台词从对话中间开始<br/>行为节拍与表情随台词变化</sub></td>
-    <td align="center"><sub><b>🌍 出海英文 · TikTok</b><br/>12s：同一套流程<br/>直接切英文市场</sub></td>
+    <td align="center"><img src="docs/videos/input-coffee.jpg" width="210" alt="输入：冷萃咖啡液商品图"/></td>
+    <td align="center"><img src="docs/videos/grid-coffee.jpg" width="210" alt="自动产出的九宫格分镜：同一人物/房间/光线的 9 个镜头"/></td>
+    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="210" alt="点击播放：4 镜整片"/></a><br/><sub>▶️ 点图播放（开声音）</sub></td>
   </tr>
 </table>
 
-▶️ 点图播放，或到<a href="https://xixihhhh.github.io/clipforge/">官网</a>自动播放（记得开声音——人声是生成的一部分）。
+台词也不是套模板——判官团把初稿的「大家好，今天给大家推荐一款超好用的冷萃咖啡液」撕成了成片里的**「就这玩意儿，把我星巴克的钱包给救了」**；整片 4 个镜头（口播钩子→挤咖啡→举杯喝→举盒收尾）一次生成原生切换，台词由人物原声逐字说出。
+
+同一套流程的另外两条产出（输入 → 输出）：
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/videos/input-coffee.jpg" width="110" alt="同一张咖啡液商品图"/></td>
+    <td align="center">→</td>
+    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="110" alt="点击播放：中文口播单镜"/></a><br/><sub>🎙️ 中文口播单镜 12s</sub></td>
+    <td align="center" width="40"></td>
+    <td align="center"><img src="docs/videos/input-blender.jpg" width="110" alt="输入：便携榨汁杯商品图"/></td>
+    <td align="center">→</td>
+    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-blender-en.mp4"><img src="docs/videos/poster-blender-en.jpg" width="110" alt="点击播放：出海英文口播"/></a><br/><sub>🌍 出海英文口播 12s</sub></td>
+  </tr>
+</table>
+
+人声、台词、口型均为模型原生输出，未经人工修片；<a href="https://xixihhhh.github.io/clipforge/">官网</a>可直接自动播放。
 
 ## 🚀 30 秒跑起来
 
