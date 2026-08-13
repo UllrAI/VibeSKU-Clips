@@ -62,3 +62,39 @@ describe("buildNativeFeelFilter", () => {
     }
   });
 });
+
+describe("v0.8.89 扩展：strong 档 / 光晕 / 平台二压感", () => {
+  it("strong（边走边拍）：更大裁切余量 + 微旋转呼吸滚动", () => {
+    const strong = buildNativeFeelFilter({ width: 1080, height: 1920, strength: "strong" });
+    expect(strong).toContain("rotate=");
+    // 余量比 medium 更大（3% vs 2%）
+    expect(strong).toContain("scale=1144:2036"); // 1080+2*32, 1920+2*58
+    const medium = buildNativeFeelFilter({ width: 1080, height: 1920, strength: "medium" });
+    expect(medium).not.toContain("rotate=");
+  });
+
+  it("halation：提亮部→高斯模糊→暖化→screen 混合，输出仍是 [vout]", () => {
+    const f = buildNativeFeelFilter({ width: 1080, height: 1920, halation: true });
+    expect(f).toContain("lutyuv=y='if(gt(val,200),val,0)'");
+    expect(f).toContain("gblur=");
+    expect(f).toContain("blend=all_mode=screen[vout]");
+    // 默认关：不出现光晕链
+    expect(buildNativeFeelFilter({ width: 1080, height: 1920 })).not.toContain("gblur");
+  });
+
+  it("phoneCompress：2/3 降采样再回升（世代损失）+ 过锐 + 手机 HDR 艳丽档替代去精修调色", () => {
+    const f = buildNativeFeelFilter({ width: 1080, height: 1920, phoneCompress: true });
+    expect(f).toContain("scale=720:1280:flags=bilinear");
+    expect(f).toContain("scale=1080:1920,");
+    expect(f).toContain("unsharp=");
+    expect(f).toContain("eq=saturation=1.12:contrast=1.05");
+    // 去精修调色（saturation<1）不应同时出现
+    expect(f).not.toContain("eq=saturation=0.9");
+  });
+
+  it("三个新选项全关时输出与旧版字节一致（默认行为不变）", () => {
+    const legacy = buildNativeFeelFilter({ width: 1080, height: 1920 });
+    const explicit = buildNativeFeelFilter({ width: 1080, height: 1920, halation: false, phoneCompress: false });
+    expect(explicit).toBe(legacy);
+  });
+});

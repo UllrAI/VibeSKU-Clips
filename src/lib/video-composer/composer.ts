@@ -9,6 +9,7 @@ import { safeEncodeParams } from "@/lib/compose-presets";
 import { createLimiter } from "@/lib/concurrency";
 import { buildAigcMetadataArgs, buildAigcMetadataArgv } from "@/lib/compliance-metadata";
 import { CAPTION_SAFE_BOTTOM_RATIO, CAPTION_SAFE_BOTTOM_RATIO_NOCARD } from "./safe-zone";
+import { VOICE_GROUND_CHAIN, roomToneSource } from "./voice-ground";
 
 /**
  * Detect an available Chinese font file path.
@@ -328,6 +329,13 @@ export interface ComposeConfig {
     videoPreset?: string;
     /** x264 -crf quality (default 18); clamped to a valid range */
     crf?: number;
+    /**
+     * Voice grounding (default ON when any clip has a TTS track; pass false to opt out):
+     * de-broadcast chain on TTS narration + a room-tone bed under the whole timeline, so the
+     * voice-over sits in a real room instead of a digital vacuum. Native model audio
+     * (Seedance 2.x speaks with its own room tone) is never touched.
+     */
+    voiceGround?: boolean;
   };
   subtitle?: {
     texts: { text: string; startTime: number; endTime: number }[];
@@ -487,14 +495,20 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
 
   // audio handling: TTS voice-over > native video audio > silence; each segment is aligned to clip duration for audio/video sync
   const audioParts: string[] = [];
+  // voice grounding defaults ON whenever a TTS track exists (quality features default into every
+  // chain); voiceGround:false opts out. Native model audio never passes through the chain.
+  const voiceGround = config.output.voiceGround !== false && config.clips.some((c) => c.audioPath);
   if (hasAnyAudio) {
     config.clips.forEach((clip, i) => {
       if (clip.audioPath) {
-        // TTS voice-over: added as an extra input, padded with silence / trimmed to clip duration
+        // TTS voice-over: added as an extra input, padded with silence / trimmed to clip duration;
+        // with voice grounding it first passes the de-broadcast chain (phone-mic band + AGC-style
+        // compression + light exciter) so it stops sounding like a studio read
         const ai = inputs.length;
         inputs.push({ path: clip.audioPath });
+        const ground = voiceGround ? `${VOICE_GROUND_CHAIN},` : "";
         audioParts.push(
-          `[${ai}:a]aresample=44100,apad,atrim=duration=${clip.duration},asetpts=PTS-STARTPTS[a${i}]`
+          `[${ai}:a]aresample=44100,${ground}apad,atrim=duration=${clip.duration},asetpts=PTS-STARTPTS[a${i}]`
         );
       } else if (clip.hasAudio && clip.type === "video") {
         // extract the clip's native audio track (model-generated voice/sfx), padded or trimmed to shot duration
@@ -553,6 +567,13 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
       curA = next;
     }
     currentAudioStream = curA;
+    // room-tone bed under the whole timeline: inter-sentence gaps must never fall to digital
+    // zero (the loudest TTS tell). amix duration=first bounds the infinite lavfi source.
+    if (voiceGround) {
+      filterParts.push(`${roomToneSource()}[roomtone]`);
+      filterParts.push(`[${currentAudioStream}][roomtone]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[voice_grounded]`);
+      currentAudioStream = "voice_grounded";
+    }
   }
 
   // BGM mixing: layered on top of clip audio

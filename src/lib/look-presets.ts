@@ -27,6 +27,18 @@ export interface LookPreset {
   image: { zh: string; en: string };
   /** Short lighting anchor appended to the i2v motion prompt */
   motion: { zh: string; en: string };
+  /**
+   * Preset family: "styled" (default) = art-directed looks; "real" = raw phone-shot looks
+   * (the 2026 anti-"AI slop" survey: a camera-identity phrase at the very FRONT of a video
+   * prompt biases the model toward handheld-phone distribution far more than mid-prompt
+   * quality words — see `opener`).
+   */
+  group?: "styled" | "real";
+  /**
+   * Camera-identity opener PREPENDED to the i2v motion prompt (front tokens carry the most
+   * weight). Only "real" looks define it; styled looks keep the appended anchor alone.
+   */
+  opener?: { zh: string; en: string };
 }
 
 /** Sentinel meaning "no global look" (the LLM's own per-shot style words stand alone). */
@@ -127,6 +139,60 @@ export const LOOK_PRESETS: LookPreset[] = [
     motion: {
       zh: "全程保持冷调科技光效",
       en: "keep the cool tech lighting throughout",
+    },
+  },
+  // ---- "real" family (2026-08): raw phone-shot looks for the UGC don't-look-AI path.
+  // All wording stays positive ("what the image IS") — visual negatives are placebos on
+  // Seedance, and flaw-stacking is banned by the two-round real-face A/B lesson.
+  {
+    id: "phone_raw",
+    name: { zh: "手机直出", en: "Phone Raw" },
+    group: "real",
+    opener: {
+      zh: "UGC 创作者手机手持实拍",
+      en: "UGC creator, handheld phone footage",
+    },
+    image: {
+      zh: "真实手机直出画质，色彩自然未调色，混合色温带轻微白平衡漂移，轻度压缩感，生活化取景略偏离居中构图",
+      en: "raw ungraded phone-camera look, natural colors with mixed color temperature and a slight white-balance drift, mild compression feel, casual slightly off-center framing",
+    },
+    motion: {
+      zh: "全程保持未调色的自然色彩与混合色温",
+      en: "keep the ungraded natural colors and mixed color temperature throughout",
+    },
+  },
+  {
+    id: "selfie_front",
+    name: { zh: "前置自拍", en: "Front-cam Selfie" },
+    group: "real",
+    opener: {
+      zh: "手机前置摄像头手持自拍，握持手机的手臂入画",
+      en: "Handheld arm's-length selfie on the phone front camera, the holding arm visible in frame",
+    },
+    image: {
+      zh: "前置手机镜头自拍视角，26mm 等效广角带近距边缘畸变，握持手机的手臂入画，机位略低于视线，日常生活背景",
+      en: "front phone-camera selfie view, 26mm-equivalent wide angle with close-range edge distortion, the holding arm visible in frame, camera slightly below eye level, everyday background",
+    },
+    motion: {
+      zh: "全程保持前置镜头的广角透视与自然室内光",
+      en: "keep the front-camera wide-angle perspective and natural indoor light throughout",
+    },
+  },
+  {
+    id: "propped_static",
+    name: { zh: "搁置机位", en: "Propped Static" },
+    group: "real",
+    opener: {
+      zh: "手机搁在台面上固定拍摄，画面带极轻微的台面震动",
+      en: "Vertical phone video propped on a counter, static with small surface vibrations",
+    },
+    image: {
+      zh: "手机搁在台面上拍摄的固定视角，高度贴近台面略微仰视，生活痕迹背景，自然室内光",
+      en: "fixed viewpoint of a phone propped on a counter, slightly low and tilted up, lived-in background, natural indoor light",
+    },
+    motion: {
+      zh: "全程保持固定的搁置视角与自然室内光",
+      en: "keep the fixed propped viewpoint and natural indoor light throughout",
     },
   },
 ];

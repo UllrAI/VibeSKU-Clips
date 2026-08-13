@@ -14,7 +14,9 @@ const SAFE_ID = /^[a-zA-Z0-9\-]+$/;
  * POST /api/project/[id]/native-feel — re-render the latest composed video with a hand-shot look
  * (handheld micro-jitter + light grain + slight de-polish color), as a post-process on the finished
  * mp4 (the compose pipeline is untouched). Counters the 2026 platform downranking of overly polished
- * AI-looking content. body: { compositionId?, strength?: "subtle"|"medium", seed?, grain?, vignette? }
+ * AI-looking content.
+ * body: { compositionId?, strength?: "subtle"|"medium"|"strong", seed?, grain?, vignette?,
+ *         halation?, phoneCompress? }
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -45,15 +47,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const videoPath = existsSync(comp.outputPath) ? comp.outputPath : join(getDataDir(), comp.outputPath);
   if (!existsSync(videoPath)) return apiError(req, "成片文件不存在", "The composed video file does not exist", 404);
 
-  const strength: FeelStrength = body.strength === "medium" ? "medium" : "subtle";
+  const strength: FeelStrength = body.strength === "medium" || body.strength === "strong" ? body.strength : "subtle";
   const seed = typeof body.seed === "number" && Number.isFinite(body.seed) ? body.seed : undefined;
   const grain = typeof body.grain === "boolean" ? body.grain : undefined;
   const vignette = body.vignette === true;
+  const halation = body.halation === true;
+  const phoneCompress = body.phoneCompress === true;
 
   const outName = `native-${Date.now()}.mp4`;
   const outPath = join(getDataDir(), "output", id, outName);
   try {
-    await applyNativeFeel({ videoPath, outPath, strength, seed, grain, vignette });
+    await applyNativeFeel({ videoPath, outPath, strength, seed, grain, vignette, halation, phoneCompress });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : errText(req, "原生感处理失败", "Native-feel processing failed") },

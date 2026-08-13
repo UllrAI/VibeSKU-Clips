@@ -56,3 +56,37 @@ describe("buildMotionPrompt 的 look 光线锚点", () => {
     expect(withLook.replace(`光线：${getLookPreset("warm_life")!.motion.zh}。`, "")).toBe(base);
   });
 });
+
+describe("「实拍感」组（real family）与相机身份开场词", () => {
+  it("三款 real 预设齐全且都带 opener（前置注入用）", () => {
+    const real = LOOK_PRESETS.filter((p) => p.group === "real");
+    expect(real.map((p) => p.id).sort()).toEqual(["phone_raw", "propped_static", "selfie_front"]);
+    for (const p of real) {
+      expect(p.opener?.zh).toBeTruthy();
+      expect(p.opener?.en).toBeTruthy();
+    }
+    // 风格化预设不带 opener（保持追加式光线锚点的旧行为）
+    expect(getLookPreset("studio_product")!.opener).toBeUndefined();
+  });
+
+  it("opener 前置为 prompt 第一段（前部 token 权重最高），中英分支各自生效", () => {
+    const p = getLookPreset("phone_raw")!;
+    const zh = buildMotionPrompt({ shotType: "demo", camera: "镜头平稳跟随", look: p.motion, opener: p.opener });
+    expect(zh.startsWith(`${p.opener!.zh}。`)).toBe(true);
+    const en = buildMotionPrompt({ shotType: "demo", camera: "smooth follow shot", look: p.motion, opener: p.opener });
+    expect(en.startsWith(`${p.opener!.en}. `) || en.startsWith(`${p.opener!.en}.`)).toBe(true);
+  });
+
+  it("不传 opener 时输出与旧版一致（运镜行仍然领跑）", () => {
+    const base = buildMotionPrompt({ shotType: "demo", camera: "镜头平稳跟随" });
+    expect(base.startsWith("运镜：")).toBe(true);
+  });
+
+  it("实拍感 image 后缀全正向措辞：不含否定式视觉负词（官方负向通道只覆盖字幕/音频）", () => {
+    for (const p of LOOK_PRESETS.filter((x) => x.group === "real")) {
+      // 「未调色」是状态描述允许出现；不允许「不要/避免」类指令式否定
+      expect(p.image.zh).not.toMatch(/不要|避免/);
+      expect(p.image.en.toLowerCase()).not.toMatch(/\bno\b|\bavoid\b/);
+    }
+  });
+});

@@ -8,7 +8,13 @@ import { and, eq } from "drizzle-orm";
 import { createProvider } from "@/lib/providers";
 import { ProviderError } from "@/lib/providers/base";
 import { GRID_MAX_SHOTS } from "@/lib/storyboard-grid";
-import { buildStoryboardFilmPrompt, filmTotalSeconds, filmRequestSeconds, FILM_MAX_SECONDS } from "@/lib/storyboard-film";
+import {
+  buildStoryboardFilmPrompt,
+  dialogueDensityWarnings,
+  filmTotalSeconds,
+  filmRequestSeconds,
+  FILM_MAX_SECONDS,
+} from "@/lib/storyboard-film";
 import { toRemoteUsableImage } from "@/lib/remote-image";
 import { probeMedia } from "@/lib/media-probe";
 import { recordAiTask, updateAiTask } from "@/lib/ai-tasks";
@@ -117,6 +123,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const prompt = buildStoryboardFilmPrompt(shots, script.characters, { characterSheet: !!characterSheetUrl });
     const duration = filmRequestSeconds(shots);
+    // lip-sync guardrail (advisory, never blocks): overstuffed lines drift out of sync near the
+    // end of a segment — surfaced so the UI/CLI can suggest trimming before the paid generation
+    const dialogueWarnings = dialogueDensityWarnings(shots);
     const provider = createProvider({ name: providerName, apiKey, baseUrl: baseUrl ?? "" });
 
     const opts = (options ?? {}) as { width?: number; height?: number };
@@ -138,7 +147,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!provider.submitVideoTask || !provider.waitForTask) {
       const result = await provider.generateVideo(videoOptions);
       const saved = await persistFilm(id, result.videoUrls?.[0], model || DEFAULT_FILM_MODEL);
-      return NextResponse.json({ ...saved, taskId: result.taskId, modelId: result.modelId, seconds: duration });
+      return NextResponse.json({ ...saved, taskId: result.taskId, modelId: result.modelId, seconds: duration, dialogueWarnings });
     }
 
     // Phase 1: submit, then persist the paid task ID before polling (issue #16)
@@ -167,7 +176,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
       await updateAiTask(rowId, { status: "completed", resultUrls: [videoUrl], error: null });
       const saved = await persistFilm(id, videoUrl, modelId);
-      return NextResponse.json({ ...saved, taskId, modelId, seconds: duration });
+      return NextResponse.json({ ...saved, taskId, modelId, seconds: duration, dialogueWarnings });
     } catch (error) {
       const failed = error instanceof ProviderError && error.code === "TASK_FAILED";
       const message = error instanceof Error ? error.message : String(error);

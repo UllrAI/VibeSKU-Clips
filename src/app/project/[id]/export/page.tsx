@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSettingsStore } from "@/lib/stores/settings-store";
-import { buildPublishPack, buildAiDeclaration } from "@/lib/publish-pack";
+import { buildPublishPack, buildAiDeclaration, type CommentKit } from "@/lib/publish-pack";
 import { buildShopLink } from "@/lib/shop-link";
 import { useT, useLocale } from "@/lib/i18n";
 import { ProjectHeader } from "@/components/project-header";
@@ -76,7 +76,7 @@ export default function ExportPage() {
   // publish copy
   const { llm } = useSettingsStore();
   const [productMeta, setProductMeta] = useState<{ productName: string; category: string; description: string; shopUrl?: string; affiliateCode?: string } | null>(null);
-  const [publish, setPublish] = useState<{ loading: boolean; titles: string[]; hashtags: string[]; caption: string; shopLink?: string; error?: string; template?: boolean }>({ loading: false, titles: [], hashtags: [], caption: "" });
+  const [publish, setPublish] = useState<{ loading: boolean; titles: string[]; hashtags: string[]; caption: string; commentKit?: CommentKit; shopLink?: string; error?: string; template?: boolean }>({ loading: false, titles: [], hashtags: [], caption: "" });
   // A/B variant generation (re-render with different subtitle styles and BGM, one each, for ad comparison)
   const [abVariants, setAbVariants] = useState<{ key: string; labelKey: string; status: "running" | "done" | "error"; url?: string }[]>([]);
   const [abRunning, setAbRunning] = useState(false);
@@ -251,12 +251,15 @@ export default function ExportPage() {
     } catch { /* clipboard unavailable (non-secure context) — the text stays selectable */ }
   };
 
-  // native feel: hand-shot look post-process (handheld jitter + grain + de-polish)
-  const [feelStrength, setFeelStrength] = useState<"subtle" | "medium">("subtle");
+  // native feel: hand-shot look post-process (handheld jitter + grain + de-polish),
+  // plus opt-in halation (lens glow) and phone-compress (platform-transcode look) layers
+  const [feelStrength, setFeelStrength] = useState<"subtle" | "medium" | "strong">("subtle");
+  const [feelHalation, setFeelHalation] = useState(false);
+  const [feelPhoneCompress, setFeelPhoneCompress] = useState(false);
   const genNativeFeel = async () => {
     setTool("feel", { loading: true, error: undefined, video: undefined });
     try {
-      const r = await fetch(`/api/project/${id}/native-feel`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ strength: feelStrength }) });
+      const r = await fetch(`/api/project/${id}/native-feel`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ strength: feelStrength, halation: feelHalation, phoneCompress: feelPhoneCompress }) });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || t("moreFailed"));
       setTool("feel", { loading: false, video: d.video, note: t("feelDone") });
@@ -292,7 +295,7 @@ export default function ExportPage() {
         sellingPoints: productMeta?.description,
         locale: locale === "en" ? "en" : "zh", // follow the UI language: English users receive English copy
       });
-      setPublish({ loading: false, titles: pack.titles, hashtags: pack.hashtags, caption: pack.caption, template: true, ...(shopLink && { shopLink }) });
+      setPublish({ loading: false, titles: pack.titles, hashtags: pack.hashtags, caption: pack.caption, commentKit: pack.commentKit, template: true, ...(shopLink && { shopLink }) });
       return;
     }
     setPublish((p) => ({ ...p, loading: true, error: undefined, template: false }));
@@ -310,7 +313,7 @@ export default function ExportPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t("publishFailed"));
-      setPublish({ loading: false, titles: data.titles ?? [], hashtags: data.hashtags ?? [], caption: data.caption ?? "", ...(shopLink && { shopLink }) });
+      setPublish({ loading: false, titles: data.titles ?? [], hashtags: data.hashtags ?? [], caption: data.caption ?? "", commentKit: data.commentKit, ...(shopLink && { shopLink }) });
     } catch (e) {
       setPublish((p) => ({ ...p, loading: false, error: e instanceof Error ? e.message : t("publishFailed") }));
     }
@@ -634,6 +637,27 @@ export default function ExportPage() {
                     </button>
                   </div>
                 )}
+                {/* comment-section ops kit: the video's second landing page — a pinned self-Q&A
+                    plus objection reply templates (deliberately NO seeded fake comments) */}
+                {publish.commentKit && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">{t("publishCommentKitLabel")}</p>
+                    <p className="text-[11px] text-muted-foreground mb-1">{t("publishCommentPinned")}</p>
+                    <button onClick={() => copyText(publish.commentKit!.pinned)} className="w-full text-left text-sm px-3 py-2 rounded-lg border border-border/50 bg-muted/10 hover:border-primary/50 transition-colors mb-2">
+                      {publish.commentKit.pinned}
+                    </button>
+                    <p className="text-[11px] text-muted-foreground mb-1">{t("publishCommentObjections")}</p>
+                    <div className="space-y-1.5">
+                      {publish.commentKit.objections.map((o, i) => (
+                        <button key={i} onClick={() => copyText(o.a)} className="w-full text-left px-3 py-2 rounded-lg border border-border/50 bg-muted/10 hover:border-primary/50 transition-colors">
+                          <span className="block text-[11px] text-muted-foreground">{o.q}</span>
+                          <span className="block text-sm">{o.a}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[11px] text-amber-500/90 mt-1.5">{publish.commentKit.notice}</p>
+                  </div>
+                )}
                 {/* platform AI-disclosure kit: toggle reminder + paste-ready caption line (undeclared AI content gets auto-flagged and throttled) */}
                 <div>
                   <p className="text-xs text-muted-foreground mb-1.5">{t("publishAiDeclLabel")}</p>
@@ -884,10 +908,19 @@ export default function ExportPage() {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2"><LuFilm className="w-3.5 h-3.5 text-primary" /><span className="text-xs font-medium">{t("feelTitle")}</span></div>
                 <div className="flex items-center gap-2">
-                  <select className="rounded-md border border-border/50 bg-background/50 px-2 py-1 text-xs" value={feelStrength} onChange={(e) => setFeelStrength(e.target.value === "medium" ? "medium" : "subtle")}>
+                  <select className="rounded-md border border-border/50 bg-background/50 px-2 py-1 text-xs" value={feelStrength} onChange={(e) => setFeelStrength(e.target.value === "medium" || e.target.value === "strong" ? (e.target.value as "medium" | "strong") : "subtle")}>
                     <option value="subtle">{t("feelStrengthSubtle")}</option>
                     <option value="medium">{t("feelStrengthMedium")}</option>
+                    <option value="strong">{t("feelStrengthStrong")}</option>
                   </select>
+                  <label className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer">
+                    <input type="checkbox" className="accent-primary" checked={feelHalation} onChange={(e) => setFeelHalation(e.target.checked)} />
+                    {t("feelHalation")}
+                  </label>
+                  <label className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer">
+                    <input type="checkbox" className="accent-primary" checked={feelPhoneCompress} onChange={(e) => setFeelPhoneCompress(e.target.checked)} />
+                    {t("feelPhoneCompress")}
+                  </label>
                   <Button size="sm" variant="outline" className="text-xs h-7" disabled={more.feel?.loading || !composition?.url} onClick={genNativeFeel}>
                     {more.feel?.loading ? <LuLoaderCircle className="w-3.5 h-3.5 animate-spin" /> : t("moreGenerate")}
                   </Button>

@@ -526,8 +526,10 @@ export default function AssetsPage() {
         // behavior beats (seeded by shot position so a batch never repeats the same gestures)
         talking: !!asset?.characterId && !!asset?.voiceover?.trim(),
         beatSeed: assets.findIndex((a) => a.shotId === shotId),
-        // global look: short lighting anchor keeps the palette from drifting through the i2v pass
+        // global look: short lighting anchor keeps the palette from drifting through the i2v pass;
+        // "real"-family looks also prepend their camera-identity opener (front tokens weigh most)
         look: getLookPreset(visualLook)?.motion,
+        opener: getLookPreset(visualLook)?.opener,
       });
       // per-shot duration: the composer's slot follows the script duration (voice-fitted), and the
       // composer trims overshoot from the TAIL — which would cut a chained ending. Round to the
@@ -967,11 +969,21 @@ export default function AssetsPage() {
               className="bg-transparent text-xs outline-none h-6 max-w-28 text-foreground"
             >
               <option value="none">{t("lookNone")}</option>
-              {LOOK_PRESETS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {locale === "zh" ? p.name.zh : p.name.en}
-                </option>
-              ))}
+              {/* "real" family = raw phone-shot looks (UGC anti-AI-slop path); styled = art-directed */}
+              <optgroup label={locale === "zh" ? "实拍感" : "Real-shot"}>
+                {LOOK_PRESETS.filter((p) => p.group === "real").map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {locale === "zh" ? p.name.zh : p.name.en}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label={locale === "zh" ? "风格化" : "Styled"}>
+                {LOOK_PRESETS.filter((p) => p.group !== "real").map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {locale === "zh" ? p.name.zh : p.name.en}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
           {videoModelTarget && (

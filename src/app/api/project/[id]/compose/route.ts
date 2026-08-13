@@ -405,6 +405,9 @@ export async function POST(
       output: {
         ...outputCfg,
         ...(bgmLocal && { bgmPath: bgmLocal, bgmVolume: 0.18, bgmDuck: body.bgmDuck === true }),
+        // voice grounding (TTS de-broadcast + room-tone bed) defaults ON in the composer when a
+        // TTS track exists; body.voiceGround === false is the explicit opt-out for a clean read
+        ...(body.voiceGround === false && { voiceGround: false }),
       },
       subtitle:
         subtitleTexts.length > 0

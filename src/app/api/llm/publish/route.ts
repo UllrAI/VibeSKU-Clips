@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractJSON } from "@/lib/script-engine/generator";
-import { buildPublishPrompt } from "@/lib/publish-pack";
+import { buildPublishPrompt, buildCommentKit, type CommentKit } from "@/lib/publish-pack";
 import { apiError, errText } from "@/lib/api-error";
 import { createLLMClient, llmErrorPair, withLLMErrors } from "@/lib/llm-error";
 
 /**
- * Generate publish copy: 3 titles, #hashtags, and a one-line promotional caption.
+ * Generate publish copy: 3 titles, #hashtags, a one-line promotional caption, plus the
+ * comment-section ops kit (pinned self-Q&A + objection reply templates).
  * Used for copy-pasting when publishing commerce videos to Douyin/Kuaishou/Xiaohongshu.
  */
 export async function POST(req: NextRequest) {
@@ -45,12 +46,30 @@ export async function POST(req: NextRequest) {
       titles?: string[];
       hashtags?: string[];
       caption?: string;
+      commentKit?: { pinned?: string; objections?: { q?: string; a?: string }[] };
+    };
+
+    // comment kit: keep only well-formed LLM entries; fall back to the deterministic
+    // template kit so the field is never missing (the notice always comes from our side —
+    // the compliance wording is not the LLM's to rewrite)
+    const fallback = buildCommentKit({ productName, category, sellingPoints: productDescription, locale: en ? "en" : "zh" });
+    const rawKit = parsed.commentKit;
+    const objections = Array.isArray(rawKit?.objections)
+      ? rawKit.objections
+          .filter((o): o is { q: string; a: string } => typeof o?.q === "string" && !!o.q.trim() && typeof o?.a === "string" && !!o.a.trim())
+          .slice(0, 3)
+      : [];
+    const commentKit: CommentKit = {
+      pinned: typeof rawKit?.pinned === "string" && rawKit.pinned.trim() ? rawKit.pinned.trim() : fallback.pinned,
+      objections: objections.length > 0 ? objections : fallback.objections,
+      notice: fallback.notice,
     };
 
     return NextResponse.json({
       titles: Array.isArray(parsed.titles) ? parsed.titles.slice(0, 3) : [],
       hashtags: Array.isArray(parsed.hashtags) ? parsed.hashtags : [],
       caption: parsed.caption ?? "",
+      commentKit,
     });
   } catch (error) {
     console.error("生成发布文案失败:", error);

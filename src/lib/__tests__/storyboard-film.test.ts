@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   buildStoryboardFilmPrompt,
+  dialogueDensityWarnings,
   filmTotalSeconds,
   filmRequestSeconds,
   FILM_MAX_SECONDS,
@@ -54,16 +55,29 @@ describe("中文整片 prompt", () => {
     expect(prompt).toContain("总时长约 12 秒，共 3 个镜头");
   });
 
-  it("台词逐字进段落；无台词镜头明确只留环境音", () => {
-    expect(prompt).toContain("「就这玩意儿救了我的钱包」");
-    expect(prompt).toContain("「链接挂这了」");
+  it("台词走官方 {} 括号语法进段落；无台词镜头明确只留环境音", () => {
+    expect(prompt).toContain("{就这玩意儿救了我的钱包}");
+    expect(prompt).toContain("{链接挂这了}");
     expect(prompt).toContain("（无台词，只保留环境音与动作声）");
   });
 
-  it("全局块：一致性 + 口语说话方式 + 无字幕水印", () => {
+  it("全局块：一致性 + 口语说话方式 + 无字幕水印 + 官方音频负控", () => {
     expect(prompt).toContain("同一人物");
     expect(prompt).toContain("逐字说出");
     expect(prompt).toContain("不出现任何字幕");
+    // 官方负向通道只覆盖字幕与音频：bgm 交给合成器权威层
+    expect(prompt).toContain("无bgm");
+  });
+
+  it("素材绑定段：无 sheet 时 @图片1..N 顺序声明为关键帧", () => {
+    expect(prompt).toContain("素材对应：@图片1 至 @图片3 依次为镜头1至镜头3的关键帧");
+  });
+
+  it("质感行默认带真实手机直出（全正向措辞）；realism:false 时不出现", () => {
+    expect(prompt).toContain("真实手机直出质感");
+    expect(prompt).toContain("保留毛孔细节");
+    const styled = buildStoryboardFilmPrompt(zhShots, undefined, undefined, { realism: false });
+    expect(styled).not.toContain("真实手机直出质感");
   });
 
   it("唯一具名角色时台词归属到角色名", () => {
@@ -89,10 +103,13 @@ describe("英文整片 prompt（台词无中文时整体切英文）", () => {
   ];
   const prompt = buildStoryboardFilmPrompt(enShots);
 
-  it("@ImageN 引用 + 逐字口播说明 + 时间段", () => {
+  it("@ImageN 引用 + 逐字口播说明 + 时间段 + 台词语言声明", () => {
     expect(prompt).toContain("[0-6s] Shot 1 (hook shot, framing follows @Image1)");
-    expect(prompt).toContain('Dialogue (spoken verbatim): "This thing saved my wallet"');
+    expect(prompt).toContain("Dialogue (spoken verbatim): {This thing saved my wallet}");
     expect(prompt).toContain("(no dialogue — ambient and action sounds only)");
+    // 官方要求非中文台词显式声明语言
+    expect(prompt).toContain("Dialogue language: English.");
+    expect(prompt).toContain("Reference mapping: @Image1 through @Image2");
     expect(prompt).not.toContain("镜头");
   });
 
@@ -105,18 +122,45 @@ describe("英文整片 prompt（台词无中文时整体切英文）", () => {
 });
 
 describe("定妆参考位（characterSheet 序号偏移）", () => {
-  it("sheet 领跑参考数组：@图片1=定妆照声明，分镜引用整体 +1", () => {
+  it("sheet 领跑参考数组：@图片1=定妆照声明，分镜引用整体 +1，绑定段同步偏移", () => {
     const prompt = buildStoryboardFilmPrompt(zhShots, undefined, { characterSheet: true });
     expect(prompt).toContain("@图片1 是出镜人物的四视图定妆照");
     expect(prompt).toContain("镜头1（钩子镜，画面以 @图片2 为基准）");
     expect(prompt).toContain("镜头3（转化镜，画面以 @图片4 为基准）");
     expect(prompt).not.toContain("画面以 @图片1 为基准");
+    expect(prompt).toContain("素材对应：@图片1 是出镜人物定妆照（仅作身份参考）；@图片2 至 @图片4");
   });
 
   it("无 sheet 时不出现定妆声明，分镜仍从 @图片1 起", () => {
     const prompt = buildStoryboardFilmPrompt(zhShots);
     expect(prompt).not.toContain("定妆照");
     expect(prompt).toContain("画面以 @图片1 为基准");
+  });
+});
+
+describe("台词密度检查（官方口型漂移预防，只拦极端超载）", () => {
+  it("中文按 5 字/秒上限：正常台词不报警，塞爆的报警并给出计数", () => {
+    // 3 秒 × 5 = 15 字上限；「就这玩意儿救了我的钱包」11 个可读字符 → 不报警
+    expect(dialogueDensityWarnings(zhShots)).toEqual([]);
+    const stuffed = [
+      mkShot({ shotId: 1, duration: 2, voiceover: "这一句话实在是太长了根本不可能在两秒钟之内自然说完它" }),
+    ];
+    const warns = dialogueDensityWarnings(stuffed);
+    expect(warns).toHaveLength(1);
+    expect(warns[0].index).toBe(0);
+    expect(warns[0].limit).toBe(10);
+    expect(warns[0].count).toBeGreaterThan(10);
+  });
+
+  it("英文按 2.6 词/秒上限；无台词与零时长镜头跳过", () => {
+    const en = [
+      mkShot({ shotId: 1, duration: 2, description: "kitchen", voiceover: "this is way way too many words to say naturally in two short seconds honestly" }),
+      mkShot({ shotId: 2, duration: 0, description: "kitchen", voiceover: "ignored" }),
+      mkShot({ shotId: 3, duration: 3, description: "kitchen", voiceover: "" }),
+    ];
+    const warns = dialogueDensityWarnings(en);
+    expect(warns).toHaveLength(1);
+    expect(warns[0].limit).toBe(6);
   });
 });
 

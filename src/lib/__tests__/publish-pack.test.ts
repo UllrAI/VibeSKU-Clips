@@ -191,3 +191,34 @@ describe("buildAiDeclaration / pack aiDeclaration", () => {
     expect(buildPublishPack({ productName: "juicer", locale: "en" }).aiDeclaration.line).toBe(en.line);
   });
 });
+
+describe("commentKit（评论区运营包）", () => {
+  it("免 Key 包内置：置顶自问自答含商品名 + 2-3 条异议模板 + 合规提示", () => {
+    const pack = buildPublishPack({ productName: "挂耳咖啡", category: "food", sellingPoints: "三秒出一杯" });
+    expect(pack.commentKit.pinned).toContain("挂耳咖啡");
+    expect(pack.commentKit.objections.length).toBeGreaterThanOrEqual(2);
+    expect(pack.commentKit.objections.length).toBeLessThanOrEqual(3);
+    for (const o of pack.commentKit.objections) {
+      expect(o.q.length).toBeGreaterThan(0);
+      expect(o.a.length).toBeGreaterThan(0);
+    }
+    // 合规红线：明确禁止伪造证言/预埋假评论
+    expect(pack.commentKit.notice).toMatch(/伪造|假评论/);
+  });
+
+  it("en 版全英文且不带 CJK 泄漏", () => {
+    const pack = buildPublishPack({ productName: "Pour-over Coffee", locale: "en" });
+    const all = [pack.commentKit.pinned, pack.commentKit.notice, ...pack.commentKit.objections.flatMap((o) => [o.q, o.a])].join(" ");
+    expect(/[一-鿿]/.test(all)).toBe(false);
+    expect(pack.commentKit.pinned).toContain("Pour-over Coffee");
+  });
+
+  it("LLM prompt 契约包含 commentKit 字段与反伪造规则（中英两版）", () => {
+    const zh = buildPublishPrompt({ productName: "挂耳咖啡" }, "zh");
+    expect(zh).toContain('"commentKit"');
+    expect(zh).toMatch(/预埋假评论|伪造顾客证言/);
+    const en = buildPublishPrompt({ productName: "Coffee" }, "en");
+    expect(en).toContain('"commentKit"');
+    expect(en.toLowerCase()).toContain("fake customer testimonials");
+  });
+});

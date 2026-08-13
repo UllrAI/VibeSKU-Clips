@@ -60,6 +60,12 @@ export interface MotionPromptInput {
    * unspecified, which breaks look consistency across chained shots.
    */
   look?: { zh: string; en: string };
+  /**
+   * Camera-identity opener from a "real"-family look preset — PREPENDED as the prompt's
+   * first phrase (front tokens weigh most: "UGC creator, handheld phone footage" up front
+   * biases the whole generation toward the phone-shot distribution).
+   */
+  opener?: { zh: string; en: string };
 }
 
 /** True when the text contains CJK characters (used to pick the prompt language). */
@@ -214,6 +220,7 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
 
   const parts: string[] = [];
   if (lang === "zh") {
+    if (input.opener) parts.push(input.opener.zh);
     parts.push(`运镜：${camera}`);
     if (intensity) parts.push(intensity);
     parts.push(`画面动态：${action}`);
@@ -228,6 +235,7 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
     parts.push(QUALITY_TAIL.zh);
     return parts.join("。") + "。";
   }
+  if (input.opener) parts.push(input.opener.en);
   parts.push(`Camera: ${camera}`);
   if (intensity) parts.push(intensity);
   parts.push(`Motion: ${action}`);

@@ -504,6 +504,22 @@ export const goldenThreeSecondsStrategies = `
   示例文案："姐妹们，别划走！这个XX我后悔没早买！"
 `;
 
+/**
+ * Retention & conversion hard rules (2026 ad-platform evidence): product visible inside 3s
+ * (TikTok Marketing Science: 63% of top-CTR videos show the product/core info in the first 3s),
+ * a mid-video re-hook against the 45-55% statistical drop-off window, dual CTA placement
+ * (~70% first mention + final-shot repeat with a pointing gesture — voice+gesture+caption
+ * triple sync), soft personal-experience urgency by default (fabricated scarcity is an ad-law
+ * violation), and an optional save-hook for list/tutorial content. Injected after the hook
+ * guidance in buildUserPrompt; commerce path only (the topic path has no product/CTA).
+ */
+export const RETENTION_CONVERSION_RULES = `【留人与转化硬规则】
+- 商品前3秒入画：第一个分镜的画面里必须出现商品实体（前3秒不亮商品的带货视频，大盘点击率显著更低）
+- 中段续命钩：总时长超过 20 秒时，在约 40%–60% 进度的分镜台词里安排一句「续命句」，重新开一个悬念（如「但真正离谱的是下面这个」「第三个点才是我下单的原因」），压平中段流失
+- CTA 双落位：CTA 不能只在最后一镜——在约 70% 进度的分镜台词里先顺口提一次行动引导；最后一镜复读 CTA，且该镜 description 写明人物手指向画面下方的动作（口播+手势同步）
+- 紧迫感分档：默认用「个人体感式软紧迫」（如「我买的时候是这个价，不知道能挂多久」）；「最后X件/仅限今天」类可证实硬促，只有商家确认真实时才能写（虚假紧迫违广告法）
+- 收藏钩（可选）：清单/教程类内容在 CTA 前垫一句给收藏理由（如「先收藏，回头照着买」）`;
+
 // ==================== Output Format Constraints ====================
 
 /** JSON output format constraint prompt */
@@ -784,6 +800,9 @@ export function buildUserPrompt(input: ScriptGenerationInput): string {
   // append golden-3-second hook guidance (category-preferred patterns + three-beat structure);
   // a pinned hook id (batch anti-homogenization rotation) narrows it to one mandatory mechanism
   parts.push(`\n${buildHookGuidance(category, 5, preferredHookId)}`);
+
+  // append retention & conversion rules (mid-video re-hook, dual CTA placement, soft urgency)
+  parts.push(`\n${RETENTION_CONVERSION_RULES}`);
 
   // append reference template
   parts.push(`\n【参考脚本案例（仅供参考风格和节奏，不要照搬内容）】`);

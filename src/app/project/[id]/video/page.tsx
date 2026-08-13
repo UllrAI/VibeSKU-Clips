@@ -59,6 +59,8 @@ interface ComposeConfig {
   captionPreset: "standard" | "bold" | "minimal" | "karaoke";
   /** 旁白闪避：旁白一响自动压低 BGM、停顿回升，旁白更清晰 */
   bgmDuck: boolean;
+  /** voice grounding: TTS de-broadcast chain + room-tone bed (default on; off = clean studio read) */
+  voiceGround: boolean;
 }
 
 // 免费配音音色（微软 Edge keyless TTS，无需 Key）——与后端 FREE_TTS_VOICES 对应
@@ -142,6 +144,7 @@ export default function VideoPage() {
     productCard: false,
     captionPreset: "standard",
     bgmDuck: false,
+    voiceGround: true,
   });
 
   // 合成状态
@@ -433,6 +436,7 @@ export default function VideoPage() {
             ...(config.productCard && { productCard: true }),
             captionPreset: combo.caption,
             ...(config.bgmDuck && { bgmDuck: true }),
+            ...(!config.voiceGround && { voiceGround: false }),
             // uploaded BGM stays fixed across combos; otherwise the mood dimension picks the free track
             ...(bgm?.path ? { bgmPath: bgm.path } : { freeBgm: true, bgmMood: combo.bgm }),
             ...(config.ttsEnabled && paidTtsReady && { ttsConfig: resolveTTSConfig(tts, providers) }),
@@ -500,6 +504,7 @@ export default function VideoPage() {
           ...(config.captionPreset !== "standard" && { captionPreset: config.captionPreset }),
           ...(config.bgmDuck && { bgmDuck: true }),
           ...(bgm?.path && { bgmPath: bgm.path }),
+          ...(!config.voiceGround && { voiceGround: false }),
           // 没上传 BGM 且选了非 none 的配乐情绪 → 自动取一条该情绪的免费 CC 配乐（之前这里漏发，下拉形同虚设）
           ...(!bgm?.path && config.bgm !== "none" && { freeBgm: true, bgmMood: config.bgm }),
           // 开启配音时：已配付费 TTS 走付费；否则走免费 Edge keyless TTS（无需 Key），合成为每镜生成口播音轨
@@ -806,6 +811,16 @@ export default function VideoPage() {
                     className={`relative w-10 h-5 rounded-full transition-colors ${config.bgmDuck ? "bg-primary" : "bg-muted"}`}
                   >
                     <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${config.bgmDuck ? "translate-x-5" : "translate-x-0.5"}`} />
+                  </button>
+                </div>
+                {/* 人声落地：TTS 旁白过手机麦频段+AGC 压缩+房间底噪垫底，摆脱「播音棚干声」感（原生模型人声不经过此链） */}
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-xs text-muted-foreground">{t("voiceGroundLabel")}</span>
+                  <button
+                    onClick={() => setConfig((c) => ({ ...c, voiceGround: !c.voiceGround }))}
+                    className={`relative w-10 h-5 rounded-full transition-colors ${config.voiceGround ? "bg-primary" : "bg-muted"}`}
+                  >
+                    <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${config.voiceGround ? "translate-x-5" : "translate-x-0.5"}`} />
                   </button>
                 </div>
               </CardContent>

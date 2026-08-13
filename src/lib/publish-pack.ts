@@ -16,6 +16,23 @@ export interface PublishPack {
    * undeclared AI content and throttles it; TikTok C2PA-detects and suppresses 50-70% — self-declaring
    * barely affects reach on either) */
   aiDeclaration: { notice: string; line: string };
+  /** comment-section ops kit — the video's second landing page (buyers read comments before ordering) */
+  commentKit: CommentKit;
+}
+
+/**
+ * Comment-section operating material shipped WITH the video (2026 survey: TikTok now frames the
+ * comment section as a commerce engine, and维护 vs 不维护 converts on a different order of
+ * magnitude at the same view count — yet no video tool ships this).
+ */
+export interface CommentKit {
+  /** pinned self-Q&A: pre-answers the #1 purchase blocker from the creator's own experience */
+  pinned: string;
+  /** reply templates for the recurring objections (price / effectiveness / hesitation) */
+  objections: { q: string; a: string }[];
+  /** compliance note — atmosphere comments need a real experience behind them; fabricated
+   * customer testimonials are an enforcement target on every platform */
+  notice: string;
 }
 
 export interface PublishPackInput {
@@ -91,8 +108,13 @@ Output STRICT JSON only (no extra text):
 {
   "titles": ["3 catchy short titles with emotion/pain-point/number hooks, each <= 60 chars"],
   "hashtags": ["6-10 hashtags with #, TikTok-style; the FIRST must be a product-specific/branded hashtag (the product name, no spaces) for keyword-search discovery, the rest matching category and platform trends"],
-  "caption": "one-line caption, conversational, with a clear call to action, <= 150 chars; lead with the main product keyword in the first ~30 characters for search discoverability"
-}`;
+  "caption": "one-line caption, conversational, with a clear call to action, <= 150 chars; lead with the main product keyword in the first ~30 characters for search discoverability",
+  "commentKit": {
+    "pinned": "a pinned self-Q&A comment: raise THE question buyers hesitate on, answer it from the creator's first-person real experience, invite questions; <= 200 chars",
+    "objections": [{ "q": "recurring objection (price / does it work / hesitation)", "a": "friendly first-person reply, honest, no invented claims, <= 120 chars" }]
+  }
+}
+commentKit rules: comments are the video's second landing page. 2-3 objections. NEVER write fake customer testimonials or seeded "I bought it and love it" comments — first-person creator replies only.`;
   }
   const platformHint = platform ? `目标平台：${platform}。` : "目标平台：抖音/快手/小红书。";
   return `你是资深电商带货短视频运营。请为以下商品生成发布文案。${platformHint}
@@ -102,8 +124,13 @@ ${category ? `品类：${category}\n` : ""}${productDescription ? `卖点：${pr
 {
   "titles": ["3 个吸睛短标题，含情绪/痛点/数字钩子，每个 ≤20 字"],
   "hashtags": ["6-10 个带 # 的话题标签；第 1 个必须是商品专属/品牌标签（商品名、不含空格），利于商品词搜索发现，其余贴合品类与平台热点"],
-  "caption": "一句话种草文案，口语化，含行动号召，≤40 字；开头先点出商品核心关键词（利于平台搜索发现）"
-}`;
+  "caption": "一句话种草文案，口语化，含行动号召，≤40 字；开头先点出商品核心关键词（利于平台搜索发现）",
+  "commentKit": {
+    "pinned": "一条置顶自问自答评论：提出买家最犹豫的那个问题，用博主第一人称真实体验回答，并邀请提问；≤80 字",
+    "objections": [{ "q": "高频异议（价格贵/有没有用/还在犹豫）", "a": "第一人称友好回复，诚实不编造，≤50 字" }]
+  }
+}
+commentKit 规则：评论区是视频的第二落地页，异议给 2-3 条；绝不写伪造顾客证言或「已买真香」式预埋假评论——只写博主第一人称回复。`;
 }
 
 // Title hook pools — every template embeds the product name; point-requiring ones are dropped when no selling point.
@@ -150,6 +177,48 @@ export function pickTitles(name: string, point: string, en: boolean): string[] {
   return out;
 }
 
+/**
+ * Key-free comment-section ops kit (deterministic templates; the LLM publish path produces a
+ * tailored version through the same JSON contract). Deliberately ships NO "seed comments" —
+ * fabricated bought-it/love-it comments are astroturfing and an enforcement target; a pinned
+ * self-Q&A and objection reply templates are legitimate customer-service material.
+ */
+export function buildCommentKit(input: PublishPackInput): CommentKit {
+  const en = input.locale === "en";
+  const name = clip((input.productName || "").trim() || (en ? "this find" : "这款好物"), en ? 40 : 16);
+  const point = firstSellingPoint(input.sellingPoints, en ? 40 : 12);
+  if (en) {
+    return {
+      pinned: `Most-asked question first: is the ${name} actually worth it? I've been using it myself${point ? ` — ${point}` : ""}, ask me anything below 👇`,
+      objections: [
+        {
+          q: "Too expensive / not worth it",
+          a: `Break it down per use and it's less than a coffee — and you can return it if it's not for you.`,
+        },
+        {
+          q: "Does it really work?",
+          a: `Fair question — the video shows exactly how I use it${point ? ` (${point})` : ""}. Happy to post a follow-up after longer use.`,
+        },
+        {
+          q: "Still hesitating",
+          a: `No rush — save this video, check the reviews, and grab it when you're ready.`,
+        },
+      ],
+      notice:
+        "Reply with your real experience only — fabricated customer testimonials and seeded fake comments are an enforcement target on every platform.",
+    };
+  }
+  return {
+    pinned: `评论区问得最多的先答：${name}到底值不值？我自己在用${point ? `，${point}` : ""}，有问题评论区直接问👇`,
+    objections: [
+      { q: "太贵了/不值", a: "拆到每次使用算一下，比一杯奶茶还便宜；不合适也支持退，先看再定。" },
+      { q: "真的有用吗", a: `问得好——视频里就是我的真实用法${point ? `（${point}）` : ""}，用久了我再来追评。` },
+      { q: "还在犹豫", a: "不着急，先收藏这条，看看评价，想好了再入。" },
+    ],
+    notice: "回复只写自己的真实体验——伪造顾客证言、预埋假评论是各平台重点打击项，别碰。",
+  };
+}
+
 export function buildPublishPack(input: PublishPackInput): PublishPack {
   const en = input.locale === "en";
   const name = clip((input.productName || "").trim() || (en ? "this find" : "这款好物"), en ? 40 : 16);
@@ -192,7 +261,14 @@ export function buildPublishPack(input: PublishPackInput): PublishPack {
   // UTM-tagged storefront link (only when a shopUrl was supplied) so the creator can attribute traffic per platform
   const shopLink = buildShopLink(input.shopUrl, { platform, affiliateCode: input.affiliateCode });
 
-  return { titles, hashtags, caption, aiDeclaration: buildAiDeclaration(input.locale), ...(shopLink && { shopLink }) };
+  return {
+    titles,
+    hashtags,
+    caption,
+    aiDeclaration: buildAiDeclaration(input.locale),
+    commentKit: buildCommentKit(input),
+    ...(shopLink && { shopLink }),
+  };
 }
 
 /**

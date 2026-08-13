@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { selectHookPatterns, buildHookGuidance, HOOK_PATTERNS } from "@/lib/script-engine/hook-patterns";
+import { selectHookPatterns, buildHookGuidance, hookPatternName, HOOK_PATTERNS } from "@/lib/script-engine/hook-patterns";
 import { buildUserPrompt, platformTargetLabel } from "@/lib/script-engine/prompts";
 
 describe("selectHookPatterns", () => {
@@ -93,5 +93,26 @@ describe("buildUserPrompt 目标平台随 platforms 变化（不再硬编码抖�
     const p = buildUserPrompt({ productName: "云柔抽纸", category: "home", styleType: "pain_point", platforms: "shipinhao" });
     expect(p).toContain("视频号（微信）算法优化策略");
     expect(p).toContain("目标平台：视频号");
+  });
+});
+
+describe("v0.8.89 信任型/社证型钩子增补", () => {
+  it("六款新钩子入库且结构完整（stop/prove/bridge/example 齐全）", () => {
+    const ids = ["confession", "honest_flaw", "elimination_haul", "cost_math", "comment_reply", "hype_confirm"];
+    for (const id of ids) {
+      const p = HOOK_PATTERNS.find((x) => x.id === id);
+      expect(p, id).toBeTruthy();
+      expect(p!.stop.length).toBeGreaterThan(0);
+      expect(p!.prove.length).toBeGreaterThan(0);
+      expect(p!.bridge.length).toBeGreaterThan(0);
+      expect(p!.example.length).toBeGreaterThan(0);
+      expect(p!.avoidWhen, `${id} 需带慎用提示（信任型钩子全部有合规/真实性红线）`).toBeTruthy();
+    }
+    expect(HOOK_PATTERNS.length).toBe(16);
+  });
+
+  it("hookPatternName 解析新钩子；未知 id 原样返回", () => {
+    expect(hookPatternName("confession")).toBe("自曝反转");
+    expect(hookPatternName("hype_confirm")).toBe("跟风真香");
   });
 });
