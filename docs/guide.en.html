@@ -100,6 +100,8 @@
 <h1>ClipForge User Guide: From Install to Your First AI Product Video</h1>
 <p class="lead"><b>Bottom line first: 3 minutes and $0 gets you your first unwatermarked product video after install.</b> ClipForge is an open-source (AGPL-3.0) AI short-video generator — drop a product photo or type a topic, and AI writes the script, fills the visuals, voices it and composes a vertical video. This guide covers install, the free path, AI films, commerce formats, the two workspace modes, viral cloning, batch and compliant publishing.</p>
 
+<div class="tip"><p>🧑‍🎓 <b>This page is the condensed version.</b> For the full click-by-click walkthrough with a troubleshooting table, read the <a href="https://github.com/xixihhhh/clipforge/blob/main/TUTORIAL.en.md" rel="noopener"><b>beginner tutorial</b></a> on GitHub (<a href="https://github.com/xixihhhh/clipforge/blob/main/TUTORIAL.md" rel="noopener">中文</a>).</p></div>
+
 <div class="toc">
   <b>Contents</b>
   <a href="#install">1. Install</a>
@@ -111,18 +113,29 @@
   <a href="#clone">7. Viral cloning & trends</a>
   <a href="#batch">8. Batch / MCP / CLI</a>
   <a href="#publish">9. Export & publishing</a>
-  <a href="#faq">10. FAQ</a>
+  <a href="#fix">10. Troubleshooting</a>
+  <a href="#data">11. Where your data lives</a>
+  <a href="#faq">12. FAQ</a>
 </div>
 
 <h2 id="install">1. Install: pick any of three ways</h2>
 <h3>Option 1: Desktop app (easiest)</h3>
-<p>Grab the Windows / macOS installer from <a href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">GitHub Releases</a> — double-click and go; all data stays on your machine.</p>
+<p>Grab the macOS <code>.dmg</code>, Windows <code>.exe</code> or Linux <code>.AppImage</code> (Linux builds ship from v0.8.90 onward) from <a href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">GitHub Releases</a> — double-click and go; all data stays on your machine.</p>
 <h3>Option 2: Docker, one line</h3>
-<pre><code>docker run -d -p 3000:3000 -v clipforge-data:/app/data ghcr.io/xixihhhh/clipforge:latest</code></pre>
+<pre><code>docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge:latest</code></pre>
 <h3>Option 3: From source (developers)</h3>
 <pre><code>git clone https://github.com/xixihhhh/clipforge.git
-cd clipforge &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
-<div class="tip"><p><b>FFmpeg</b> is required for the free local compose path; the desktop build bundles it.</p></div>
+cd clipforge &amp;&amp; pnpm install &amp;&amp; pnpm dev</code></pre>
+<div class="tip"><p><b>FFmpeg</b> is required for the free local compose path when running from source (<code>brew install ffmpeg</code> / <code>apt install ffmpeg</code>); <b>the desktop build and the Docker image bundle it</b>. Source installs must use pnpm — <code>npm install</code> fails on this repo.</p></div>
+
+<h3>Blocked by your OS? Get past it first (unsigned app, not malware)</h3>
+<ul>
+  <li><b>macOS</b> "developer cannot be verified": <b>right-click ClipForge in Applications → Open</b>, then confirm — once only. If it says "damaged", run <code>xattr -cr /Applications/ClipForge.app</code>.</li>
+  <li><b>Windows</b> "Windows protected your PC": click <b>More info → Run anyway</b>.</li>
+  <li><b>Linux</b> AppImage does nothing: <code>chmod +x ClipForge-*.AppImage</code>, then run it.</li>
+</ul>
+<h3>Did it install? Two-second check</h3>
+<p>Web/Docker: open <code>http://localhost:3000/api/health</code> and look for <code>"status": "ok"</code>. Desktop: <b>Settings → Diagnostics → Show diagnostics</b>. Neither contains secrets, so both are safe to screenshot in a bug report.</p>
 
 <h2 id="first">2. Your first video in 3 minutes: the free quick cut ($0)</h2>
 <ol>
@@ -182,7 +195,7 @@ cd clipforge &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
 <ul>
   <li><b>Batch mode</b> (Director): queue 10 products before a sale;</li>
   <li><b>MCP Server</b>: wire <code>clipforge-mcp</code> into Claude / Cursor and generate a video from one pasted product link;</li>
-  <li><b>CLI</b>: <code>npm run cli -- create --topic "..."</code> for scripted or scheduled runs.</li>
+  <li><b>CLI</b>: <code>node bin/clipforge.mjs create --topic "..."</code> for scripted or scheduled runs.</li>
 </ul>
 
 <h2 id="publish">9. Export &amp; compliant publishing</h2>
@@ -193,7 +206,34 @@ cd clipforge &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
 </ul>
 <figure><img class="shot" src="screenshots/05-export.en.png" alt="ClipForge export page screenshot: finished video with platform presets and caption pack" loading="lazy"><figcaption>Export: the finished video + platform presets + caption pack</figcaption></figure>
 
-<h2 id="faq">10. FAQ</h2>
+<h2 id="fix">10. Troubleshooting</h2>
+<table>
+  <thead><tr><th>Symptom</th><th>Usually means</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>"No LLM configured — add an API key in Settings"</td><td>No script key yet</td><td>Settings → <b>Script model</b> → click a preset, paste the key, hit <b>Test connection</b></td></tr>
+    <tr><td>Test connection fails / 401</td><td>Wrong key or a stray space</td><td>Re-copy it; 402 means no credit, 404 means a wrong model name (use <b>Read available models</b>)</td></tr>
+    <tr><td>"No image/video model configured yet"</td><td>AI path missing models</td><td>Pick defaults under <b>Image model</b> and <b>Video model</b>, or connect Atlas with one key</td></tr>
+    <tr><td>Model dropdown is empty</td><td>That platform's key is missing/invalid</td><td>Fill it under <b>Platform keys</b> — models appear automatically</td></tr>
+    <tr><td>Product link not parsed</td><td>Site blocks scraping</td><td>Use <b>Upload product photo</b> instead</td></tr>
+    <tr><td>Video has no sound</td><td>Voice-over is off</td><td>Video page → <b>Voiceover (TTS)</b> → enable auto voice-over</td></tr>
+    <tr><td>Subtitles render as boxes</td><td>No CJK font in a custom environment</td><td>Use the official Docker image (fonts bundled) or install a CJK font</td></tr>
+    <tr><td>Compose fails with a <code>drawtext</code> error</td><td>FFmpeg build lacks drawtext</td><td>Install FFmpeg from your package manager instead of a static build without harfbuzz</td></tr>
+    <tr><td>Docker projects vanished after restart</td><td>No data volume</td><td>Always run with <code>-v clipforge-data:/data</code></td></tr>
+    <tr><td>localhost:3000 won't open</td><td>Port in use</td><td><code>PORT=3001 pnpm dev</code>, or Docker <code>-p 8080:3000</code></td></tr>
+  </tbody>
+</table>
+<p>The longer list (npm/pnpm, better-sqlite3, stuck generations) lives in <a href="https://github.com/xixihhhh/clipforge/blob/main/TUTORIAL.en.md#11-troubleshooting-table" rel="noopener">section 11 of the full tutorial</a>.</p>
+
+<h2 id="data">11. Where your data lives &amp; how to back it up</h2>
+<p>Projects, product images and rendered videos <b>never leave your machine</b>:</p>
+<ul>
+  <li>macOS desktop: <code>~/Library/Application Support/ClipForge/data</code></li>
+  <li>Windows desktop: <code>%APPDATA%\ClipForge\data</code>; Linux desktop: <code>~/.config/ClipForge/data</code></li>
+  <li>From source: <code>data/</code> in the project folder; Docker: volume <code>clipforge-data</code> (<code>/data</code> in the container)</li>
+</ul>
+<p>Inside you'll find <code>sqlite.db</code>, <code>uploads/</code> and <code>output/</code>. <b>To back up or move machines, copy the whole data directory.</b> Keys live in local settings; diagnostics and logs contain no secrets.</p>
+
+<h2 id="faq">12. FAQ</h2>
 <div class="faq-list">
   <details open><summary>Can I really produce a video for $0?</summary><p>Yes — free stock + free Edge TTS + local FFmpeg, unwatermarked and unlimited. Only script writing needs one LLM key (~$0.0002/call on DeepSeek).</p></details>
   <details><summary>How much is an AI film?</summary><p>Billed by the second, printed on the option: the grid ≈ $0.18, a 12s Seedance 2.5 film ≈ $3.60; Mini tier ≈ $0.04/s. One confirmed click, billed to your own key.</p></details>
@@ -212,6 +252,7 @@ cd clipforge &amp;&amp; npm install &amp;&amp; npm run dev</code></pre>
 </article>
 
 <footer>
+  <p>Step-by-step tutorial: <a href="https://github.com/xixihhhh/clipforge/blob/main/TUTORIAL.en.md" rel="noopener">beginner guide</a> · <a href="https://github.com/xixihhhh/clipforge/blob/main/TUTORIAL.md" rel="noopener">中文教程</a></p>
   <p>ClipForge · Open source AGPL-3.0 · <a href="https://github.com/xixihhhh/clipforge">GitHub</a> · <a href="https://github.com/xixihhhh/clipforge/releases/latest">Download</a> · <a href="en.html">Home</a> · <a href="guide.html">中文手册</a></p>
   <p style="margin-top:8px">Follow each platform's advertising and AIGC labeling rules; you are responsible for what you publish.</p>
 </footer>

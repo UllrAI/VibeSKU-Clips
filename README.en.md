@@ -8,6 +8,8 @@
 
 <p align="center"><strong>🌐 Website: <a href="https://xixihhhh.github.io/clipforge/en.html">xixihhhh.github.io/clipforge</a></strong> — see what ClipForge can sell for you in 30 seconds</p>
 
+<p align="center"><strong>🧑‍🎓 First time here? Start with the 👉 <a href="TUTORIAL.en.md">beginner tutorial (every step spelled out)</a></strong> · <a href="TUTORIAL.md">中文教程</a><br/><sub>Install · add one key · your first free video in 3 minutes · troubleshooting table · where your data lives</sub></p>
+
 <p align="right"><strong>English</strong> · <a href="README.md">中文</a></p>
 
 <p align="center">
@@ -112,6 +114,8 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 
 Open `http://localhost:3000` — **render your first video with no key at all** (free stock + free voiceover). Local dev / desktop app / model setup: see [Quick start](#quick-start).
 
+> 🧑‍🎓 **Not a developer?** Don't start here — read the [**beginner tutorial**](TUTORIAL.en.md): from downloading the desktop app to your first video, every click spelled out.
+
 ## UI preview
 
 | Studio · free-vs-AI fork | Script gate · one paid click | Advanced form (Director) |
@@ -120,7 +124,7 @@ Open `http://localhost:3000` — **render your first video with no key at all** 
 | **Compose · voiceover/subtitles/BGM** | **Export · multi-platform** | **Batch production** |
 | ![Compose](docs/screenshots/04b-video.en.png) | ![Export](docs/screenshots/05-export.en.png) | ![Batch](docs/screenshots/06-batch.en.png) |
 
-> Top-left is the whole creation flow: photo / URL / topic → pick a path (🆓 free quick cut at $0 / ✨ AI film with the per-second price on the option) → pick a format → start. Full tutorial: [User Guide](https://xixihhhh.github.io/clipforge/guide.en.html).
+> Top-left is the whole creation flow: photo / URL / topic → pick a path (🆓 free quick cut at $0 / ✨ AI film with the per-second price on the option) → pick a format → start. Step-by-step: [**beginner tutorial**](TUTORIAL.en.md); condensed web version: [User Guide](https://xixihhhh.github.io/clipforge/guide.en.html).
 
 <p align="center"><img src="docs/showcase-platforms.en.png" alt="ClipForge produces faceless vertical shopping videos for TikTok Shop, Reels, Shorts, Douyin, Kuaishou and Xiaohongshu — never showing a real face" width="820"/></p>
 
@@ -213,6 +217,9 @@ No watermark. Self-hosted + open-source (AGPL-3.0); output is clean and commerci
 
 **How is it different from CapCut / commercial AI video SaaS?**
 ClipForge is **open-source, runs locally, no watermark, zero-cost on the free path, and your data never leaves your machine**; commercial SaaS usually charges per video, watermarks output, and requires uploading assets to the cloud.
+
+**I've never used anything like this — is there a hand-holding guide?**
+Yes: [**TUTORIAL.en.md**](TUTORIAL.en.md) ([中文](TUTORIAL.md)) — three install options, three ways to add a key, your first free video in 3 minutes, what the AI path costs before you spend, Director mode page by page, a troubleshooting table, and where your data lives.
 
 **Can I use it if I can't write scripts or edit?**
 Yes. The whole flow is automatic — AI writes the script, fills visuals, adds voiceover, burns subtitles, adds transitions. **No on-camera presence, no shooting, no editing.**

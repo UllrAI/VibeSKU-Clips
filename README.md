@@ -8,6 +8,8 @@
 
 <p align="center"><strong>🌐 官网:<a href="https://xixihhhh.github.io/clipforge/">xixihhhh.github.io/clipforge</a></strong> — 30 秒看懂 ClipForge 能帮你卖什么</p>
 
+<p align="center"><strong>🧑‍🎓 第一次用？看这篇 👉 <a href="TUTORIAL.md">小白使用教程（每一步都写清楚）</a></strong> · <a href="TUTORIAL.en.md">English tutorial</a><br/><sub>安装 · 配 Key · 3 分钟出第一条免费片 · 报错对照表 · 数据存哪，全在里面</sub></p>
+
 <p align="right"><a href="README.en.md">English</a> · <strong>中文</strong></p>
 
 <p align="center">
@@ -112,6 +114,8 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 
 打开 `http://localhost:3000`，**免 Key 就能出第一条片**（免费素材 + 免费配音）。本地开发 / 桌面版 / 配模型见 [快速开始](#快速开始)。
 
+> 🧑‍🎓 **不懂技术？** 别从这里开始——看 [**小白使用教程**](TUTORIAL.md)，从下载桌面版到出第一条片，每一步点哪里都写了。
+
 ## 界面预览
 
 | 工作台·免费/AI 双档明选 | 脚本闸门·一次点击才花钱 | 高级新建（导演模式） |
@@ -120,7 +124,7 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 | **视频合成·配音/字幕/BGM** | **成片导出·多平台** | **批量出片** |
 | ![合成](docs/screenshots/04b-video.png) | ![导出](docs/screenshots/05-export.png) | ![批量](docs/screenshots/06-batch.png) |
 
-> 左上就是完整创建流程：传图/贴链接/说主题 → 选出片方式（🆓 免费快剪 ¥0 / ✨ AI 生成成片·按秒标价）→ 选带货形式 → 开始生成。完整教程见[官网使用手册](https://xixihhhh.github.io/clipforge/guide.html)。
+> 左上就是完整创建流程：传图/贴链接/说主题 → 选出片方式（🆓 免费快剪 ¥0 / ✨ AI 生成成片·按秒标价）→ 选带货形式 → 开始生成。逐步图解见[**小白使用教程**](TUTORIAL.md)，网页速览见[官网使用手册](https://xixihhhh.github.io/clipforge/guide.html)。
 
 <p align="center"><img src="docs/showcase-platforms.png" alt="ClipForge 一键产出抖音 / 快手 / 小红书 / TikTok 竖屏带货短视频，全程不出真人脸" width="820"/></p>
 
@@ -217,6 +221,9 @@ ClipForge（原带货剪手 / daihuo-jianshou）是一款**开源免费的 AI �
 
 **和剪映 / 商业 AI 视频 SaaS 有什么区别？**
 ClipForge **开源、本地运行、无水印、免费路径零成本、数据不出本机**；商业 SaaS 通常按条扣费、带水印、需把素材上传云端。
+
+**完全不会用、每一步都想有人带？**
+看 [**小白使用教程 TUTORIAL.md**](TUTORIAL.md)（[English](TUTORIAL.en.md)）：安装三选一、配 Key 三条路、3 分钟出第一条免费片、AI 成片花钱前必读、导演模式逐页说明、报错对照表、数据存哪怎么备份——每一步点哪里都写了。
 
 **不会写脚本 / 不会剪辑能用吗？**
 能。全流程自动——AI 写脚本、自动配画面、自动配音、自动烧字幕、自动转场，**不用出镜、不用拍摄、不用剪辑**。
