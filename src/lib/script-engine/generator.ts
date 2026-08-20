@@ -16,7 +16,8 @@ import {
   type TopicScriptInput,
 } from "./prompts";
 import type { Shot, ScriptCharacter } from "@/lib/db/schema";
-import { createLLMClient, withLLMErrors, LLMRequestError } from "@/lib/llm-error";
+import { createLLMClient, withLLMErrors, LLMRequestError, jsonModeParams } from "@/lib/llm-error";
+import { stripThinkBlocks } from "@/lib/llm-clean";
 
 // ==================== Type definitions ====================
 
@@ -101,16 +102,29 @@ function createClient(config: LLMConfig): OpenAI {
 }
 
 /**
- * Extra request params for reasoning-model endpoints.
- * Pollinations' only keyless (anonymous-tier) model is now a reasoning model (GPT-OSS 20B) with a small
- * output-token cap: on our large generation prompts it exhausts the entire budget on its reasoning trace
- * and returns EMPTY content (finish_reason "length"), so keyless generation would always fail. Passing
- * reasoning_effort:"low" makes it think minimally and actually emit the JSON.
- * Scoped to Pollinations by baseUrl on purpose — real OpenAI rejects reasoning_effort for non-reasoning
- * models (400 unsupported_parameter), so it must NOT be sent globally.
+ * Extra request params that tame reasoning/thinking models per endpoint.
+ *
+ * - Pollinations: its only keyless (anonymous-tier) model is a reasoning model (GPT-OSS 20B) with a
+ *   small output-token cap: on our large generation prompts it exhausts the entire budget on its
+ *   reasoning trace and returns EMPTY content (finish_reason "length"). reasoning_effort:"low"
+ *   makes it think minimally and actually emit the JSON.
+ * - DashScope / SiliconFlow (Qwen3-family hybrids): `enable_thinking: false` turns the trace off at
+ *   the source, so no <think> text can reach the JSON parser at all.
+ * - Zhipu bigmodel.cn (GLM hybrids): same idea via their `thinking: {type:"disabled"}` shape.
+ *
+ * Scoped by baseUrl on purpose — real OpenAI 400s on params it doesn't know
+ * (unsupported_parameter), so none of these may be sent globally. If a listed endpoint still
+ * rejects the field for a specific model, optionalParamRetryFetch (llm-error.ts) replays without
+ * it. Response-side stripThinkBlocks remains the catch-all for endpoints not listed here.
  */
-export function reasoningParams(baseUrl: string): { reasoning_effort?: "low" } {
-  return /pollinations\.ai/i.test(baseUrl || "") ? { reasoning_effort: "low" } : {};
+export function reasoningParams(
+  baseUrl: string,
+): { reasoning_effort?: "low"; enable_thinking?: boolean; thinking?: { type: "disabled" } } {
+  const url = baseUrl || "";
+  if (/pollinations\.ai/i.test(url)) return { reasoning_effort: "low" };
+  if (/dashscope|siliconflow/i.test(url)) return { enable_thinking: false };
+  if (/bigmodel\.cn/i.test(url)) return { thinking: { type: "disabled" } };
+  return {};
 }
 
 /**
@@ -126,9 +140,12 @@ export function batchCountFor(baseUrl: string, requested = 3): number {
 
 /**
  * Extract JSON from LLM output text.
- * Handles both raw JSON output and JSON wrapped in a markdown code block.
+ * Handles raw JSON, JSON wrapped in a markdown code block, and reasoning-model output where the
+ * JSON follows a <think>…</think> trace (the trace itself often contains braces/fences, so it
+ * must be removed before any pattern matching).
  */
 export function extractJSON(text: string): string {
+  text = stripThinkBlocks(text);
   // Try stripping markdown code block markers
   const codeBlockMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?\s*```/);
   if (codeBlockMatch) {
@@ -164,6 +181,25 @@ function truncationHint(jsonStr: string): string {
  * Validate and correct a single Shot object.
  * Ensures all required fields have valid values.
  */
+/**
+ * Strip markup the TTS would otherwise read aloud: markdown emphasis/backticks (keeps the inner
+ * text), leading list markers and headers, and leading stage-direction tags like 【开场】/[hook].
+ * Only structural markup is removed — real copy (parentheses, quotes, prices) passes untouched.
+ * A voiceover of "*超值*" reaching TTS as "星号超值星号" is an audible defect. Exported for tests.
+ */
+export function sanitizeVoiceover(text: string): string {
+  const cleaned = (text || "")
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, "$1") // **bold** / *em* → inner text
+    .replace(/`+([^`]*)`+/g, "$1") // `code` → inner text
+    .replace(/^\s{0,3}#{1,4}\s+/gm, "") // markdown headers
+    .replace(/^\s*(?:[-•]|\d+[.、])\s+/gm, "") // list markers
+    .replace(/^\s*(?:【[^】]{1,8}】|\[[^\]]{1,12}\])\s*/, "") // leading stage tag 【开场】/[hook]
+    .replace(/\s+/g, " ")
+    .trim();
+  // never sanitize a line into nothing — an empty voiceover downstream means a silent shot
+  return cleaned || (text || "").trim();
+}
+
 function validateShot(shot: Partial<Shot>, index: number): Shot {
   const validTypes: Shot["type"][] = ["hook", "pain_point", "product_reveal", "demo", "social_proof", "cta"];
   const validTransitions: Shot["transition"][] = ["ai_start_end", "ai_reference", "direct_concat", "ffmpeg_fade"];
@@ -186,7 +222,7 @@ function validateShot(shot: Partial<Shot>, index: number): Shot {
     visualSource: validSources.includes(shot.visualSource as Shot["visualSource"]) ? (shot.visualSource as Shot["visualSource"]) : "ai_generate",
     // Default transition matches the schema (videoClips.transitionType) and UI default (ai_start_end)
     transition: validTransitions.includes(shot.transition as Shot["transition"]) ? (shot.transition as Shot["transition"]) : "ai_start_end",
-    voiceover: shot.voiceover || "",
+    voiceover: sanitizeVoiceover(shot.voiceover || ""),
     prompt: shot.prompt || undefined,
     // Pass through LLM-generated extended fields (video mode) so they are not silently dropped
     ...(stockKeywords?.length && { stockKeywords }),
@@ -251,6 +287,50 @@ function validateScript(raw: Record<string, unknown>, fallbackStyleType: string)
 // ==================== Core functionality ====================
 
 /**
+ * Non-streaming chat call with ONE parse-driven retry ("repair first, then re-ask" — the last
+ * rung of the JSON-robustness ladder): when the reply survives transport but fails to parse — bad JSON,
+ * missing shots — the model gets its own output back plus the parse error and one chance to fix
+ * it. Network/HTTP retries stay inside the SDK client; LLMRequestError parse failures are
+ * capability verdicts ("this model can't write scripts"), not format slips, so they never retry.
+ * Exported for reuse by other JSON-shaped call sites (judge panel).
+ */
+export async function completeWithJsonRetry<T>(
+  client: OpenAI,
+  params: Omit<OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming, "stream">,
+  cfg: { baseUrl?: string; apiKey?: string; model?: string },
+  parse: (content: string) => T,
+): Promise<T> {
+  let messages = params.messages;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await withLLMErrors(
+      () => client.chat.completions.create({ ...params, messages }),
+      cfg,
+    );
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error("LLM 未返回有效内容");
+    try {
+      return parse(content);
+    } catch (err) {
+      if (err instanceof LLMRequestError) throw err;
+      lastErr = err;
+      if (attempt === 0) {
+        const detail = (err instanceof Error ? err.message : String(err)).slice(0, 300);
+        messages = [
+          ...messages,
+          { role: "assistant", content },
+          {
+            role: "user",
+            content: `你上一次的输出无法解析（错误：${detail}）。请严格按之前的要求重新输出完整、合法的 JSON，只输出 JSON 本身，禁止任何解释文字或 markdown 代码块。`,
+          },
+        ];
+      }
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * Generate e-commerce scripts (single call, returns complete result).
  * @param input - Script generation input parameters
  * @returns Array of generated scripts
@@ -259,28 +339,25 @@ export async function generateScript(input: ScriptInput): Promise<GeneratedScrip
   const client = createClient(input.llmConfig);
   const userPrompt = buildBatchPrompt(input, batchCountFor(input.llmConfig.baseUrl));
 
-  // Call the LLM to generate the script (transient free-endpoint failures are retried inside)
-  const response = await withLLMErrors(
-    () =>
-      client.chat.completions.create({
-        model: input.llmConfig.model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.8,
-        max_tokens: 16000,
-        ...reasoningParams(input.llmConfig.baseUrl),
-      }),
+  // Transient free-endpoint failures retry inside the client; unparseable replies retry once with
+  // the parse error echoed back. json_object mode is safe here: the batch prompt's top level is
+  // an object ({"scripts": [...]}).
+  return completeWithJsonRetry(
+    client,
+    {
+      model: input.llmConfig.model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.8,
+      max_tokens: 16000,
+      ...reasoningParams(input.llmConfig.baseUrl),
+      ...jsonModeParams(input.llmConfig.baseUrl),
+    },
     input.llmConfig,
+    (content) => parseScriptResponse(content, input.styleType),
   );
-
-  const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error("LLM 未返回有效内容");
-  }
-
-  return parseScriptResponse(content, input.styleType);
 }
 
 /** Topic-based script generation input (one-sentence topic + LLM config) */
@@ -299,28 +376,23 @@ export async function generateTopicScript(input: TopicScriptGenInput): Promise<G
   const client = createClient(input.llmConfig);
   const userPrompt = buildTopicBatchPrompt(input, batchCountFor(input.llmConfig.baseUrl, input.count ?? 3));
 
-  const response = await withLLMErrors(
-    () =>
-      client.chat.completions.create({
-        model: input.llmConfig.model,
-        messages: [
-          { role: "system", content: TOPIC_SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.85,
-        max_tokens: 16000,
-        ...reasoningParams(input.llmConfig.baseUrl),
-      }),
-    input.llmConfig,
-  );
-
-  const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error("LLM 未返回有效内容");
-  }
-
   // Topic-based videos have no e-commerce style concept; fall back uniformly to "custom"
-  return parseScriptResponse(content, "custom");
+  return completeWithJsonRetry(
+    client,
+    {
+      model: input.llmConfig.model,
+      messages: [
+        { role: "system", content: TOPIC_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.85,
+      max_tokens: 16000,
+      ...reasoningParams(input.llmConfig.baseUrl),
+      ...jsonModeParams(input.llmConfig.baseUrl),
+    },
+    input.llmConfig,
+    (content) => parseScriptResponse(content, "custom"),
+  );
 }
 
 /**
@@ -332,33 +404,30 @@ export async function generateSingleScript(input: ScriptInput): Promise<Generate
   const client = createClient(input.llmConfig);
   const userPrompt = buildUserPrompt(input);
 
-  const response = await withLLMErrors(
-    () =>
-      client.chat.completions.create({
-        model: input.llmConfig.model,
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userPrompt },
-        ],
-        temperature: 0.8,
-        ...reasoningParams(input.llmConfig.baseUrl),
-      }),
+  return completeWithJsonRetry(
+    client,
+    {
+      model: input.llmConfig.model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.8,
+      ...reasoningParams(input.llmConfig.baseUrl),
+      ...jsonModeParams(input.llmConfig.baseUrl),
+    },
     input.llmConfig,
+    (content) => {
+      const jsonStr = extractJSON(content);
+      let parsed: Record<string, unknown>;
+      try {
+        parsed = JSON.parse(jsonStr);
+      } catch {
+        throw new Error(`LLM 返回的内容不是合法 JSON${truncationHint(jsonStr)}: ${jsonStr.substring(0, 200)}`);
+      }
+      return validateScript(parsed, input.styleType);
+    },
   );
-
-  const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error("LLM 未返回有效内容");
-  }
-
-  const jsonStr = extractJSON(content);
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(jsonStr);
-  } catch {
-    throw new Error(`LLM 返回的内容不是合法 JSON${truncationHint(jsonStr)}: ${jsonStr.substring(0, 200)}`);
-  }
-  return validateScript(parsed, input.styleType);
 }
 
 /**

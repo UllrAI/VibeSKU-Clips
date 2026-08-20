@@ -116,3 +116,56 @@ describe("buildKaraokeAss", () => {
     expect((ass.match(/Dialogue:/g) || []).length).toBe(1);
   });
 });
+
+describe("buildKaraokeLineTextFromWords（真实词时间驱动 \\k）", () => {
+  const cfg = { baseFs: 46, primaryC: "&H00F0FF&", accentC: "&H0050FF&", emphasize: true, emphScale: 1.35 };
+
+  it("按词时间出 \\k：逗号停顿并入前词、前导静音出空 \\k 块", async () => {
+    const { buildKaraokeLineTextFromWords } = await import("@/lib/video-composer/karaoke");
+    // 「早上 好」两词，0.5s 前导静音，词间 0.4s 停顿
+    const line = {
+      text: "早上好",
+      startTime: 10,
+      endTime: 13,
+      words: [
+        { text: "早上", startSec: 10.5, endSec: 11.1 },
+        { text: "好", startSec: 11.5, endSec: 11.8 },
+      ],
+    };
+    const body = buildKaraokeLineTextFromWords(line, cfg);
+    // 前导静音 0.5s = {\k50}
+    expect(body.startsWith("{\\k50}")).toBe(true);
+    // 「早」0.3s（词内均分）、「上」到下词起点=0.3+0.4停顿=0.7s、「好」0.3s
+    expect(body).toContain("\\k30\\");
+    expect(body).toContain("\\k70\\");
+    const ks = [...body.matchAll(/\\k(\d+)/g)].map((m) => Number(m[1]));
+    expect(ks).toEqual([50, 30, 70, 30]);
+  });
+
+  it("词文本与行文本失配超容忍度 → 返回空串（回退估算，不弄脏字幕）", async () => {
+    const { buildKaraokeLineTextFromWords } = await import("@/lib/video-composer/karaoke");
+    const line = {
+      text: "这是一句完全不同的很长很长的台词内容",
+      startTime: 0,
+      endTime: 3,
+      words: [{ text: "短", startSec: 0, endSec: 0.3 }],
+    };
+    expect(buildKaraokeLineTextFromWords(line, cfg)).toBe("");
+  });
+
+  it("无 words → 返回空串", async () => {
+    const { buildKaraokeLineTextFromWords } = await import("@/lib/video-composer/karaoke");
+    expect(buildKaraokeLineTextFromWords({ text: "你好", startTime: 0, endTime: 2 }, cfg)).toBe("");
+  });
+});
+
+describe("buildKaraokeAss speechEndTime（估算路径只铺语音窗，不再爬过呼吸间隙）", () => {
+  it("有 speechEndTime 时 \\k 总时长≈语音窗而非展示窗", async () => {
+    const { buildKaraokeAss } = await import("@/lib/video-composer/karaoke");
+    // 展示窗 4s，语音只有 2s
+    const ass = buildKaraokeAss([{ text: "你好世界", startTime: 0, endTime: 4, speechEndTime: 2 }]);
+    const ks = [...ass.matchAll(/\\k(\d+)/g)].map((m) => Number(m[1]));
+    const total = ks.reduce((a, b) => a + b, 0);
+    expect(total).toBe(200); // 2s = 200cs（旧行为是 400cs，高亮拖过静音段）
+  });
+});

@@ -192,3 +192,53 @@ describe("同源连贯加分（sameSourceAuthors）", () => {
     expect(scoreCandidate(shot, cand, { sameSourceAuthors: new Set() })).toBe(scoreCandidate(shot, cand));
   });
 });
+
+describe("broadenQuery 主题锚定 + fallbackLevelOf 兜底级别", () => {
+  it("subjectEn 插在窄化词与万能兜底之间（兜底先贴题再泛化）", async () => {
+    const { broadenQuery } = await import("@/lib/stock-matcher");
+    const r = broadenQuery("pour over brewing closeup", "coffee");
+    const coffeeIdx = r.indexOf("coffee");
+    const universalIdx = r.indexOf("abstract background");
+    expect(coffeeIdx).toBeGreaterThan(-1);
+    expect(coffeeIdx).toBeLessThan(universalIdx);
+    // 窄化词（末两词/末词）在主题锚之前
+    expect(r.indexOf("brewing closeup")).toBeLessThan(coffeeIdx);
+  });
+
+  it("subjectEn 与已有词重复时去重", async () => {
+    const { broadenQuery } = await import("@/lib/stock-matcher");
+    const r = broadenQuery("fresh coffee", "coffee");
+    expect(r.filter((q) => q === "coffee")).toHaveLength(1);
+  });
+
+  it("fallbackLevelOf：原词=original，窄化/主题=narrowed，万能词=universal", async () => {
+    const { fallbackLevelOf } = await import("@/lib/stock-matcher");
+    expect(fallbackLevelOf("pour over brewing", "pour over brewing")).toBe("original");
+    expect(fallbackLevelOf("pour over brewing", "brewing")).toBe("narrowed");
+    expect(fallbackLevelOf("pour over brewing", "coffee")).toBe("narrowed");
+    expect(fallbackLevelOf("pour over brewing", "abstract background")).toBe("universal");
+    expect(fallbackLevelOf("pour over brewing", "Nature")).toBe("universal");
+  });
+});
+
+describe("scoreCandidate 槽位时长软加分（防冻帧尾巴）", () => {
+  it("时长≥槽位的候选得分更高，但一个关键词命中仍能反超", async () => {
+    const { scoreCandidate } = await import("@/lib/stock-matcher");
+    const shot = { description: "coffee brewing" };
+    const longEnough = { type: "video" as const, durationSec: 8 };
+    const tooShort = { type: "video" as const, durationSec: 2 };
+    expect(scoreCandidate(shot, longEnough, { slotSec: 6 })).toBe(scoreCandidate(shot, tooShort, { slotSec: 6 }) + 3);
+    // 关键词命中权重（10）> 时长加分（3）：相关性优先不被时长绑架
+    const shortButRelevant = { type: "video" as const, durationSec: 2, tags: ["coffee"] };
+    expect(scoreCandidate(shot, shortButRelevant, { slotSec: 6 })).toBeGreaterThan(scoreCandidate(shot, longEnough, { slotSec: 6 }));
+  });
+
+  it("未知时长与图片不受影响", async () => {
+    const { scoreCandidate } = await import("@/lib/stock-matcher");
+    const shot = { description: "coffee" };
+    const unknown = { type: "video" as const };
+    const image = { type: "image" as const, durationSec: 99 };
+    expect(scoreCandidate(shot, unknown, { slotSec: 6 })).toBe(scoreCandidate(shot, unknown, {}));
+    expect(scoreCandidate(shot, image, { slotSec: 6 })).toBe(scoreCandidate(shot, image, {}));
+  });
+});

@@ -6,7 +6,15 @@ import { getDb } from "@/lib/db";
 import { getDataDir } from "@/lib/paths";
 import { scripts as scriptsTable, assets as assetsTable, type Shot } from "@/lib/db/schema";
 import { fillShotStock, searchShotCandidates, persistCandidate, type ScoredStockCandidate } from "@/lib/stock-fill";
-import { shotQuery, scoreCandidate, pickBestCandidate, continuityGroups, authorKeyOf } from "@/lib/stock-matcher";
+import {
+  shotQuery,
+  scoreCandidate,
+  pickBestCandidate,
+  continuityGroups,
+  authorKeyOf,
+  entityTermsOf,
+  type FallbackLevel,
+} from "@/lib/stock-matcher";
 import { rerankShotCandidates, type RerankShot, type SemanticLLMConfig } from "@/lib/semantic-match";
 import { mapWithConcurrency } from "@/lib/concurrency";
 import type { StockSourceId, StockMediaType, StockOrientation } from "@/lib/providers/stock-types";
@@ -90,6 +98,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   const searchOpts = { apiKeys, mediaType, orientation, perPage: 10, localDir };
+
+  /** Per-shot slot length in seconds (script's planned duration; 3s default matches the composer). */
+  const slotSecOf = (shot: Shot): number => (typeof shot.duration === "number" && shot.duration > 0 ? shot.duration : 3);
+  /** Per-shot search options: for videos, ask providers for clips long enough to cover ~70% of the
+   * slot (capped at 4s so short-form libraries stay searchable) — the composer's slow-fit bridges
+   * the remaining gap, killing the "2s clip in a 10s slot = 8s freeze-frame" defect at the source.
+   * searchShotCandidates drops the filter automatically when it would leave a shot with nothing. */
+  const searchOptsFor = (shot: Shot) =>
+    mediaType === "video" ? { ...searchOpts, minSec: Math.min(slotSecOf(shot) * 0.7, 4) } : searchOpts;
+
+  /** English topic anchor for the broaden ladder: the most frequent entity term across all shots
+   * (e.g. "coffee" for a coffee video) — lets fallback searches stay on-topic instead of jumping
+   * straight to generic "abstract background" filler. */
+  const termCount = new Map<string, number>();
+  for (const s of shots) for (const t of entityTermsOf(s)) termCount.set(t, (termCount.get(t) ?? 0) + 1);
+  const subjectEn = [...termCount.entries()].filter(([t, n]) => n >= 2 && /^[a-z0-9]+$/i.test(t)).sort((a, b) => b[1] - a[1])[0]?.[0];
+
   type ShotFillResult = {
     shotId: number;
     ok: boolean;
@@ -100,6 +125,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     matchedBy?: "semantic" | "heuristic";
     /** true when the pick reused a provider+author already chosen by a same-entity shot (material continuity) */
     sameSource?: boolean;
+    /** how far the broaden ladder drifted: original / narrowed / universal (generic filler) */
+    fallbackLevel?: FallbackLevel;
+    /** set when the footage is a generic universal-fallback pick the user should review */
+    warning?: "stock_universal_fallback";
     reason?: string;
   };
 
@@ -121,16 +150,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   // ---------- semantic path (opt-in): gather all shots' candidates → ONE batched LLM pick → persist ----------
   if (llm) {
     // phase 1: search candidates per shot (bounded concurrency; auto mode falls back video → image)
-    type Gathered = { shot: Shot; query: string; cands: ScoredStockCandidate[]; error?: string };
+    type Gathered = { shot: Shot; query: string; cands: ScoredStockCandidate[]; fallbackLevel?: FallbackLevel; error?: string };
     const fillable = shots.filter((s) => !skipOf(s));
     const gathered = await mapWithConcurrency<Shot, Gathered>(fillable, 4, async (shot) => {
       const query = shotQuery(shot);
       try {
-        let cands = await searchShotCandidates(query, source, searchOpts);
-        if (cands.length === 0 && autoMode && mediaType !== "image") {
-          cands = await searchShotCandidates(query, source, { ...searchOpts, mediaType: "image" });
+        let search = await searchShotCandidates(query, source, searchOptsFor(shot), { subjectEn });
+        if (search.cands.length === 0 && autoMode && mediaType !== "image") {
+          search = await searchShotCandidates(query, source, { ...searchOpts, mediaType: "image" }, { subjectEn });
         }
-        return { shot, query, cands };
+        return { shot, query, cands: search.cands, fallbackLevel: search.fallbackLevel };
       } catch (e) {
         return { shot, query, cands: [], error: e instanceof Error ? e.message : String(e) };
       }
@@ -141,10 +170,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const rerankInputs: RerankShot[] = [];
     for (const g of gathered) {
       if (g.cands.length === 0) continue;
+      const slotSec = slotSecOf(g.shot);
       const ranked = [...g.cands].sort(
         (a, b) =>
-          scoreCandidate({ description: g.query }, b, { preferPortrait: true }) -
-          scoreCandidate({ description: g.query }, a, { preferPortrait: true })
+          scoreCandidate({ description: g.query }, b, { preferPortrait: true, slotSec }) -
+          scoreCandidate({ description: g.query }, a, { preferPortrait: true, slotSec })
       );
       const topK = ranked.slice(0, SEMANTIC_TOP_K);
       topKOf.set(g.shot.shotId, topK);
@@ -185,8 +215,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const chosen =
           llmPick && !usedIds.has(llmPick.id)
             ? llmPick
-            : (pickBestCandidate({ description: g.query }, g.cands, { preferPortrait: true, usedIds, sameSourceAuthors: authors }) ??
-              g.cands[0]);
+            : (pickBestCandidate({ description: g.query }, g.cands, {
+                preferPortrait: true,
+                usedIds,
+                sameSourceAuthors: authors,
+                slotSec: slotSecOf(g.shot),
+              }) ?? g.cands[0]);
         const authorKey = authorKeyOf(chosen);
         const sameSource = authorKey !== null && authors.has(authorKey);
         usedIds.add(chosen.id);
@@ -210,6 +244,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
           mediaType: (asset.mediaType as StockMediaType) ?? mediaType,
           matchedBy: g.matchedBy,
           ...(g.sameSource ? { sameSource: true } : {}),
+          ...(g.fallbackLevel && g.fallbackLevel !== "original" ? { fallbackLevel: g.fallbackLevel } : {}),
+          ...(g.fallbackLevel === "universal" ? { warning: "stock_universal_fallback" as const } : {}),
         };
       } catch (e) {
         return { shotId: sid, ok: false, query: g.query, reason: e instanceof Error ? e.message : String(e) };
@@ -219,6 +255,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const all = [...results, ...skipped].sort((a, b) => a.shotId - b.shotId);
     const filled = all.filter((r) => r.ok).length;
     const sameSourceHits = all.filter((r) => r.sameSource).length;
+    const universalFallbacks = all.filter((r) => r.warning === "stock_universal_fallback").map((r) => r.shotId);
     return NextResponse.json({
       projectId: id,
       scriptId: script.id,
@@ -226,6 +263,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       filled,
       semantic: semanticOk,
       sameSourceHits,
+      universalFallbacks,
       results: all,
     });
   }
@@ -248,23 +286,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
       const query = shotQuery(shot);
       try {
-        let asset = await fillShotStock({ projectId: id, shotId: sid, query, source, searchOpts, usedIds, sameSourceAuthors });
+        const common = { projectId: id, shotId: sid, query, source, usedIds, sameSourceAuthors, slotSec: slotSecOf(shot), subjectEn };
+        let asset = await fillShotStock({ ...common, searchOpts: searchOptsFor(shot) });
         // In auto mode, if no video was found → fall back to image to ensure the shot is never empty
         if (!asset && autoMode && mediaType !== "image") {
-          asset = await fillShotStock({
-            projectId: id,
-            shotId: sid,
-            query,
-            source,
-            searchOpts: { ...searchOpts, mediaType: "image" },
-            usedIds,
-            sameSourceAuthors,
-          });
+          asset = await fillShotStock({ ...common, searchOpts: { ...searchOpts, mediaType: "image" } });
         }
         // Report the ACTUAL downloaded media type (from the chosen candidate), not the requested one:
         // keyless "video" requests routinely fall back to Openverse images (its only video-less keyless
         // source), so reporting the requested "video" would mislabel an image asset as a video.
         const actualType = (asset?.mediaType as StockMediaType) ?? mediaType;
+        const level = asset?.fallbackLevel as FallbackLevel | undefined;
         out.push(
           asset
             ? {
@@ -275,6 +307,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
                 mediaType: actualType,
                 matchedBy: "heuristic",
                 ...(asset.sameSource === true ? { sameSource: true } : {}),
+                ...(level && level !== "original" ? { fallbackLevel: level } : {}),
+                ...(level === "universal" ? { warning: "stock_universal_fallback" as const } : {}),
               }
             : { shotId: sid, ok: false, query, reason: "no asset found" }
         );
@@ -288,5 +322,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const results = grouped.flat().sort((a, b) => a.shotId - b.shotId);
   const filled = results.filter((r) => r.ok).length;
   const sameSourceHits = results.filter((r) => r.sameSource).length;
-  return NextResponse.json({ projectId: id, scriptId: script.id, total: shots.length, filled, sameSourceHits, results });
+  const universalFallbacks = results.filter((r) => r.warning === "stock_universal_fallback").map((r) => r.shotId);
+  return NextResponse.json({ projectId: id, scriptId: script.id, total: shots.length, filled, sameSourceHits, universalFallbacks, results });
 }

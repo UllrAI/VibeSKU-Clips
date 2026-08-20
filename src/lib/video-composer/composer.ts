@@ -133,9 +133,13 @@ export function wrapCaption(text: string, fontSize: number, frameWidth: number):
 
   const lines: string[] = [];
   let line = "";
+  // Closing punctuation must never start a line (CJK typesetting's 行首禁则): when the break
+  // point lands right before one, squeeze it onto the current line — the 14% side margin
+  // comfortably absorbs one extra glyph, and "，" opening a caption line reads as a typo.
+  const NO_LINE_START = /[。！？；，、：…!?;,.、」』”’）)\]】%]/;
   const hardBreak = (token: string) => {
     for (const ch of token) {
-      if (line && strW(line + ch) > maxWidth) {
+      if (line && strW(line + ch) > maxWidth && !NO_LINE_START.test(ch)) {
         lines.push(line);
         line = "";
       }
@@ -165,8 +169,11 @@ const MAX_CAPTION_CARDS = 8;
 /** Minimum readable on-screen time per caption card in seconds */
 const MIN_CARD_SECONDS = 0.6;
 
-/** Phrase-ending punctuation test: CJK + ASCII marks; ASCII "." only counts at a word boundary so decimals like "9.9" never split */
-function isPhrasePunct(ch: string, next: string | undefined): boolean {
+/** Phrase-ending punctuation test: CJK + ASCII marks; ASCII "." only counts at a word boundary so
+ * decimals like "9.9" never split, and ASCII ","/":" between digits never split either — commerce
+ * copy is full of thousands-grouped prices (¥1,299) and times (3:45) that must stay on one card */
+function isPhrasePunct(ch: string, next: string | undefined, prev?: string): boolean {
+  if ((ch === "," || ch === ":") && /\d/.test(prev ?? "") && /\d/.test(next ?? "")) return false;
   if (/[。！？；，、：…!?;,]/.test(ch)) return true;
   return ch === "." && (next === undefined || next === " ");
 }
@@ -178,8 +185,8 @@ function splitPhrases(clean: string): string[] {
   let cur = "";
   for (let i = 0; i < chars.length; i++) {
     cur += chars[i];
-    const punct = isPhrasePunct(chars[i], chars[i + 1]);
-    const nextPunct = chars[i + 1] !== undefined && isPhrasePunct(chars[i + 1], chars[i + 2]);
+    const punct = isPhrasePunct(chars[i], chars[i + 1], chars[i - 1]);
+    const nextPunct = chars[i + 1] !== undefined && isPhrasePunct(chars[i + 1], chars[i + 2], chars[i]);
     // cut after the last punctuation of a consecutive run
     if (punct && !nextPunct) {
       const t = cur.trim();
@@ -405,6 +412,11 @@ export const FADE_DURATION = 0.5;
 /** Max source/slot ratio the speed-fit will compress (silent video clips): beyond ~1.35x the time compression reads as fast-forward, so the composer falls back to tail-trim */
 export const SPEEDFIT_MAX_RATIO = 1.35;
 
+/** Min source/slot ratio the speed-fit will stretch (silent video clips): a source covering ≥70%
+ * of its slot is slowed (≤1.43x) to fill it — motion beats the freeze-frame tail tpad would leave.
+ * Below that the stretch reads as slow-motion syrup, so the composer falls back to tpad. */
+export const SPEEDFIT_MIN_RATIO = 0.7;
+
 /** One ffmpeg `-i` input. loop/t reproduce the `-loop 1 [-t N]` flags used for still images / the product-card image. */
 interface InputSpec {
   loop?: boolean;
@@ -474,7 +486,11 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
       // zoompan's integer-rounded d=duration*fps may be 1–2 frames shorter than clip.duration; accumulated across
       // multiple image clips the video ends up shorter than audio/subtitles (drift). Use tpad to clone the last
       // frame to reach exactly clip.duration — consistent with how video clips are handled.
-      filterParts.push(`[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,trim=end_frame=1,setpts=PTS-STARTPTS,${motion.getFilter(width, height, clip.duration)},tpad=stop_mode=clone:stop_duration=${clip.duration},trim=duration=${clip.duration},setpts=PTS-STARTPTS,${SEGMENT_NORM}[v${i}]`);
+      // 2x supersampling around zoompan: the filter positions its crop window on integer pixels, so at
+      // output resolution slow pans/zooms stutter one hard pixel at a time and magnified frames sample
+      // an already-downscaled image. Running zoompan on a doubled canvas halves the step size (sub-pixel
+      // at output scale) and keeps detail for zoom>1, then one lanczos downscale smooths everything.
+      filterParts.push(`[${i}:v]scale=${width * 2}:${height * 2}:force_original_aspect_ratio=decrease,pad=${width * 2}:${height * 2}:(ow-iw)/2:(oh-ih)/2,trim=end_frame=1,setpts=PTS-STARTPTS,${motion.getFilter(width * 2, height * 2, clip.duration)},scale=${width}:${height}:flags=lanczos,tpad=stop_mode=clone:stop_duration=${clip.duration},trim=duration=${clip.duration},setpts=PTS-STARTPTS,${SEGMENT_NORM}[v${i}]`);
     } else {
       // video clip: scale to fill + align to shot duration. real stock library videos (Wikimedia etc.) vary in length;
       // clips shorter than the shot duration would leave a black tail and cause audio/subtitle desync if only trimmed —
@@ -482,13 +498,19 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
       inputs.push({ path: clip.filePath });
       // Speed-fit (silent clips only): a source moderately longer than its slot is time-compressed
       // with setpts so BOTH endpoints survive — tail-trim would cut a keyframe-chained ending (the
-      // in-clip transition into the next shot). Beyond SPEEDFIT_MAX_RATIO the compression would look
-      // fast-forwarded, so fall back to the plain trim. Native-audio clips are never speed-fitted
-      // (their slot already follows the media length, and setpts would desync the audio track).
+      // in-clip transition into the next shot); a source moderately SHORTER than its slot is
+      // stretched the same way, so real motion fills the slot instead of tpad's freeze-frame tail
+      // (the loudest defect our own QC flags on short stock clips). Outside
+      // [SPEEDFIT_MIN_RATIO, SPEEDFIT_MAX_RATIO] the retiming reads as slow-mo syrup / fast-forward,
+      // so fall back to the plain tpad+trim. Native-audio clips are never speed-fitted (their slot
+      // already follows the media length, and setpts would desync the audio track).
       const src = clip.sourceDuration ?? 0;
-      const overshoot = src > 0 ? src / clip.duration : 0;
-      const speedFit = !clip.hasAudio && overshoot > 1.001 && overshoot <= SPEEDFIT_MAX_RATIO;
-      const fit = speedFit ? `setpts=PTS/${overshoot.toFixed(4)},` : "";
+      const ratio = src > 0 ? src / clip.duration : 0;
+      const speedFit =
+        !clip.hasAudio &&
+        ratio > 0 &&
+        ((ratio > 1.001 && ratio <= SPEEDFIT_MAX_RATIO) || (ratio >= SPEEDFIT_MIN_RATIO && ratio < 0.999));
+      const fit = speedFit ? `setpts=PTS/${ratio.toFixed(4)},` : "";
       filterParts.push(`[${i}:v]scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2,fps=30,${fit}tpad=stop_mode=clone:stop_duration=${clip.duration},trim=duration=${clip.duration},setpts=PTS-STARTPTS,${SEGMENT_NORM}[v${i}]`);
     }
   });

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildComposeInvocation, SPEEDFIT_MAX_RATIO, type ComposeConfig } from "@/lib/video-composer/composer";
+import { buildComposeInvocation, SPEEDFIT_MAX_RATIO, SPEEDFIT_MIN_RATIO, type ComposeConfig } from "@/lib/video-composer/composer";
 import { buildAssetRows, nextChainKeyframe } from "@/lib/assets-view";
 import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
 import { buildMotionPrompt } from "@/lib/motion-prompt";
@@ -38,10 +38,21 @@ describe("composer 变速压槽（保住链式尾帧）", () => {
     expect(inv.filterComplex).not.toContain("setpts=PTS/");
   });
 
-  it("源短于槽位 → 保持冻帧补齐，不变速", () => {
+  it("源略短于槽位（≥70%）→ setpts 慢放补齐，消灭冻帧尾巴", () => {
+    // 3s source in a 4s slot: ratio 0.75 → setpts=PTS/0.7500 stretches real motion across the slot
     const inv = buildComposeInvocation(cfg({ sourceDuration: 3 }));
+    expect(inv.filterComplex).toContain("setpts=PTS/0.7500");
+  });
+
+  it("源远短于槽位（<70%）→ 退回冻帧补齐，不做糖浆感慢放", () => {
+    const inv = buildComposeInvocation(cfg({ sourceDuration: 4 * SPEEDFIT_MIN_RATIO * 0.8 }));
     expect(inv.filterComplex).not.toContain("setpts=PTS/");
     expect(inv.filterComplex).toContain("tpad=stop_mode=clone");
+  });
+
+  it("源短但带原生音轨 → 不慢放（避免音画不同步）", () => {
+    const inv = buildComposeInvocation(cfg({ sourceDuration: 3, hasAudio: true }));
+    expect(inv.filterComplex).not.toContain("setpts=PTS/");
   });
 
   it("未提供 sourceDuration（旧素材/探测失败）→ 行为与原先一致", () => {

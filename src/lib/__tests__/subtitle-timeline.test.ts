@@ -104,3 +104,57 @@ describe("estimateSpeechSeconds（ffprobe 失败时的文本估时兜底）", ()
     expect(estimateSpeechSeconds("一二三四五六七八九十")).toBeGreaterThan(10 / 4.2);
   });
 });
+
+describe("词级时间接入时间轴（卡拉OK真同步 + 卡片吸附词边界）", () => {
+  it("段落 words 换算为绝对时间并挂到 karaokeLines，speechEndTime 记录语音窗", async () => {
+    const { buildSubtitleTimeline } = await import("@/lib/video-composer/timeline");
+    const tl = buildSubtitleTimeline([
+      {
+        duration: 5,
+        transition: "direct_concat",
+        voiceover: "你好世界",
+        voiceSec: 2,
+        words: [
+          { text: "你好", startSec: 0.2, endSec: 0.9 },
+          { text: "世界", startSec: 1.0, endSec: 1.8 },
+        ],
+      },
+      {
+        duration: 4,
+        transition: "direct_concat",
+        voiceover: "第二句",
+        voiceSec: 1.5,
+        words: [{ text: "第二句", startSec: 0.1, endSec: 1.4 }],
+      },
+    ]);
+    expect(tl.karaokeLines[0].speechEndTime).toBeCloseTo(2.15, 3);
+    expect(tl.karaokeLines[0].words).toEqual([
+      { text: "你好", startSec: 0.2, endSec: 0.9 },
+      { text: "世界", startSec: 1.0, endSec: 1.8 },
+    ]);
+    // 第二段的词偏移到段起点（5s）之后
+    expect(tl.karaokeLines[1].words?.[0].startSec).toBeCloseTo(5.1, 3);
+  });
+
+  it("snapCuesToWords：卡片边界吸附最近词尾（±0.4s 内），首尾外边界不动", async () => {
+    const { snapCuesToWords } = await import("@/lib/video-composer/timeline");
+    const cues = [
+      { text: "a", startTime: 0, endTime: 2.0 },
+      { text: "b", startTime: 2.0, endTime: 4.0 },
+    ];
+    snapCuesToWords(cues, [1.85, 3.1]);
+    expect(cues[0].endTime).toBe(1.85);
+    expect(cues[1].startTime).toBe(1.85);
+    expect(cues[1].endTime).toBe(4.0); // 最后一张卡的外边界不吸附
+  });
+
+  it("snapCuesToWords：无近词/会破坏顺序时不动", async () => {
+    const { snapCuesToWords } = await import("@/lib/video-composer/timeline");
+    const cues = [
+      { text: "a", startTime: 0, endTime: 2.0 },
+      { text: "b", startTime: 2.0, endTime: 2.2 },
+    ];
+    snapCuesToWords(cues, [2.19]); // 吸过去会把 b 压到 <0.05s
+    expect(cues[0].endTime).toBe(2.0);
+  });
+});

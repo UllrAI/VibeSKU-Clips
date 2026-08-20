@@ -12,6 +12,7 @@
  */
 import { reasoningParams } from "@/lib/script-engine/generator";
 import { createLLMClient, withLLMErrors } from "@/lib/llm-error";
+import { stripThinkBlocks } from "@/lib/llm-clean";
 
 export interface SemanticLLMConfig {
   baseUrl: string;
@@ -58,6 +59,8 @@ export function buildRerankPrompt(shots: RerankShot[]): string {
  */
 export function parseRerankPicks(text: string, shots: RerankShot[]): Map<number, number> | null {
   if (!text) return null;
+  // Reasoning models may prepend a <think> trace whose braces/brackets would fool the slicing below
+  text = stripThinkBlocks(text);
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const raw = fenced ? fenced[1] : text;
   const start = raw.indexOf("[");

@@ -10,6 +10,7 @@ import { getUploadsDir } from "@/lib/paths";
 import { searchWikimediaAudio } from "@/lib/providers/wikimedia";
 import { searchJamendoTracks } from "@/lib/providers/jamendo";
 import { downloadStockFile, type StockCandidate } from "@/lib/providers/stock-types";
+import { validateOrDelete } from "@/lib/media-validate";
 
 export interface FreeBgmResult {
   /** Absolute local path of the downloaded file (passed directly as the composer's bgmPath) */
@@ -94,6 +95,9 @@ export async function fetchFreeBgm(
     for (const pick of pool) {
       try {
         const { filePath } = await downloadStockFile(pick.downloadUrl, bgmDir, `bgm_${Date.now()}`, "audio");
+        // Decode-check the track before handing it to the mixer: a broken download would fail the
+        // whole compose; a bad candidate just means trying the next one.
+        if (!(await validateOrDelete(filePath, "audio"))) continue;
         // provenance sidecar: the compose route only persists bgmPath, so drop author/license/sourceUrl
         // next to the audio file for the asset-credits manifest to pick up later (best-effort, non-blocking)
         try {

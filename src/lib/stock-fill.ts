@@ -13,7 +13,8 @@ import { join, basename } from "path";
 import { getUploadsDir } from "@/lib/paths";
 import { downloadStockFile, orientationOf, type StockSourceId } from "@/lib/providers/stock-types";
 import { searchStock, searchAllStock, type StockSearchOptions } from "@/lib/providers/stock-registry";
-import { broadenQuery, pickBestCandidate, authorKeyOf } from "@/lib/stock-matcher";
+import { broadenQuery, pickBestCandidate, authorKeyOf, fallbackLevelOf, type FallbackLevel } from "@/lib/stock-matcher";
+import { validateOrDelete } from "@/lib/media-validate";
 import { getDb } from "@/lib/db";
 import { assets as assetsTable } from "@/lib/db/schema";
 
@@ -28,6 +29,10 @@ export interface FillShotInput {
   usedIds?: Set<string>;
   /** Author keys already picked by shots of the same entity group (material continuity: prefer same-source footage); maintained and passed in by the caller */
   sameSourceAuthors?: Set<string>;
+  /** The shot's slot length in seconds — long-enough videos get a scoring bonus (freeze-frame prevention) */
+  slotSec?: number;
+  /** English topic anchor for the broaden ladder (tried before universal fallbacks) */
+  subjectEn?: string;
 }
 
 /** A stock search hit normalized for scoring: string id + orientation + image/video type. */
@@ -37,32 +42,56 @@ export type ScoredStockCandidate = Awaited<ReturnType<typeof searchStock>>[numbe
   type: "image" | "video";
 };
 
+/** Search-phase result: candidates plus how far the broaden ladder had to drift to find them. */
+export interface ShotCandidateSearch {
+  cands: ScoredStockCandidate[];
+  /** the ladder query that actually returned results ("" when nothing matched at all) */
+  matchedQuery: string;
+  /** original = shot's own terms; narrowed = shortened/topic-anchored; universal = generic filler */
+  fallbackLevel: FallbackLevel;
+}
+
 /**
  * Search phase: query the stock engine (with the broadenQuery "always-has-results" fallback)
- * and normalize hits for scoring. Returns [] when nothing matches even the broadest query.
+ * and normalize hits for scoring. Returns empty cands when nothing matches even the broadest query.
+ * When a minSec duration filter was set and yields nothing anywhere on the ladder, the ladder runs
+ * once more without it — a too-short clip (freeze-frame tail) still beats an empty shot.
  */
 export async function searchShotCandidates(
   query: string,
   source: StockSourceId | "all",
-  searchOpts: StockSearchOptions
-): Promise<ScoredStockCandidate[]> {
-  let candidates: Awaited<ReturnType<typeof searchStock>> = [];
-  for (const q of [query, ...broadenQuery(query)]) {
-    if (!q?.trim()) continue;
-    try {
-      candidates =
-        source === "all" ? (await searchAllStock(q, searchOpts)).candidates : await searchStock(source, q, searchOpts);
-    } catch {
-      /* individual query failed — try the next one */
+  searchOpts: StockSearchOptions,
+  opts: { subjectEn?: string } = {}
+): Promise<ShotCandidateSearch> {
+  const runLadder = async (so: StockSearchOptions) => {
+    for (const q of [query, ...broadenQuery(query, opts.subjectEn)]) {
+      if (!q?.trim()) continue;
+      let candidates: Awaited<ReturnType<typeof searchStock>> = [];
+      try {
+        candidates =
+          source === "all" ? (await searchAllStock(q, so)).candidates : await searchStock(source, q, so);
+      } catch {
+        /* individual query failed — try the next one */
+      }
+      if (candidates.length > 0) return { candidates, matchedQuery: q };
     }
-    if (candidates.length > 0) break;
+    return { candidates: [] as Awaited<ReturnType<typeof searchStock>>, matchedQuery: "" };
+  };
+
+  let { candidates, matchedQuery } = await runLadder(searchOpts);
+  if (candidates.length === 0 && searchOpts.minSec != null) {
+    ({ candidates, matchedQuery } = await runLadder({ ...searchOpts, minSec: undefined }));
   }
-  return candidates.map((cand) => ({
-    ...cand,
-    id: String(cand.id), // normalize to string so it can be stored in the usedIds dedup Set
-    orientation: cand.width && cand.height ? orientationOf(cand.width, cand.height) : undefined,
-    type: cand.mediaType === "video" ? ("video" as const) : ("image" as const),
-  }));
+  return {
+    cands: candidates.map((cand) => ({
+      ...cand,
+      id: String(cand.id), // normalize to string so it can be stored in the usedIds dedup Set
+      orientation: cand.width && cand.height ? orientationOf(cand.width, cand.height) : undefined,
+      type: cand.mediaType === "video" ? ("video" as const) : ("image" as const),
+    })),
+    matchedQuery,
+    fallbackLevel: fallbackLevelOf(query, matchedQuery),
+  };
 }
 
 /** Persist phase: download the chosen candidate into the project's stock dir and insert the asset row. */
@@ -76,6 +105,11 @@ export async function persistCandidate(
   await mkdir(stockDir, { recursive: true });
   const base = `${c.source}_${c.id}_${Date.now()}_${shotId}`;
   const { filePath } = await downloadStockFile(c.downloadUrl, stockDir, base, c.mediaType);
+  // Real decode-level check: a CDN that cut the stream or answered with an HTML error page would
+  // otherwise fail the whole single-pass compose later with no hint of which asset broke.
+  if (!(await validateOrDelete(filePath, c.mediaType === "video" ? "video" : "image"))) {
+    throw new Error(`素材文件校验失败（下载损坏或非媒体内容）: ${c.source}/${c.id}`);
+  }
   const publicUrl = `/api/files/${projectId}/stock/${basename(filePath)}`;
 
   const [row] = await getDb()
@@ -104,19 +138,34 @@ export async function persistCandidate(
  * Returns the persisted asset row on success, or null if nothing could be found.
  */
 export async function fillShotStock(input: FillShotInput): Promise<Record<string, unknown> | null> {
-  const { projectId, shotId, query, source, searchOpts, usedIds, sameSourceAuthors } = input;
+  const { projectId, shotId, query, source, searchOpts, usedIds, sameSourceAuthors, slotSec, subjectEn } = input;
 
-  const scored = await searchShotCandidates(query, source, searchOpts);
-  if (scored.length === 0) return null;
+  const search = await searchShotCandidates(query, source, searchOpts, { subjectEn });
+  if (search.cands.length === 0) return null;
 
   // Pick the best candidate: prefer portrait orientation + deduplicate across shots + lean toward
-  // sources already used by same-entity shots (material continuity), instead of just taking the first result
-  const c = pickBestCandidate({ description: query }, scored, { preferPortrait: true, usedIds, sameSourceAuthors }) ?? scored[0];
-  const authorKey = authorKeyOf(c);
-  // whether this pick actually reused a same-group source — computed BEFORE feeding the key back
-  const sameSource = authorKey !== null && sameSourceAuthors?.has(authorKey) === true;
-  usedIds?.add(c.id);
-  if (authorKey) sameSourceAuthors?.add(authorKey);
-  const asset = await persistCandidate(projectId, shotId, query, c);
-  return { ...asset, sameSource };
+  // sources already used by same-entity shots (material continuity), instead of just taking the first result.
+  // A candidate whose download fails validation (broken file, dead link) is dropped and the next-best
+  // one is tried — up to 3 attempts, so one rotten hit doesn't leave the shot with no footage.
+  const remaining = [...search.cands];
+  for (let attempt = 0; attempt < 3 && remaining.length > 0; attempt++) {
+    const c =
+      pickBestCandidate({ description: query }, remaining, { preferPortrait: true, usedIds, sameSourceAuthors, slotSec }) ??
+      remaining[0];
+    let asset: Record<string, unknown>;
+    try {
+      asset = await persistCandidate(projectId, shotId, query, c);
+    } catch (e) {
+      console.warn(`[stock-fill] 镜头 ${shotId} 候选下载/校验失败，换下一候选:`, e);
+      remaining.splice(remaining.indexOf(c), 1);
+      continue;
+    }
+    const authorKey = authorKeyOf(c);
+    // whether this pick actually reused a same-group source — computed BEFORE feeding the key back
+    const sameSource = authorKey !== null && sameSourceAuthors?.has(authorKey) === true;
+    usedIds?.add(c.id);
+    if (authorKey) sameSourceAuthors?.add(authorKey);
+    return { ...asset, sameSource, fallbackLevel: search.fallbackLevel, matchedQuery: search.matchedQuery };
+  }
+  return null;
 }

@@ -5,6 +5,18 @@ import { join } from "path";
 import { getDb } from "@/lib/db";
 import { assets } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { validateOrDelete } from "@/lib/media-validate";
+import { MAX_DOWNLOAD_BYTES } from "@/lib/providers/stock-types";
+
+/** Decode-level check after writing to disk: AI providers' expiring links often answer with an
+ * error page or a truncated body — those must be stopped before the DB row exists, or the
+ * single-pass compose later fails the whole render with no hint of which asset broke. */
+async function assertValidMedia(absPath: string, ext: string): Promise<void> {
+  const kind = ext === "mp4" ? "video" : "image";
+  if (!(await validateOrDelete(absPath, kind))) {
+    throw new Error("素材文件校验失败（下载内容损坏或非媒体文件），请重新生成");
+  }
+}
 
 // 获取某项目已生成的素材（素材页恢复状态用）
 export async function GET(
@@ -41,10 +53,13 @@ async function persistSource(projectId: string, sourceUrl: string, shotId: numbe
       ? Buffer.from(payload, "base64")
       : Buffer.from(decodeURIComponent(payload), "utf-8");
     const ext = mime.includes("png") ? "png" : mime.includes("webp") ? "webp" : mime.includes("mp4") ? "mp4" : "jpg";
+    if (buf.byteLength > MAX_DOWNLOAD_BYTES) throw new Error(`素材体积 ${buf.byteLength} 超过上限 ${MAX_DOWNLOAD_BYTES}`);
     const dir = join(getDataDir(), "uploads", projectId);
     await mkdir(dir, { recursive: true });
     const fileName = `asset-${shotId}-${Date.now()}.${ext}`;
-    await writeFile(join(dir, fileName), buf);
+    const abs = join(dir, fileName);
+    await writeFile(abs, buf);
+    await assertValidMedia(abs, ext);
     return `/api/files/${projectId}/${fileName}`;
   }
 
@@ -53,12 +68,15 @@ async function persistSource(projectId: string, sourceUrl: string, shotId: numbe
     const resp = await fetch(sourceUrl);
     if (!resp.ok) throw new Error(`下载素材失败: ${resp.status}`);
     const buf = Buffer.from(await resp.arrayBuffer());
+    if (buf.byteLength > MAX_DOWNLOAD_BYTES) throw new Error(`素材体积 ${buf.byteLength} 超过上限 ${MAX_DOWNLOAD_BYTES}`);
     const ct = resp.headers.get("content-type") || "";
     const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : ct.includes("mp4") ? "mp4" : "jpg";
     const dir = join(getDataDir(), "uploads", projectId);
     await mkdir(dir, { recursive: true });
     const fileName = `asset-${shotId}-${Date.now()}.${ext}`;
-    await writeFile(join(dir, fileName), buf);
+    const abs = join(dir, fileName);
+    await writeFile(abs, buf);
+    await assertValidMedia(abs, ext);
     return `/api/files/${projectId}/${fileName}`;
   }
 

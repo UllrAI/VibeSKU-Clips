@@ -42,3 +42,39 @@ describe("免费音色清单", () => {
     expect(DEFAULT_FREE_VOICE).toBe("zh-CN-XiaoxiaoNeural");
   });
 });
+
+describe("parseWordBoundaryFrame（词边界事件 → 秒级时间戳）", () => {
+  it("解析 WordBoundary 条目（100ns ticks → 秒）", async () => {
+    const { parseWordBoundaryFrame } = await import("@/lib/edge-tts");
+    const payload = JSON.stringify({
+      Metadata: [
+        { Type: "WordBoundary", Data: { Offset: 10_000_000, Duration: 5_000_000, text: { Text: "你好" } } },
+        { Type: "SentenceBoundary", Data: { Offset: 0, Duration: 1, text: { Text: "忽略" } } },
+        { Type: "WordBoundary", Data: { Offset: 16_000_000, Duration: 4_000_000, text: { Text: "世界" } } },
+      ],
+    });
+    expect(parseWordBoundaryFrame(payload)).toEqual([
+      { text: "你好", startSec: 1, endSec: 1.5 },
+      { text: "世界", startSec: 1.6, endSec: 2 },
+    ]);
+  });
+
+  it("坏 JSON / 缺字段 → 空数组，不抛错", async () => {
+    const { parseWordBoundaryFrame } = await import("@/lib/edge-tts");
+    expect(parseWordBoundaryFrame("not json")).toEqual([]);
+    expect(parseWordBoundaryFrame('{"Metadata":[{"Type":"WordBoundary","Data":{"text":{"Text":"无时间"}}}]}')).toEqual([]);
+  });
+});
+
+describe("isRetryableTTSError（确定性失败不重试，瞬时失败重试）", () => {
+  it("401/403/422/404/400 → 不重试；408/429/5xx/无状态码 → 重试", async () => {
+    const { isRetryableTTSError } = await import("@/lib/tts");
+    expect(isRetryableTTSError(new Error("TTS 请求失败: 401 Unauthorized - bad key"))).toBe(false);
+    expect(isRetryableTTSError(new Error("Atlas TTS 提交失败: 403 - forbidden"))).toBe(false);
+    expect(isRetryableTTSError(new Error("MiniMax TTS 请求失败: 422 - bad voice"))).toBe(false);
+    expect(isRetryableTTSError(new Error("TTS 请求失败: 429 Too Many Requests"))).toBe(true);
+    expect(isRetryableTTSError(new Error("fal TTS 提交失败: 503 - upstream"))).toBe(true);
+    expect(isRetryableTTSError(new Error("fetch failed"))).toBe(true);
+    expect(isRetryableTTSError(new Error("Atlas TTS 轮询超时"))).toBe(true);
+  });
+});

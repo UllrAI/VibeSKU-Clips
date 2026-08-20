@@ -13,15 +13,20 @@ const UNIVERSAL_FALLBACKS = ["abstract background", "lifestyle", "nature", "ligh
  * Given an English search query, produces a sequence of fallback queries from specific to broad (original excluded, deduplicated).
  * Example: broadenQuery("quantum entanglement physics")
  *   → ["entanglement physics", "physics", "abstract background", "lifestyle", "nature", "light"]
+ * An optional subject anchor (the video's overall topic, e.g. the product's English name) is tried
+ * BEFORE the universal fallbacks, so a shot whose own keywords found nothing still gets on-topic
+ * footage instead of jumping straight to "abstract background".
  * Pure function — easy to unit-test.
  */
-export function broadenQuery(query: string): string[] {
+export function broadenQuery(query: string, subjectEn?: string): string[] {
   const q = (query || "").trim();
   const words = q.split(/\s+/).filter(Boolean);
   const out: string[] = [];
 
   if (words.length > 2) out.push(words.slice(-2).join(" ")); // last two words
   if (words.length > 1) out.push(words[words.length - 1]); // last word (typically the main noun)
+  const subject = (subjectEn || "").trim();
+  if (subject) out.push(subject); // topic anchor: still on-subject, broader than the shot's own terms
   out.push(...UNIVERSAL_FALLBACKS);
 
   const seen = new Set<string>([q.toLowerCase()]);
@@ -31,6 +36,19 @@ export function broadenQuery(query: string): string[] {
     seen.add(k);
     return true;
   });
+}
+
+/** How far a matched query drifted from the shot's own terms — surfaced to the user so a silent
+ * "abstract background" filler never masquerades as a real match. */
+export type FallbackLevel = "original" | "narrowed" | "universal";
+
+const UNIVERSAL_SET = new Set(UNIVERSAL_FALLBACKS.map((s) => s.toLowerCase()));
+
+/** Classify which rung of the broaden ladder actually matched. Pure function. */
+export function fallbackLevelOf(originalQuery: string, matchedQuery: string): FallbackLevel {
+  const matched = (matchedQuery || "").trim().toLowerCase();
+  if (matched === (originalQuery || "").trim().toLowerCase()) return "original";
+  return UNIVERSAL_SET.has(matched) ? "universal" : "narrowed";
 }
 
 /** Build a stock search query for a shot: prefers English stockKeywords, falls back to the visual description or voiceover */
@@ -55,6 +73,8 @@ export interface CandidateLike {
   title?: string;
   orientation?: "portrait" | "landscape" | "square";
   type?: "image" | "video";
+  /** Video length in seconds when the provider reports it (used for the slot-fit bonus) */
+  durationSec?: number;
   /** Stock provider id (pexels/pixabay/...), part of the same-source continuity key */
   source?: string;
   /** Uploader/photographer name, part of the same-source continuity key */
@@ -70,6 +90,9 @@ export interface ScoreOpts {
   usedIds?: Set<string>;
   /** Author keys (authorKeyOf) already picked by same-entity shots — same-source candidates get a coherence bonus */
   sameSourceAuthors?: Set<string>;
+  /** The shot's slot length in seconds: videos long enough to fill it get a small bonus
+   * (a too-short clip ends as a freeze-frame tail, our own QC's loudest finding) */
+  slotSec?: number;
 }
 
 const terms = (s: string) =>
@@ -92,6 +115,12 @@ export function scoreCandidate(shot: ShotLike, candidate: CandidateLike, opts: S
   }
   if (opts.preferVideo && candidate.type === "video") score += 4;
   if (candidate.id && opts.usedIds?.has(candidate.id)) score -= 8; // avoid reusing the same asset across the whole video
+
+  // Slot-fit bonus: a video at least as long as the shot's slot never needs a freeze-frame tail.
+  // Soft (+3, below one keyword hit) so relevance still wins; unknown-length candidates are neutral.
+  if (opts.slotSec && candidate.type === "video" && candidate.durationSec != null && candidate.durationSec >= opts.slotSec) {
+    score += 3;
+  }
 
   // Same-source coherence: below one keyword hit (10) so relevance still wins, above the portrait nudge (5)
   if (opts.sameSourceAuthors?.size) {

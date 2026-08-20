@@ -13,6 +13,7 @@ import { FREE_TTS_VOICES } from "@/lib/edge-tts";
 import { estimateDurationSec } from "@/lib/script-import";
 import { reasoningParams } from "@/lib/script-engine/generator";
 import { createLLMClient, withLLMErrors } from "@/lib/llm-error";
+import { stripThinkBlocks } from "@/lib/llm-clean";
 import type { Shot } from "@/lib/db/schema";
 
 export interface DubLLMConfig {
@@ -65,6 +66,8 @@ export function buildTranslatePrompt(voiceovers: string[], targetLang: string): 
 /** Parses a same-length translated string array from LLM output; returns null if the count mismatches or the format is invalid. Pure function. */
 export function parseTranslations(text: string, expectedCount: number): string[] | null {
   if (!text) return null;
+  // Reasoning models may prepend a <think> trace whose brackets would fool the slicing below
+  text = stripThinkBlocks(text);
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const raw = fenced ? fenced[1] : text;
   const start = raw.indexOf("[");

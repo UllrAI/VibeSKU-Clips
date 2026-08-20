@@ -45,6 +45,38 @@ function ttsBreaker(provider: string): CircuitBreaker {
   return b;
 }
 
+/**
+ * Whether a TTS failure is worth retrying: deterministic rejections (bad key 401/403, bad params
+ * 400/422, missing route 404, out of credit 402) will fail identically on every attempt, while
+ * network-level throws, timeouts, 408/429 and 5xx are exactly the transient wobbles where one
+ * retry saves a silent shot in the final video. Exported for tests.
+ */
+export function isRetryableTTSError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  const status = msg.match(/\b(4\d{2}|5\d{2})\b/)?.[1];
+  if (status) {
+    const s = Number(status);
+    return s === 408 || s === 429 || s >= 500;
+  }
+  // No HTTP status in the message: connection reset / fetch failed / poll timeout — transient.
+  return true;
+}
+
+/** Run a TTS call with up to 2 retries (1s apart) on transient failures only. */
+async function withTTSRetry(fn: () => Promise<Buffer>): Promise<Buffer> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (!isRetryableTTSError(e) || attempt === 2) throw e;
+      await sleep(1000);
+    }
+  }
+  throw lastErr;
+}
+
 export async function generateSpeech(text: string, config: TTSConfig): Promise<Buffer> {
   const clean = (text || "").trim();
   if (!clean) throw new Error("配音文本为空");
@@ -70,7 +102,9 @@ export async function generateSpeech(text: string, config: TTSConfig): Promise<B
     throw new Error(`配音服务(${provider})连续失败已暂时熔断——请检查对应平台 Key/服务，约 30 秒后自动重试`);
   }
   try {
-    const buf = await dispatchTTS(clean, config);
+    // Retries live INSIDE one breaker-accounted call: the breaker judges the final outcome, so a
+    // wobble that recovers on retry doesn't burn a failure toward the 2-strike trip threshold.
+    const buf = await withTTSRetry(() => dispatchTTS(clean, config));
     breaker.recordSuccess();
     // Write-through on success only (failures are never cached); cache errors degrade silently
     await writeTtsCache(cacheKey, buf);

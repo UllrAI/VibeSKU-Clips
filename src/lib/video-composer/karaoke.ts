@@ -13,6 +13,19 @@ export interface KaraokeLine {
   text: string;
   startTime: number; // seconds
   endTime: number; // seconds
+  /** end of actual speech (display may hold longer through the breathing gap); \k timing spans
+   * only [startTime, speechEndTime] so highlighting never crawls through tail silence */
+  speechEndTime?: number;
+  /** real per-word timestamps from the TTS engine (absolute on the video timeline); when present,
+   * \k durations follow actual speech rhythm instead of a per-character length estimate */
+  words?: KaraokeWord[];
+}
+
+/** One spoken word with absolute video-timeline seconds (already offset to the line's position). */
+export interface KaraokeWord {
+  text: string;
+  startSec: number;
+  endSec: number;
 }
 
 export interface KaraokeStyleOpts {
@@ -136,6 +149,72 @@ function buildKaraokeLineText(text: string, durationSec: number, cfg: LineCfg): 
     .join("");
 }
 
+/** Characters that carry speech time (letters/numbers); punctuation and spaces are timeless. */
+const timedChars = (s: string): string[] => Array.from(s).filter((ch) => /[\p{L}\p{N}]/u.test(ch));
+
+/**
+ * Build the {\k..} text for a line from REAL word timestamps (the TTS engine's WordBoundary
+ * events applied to our known-text karaoke): each highlight unit's \k spans its actual
+ * position in the speech — pauses at commas, speed changes, everything the proportional
+ * estimate gets wrong. Gaps between words merge into the preceding unit (highlight lingers,
+ * which reads naturally); leading silence becomes a text-less {\k} delay.
+ *
+ * Alignment: TTS word events cover letters/digits only (punctuation is silent), so both the
+ * line's units and the words are reduced to timed characters and aligned greedily in order.
+ * Any mismatch beyond tolerance returns "" and the caller falls back to the estimate — timing
+ * enhancement must never corrupt the subtitle text. Exported for tests.
+ */
+export function buildKaraokeLineTextFromWords(line: KaraokeLine, cfg: LineCfg): string {
+  const { words } = line;
+  if (!words || words.length === 0) return "";
+  const units = splitKaraokeUnits(line.text);
+  if (units.length === 0) return "";
+
+  // per-timed-char timeline: each word's span divided evenly across its timed characters
+  const charTimes: { t0: number; t1: number }[] = [];
+  for (const w of words) {
+    const chars = timedChars(w.text);
+    if (chars.length === 0 || w.endSec <= w.startSec) continue;
+    const per = (w.endSec - w.startSec) / chars.length;
+    for (let i = 0; i < chars.length; i++) {
+      charTimes.push({ t0: w.startSec + i * per, t1: w.startSec + (i + 1) * per });
+    }
+  }
+  const unitChars = units.map((u) => timedChars(u).length);
+  const totalUnitChars = unitChars.reduce((a, b) => a + b, 0);
+  // tolerance: the engine may drop/merge a few chars (numbers read as words, etc.); beyond ±20%
+  // the alignment would smear timing across the wrong characters — better to fall back
+  if (totalUnitChars === 0 || charTimes.length === 0) return "";
+  if (Math.abs(charTimes.length - totalUnitChars) / totalUnitChars > 0.2) return "";
+
+  // greedy consume: unit i takes its next chars' span (clamped when the engine reported fewer)
+  const spans: { start: number; end: number }[] = [];
+  let cursor = 0;
+  for (const n of unitChars) {
+    const first = charTimes[Math.min(cursor, charTimes.length - 1)];
+    const last = charTimes[Math.min(cursor + Math.max(n, 1) - 1, charTimes.length - 1)];
+    spans.push({ start: first.t0, end: last.t1 });
+    cursor += n;
+  }
+
+  // \k ladder: unit i highlights from its start to the NEXT unit's start (gaps merge into the
+  // previous word); a leading text-less {\k} covers silence before the first word
+  const parts: string[] = [];
+  const leadingCs = Math.max(0, Math.round((spans[0].start - line.startTime) * 100));
+  if (leadingCs >= 3) parts.push(`{\\k${leadingCs}}`);
+  for (let i = 0; i < units.length; i++) {
+    const from = spans[i].start;
+    const to = i < units.length - 1 ? Math.max(spans[i + 1].start, from) : Math.max(spans[i].end, from);
+    const k = Math.max(1, Math.round((to - from) * 100));
+    const u = units[i];
+    const emph = cfg.emphasize && /\d/.test(u);
+    const fs = emph ? Math.round(cfg.baseFs * cfg.emphScale) : cfg.baseFs;
+    const c = emph ? cfg.accentC : cfg.primaryC;
+    parts.push(`{\\k${k}\\fs${fs}\\1c${c}}${assEscapeText(u)}`);
+  }
+  return parts.join("");
+}
+
 /** Generate the full ASS text (style block + per-character karaoke events). */
 export function buildKaraokeAss(lines: KaraokeLine[], opts: KaraokeStyleOpts = {}): string {
   const o = { ...DEFAULTS, ...opts };
@@ -167,7 +246,11 @@ export function buildKaraokeAss(lines: KaraokeLine[], opts: KaraokeStyleOpts = {
   const events = (lines || [])
     .filter((l) => l && l.text && l.endTime > l.startTime)
     .map((l) => {
-      const body = buildKaraokeLineText(l.text, l.endTime - l.startTime, cfg);
+      // Real word timestamps first (exact speech rhythm); fall back to the proportional estimate
+      // spread over the SPEECH window only — never the padded display window, whose tail silence
+      // used to make the highlight crawl on after the voice had finished.
+      const speechDur = Math.max(0.2, (l.speechEndTime ?? l.endTime) - l.startTime);
+      const body = buildKaraokeLineTextFromWords(l, cfg) || buildKaraokeLineText(l.text, speechDur, cfg);
       return `Dialogue: 0,${toAssTime(l.startTime)},${toAssTime(l.endTime)},K,,0,0,0,,${body}`;
     });
   return header.concat(events).join("\n") + "\n";

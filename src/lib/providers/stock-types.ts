@@ -277,6 +277,11 @@ export async function downloadStockFile(
   const ext = inferExtension(url, contentType, mediaType);
   // safeBaseName is sanitized at the top of the function (path separators and special characters removed to prevent directory traversal)
   const filePath = join(destDir, `${safeBaseName}.${ext}`);
-  await writeFile(filePath, buffer);
+  // Write-then-rename so a crash mid-write can never leave a half file under the final name —
+  // directory scans and caches must only ever see fully-written media.
+  const partPath = `${filePath}.part`;
+  await writeFile(partPath, buffer);
+  const { rename } = await import("fs/promises");
+  await rename(partPath, filePath);
   return { filePath, bytes: buffer.byteLength };
 }

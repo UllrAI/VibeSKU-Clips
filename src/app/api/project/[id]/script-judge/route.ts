@@ -4,8 +4,8 @@ import { scripts } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { buildJudgePrompt, parseJudgeResponse, type JudgeShotInput } from "@/lib/script-judge";
 import { styleNameMap } from "@/lib/script-engine/prompts";
-import { reasoningParams } from "@/lib/script-engine/generator";
-import { createLLMClient, withLLMErrors, llmErrorPair } from "@/lib/llm-error";
+import { reasoningParams, completeWithJsonRetry } from "@/lib/script-engine/generator";
+import { createLLMClient, llmErrorPair, jsonModeParams } from "@/lib/llm-error";
 import { apiError, errText } from "@/lib/api-error";
 
 /**
@@ -56,22 +56,22 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       apiKey: llmConfig.apiKey ?? "",
       model: llmConfig.model,
     });
-    const response = await withLLMErrors(
-      () =>
-        client.chat.completions.create({
-          model: llmConfig.model!,
-          messages: [{ role: "user", content: prompt }],
-          // judges must be harsh and consistent, not creative — keep temperature low
-          temperature: 0.3,
-          max_tokens: 8000,
-          ...reasoningParams(llmConfig.baseUrl ?? ""),
-        }),
-      { baseUrl: llmConfig.baseUrl ?? "", apiKey: llmConfig.apiKey ?? "", model: llmConfig.model }
+    // The judge gates every hands-off chain before money is spent: one unparseable reply used to
+    // abort the whole run, so it gets JSON mode plus one parse-driven retry like generation does.
+    const report = await completeWithJsonRetry(
+      client,
+      {
+        model: llmConfig.model!,
+        messages: [{ role: "user", content: prompt }],
+        // judges must be harsh and consistent, not creative — keep temperature low
+        temperature: 0.3,
+        max_tokens: 8000,
+        ...reasoningParams(llmConfig.baseUrl ?? ""),
+        ...jsonModeParams(llmConfig.baseUrl ?? ""),
+      },
+      { baseUrl: llmConfig.baseUrl ?? "", apiKey: llmConfig.apiKey ?? "", model: llmConfig.model },
+      (content) => parseJudgeResponse(content, shots),
     );
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error(errText(req, "判官团未返回内容", "The judge panel returned nothing"));
-
-    const report = parseJudgeResponse(content, shots);
     return NextResponse.json(report);
   } catch (error) {
     console.error("判官团评审失败:", error);

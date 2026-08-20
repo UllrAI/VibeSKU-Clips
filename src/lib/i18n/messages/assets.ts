@@ -56,6 +56,7 @@ export const assets: NamespaceMessages = {
     stockFillTip: "无需生图 Key：点「自动配画面」即可从免费素材库为每个分镜配好画面",
     stockFilledMsg: "已为 {filled}/{total} 个分镜配好画面",
     stockSameSourceMsg: "，其中 {n} 镜同源连贯（同实体镜头复用同一作者素材）",
+    stockUniversalFallbackMsg: "。⚠ 镜 {shots} 未搜到贴题画面，用了通用兜底素材，建议手动更换",
     stockFillFailed: "自动配画面失败，请重试",
     // AI+真人混合占比（抖音混合内容流量倾斜 ≥50% 实拍）
     mixLabel: "实拍占比",
@@ -185,6 +186,7 @@ export const assets: NamespaceMessages = {
     stockFillTip: "No image-gen key needed — click \"Auto-fill footage\" to pull footage for every shot from free stock",
     stockFilledMsg: "Filled {filled}/{total} shots",
     stockSameSourceMsg: ", {n} shot(s) source-matched (same-entity shots reuse one author's footage)",
+    stockUniversalFallbackMsg: ". ⚠ Shot(s) {shots} got generic fallback footage (no on-topic match) — consider replacing manually",
     stockFillFailed: "Auto-fill failed, please retry",
     mixLabel: "Real footage",
     mixReal: "real",

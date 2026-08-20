@@ -61,7 +61,10 @@ export const MOTIONS: Record<string, MotionConfig> = {
       const fps = 30;
       const frames = d * fps;
       const z = interpolate("on", frames, 1, 1.3, "easeOut"); // ease-out zoom in + gentle pan
-      return `zoompan=z='${z}':x='iw/2-(iw/zoom/2)+on*0.5':y='ih/2-(ih/zoom/2)':d=${frames}:s=${w}x${h}:fps=${fps}`;
+      // pan speed proportional to input width (0.00046·iw ≈ the old 0.5px/frame on a 1080-wide
+      // canvas), so the motion reads the same at any canvas scale — including the composer's
+      // 2x supersampled canvas — instead of halving/doubling with resolution
+      return `zoompan=z='${z}':x='iw/2-(iw/zoom/2)+on*(iw*0.00046)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${w}x${h}:fps=${fps}`;
     },
   },
   bounce: {

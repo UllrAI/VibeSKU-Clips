@@ -79,3 +79,53 @@ export async function writeTtsCache(key: string, data: Buffer): Promise<void> {
     /* cache write failures must never break generation */
   }
 }
+
+/**
+ * Word-timestamp sidecar (`<key>.words.json`) next to the cached mp3: Edge TTS WordBoundary
+ * timings ride the same content address as the audio they describe, so a cache hit restores
+ * karaoke-accurate timing without re-synthesizing. Same silent-degradation contract as the audio.
+ */
+interface CachedWord {
+  text: string;
+  startSec: number;
+  endSec: number;
+}
+
+function wordsPath(key: string): string | null {
+  const file = cachePath(key);
+  return file ? `${file.slice(0, -4)}.words.json` : null;
+}
+
+/** Read cached word timings; null on miss/corruption (callers fall back to length estimation). */
+export async function readTtsWords(key: string): Promise<CachedWord[] | null> {
+  try {
+    const file = wordsPath(key);
+    if (!file) return null;
+    const parsed = JSON.parse(await readFile(file, "utf8")) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    const words = parsed.filter(
+      (w): w is CachedWord =>
+        typeof (w as CachedWord)?.text === "string" &&
+        typeof (w as CachedWord)?.startSec === "number" &&
+        typeof (w as CachedWord)?.endSec === "number"
+    );
+    return words.length > 0 ? words : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Write-through word timings; empty arrays are skipped and all I/O errors are swallowed. */
+export async function writeTtsWords(key: string, words: CachedWord[]): Promise<void> {
+  try {
+    if (!Array.isArray(words) || words.length === 0) return;
+    const file = wordsPath(key);
+    if (!file) return;
+    await mkdir(join(getDataDir(), "cache", "tts"), { recursive: true });
+    const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+    await writeFile(tmp, JSON.stringify(words), "utf8");
+    await rename(tmp, file);
+  } catch {
+    /* cache write failures must never break generation */
+  }
+}

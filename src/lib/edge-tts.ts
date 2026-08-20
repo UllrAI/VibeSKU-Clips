@@ -14,7 +14,14 @@
  * allowing a fix without a code change.
  */
 
-import { ttsCacheKey, readTtsCache, writeTtsCache } from "@/lib/tts-cache";
+import { ttsCacheKey, readTtsCache, writeTtsCache, readTtsWords, writeTtsWords } from "@/lib/tts-cache";
+
+/** One spoken word with its real position on the synthesized audio's timeline (seconds). */
+export interface TTSWord {
+  text: string;
+  startSec: number;
+  endSec: number;
+}
 
 const TRUSTED_CLIENT_TOKEN = "6A5AA1D4EAFF4E9FB37E23D68491D6F4";
 const WSS_BASE = "wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1";
@@ -85,11 +92,43 @@ function tsString(): string {
 }
 
 /**
- * Synthesize speech using Microsoft Edge's free online TTS and return the mp3 bytes
- * (audio-24khz-48kbitrate-mono-mp3). Throws on failure (network / 403 / timeout / empty audio);
- * callers should catch and gracefully degrade (e.g. produce subtitles only).
+ * Parse one Edge `Path:audio.metadata` text frame into word timings.
+ * Frame payload: {"Metadata":[{"Type":"WordBoundary","Data":{"Offset":<100ns>,"Duration":<100ns>,
+ * "text":{"Text":"..."}}}]}. Offsets are 100-nanosecond ticks from synthesis start — the same
+ * timeline the returned mp3 plays on, so no re-alignment is needed. Exported for tests.
  */
-export async function generateSpeechFree(text: string, opts: FreeTTSOptions = {}): Promise<Buffer> {
+export function parseWordBoundaryFrame(payload: string): TTSWord[] {
+  try {
+    const parsed = JSON.parse(payload) as {
+      Metadata?: { Type?: string; Data?: { Offset?: number; Duration?: number; text?: { Text?: string } } }[];
+    };
+    const out: TTSWord[] = [];
+    for (const m of parsed.Metadata ?? []) {
+      if (m.Type !== "WordBoundary") continue;
+      const text = m.Data?.text?.Text ?? "";
+      const offset = m.Data?.Offset;
+      const duration = m.Data?.Duration;
+      if (!text || typeof offset !== "number" || typeof duration !== "number") continue;
+      out.push({ text, startSec: offset / 1e7, endSec: (offset + duration) / 1e7 });
+    }
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Synthesize speech using Microsoft Edge's free online TTS.
+ * Returns the mp3 bytes (audio-24khz-48kbitrate-mono-mp3) plus per-word timestamps captured from
+ * the service's WordBoundary events — real speech timing
+ * for karaoke subtitles instead of a per-character length estimate.
+ * Throws on failure (network / 403 / timeout / empty audio) after one internal retry — the free
+ * endpoint flaps routinely, and a silent shot in the final video is the worst possible outcome.
+ */
+export async function generateSpeechFreeDetailed(
+  text: string,
+  opts: FreeTTSOptions = {}
+): Promise<{ audio: Buffer; words: TTSWord[] }> {
   if (typeof WebSocket === "undefined") {
     throw new Error("当前运行时不支持 WebSocket（需 Node 18+ 的 Node 运行时）");
   }
@@ -107,8 +146,33 @@ export async function generateSpeechFree(text: string, opts: FreeTTSOptions = {}
   // timeoutMs doesn't affect the audio bytes and is excluded.
   const cacheKey = ttsCacheKey({ provider: "edge", voice, rate, pitch, text: clean });
   const cached = await readTtsCache(cacheKey);
-  if (cached) return cached;
+  if (cached) return { audio: cached, words: (await readTtsWords(cacheKey)) ?? [] };
 
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const { audio, words } = await synthesizeOnce(clean, { voice, rate, pitch, timeoutMs });
+      // Write-through on success only (failures throw and are never cached); cache errors degrade silently
+      await writeTtsCache(cacheKey, audio);
+      await writeTtsWords(cacheKey, words);
+      return { audio, words };
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+/** Back-compat entry: audio bytes only (existing callers — previews, batch, MCP — stay untouched). */
+export async function generateSpeechFree(text: string, opts: FreeTTSOptions = {}): Promise<Buffer> {
+  return (await generateSpeechFreeDetailed(text, opts)).audio;
+}
+
+/** One WebSocket synthesis round-trip: audio frames + WordBoundary metadata frames. */
+async function synthesizeOnce(
+  clean: string,
+  { voice, rate, pitch, timeoutMs }: { voice: string; rate: string; pitch: string; timeoutMs: number }
+): Promise<{ audio: Buffer; words: TTSWord[] }> {
   const gec = await secMsGec();
   const url =
     `${WSS_BASE}?TrustedClientToken=${TRUSTED_CLIENT_TOKEN}` +
@@ -132,6 +196,7 @@ export async function generateSpeechFree(text: string, opts: FreeTTSOptions = {}
   } as unknown as string[]);
   ws.binaryType = "arraybuffer";
 
+  const words: TTSWord[] = [];
   const audio = await new Promise<Buffer>((resolve, reject) => {
     const chunks: Buffer[] = [];
     let settled = false;
@@ -145,9 +210,11 @@ export async function generateSpeechFree(text: string, opts: FreeTTSOptions = {}
     const timer = setTimeout(() => finish(() => reject(new Error("Edge TTS 超时"))), timeoutMs);
 
     ws.onopen = () => {
+      // wordBoundaryEnabled:true — the service then streams Path:audio.metadata frames carrying
+      // each word's real offset/duration on the audio timeline (free, same connection)
       const cfg =
         `X-Timestamp:${tsString()}\r\nContent-Type:application/json; charset=utf-8\r\nPath:speech.config\r\n\r\n` +
-        `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"false"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`;
+        `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"true"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`;
       ws.send(cfg);
       // voice/pitch/rate are also escaped: they appear inside single-quoted SSML attributes, so an unescaped ' could break out and inject SSML (defense-in-depth, covers all callers)
       const ssml =
@@ -162,7 +229,11 @@ export async function generateSpeechFree(text: string, opts: FreeTTSOptions = {}
     ws.onmessage = (ev: MessageEvent) => {
       const data = ev.data;
       if (typeof data === "string") {
-        if (data.includes("Path:turn.end")) {
+        if (data.includes("Path:audio.metadata")) {
+          // text frame: headers \r\n\r\n JSON payload with WordBoundary entries
+          const sep = data.indexOf("\r\n\r\n");
+          if (sep !== -1) words.push(...parseWordBoundaryFrame(data.slice(sep + 4)));
+        } else if (data.includes("Path:turn.end")) {
           finish(() => (chunks.length ? resolve(Buffer.concat(chunks)) : reject(new Error("Edge TTS 未返回音频"))));
         }
       } else {
@@ -182,7 +253,5 @@ export async function generateSpeechFree(text: string, opts: FreeTTSOptions = {}
     };
   });
 
-  // Write-through on success only (failures throw above and are never cached); cache errors degrade silently
-  await writeTtsCache(cacheKey, audio);
-  return audio;
+  return { audio, words };
 }

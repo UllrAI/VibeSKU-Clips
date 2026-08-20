@@ -29,7 +29,9 @@ import {
   freePoolRetryFetch,
   isLegacyPollinations,
   isPollinations,
+  jsonModeParams,
   llmErrorPair,
+  optionalParamRetryFetch,
   toLLMRequestError,
   withLLMErrors,
 } from "@/lib/llm-error";
@@ -323,5 +325,62 @@ describe("migrateSettings v2（老用户本地存着已停用的 Pollinations �
     expect(migrated.llm.model).toBe("deepseek-ai/deepseek-v4-pro");
     const userPicked = migrateSettings(build({ baseUrl: "https://api.atlascloud.ai/v1", apiKey: "k", model: "zai-org/glm-5.2" }));
     expect(userPicked.llm.model).toBe("zai-org/glm-5.2");
+  });
+});
+
+describe("optionalParamRetryFetch（可选参数被点名拒绝时去掉重放一次）", () => {
+  const body = JSON.stringify({ model: "m", messages: [], response_format: { type: "json_object" }, enable_thinking: false });
+
+  it("400 且报错点名 response_format → 去掉该字段重放", async () => {
+    const calls: string[] = [];
+    const wrapped = optionalParamRetryFetch(async (_url, init) => {
+      calls.push(init?.body as string);
+      if (calls.length === 1) return new Response('{"error":"response_format is not supported"}', { status: 400 });
+      return new Response('{"ok":true}', { status: 200 });
+    });
+    const res = await wrapped("http://x/v1/chat/completions", { method: "POST", body });
+    expect(res.status).toBe(200);
+    const replayed = JSON.parse(calls[1]);
+    expect(replayed.response_format).toBeUndefined();
+    // 未被点名的可选参数保留
+    expect(replayed.enable_thinking).toBe(false);
+  });
+
+  it("400 但报错与可选参数无关 → 原样返回不重放", async () => {
+    let calls = 0;
+    const wrapped = optionalParamRetryFetch(async () => {
+      calls++;
+      return new Response('{"error":"model not found"}', { status: 400 });
+    });
+    const res = await wrapped("http://x", { method: "POST", body });
+    expect(res.status).toBe(400);
+    expect(calls).toBe(1);
+    // body 被读走后必须还能读（等价 Response）
+    expect(await res.text()).toContain("model not found");
+  });
+
+  it("请求里没有可选参数 → 不读 body 不重放", async () => {
+    let calls = 0;
+    const wrapped = optionalParamRetryFetch(async () => {
+      calls++;
+      return new Response("bad", { status: 400 });
+    });
+    const res = await wrapped("http://x", { method: "POST", body: JSON.stringify({ model: "m" }) });
+    expect(res.status).toBe(400);
+    expect(calls).toBe(1);
+  });
+
+  it("成功响应直接透传（不消费流式 body）", async () => {
+    const wrapped = optionalParamRetryFetch(async () => new Response("stream", { status: 200 }));
+    const res = await wrapped("http://x", { method: "POST", body });
+    expect(await res.text()).toBe("stream");
+  });
+
+  it("jsonModeParams 只对已知支持的端点开启", () => {
+    expect(jsonModeParams("https://api.deepseek.com/v1")).toEqual({ response_format: { type: "json_object" } });
+    expect(jsonModeParams("https://api.atlascloud.ai/v1")).toEqual({ response_format: { type: "json_object" } });
+    expect(jsonModeParams("https://gen.pollinations.ai/v1")).toEqual({});
+    expect(jsonModeParams("")).toEqual({});
+    expect(jsonModeParams(undefined)).toEqual({});
   });
 });

@@ -34,8 +34,40 @@ export interface TimelineSegment {
   voiceover?: string;
   /** actual (or estimated) narration length in seconds; used to sync captions to speech */
   voiceSec?: number;
+  /** per-word timestamps relative to this segment's audio start (from the TTS engine's
+   * WordBoundary events); enables exact karaoke timing and word-snapped caption boundaries */
+  words?: { text: string; startSec: number; endSec: number }[];
   /** non-subtitle text overlay for this segment */
   overlay?: { text: string; style: "title" | "highlight" | "price" };
+}
+
+/** Karaoke line cue: display window plus speech-window end and optional real word timings. */
+export interface KaraokeTimelineLine extends SubtitleCue {
+  speechEndTime?: number;
+  words?: { text: string; startSec: number; endSec: number }[];
+}
+
+/**
+ * Snap caption-card boundaries to the nearest word end within ±0.4s: proportional card splits
+ * routinely cut mid-word (the card flips while the voice is still inside a word); with real word
+ * timings the flip lands exactly on a word edge. Card start/end order is preserved; the segment's
+ * outer boundaries are never moved. Exported for tests.
+ */
+export function snapCuesToWords(cues: SubtitleCue[], wordEnds: number[]): void {
+  if (cues.length < 2 || wordEnds.length === 0) return;
+  for (let i = 0; i < cues.length - 1; i++) {
+    const boundary = cues[i].endTime;
+    let best: number | null = null;
+    for (const t of wordEnds) {
+      if (Math.abs(t - boundary) > 0.4) continue;
+      if (best === null || Math.abs(t - boundary) < Math.abs(best - boundary)) best = t;
+    }
+    if (best === null) continue;
+    // keep cards strictly ordered: the snapped boundary must stay inside both neighbours
+    if (best <= cues[i].startTime + 0.05 || best >= cues[i + 1].endTime - 0.05) continue;
+    cues[i].endTime = Number(best.toFixed(3));
+    cues[i + 1].startTime = Number(best.toFixed(3));
+  }
 }
 
 /** Clamp cues that spill past `boundary` (the shifted start of the next segment) and drop the zero-length leftovers */
@@ -55,12 +87,12 @@ function clampCueTail(cues: SubtitleCue[], boundary: number): void {
  */
 export function buildSubtitleTimeline(segments: TimelineSegment[]): {
   cues: SubtitleCue[];
-  karaokeLines: SubtitleCue[];
+  karaokeLines: KaraokeTimelineLine[];
   overlays: OverlayCue[];
   total: number;
 } {
   const cues: SubtitleCue[] = [];
-  const karaokeLines: SubtitleCue[] = [];
+  const karaokeLines: KaraokeTimelineLine[] = [];
   const overlays: OverlayCue[] = [];
   let acc = 0;
   segments.forEach((seg, idx) => {
@@ -83,10 +115,25 @@ export function buildSubtitleTimeline(segments: TimelineSegment[]): {
       const speechEnd =
         seg.voiceSec && seg.voiceSec > 0 ? Math.min(start + seg.voiceSec + 0.15, end) : end;
       const cards = chunkCaption(seg.voiceover, start, speechEnd);
+      // absolute word timings on the video timeline (engine times are relative to the clip's audio)
+      const absWords = (seg.words ?? [])
+        .filter((w) => w.text && w.endSec > w.startSec)
+        .map((w) => ({ text: w.text, startSec: start + w.startSec, endSec: Math.min(start + w.endSec, end) }))
+        .filter((w) => w.startSec < end);
+      // card flips land on real word edges instead of mid-word (proportional splits can't know)
+      if (absWords.length > 0) snapCuesToWords(cards, absWords.map((w) => w.endSec));
       // hold the last card through the breathing gap instead of leaving a blank screen
       if (cards.length > 0) cards[cards.length - 1].endTime = Number(end.toFixed(3));
       cues.push(...cards);
-      karaokeLines.push({ text: seg.voiceover, startTime: start, endTime: end });
+      karaokeLines.push({
+        text: seg.voiceover,
+        startTime: start,
+        endTime: end,
+        // \k timing must span the speech only — the padded tail used to make highlights crawl on
+        // after the voice finished; display still holds to `end` so the screen never goes blank
+        speechEndTime: speechEnd,
+        ...(absWords.length > 0 ? { words: absWords } : {}),
+      });
     }
     if (seg.overlay && seg.overlay.text) {
       overlays.push({

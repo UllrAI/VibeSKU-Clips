@@ -5,7 +5,7 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { generateSpeech, estimateSpeechSeconds, type TTSConfig } from "@/lib/tts";
-import { generateSpeechFree, DEFAULT_FREE_VOICE } from "@/lib/edge-tts";
+import { generateSpeechFreeDetailed, DEFAULT_FREE_VOICE, type TTSWord } from "@/lib/edge-tts";
 import { resolveRenderProfile, isRenderPreset } from "@/lib/compose-presets";
 import { isCaptionPreset, captionPresetOverrides, CAPTION_PRESETS } from "@/lib/caption-presets";
 import { getDb } from "@/lib/db";
@@ -197,23 +197,50 @@ export async function POST(
       }
     }
 
+    // Structured degradation log for this render (in-memory for now; persisted into the
+    // .timeline.json sidecar so tooling can surface which shots degraded and why)
+    const composeWarnings: { code: "tts_fallback_free" | "tts_failed"; shotId: number }[] = [];
+
     /**
-     * 为某分镜生成配音并落地为本地 mp3，返回绝对路径；失败返回 undefined（不阻断合成）。
+     * 为某分镜生成配音并落地为本地 mp3；失败返回 undefined（不阻断合成）。
+     * 返回 { file, words }：words 为免费 Edge 引擎回传的词级时间戳（卡拉OK真同步用），付费引擎无词数据。
+     * 付费 TTS 抛错时回退免费 Edge（同文案照常出声）并记录 tts_fallback_free 警告——
+     * 哑镜是最刺耳的成片缺陷，免费兜底链永远比静音好。
      * characterVoice：剧情脚本中该镜说话角色的专属音色（仅免费 Edge 路径生效——付费 TTS 配置是
      * 单音色的，保持旁白音色以免半路换声）。
      */
-    async function buildVoiceover(shotId: number, text: string, characterVoice?: string): Promise<string | undefined> {
+    async function buildVoiceover(
+      shotId: number,
+      text: string,
+      characterVoice?: string
+    ): Promise<{ file: string; words?: TTSWord[] } | undefined> {
       if (!text || (!ttsConfig && !useFreeTts)) return undefined;
+      const freeOpts = { voice: characterVoice || freeVoice, rate: freeRate };
       try {
         // 付费 TTS 优先；否则走免费 Edge keyless TTS（速度映射：speed 倍率 → SSML 带符号百分比）
-        const audio = ttsConfig
-          ? await generateSpeech(text, ttsConfig)
-          : await generateSpeechFree(text, { voice: characterVoice || freeVoice, rate: freeRate });
+        let audio: Buffer;
+        let words: TTSWord[] | undefined;
+        if (ttsConfig) {
+          try {
+            audio = await generateSpeech(text, ttsConfig);
+          } catch (e) {
+            console.warn(`分镜 ${shotId} 付费配音失败，回退免费 Edge 配音:`, e);
+            composeWarnings.push({ code: "tts_fallback_free", shotId });
+            const d = await generateSpeechFreeDetailed(text, freeOpts);
+            audio = d.audio;
+            words = d.words.length > 0 ? d.words : undefined;
+          }
+        } else {
+          const d = await generateSpeechFreeDetailed(text, freeOpts);
+          audio = d.audio;
+          words = d.words.length > 0 ? d.words : undefined;
+        }
         const file = join(ttsDir, `shot-${shotId}.mp3`);
         await writeFile(file, audio);
-        return file;
+        return { file, words };
       } catch (e) {
         console.warn(`分镜 ${shotId} 配音生成失败（已跳过）:`, e);
+        composeWarnings.push({ code: "tts_failed", shotId });
         return undefined;
       }
     }
@@ -269,24 +296,39 @@ export async function POST(
     const VOICE_GAP = 0.45;
 
     // 构建渲染分镜：跳过无素材的；有 TTS 配音时按配音实际时长卡点（字幕/贴片/画面严格对齐）
-    const rendered: { shot: Shot; clip: ClipInput; duration: number; voiceSec?: number }[] = [];
+    const rendered: { shot: Shot; clip: ClipInput; duration: number; voiceSec?: number; words?: TTSWord[] }[] = [];
     const missing: number[] = [];
     for (const shot of shots) {
       // 素材优先级：该分镜已生成素材 → 商品原图兜底
       const ref = assetByShot.get(shot.shotId) ?? productImages[0];
-      const local = toLocalPath(ref);
+      let local = toLocalPath(ref);
       if (!local) {
         missing.push(shot.shotId);
         continue;
       }
       // 视频素材 vs 静态图：视频自带音轨时用模型原生语音，不再叠 TTS（避免双重声音）
       // 注意：免费素材库（Wikimedia）也会返回 .ogv 等容器，必须纳入视频判定，否则被当静态图 → 冻结帧 + 丢音轨
-      const isVideo = /\.(mp4|webm|mov|m4v|ogv|ogg|mkv|avi)$/i.test(local);
+      let isVideo = /\.(mp4|webm|mov|m4v|ogv|ogg|mkv|avi)$/i.test(local);
+      // Broken-input gate: a video that ffprobe cannot time (truncated download, error page saved
+      // as .mp4) would fail the whole single-pass filter_complex with an inscrutable error — swap
+      // it for the product image instead of feeding it to ffmpeg, and log which shot degraded.
+      if (isVideo && (await probeDuration(local)) <= 0) {
+        const fallback = toLocalPath(productImages[0]);
+        console.warn(`[compose] 分镜 ${shot.shotId} 的视频素材无法解码（${local}），已降级为商品图兜底`);
+        if (fallback && fallback !== local) {
+          local = fallback;
+          isVideo = /\.(mp4|webm|mov|m4v|ogv|ogg|mkv|avi)$/i.test(fallback);
+        } else {
+          missing.push(shot.shotId);
+          continue;
+        }
+      }
       const nativeAudio = isVideo ? await videoHasAudio(local) : false;
-      const audioPath =
+      const vo =
         shot.voiceover && !nativeAudio
           ? await buildVoiceover(shot.shotId, shot.voiceover, shot.characterId ? characterVoices.get(shot.characterId) : undefined)
           : undefined;
+      const audioPath = vo?.file;
 
       // Effective duration (core fix for issue #14 "next segment starts before speech ends"):
       // 1) TTS narration → actual audio length + breathing gap (clamped 1.5–20s); when the probe
@@ -324,7 +366,7 @@ export async function POST(
         ...(sourceDuration && { sourceDuration }),
         ...(audioPath && { audioPath }),
       };
-      rendered.push({ shot, clip, duration, voiceSec });
+      rendered.push({ shot, clip, duration, voiceSec, ...(vo?.words ? { words: vo.words } : {}) });
     }
 
     if (rendered.length === 0) throw new Error("没有可用素材");
@@ -358,6 +400,8 @@ export async function POST(
           transition: r.clip.transition,
           voiceover: r.shot.voiceover || undefined,
           voiceSec: r.voiceSec,
+          // real word timestamps (free Edge TTS) → exact karaoke sync + word-snapped caption cards
+          ...(r.words ? { words: r.words } : {}),
           overlay:
             ov && ov.style !== "subtitle" && ov.text
               ? { text: ov.text, style: ov.style as "title" | "highlight" | "price" }
@@ -451,6 +495,8 @@ export async function POST(
             version: 1,
             boundaries: segmentBoundaries(rendered.map((r) => ({ duration: r.duration, transition: r.clip.transition }))),
             total: timeline.total,
+            // structured degradation log (TTS fallbacks / failed shots) — surfaced by tooling later
+            ...(composeWarnings.length > 0 ? { warnings: composeWarnings } : {}),
           }),
           "utf8"
         ).catch(() => {});

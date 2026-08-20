@@ -521,12 +521,19 @@ describe("buildComposeInvocation（shell-free 执行形态：修 Windows 合成�
 
 // ==================== Script generator JSON parsing tests ====================
 
-describe("reasoningParams（仅对 Pollinations 推理模型注入 reasoning_effort=low）", () => {
+describe("reasoningParams（按端点驯服推理/思考模型）", () => {
   it("Pollinations 端点 → 注入 reasoning_effort:low（否则推理模型耗尽输出预算、content 返空）", () => {
     expect(reasoningParams("https://text.pollinations.ai/openai")).toEqual({ reasoning_effort: "low" });
     expect(reasoningParams("https://TEXT.POLLINATIONS.AI/openai")).toEqual({ reasoning_effort: "low" });
   });
-  it("其它端点（真 OpenAI/本地）→ 不注入（OpenAI 对非推理模型会 400 拒绝该参数）", () => {
+  it("DashScope/SiliconFlow（Qwen3 混合思考）→ enable_thinking:false 关掉思考", () => {
+    expect(reasoningParams("https://dashscope.aliyuncs.com/compatible-mode/v1")).toEqual({ enable_thinking: false });
+    expect(reasoningParams("https://api.siliconflow.cn/v1")).toEqual({ enable_thinking: false });
+  });
+  it("智谱 bigmodel.cn（GLM 混合思考）→ thinking:{type:disabled}", () => {
+    expect(reasoningParams("https://open.bigmodel.cn/api/paas/v4")).toEqual({ thinking: { type: "disabled" } });
+  });
+  it("其它端点（真 OpenAI/本地）→ 不注入（OpenAI 对不认识的参数会 400 拒绝）", () => {
     expect(reasoningParams("https://api.openai.com/v1")).toEqual({});
     expect(reasoningParams("http://localhost:11434/v1")).toEqual({});
     expect(reasoningParams("")).toEqual({});
@@ -798,5 +805,89 @@ describe("buildDrawtext（drawtext 构建器：强制转义 + 字段顺序）", 
     expect(full).toContain("line_spacing=10");
     expect(full).toContain("box=1:boxcolor=black@0.45:boxborderw=12");
     expect(full).toContain("enable='between(t,0,3)'");
+  });
+});
+
+describe("extractJSON（推理模型 <think> 痕迹清理，防思考文本弄脏 JSON）", () => {
+  it("闭合 think 块后面的 JSON 能被干净取出（think 里的大括号不干扰）", () => {
+    const input = '<think>我先想想 {"draft":1} 这样行不行</think>\n{"title":"正片"}';
+    expect(extractJSON(input)).toBe('{"title":"正片"}');
+  });
+  it("think 块里的代码围栏不会被误认成输出围栏", () => {
+    const input = '<think>```json\n{"fake":1}\n```</think>{"real":2}';
+    expect(JSON.parse(extractJSON(input))).toEqual({ real: 2 });
+  });
+});
+
+describe("completeWithJsonRetry（解析失败带着报错重问一次；能力性失败不重试）", () => {
+  type FakeCreate = (params: { messages: { role: string; content: string }[] }) => Promise<{
+    choices: { message: { content: string } }[];
+  }>;
+  const fakeClient = (create: FakeCreate) =>
+    ({ chat: { completions: { create } } }) as unknown as import("openai").default;
+  const reply = (content: string) => ({ choices: [{ message: { content } }] });
+
+  it("第一次输出坏 JSON → 带解析错误重问 → 第二次成功", async () => {
+    const seen: { role: string; content: string }[][] = [];
+    const client = fakeClient(async ({ messages }) => {
+      seen.push(messages);
+      return seen.length === 1 ? reply("这不是JSON") : reply('{"ok":true}');
+    });
+    const { completeWithJsonRetry } = await import("@/lib/script-engine/generator");
+    const out = await completeWithJsonRetry(client, { model: "m", messages: [{ role: "user", content: "写JSON" }] }, {}, (c) => {
+      return JSON.parse(extractJSON(c)) as { ok: boolean };
+    });
+    expect(out).toEqual({ ok: true });
+    // 第二轮 messages 追加了 assistant 原文 + 纠错指令
+    expect(seen[1]).toHaveLength(3);
+    expect(seen[1][1]).toMatchObject({ role: "assistant", content: "这不是JSON" });
+    expect(seen[1][2].content).toContain("无法解析");
+  });
+
+  it("两次都失败 → 抛最后一次解析错误", async () => {
+    const client = fakeClient(async () => reply("还是不是JSON"));
+    const { completeWithJsonRetry } = await import("@/lib/script-engine/generator");
+    await expect(
+      completeWithJsonRetry(client, { model: "m", messages: [{ role: "user", content: "x" }] }, {}, (c) => JSON.parse(c)),
+    ).rejects.toThrow();
+  });
+
+  it("LLMRequestError（模型能力判定）不重试直接抛", async () => {
+    let calls = 0;
+    const client = fakeClient(async () => {
+      calls++;
+      return reply('{"shots":[]}');
+    });
+    const { completeWithJsonRetry } = await import("@/lib/script-engine/generator");
+    const { LLMRequestError } = await import("@/lib/llm-error");
+    await expect(
+      completeWithJsonRetry(client, { model: "m", messages: [{ role: "user", content: "x" }] }, {}, () => {
+        throw new LLMRequestError("模型太弱", "model too weak");
+      }),
+    ).rejects.toThrow("模型太弱");
+    expect(calls).toBe(1);
+  });
+});
+
+describe("sanitizeVoiceover（TTS 喂稿消毒：结构标记去掉、真实文案不动）", () => {
+  it("markdown 强调/代码/清单/舞台指示都被剥掉，保留内文", async () => {
+    const { sanitizeVoiceover } = await import("@/lib/script-engine/generator");
+    expect(sanitizeVoiceover("**超值**的选择")).toBe("超值的选择");
+    expect(sanitizeVoiceover("*轻轻一抹*就干净")).toBe("轻轻一抹就干净");
+    expect(sanitizeVoiceover("`真丝`触感")).toBe("真丝触感");
+    expect(sanitizeVoiceover("- 第一点很重要")).toBe("第一点很重要");
+    expect(sanitizeVoiceover("【开场】你还在为脱发烦恼吗")).toBe("你还在为脱发烦恼吗");
+    expect(sanitizeVoiceover("[hook] Stop scrolling right now")).toBe("Stop scrolling right now");
+  });
+
+  it("真实文案不受影响：括号、引号、价格、乘号原样保留", async () => {
+    const { sanitizeVoiceover } = await import("@/lib/script-engine/generator");
+    expect(sanitizeVoiceover("只要9.9元（含运费），真的绝了")).toBe("只要9.9元（含运费），真的绝了");
+    expect(sanitizeVoiceover("尺寸是 30 x 40 厘米")).toBe("尺寸是 30 x 40 厘米");
+  });
+
+  it("全是标记时不消毒成空串（宁可保留也不产出哑镜）", async () => {
+    const { sanitizeVoiceover } = await import("@/lib/script-engine/generator");
+    expect(sanitizeVoiceover("***").length).toBeGreaterThan(0);
   });
 });

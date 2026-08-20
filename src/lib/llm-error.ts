@@ -147,6 +147,60 @@ export function tokenCapRetryFetch(
 }
 
 /**
+ * Ask for provider-enforced JSON output where the endpoint is known to support it.
+ * `response_format: json_object` makes the provider reject non-JSON tokens at generation time —
+ * strictly better than repairing after the fact. Scoped by baseUrl because unknown endpoints may
+ * 400 on the field; even for listed ones, `optionalParamRetryFetch` replays without it if a
+ * specific model objects. Only for prompts whose expected top level is an OBJECT (json_object
+ * forbids top-level arrays), and the prompt must mention "JSON" (all of ours do).
+ */
+export function jsonModeParams(baseUrl?: string): { response_format?: { type: "json_object" } } {
+  return /deepseek|openai\.com|moonshot|bigmodel\.cn|atlascloud|siliconflow|dashscope/i.test(baseUrl || "")
+    ? { response_format: { type: "json_object" } }
+    : {};
+}
+
+/**
+ * Request params that are OUR optimization, not the user's intent: when a provider rejects the
+ * request and blames one of these by name, replaying without it is always the right call.
+ */
+const OPTIONAL_PARAMS = ["response_format", "enable_thinking", "thinking", "reasoning_effort"] as const;
+
+/**
+ * fetch wrapper that replays a request once without optional params a provider rejected by name.
+ * We attach best-effort fields (JSON mode, thinking toggles) keyed off baseUrl patterns, but a
+ * baseUrl cannot know every model served behind it — e.g. a provider that supports
+ * `response_format` on chat models 400s on its audio-adjacent ones. The error text names the
+ * offending field; dropping exactly the blamed fields keeps the user's request alive.
+ */
+export function optionalParamRetryFetch(
+  baseFetch: typeof fetch = fetch,
+): (url: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
+  return async (url, init) => {
+    const res = await baseFetch(url, init);
+    if (res.ok || (res.status !== 400 && res.status !== 422)) return res;
+    const sent = typeof init?.body === "string" ? init.body : undefined;
+    if (!sent) return res;
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(sent) as Record<string, unknown>;
+    } catch {
+      return res;
+    }
+    const present = OPTIONAL_PARAMS.filter((p) => parsed[p] !== undefined);
+    if (present.length === 0) return res;
+
+    const text = await res.text().catch(() => "");
+    // Reading the body consumes it — any give-up path must hand back an equivalent Response.
+    const asIs = () => new Response(text, { status: res.status, statusText: res.statusText, headers: res.headers });
+    const blamed = present.filter((p) => text.includes(p));
+    if (blamed.length === 0) return asIs();
+    for (const p of blamed) delete parsed[p];
+    return baseFetch(url, { ...init, body: JSON.stringify(parsed) });
+  };
+}
+
+/**
  * Build an OpenAI-compatible client with this project's shared reliability settings.
  * Free/keyless endpoints (Pollinations, Ollama) accept any non-empty key; the SDK requires one.
  */
@@ -160,9 +214,9 @@ export function createLLMClient(config: LLMClientConfig): OpenAI {
     apiKey: config.apiKey || "no-key",
     // SDK default is 2; free/shared endpoints flap enough to be worth one more attempt.
     maxRetries: 3,
-    // Cap recovery applies everywhere (our max_tokens, our problem); the 402 hook only where 402 is
-    // genuinely transient. Composed so one wrapper feeds the other.
-    fetch: tokenCapRetryFetch(retryFreePool402 ? freePoolRetryFetch() : fetch),
+    // Cap recovery and optional-param recovery apply everywhere (our params, our problem); the
+    // 402 hook only where 402 is genuinely transient. Composed so one wrapper feeds the other.
+    fetch: optionalParamRetryFetch(tokenCapRetryFetch(retryFreePool402 ? freePoolRetryFetch() : fetch)),
   });
 }
 

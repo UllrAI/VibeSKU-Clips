@@ -124,3 +124,32 @@ describe("chunkCaption（rapid 短句卡切分）", () => {
     expect(out.map((c) => c.text).join("")).toBe("哇！这也太好喝了吧，必须回购！");
   });
 });
+
+describe("千分位价格保护 + 行首禁则（带货文案高频场景）", () => {
+  it("chunkCaption：¥1,299 的千分位逗号不切卡", async () => {
+    const { chunkCaption } = await import("@/lib/video-composer/composer");
+    const cards = chunkCaption("原价¥1,299，今天只要¥399，手慢无", 0, 6);
+    // 千分位不打断：没有任何一张卡以「299」开头（说明 1,299 被错误切开）
+    expect(cards.some((c) => c.text.startsWith("299"))).toBe(false);
+    // 正常句读逗号仍然切卡
+    expect(cards.length).toBeGreaterThan(1);
+    expect(cards.some((c) => c.text.includes("1,299"))).toBe(true);
+  });
+
+  it("chunkCaption：时间 3:45 的冒号不切卡", async () => {
+    const { chunkCaption } = await import("@/lib/video-composer/composer");
+    const cards = chunkCaption("下午3:45开抢，先到先得", 0, 4);
+    expect(cards.some((c) => c.text.includes("3:45"))).toBe(true);
+    expect(cards.some((c) => c.text.startsWith("45"))).toBe(false);
+  });
+
+  it("wrapCaption：折行点落在闭合标点前时把标点挤回上一行（行首禁则）", async () => {
+    const { wrapCaption } = await import("@/lib/video-composer/composer");
+    // 构造让宽度刚好在「，」前断行的文本：fontSize 46、宽 460 → 每行约 8.6 个 CJK
+    const wrapped = wrapCaption("一二三四五六七八，九十", 46, 460 / 0.86);
+    for (const line of wrapped.split("\n")) {
+      expect(/^[。！？；，、：…!?;,.]/.test(line)).toBe(false);
+    }
+    expect(wrapped).toContain("，");
+  });
+});

@@ -312,7 +312,12 @@ export default function AssetsPage() {
       await reloadAssets();
       setStockMsg(
         t("stockFilledMsg", { filled: data.filled ?? 0, total: data.total ?? 0 }) +
-          (data.sameSourceHits ? t("stockSameSourceMsg", { n: data.sameSourceHits }) : "")
+          (data.sameSourceHits ? t("stockSameSourceMsg", { n: data.sameSourceHits }) : "") +
+          // fallback transparency: name the shots that got generic filler footage so the user knows
+          // exactly which ones to swap, instead of discovering off-topic visuals in the final video
+          (Array.isArray(data.universalFallbacks) && data.universalFallbacks.length
+            ? t("stockUniversalFallbackMsg", { shots: data.universalFallbacks.join("、") })
+            : "")
       );
     } catch (e) {
       setStockMsg(e instanceof Error ? e.message : t("stockFillFailed"));
