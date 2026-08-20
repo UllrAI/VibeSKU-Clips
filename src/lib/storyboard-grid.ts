@@ -58,7 +58,9 @@ export function buildStoryboardGridPrompt(
     let n = 0;
     if (refs.characterSheet) {
       n += 1;
-      refLines.push(`第 ${n} 张参考图是出镜人物的四视图定妆照——九格中的人物脸型、发型、体型与服装必须与其完全一致（定妆照只作人物参考，不作为分镜画面）。`);
+      refLines.push(
+        `第 ${n} 张参考图是出镜人物的四视图定妆照——九格中的人物脸型、发型、体型与服装必须与其完全一致（定妆照只作人物参考，不作为分镜画面）。人物需自然融入各格自身的场景与光线，不得把定妆照的浅灰影棚背景、四格分格或边框带进任何一格。`
+      );
     }
     if (refs.productImage) {
       n += 1;
@@ -71,7 +73,7 @@ export function buildStoryboardGridPrompt(
     `全局一致性（最重要）：九格是同一支视频的分镜——同一人物、同一发型与同一身衣服、同一房间、同一光线方向与色调，道具与商品在各格间保持完全一致。`,
     ...refLines,
     cast ? `人物设定：${cast}。` : "",
-    `各格内容（每格是一个独立镜头的画面，构图按竖屏 9:16 设计）：`,
+    `各格内容（每格是一个独立镜头的画面，构图按竖屏 9:16 设计；每格都是该镜动作即将开始前一瞬的定格，姿态里留着正要发生的势能）：`,
     ...cellLines,
     REAL_FACE_CONSTRAINT.zh + "。",
     UGC_FIRST_FRAME_RULES,

@@ -217,9 +217,13 @@ async function synthesizeOnce(
         `{"context":{"synthesis":{"audio":{"metadataoptions":{"sentenceBoundaryEnabled":"false","wordBoundaryEnabled":"true"},"outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}`;
       ws.send(cfg);
       // voice/pitch/rate are also escaped: they appear inside single-quoted SSML attributes, so an unescaped ' could break out and inject SSML (defense-in-depth, covers all callers)
+      // [pause] breath markers become real SSML breaks — converted AFTER escaping (the marker
+      // itself has no XML-special chars, so it survives escapeSsml intact); this is the ONE
+      // consumer that renders the marker, every other path strips it (see voice-markup.ts)
+      const spoken = escapeSsml(clean).replace(/\[pause\]/gi, "<break time='350ms'/>");
       const ssml =
         `<speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='zh-CN'>` +
-        `<voice name='${escapeSsml(voice)}'><prosody pitch='${escapeSsml(pitch)}' rate='${escapeSsml(rate)}' volume='+0%'>${escapeSsml(clean)}</prosody></voice></speak>`;
+        `<voice name='${escapeSsml(voice)}'><prosody pitch='${escapeSsml(pitch)}' rate='${escapeSsml(rate)}' volume='+0%'>${spoken}</prosody></voice></speak>`;
       const msg =
         `X-RequestId:${uuidNoDash()}\r\nContent-Type:application/ssml+xml\r\n` +
         `X-Timestamp:${tsString()}Z\r\nPath:ssml\r\n\r\n${ssml}`;

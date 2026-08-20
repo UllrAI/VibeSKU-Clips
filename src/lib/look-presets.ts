@@ -49,8 +49,8 @@ export const LOOK_PRESETS: LookPreset[] = [
     id: "daylight_clean",
     name: { zh: "清透日光", en: "Clean Daylight" },
     image: {
-      zh: "明亮自然的窗边日光，空气感清透，浅色干净背景，白平衡准确",
-      en: "bright natural window daylight, airy and clean, light minimal backdrop, accurate white balance",
+      zh: "明亮自然的窗边日光（约5600K日光白平衡），空气感清透，浅色干净背景，f/4 适中景深",
+      en: "bright natural window daylight (~5600K daylight white balance), airy and clean, light minimal backdrop, f/4 moderate depth of field",
     },
     motion: {
       zh: "全程保持明亮清透的自然日光",
@@ -61,8 +61,8 @@ export const LOOK_PRESETS: LookPreset[] = [
     id: "warm_life",
     name: { zh: "暖调生活感", en: "Warm Lifestyle" },
     image: {
-      zh: "温暖的午后阳光色调，橙黄暖光洒落，居家生活氛围，柔和阴影",
-      en: "warm afternoon sunlight tones, golden light spill, cozy home atmosphere, soft shadows",
+      zh: "温暖的午后阳光色调（约3000K暖光），橙黄暖光洒落，居家生活氛围，柔和阴影，浅景深 f/2.0",
+      en: "warm afternoon sunlight tones (~3000K warm light), golden light spill, cozy home atmosphere, soft shadows, shallow f/2.0 depth of field",
     },
     motion: {
       zh: "全程保持温暖的橙黄午后光调",
@@ -73,8 +73,8 @@ export const LOOK_PRESETS: LookPreset[] = [
     id: "studio_product",
     name: { zh: "影棚质感", en: "Studio Product" },
     image: {
-      zh: "专业影棚布光，主体轮廓光清晰，深色渐变背景，商品质感锐利高级",
-      en: "professional studio lighting, crisp rim light on the subject, dark gradient backdrop, sharp premium product texture",
+      zh: "专业影棚布光（约5000K主光），主体轮廓光清晰，深色渐变背景，f/8 全清晰景深，商品质感锐利高级",
+      en: "professional studio lighting (~5000K key light), crisp rim light on the subject, dark gradient backdrop, f/8 deep focus, sharp premium product texture",
     },
     motion: {
       zh: "全程保持影棚级布光与深色背景",
@@ -85,8 +85,8 @@ export const LOOK_PRESETS: LookPreset[] = [
     id: "night_neon",
     name: { zh: "夜景氛围", en: "Night Neon" },
     image: {
-      zh: "夜晚城市霓虹氛围，冷暖光对比，浅景深光斑背景，情绪感强",
-      en: "night city neon mood, warm-cool light contrast, shallow-depth bokeh backdrop, strong atmosphere",
+      zh: "夜晚城市霓虹氛围（约3200K暖光与霓虹冷光混合），冷暖光对比，大光圈 f/1.8 浅景深光斑背景，情绪感强",
+      en: "night city neon mood (~3200K tungsten mixed with neon), warm-cool light contrast, wide-open f/1.8 shallow bokeh backdrop, strong atmosphere",
     },
     motion: {
       zh: "全程保持夜景霓虹光斑氛围",
@@ -97,8 +97,8 @@ export const LOOK_PRESETS: LookPreset[] = [
     id: "premium_gray",
     name: { zh: "高级灰调", en: "Premium Gray" },
     image: {
-      zh: "低饱和高级灰色调，柔和漫射光，极简构图，高端克制的质感",
-      en: "desaturated premium gray palette, soft diffused light, minimalist composition, restrained high-end feel",
+      zh: "低饱和高级灰色调（约4500K柔光），柔和漫射光，极简构图，f/5.6 稳定景深，高端克制的质感",
+      en: "desaturated premium gray palette (~4500K soft light), diffused lighting, minimalist composition, f/5.6 steady depth, restrained high-end feel",
     },
     motion: {
       zh: "全程保持低饱和灰调与柔和漫射光",
@@ -109,8 +109,8 @@ export const LOOK_PRESETS: LookPreset[] = [
     id: "forest_soft",
     name: { zh: "森系自然", en: "Soft Botanical" },
     image: {
-      zh: "自然绿植环境，清晨柔光带薄雾感，清新治愈的色调",
-      en: "natural greenery setting, soft misty morning light, fresh soothing palette",
+      zh: "自然绿植环境，清晨柔光带薄雾感（约5000K），f/2.8 浅景深，清新治愈的色调",
+      en: "natural greenery setting, soft misty morning light (~5000K), f/2.8 shallow depth, fresh soothing palette",
     },
     motion: {
       zh: "全程保持清晨柔光与清新绿调",
@@ -121,8 +121,8 @@ export const LOOK_PRESETS: LookPreset[] = [
     id: "food_appetizing",
     name: { zh: "食欲暖光", en: "Appetizing Warm" },
     image: {
-      zh: "暖色食欲光，食物色泽饱满诱人，浅景深背景虚化，细节油亮",
-      en: "warm appetizing light, rich saturated food colors, shallow depth of field, glossy details",
+      zh: "暖色食欲光（约3500K），食物色泽饱满诱人，f/2.8 浅景深背景虚化，细节油亮",
+      en: "warm appetizing light (~3500K), rich saturated food colors, f/2.8 shallow depth of field, glossy details",
     },
     motion: {
       zh: "全程保持暖色食欲光与饱满色泽",
@@ -133,8 +133,8 @@ export const LOOK_PRESETS: LookPreset[] = [
     id: "tech_cool",
     name: { zh: "科技冷调", en: "Tech Cool" },
     image: {
-      zh: "冷色调科技感光效，蓝紫色轮廓光，深色简洁背景，未来感",
-      en: "cool-toned tech lighting, blue-violet rim light, dark clean backdrop, futuristic feel",
+      zh: "冷色调科技感光效（约7000K冷调），蓝紫色轮廓光，深色简洁背景，f/5.6 稳定景深，未来感",
+      en: "cool-toned tech lighting (~7000K cool tone), blue-violet rim light, dark clean backdrop, f/5.6 steady depth, futuristic feel",
     },
     motion: {
       zh: "全程保持冷调科技光效",
@@ -193,6 +193,57 @@ export const LOOK_PRESETS: LookPreset[] = [
     motion: {
       zh: "全程保持固定的搁置视角与自然室内光",
       en: "keep the fixed propped viewpoint and natural indoor light throughout",
+    },
+  },
+  {
+    id: "dashcam_ride",
+    name: { zh: "行车记录仪", en: "Dashcam" },
+    group: "real",
+    opener: {
+      zh: "行车记录仪广角固定机位实拍画面",
+      en: "Dashcam footage from a fixed wide-angle mount",
+    },
+    image: {
+      zh: "行车记录仪画质：超广角带边缘畸变，曝光随环境光自动跳变，色彩偏淡对比偏硬，画面边缘轻微拖影",
+      en: "dashcam quality: ultra-wide with edge distortion, exposure auto-jumping with ambient light, washed colors with hard contrast, slight smearing at the frame edges",
+    },
+    motion: {
+      zh: "全程保持行车记录仪的广角畸变与自动曝光跳变质感",
+      en: "keep the dashcam wide-angle distortion and auto-exposure jumps throughout",
+    },
+  },
+  {
+    id: "old_dv",
+    name: { zh: "老 DV 录像", en: "Old DV Tape" },
+    group: "real",
+    opener: {
+      zh: "老式家用 DV 拍摄的录像画面",
+      en: "Home video footage shot on an old consumer DV camcorder",
+    },
+    image: {
+      zh: "老 DV 录像质感：暖黄偏色，轻微扫描线与颗粒噪点，对焦偶尔犹豫呼吸，高光轻微溢出，画面边角有角标质感但不出现可读文字",
+      en: "old DV tape look: warm yellow color cast, faint scanlines and grain, focus occasionally hunting, highlights slightly blooming, corner overlay texture without any readable text",
+    },
+    motion: {
+      zh: "全程保持老 DV 的暖黄偏色、颗粒噪点与对焦呼吸感",
+      en: "keep the DV warm cast, grain and focus breathing throughout",
+    },
+  },
+  {
+    id: "cctv_store",
+    name: { zh: "店内监控", en: "Store CCTV" },
+    group: "real",
+    opener: {
+      zh: "店内监控摄像头高角度固定俯拍画面",
+      en: "Store CCTV footage from a fixed high-angle ceiling camera",
+    },
+    image: {
+      zh: "监控画质：高角度俯拍，青冷色调，低码率压缩噪点，画面四角轻微暗角，人物不摆拍、按自然状态活动",
+      en: "CCTV quality: high-angle top-down view, cold teal cast, low-bitrate compression noise, mild corner vignetting, people mid-activity, moving naturally through the frame",
+    },
+    motion: {
+      zh: "全程保持监控俯拍固定视角与青冷低码率质感",
+      en: "keep the fixed CCTV high angle and cold low-bitrate texture throughout",
     },
   },
 ];

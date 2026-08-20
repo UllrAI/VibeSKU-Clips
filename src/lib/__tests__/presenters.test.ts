@@ -67,7 +67,7 @@ describe("真实人脸约束的注入链路", () => {
   });
 
   it("首帧真实感规则：指名光源/生活痕迹/防重复，且不引入已被 A/B 否掉的瑕疵词", () => {
-    expect(UGC_FIRST_FRAME_RULES).toContain("光源要指名");
+    expect(UGC_FIRST_FRAME_RULES).toContain("光要写满四要素");
     expect(UGC_FIRST_FRAME_RULES).toContain("一处不完美");
     expect(UGC_FIRST_FRAME_RULES).toContain("换房间");
     // 校准红线：脸部瑕疵词会矫枉过正（见 presenters.ts 注释），肤质表述只归 REAL_FACE_CONSTRAINT 管

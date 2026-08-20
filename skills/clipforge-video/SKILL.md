@@ -44,11 +44,28 @@ These are pipeline-correctness facts — violating them produces broken output o
 
 ## Three ways to create
 
-- **MCP tools** (in Claude Desktop / Cursor / Claude Code): `clipforge_create_video`, `clipforge_ingest_product`, `clipforge_product_script`, `clipforge_generate_script`, `clipforge_compose`, `clipforge_search_stock`, `clipforge_list_voices`, `clipforge_list_projects`, `clipforge_get_video`, `clipforge_trends`, `clipforge_import_script`, `clipforge_dub`, `clipforge_cover`, `clipforge_carousel`, `clipforge_shop_qr`, `clipforge_end_card`, `clipforge_qc`, `clipforge_gate`, `clipforge_credits`, `clipforge_native_feel`, `clipforge_preview_gif`, `clipforge_contact_sheet`, `clipforge_export_subtitle`, `clipforge_export_platform`.
+- **MCP tools** (in Claude Desktop / Cursor / Claude Code): `clipforge_create_video`, `clipforge_ingest_product`, `clipforge_product_script`, `clipforge_generate_script`, `clipforge_compose`, `clipforge_search_stock`, `clipforge_list_voices`, `clipforge_list_projects`, `clipforge_get_video`, `clipforge_update_shots`, `clipforge_trends`, `clipforge_import_script`, `clipforge_dub`, `clipforge_cover`, `clipforge_carousel`, `clipforge_shop_qr`, `clipforge_end_card`, `clipforge_qc`, `clipforge_gate`, `clipforge_credits`, `clipforge_native_feel`, `clipforge_preview_gif`, `clipforge_contact_sheet`, `clipforge_export_subtitle`, `clipforge_export_platform`.
 - **CLI**: `node bin/clipforge.mjs <create|product|import|compose|dub|cover|qr|endcard|export|qc|gate|credits|native|preview|sheet|carousel|list|voices|get|trends> [flags]` (`--help` for all). `gate` exits with code 2 when blocked (fail, or warn under `--strict`) — pipe it straight into shell scripts and CI.
 - **HTTP**: `POST /api/topic/script` → `POST /api/project/[id]/stock-fill` → `POST /api/project/[id]/compose` → poll `GET /api/project/[id]/compose`.
 
 **Delivery checklist (hard rules 2–4 in tool form):** compose done → `clipforge_gate` → `clipforge_contact_sheet` (look at it) → only then report the video URL, together with any `warn` items the gate raised.
+
+## Route first, then work
+
+Pick the entry point by matching the user's input TOP-DOWN — first hit wins, stop matching:
+
+| # | User gives you… | Route | Must have | Safe defaults |
+|---|---|---|---|---|
+| 1 | A finished narration/script | `clipforge_import_script` → `clipforge_compose` | projectId (create or reuse), script text | voice auto by language, aspect 9:16 |
+| 2 | A product URL (or product image) | `clipforge_product_script` → `clipforge_compose` | url, LLM env | styleType `auto`, durationSec 30 |
+| 3 | "Real-person feel" / "shouldn't look AI" | route 2 or 4 with a drama/talking-head styleType + `clipforge_native_feel` on the output | same as base route | `native_feel` defaults |
+| 4 | A bare topic/idea | `clipforge_create_video` | topic, LLM env | narrationStyle `knowledge`, 25s |
+
+Conflicts resolve by intent priority: **selling beats growing beats expressing** — e.g. "写个卖货的知识科普" is route 2 (commerce) styled as knowledge, not route 4. Every route ends with the same delivery checklist (gate → contact sheet → report), and gate `warn` items are relayed verbatim.
+
+Targeted fixes after QC: when `clipforge_gate`/`clipforge_qc` flags one shot (a dragging line, an unreadable visual), use `clipforge_update_shots` to patch just that shot and re-`compose` — do NOT regenerate the whole script (that discards the judge panel's applied rewrites).
+
+Long renders / strict-timeout MCP clients: pass `wait: false` to `clipforge_create_video`/`clipforge_compose` and poll `clipforge_get_video { projectId, compositionId }` instead of holding the call open.
 
 ## Workflows
 

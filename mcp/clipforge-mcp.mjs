@@ -204,7 +204,7 @@ const TOOLS = [
   {
     name: "clipforge_create_video",
     description:
-      "一句话成片：输入一个主题，自动写旁白脚本→判官团（节奏/口语/创意/结构四判官）自动挑刺并重写弱句→从免费素材库配齐画面→免费 AI 配音+字幕→FFmpeg 合成竖屏短视频，返回可下载的视频地址。需要为 MCP 配置 LLM 环境变量；素材与配音全程免 Key。",
+      "一句话成片：输入一个主题，自动写旁白脚本→判官团（节奏/口语/创意/结构/画面五判官）自动挑刺并重写弱句→从免费素材库配齐画面→免费 AI 配音+字幕→FFmpeg 合成竖屏短视频，返回可下载的视频地址。需要为 MCP 配置 LLM 环境变量；素材与配音全程免 Key。",
     inputSchema: {
       type: "object",
       properties: {
@@ -215,6 +215,11 @@ const TOOLS = [
           type: "string",
           enum: FOOTAGE_KINDS,
           description: "画面类型：auto（默认，逐镜视频优先、配不到再退图片，全程免 Key）/ image（只图片，最快）/ video（只视频）",
+        },
+        wait: {
+          type: "boolean",
+          description:
+            "默认 true=等合成完成后返回视频地址（最长约 11 分钟，MCP 客户端超时较短时可能被掐断）。false=提交合成后立即返回 compositionId，用 clipforge_get_video { projectId, compositionId } 轮询取片——长视频/严格超时环境推荐 false。",
         },
         ...OUTPUT_OPTION_PROPS,
       },
@@ -304,9 +309,41 @@ const TOOLS = [
         projectId: PROJECT_ID_PROP,
         autoFillStock: { type: "boolean", description: "合成前是否先自动从免费素材库配齐缺画面的分镜，默认 true" },
         footage: { type: "string", enum: FOOTAGE_KINDS, description: "自动配画面的类型，默认 auto" },
+        wait: {
+          type: "boolean",
+          description:
+            "默认 true=等合成完成后返回视频地址。false=提交后立即返回 compositionId，用 clipforge_get_video { projectId, compositionId } 轮询——长视频/严格超时环境推荐 false。",
+        },
         ...OUTPUT_OPTION_PROPS,
       },
       required: ["projectId"],
+    },
+  },
+  {
+    name: "clipforge_update_shots",
+    description:
+      "单句精修：只改指定分镜的台词/画面描述/运镜，不动其他镜头——配合 clipforge_gate / clipforge_qc 的反馈做点改（如「第3镜台词拖」），改完重新 clipforge_compose 出片即可，不必整篇重生成（重生成会丢掉判官团已做的重写）。建议改完台词可再跑一次判官（重新 compose 前无强制要求）。不需要 LLM。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectId: PROJECT_ID_PROP,
+        scriptId: { type: "string", description: "要改的脚本 id；缺省时改当前选中的脚本" },
+        shots: {
+          type: "array",
+          description: "要修改的分镜列表（只传要改的字段）",
+          items: {
+            type: "object",
+            properties: {
+              shotId: { type: "number", description: "分镜编号" },
+              voiceover: { type: "string", description: "新台词（长度尽量与原句相当，配音时长钉在分镜槽里）" },
+              description: { type: "string", description: "新画面描述（写可见动作：谁做什么）" },
+              camera: { type: "string", description: "新运镜描述" },
+            },
+            required: ["shotId"],
+          },
+        },
+      },
+      required: ["projectId", "shots"],
     },
   },
   {
@@ -317,10 +354,13 @@ const TOOLS = [
   {
     name: "clipforge_get_video",
     description:
-      "查询某项目最新一次合成的视频结果，不触发重新合成——用于轮询 create_video/compose 的异步产物或取回此前做过的视频。返回状态（composing/done/failed/none）与可下载的 mp4 地址。不需要 LLM。",
+      "查询某项目合成的视频结果，不触发重新合成——用于轮询 create_video/compose 的异步产物或取回此前做过的视频。传 compositionId 可查指定那一次合成（并发合成时防串片）；缺省查最新一次。返回状态（composing/done/failed/none）与可下载的 mp4 地址。不需要 LLM。",
     inputSchema: {
       type: "object",
-      properties: { projectId: PROJECT_ID_PROP },
+      properties: {
+        projectId: PROJECT_ID_PROP,
+        compositionId: { type: "string", description: "某次合成的 id（compose/create_video 在 wait:false 时返回）；缺省查最新一次" },
+      },
       required: ["projectId"],
     },
   },
@@ -566,12 +606,20 @@ async function handleCreateVideo(args) {
         method: "POST",
         body: { scriptId, llmConfig: LLM },
       });
-      if (Array.isArray(report?.rewrites) && report.rewrites.length) {
+      // tier gate (judge v2): auto-apply invariant/default only — taste tier is opinion, not defect;
+      // the visual judge's description rewrites ride the same shotTexts PATCH
+      const gated = (rows) => (Array.isArray(rows) ? rows.filter((r) => r.tier !== "taste") : []);
+      const shotTexts = new Map();
+      for (const r of gated(report?.rewrites)) shotTexts.set(r.shotId, { shotId: r.shotId, voiceover: r.voiceover });
+      for (const r of gated(report?.descriptionRewrites)) {
+        shotTexts.set(r.shotId, { ...(shotTexts.get(r.shotId) ?? { shotId: r.shotId }), description: r.description });
+      }
+      if (shotTexts.size > 0) {
         await api(`/api/project/${projectId}/scripts`, {
           method: "PATCH",
-          body: { scriptId, shotTexts: report.rewrites.map((r) => ({ shotId: r.shotId, voiceover: r.voiceover })) },
+          body: { scriptId, shotTexts: Array.from(shotTexts.values()) },
         });
-        judgeRewrites = report.rewrites.length;
+        judgeRewrites = shotTexts.size;
       }
     } catch {
       /* quality pass is best-effort */
@@ -607,6 +655,23 @@ async function handleCreateVideo(args) {
   const usedVoice = body.freeTts.voice || "zh-CN-XiaoxiaoNeural";
   // POST returns the compositionId of this run — poll that exact one, not "latest"
   const { compositionId } = await api(`/api/project/${projectId}/compose`, { method: "POST", body });
+  // wait:false — non-blocking submit (see handleCompose): script/judge/footage results are
+  // already known, only the render is left running in the background
+  if (args.wait === false) {
+    return ok({
+      ok: true,
+      projectId,
+      compositionId,
+      status: "composing",
+      topic,
+      narrationStyle,
+      voice: usedVoice,
+      shots: shots.length,
+      ...(judgeRewrites ? { judgeRewrites } : {}),
+      footageFilled: `${fill.filled}/${fill.total}`,
+      next: `合成已在后台进行。用 clipforge_get_video { projectId: "${projectId}", compositionId: "${compositionId}" } 轮询取片。`,
+    });
+  }
   const composition = await pollCompose(projectId, { compositionId });
 
   return ok({
@@ -706,8 +771,53 @@ async function handleCompose(args) {
   }
   // POST returns the compositionId of this run — poll that exact one, not "latest"
   const { compositionId } = await api(`/api/project/${projectId}/compose`, { method: "POST", body });
+  // wait:false — non-blocking submit: hand back the compositionId instead of holding the MCP
+  // call open for up to 11 minutes (strict-timeout clients would kill the call and orphan the run)
+  if (args.wait === false) {
+    return ok({
+      ok: true,
+      projectId,
+      compositionId,
+      status: "composing",
+      next: `合成已在后台进行。用 clipforge_get_video { projectId: "${projectId}", compositionId: "${compositionId}" } 轮询取片。`,
+    });
+  }
   const composition = await pollCompose(projectId, { compositionId });
   return ok({ ok: true, projectId, voice: body.freeTts.voice || "zh-CN-XiaoxiaoNeural", videoUrl: absVideoUrl(composition), status: composition.status });
+}
+
+/**
+ * Targeted per-shot copy edits (voiceover / description / camera) through the scripts PATCH —
+ * the surgical-fix loop for gate/qc feedback without regenerating the whole script.
+ */
+async function handleUpdateShots(args) {
+  const projectId = String(args.projectId || "").trim();
+  if (!projectId) throw new Error("projectId 不能为空");
+  const patches = (Array.isArray(args.shots) ? args.shots : [])
+    .filter((sh) => sh && Number.isFinite(sh.shotId))
+    .map((sh) => ({
+      shotId: Number(sh.shotId),
+      ...(typeof sh.voiceover === "string" && sh.voiceover.trim() ? { voiceover: sh.voiceover.trim() } : {}),
+      ...(typeof sh.description === "string" && sh.description.trim() ? { description: sh.description.trim() } : {}),
+      ...(typeof sh.camera === "string" && sh.camera.trim() ? { camera: sh.camera.trim() } : {}),
+    }))
+    .filter((sh) => Object.keys(sh).length > 1);
+  if (patches.length === 0) throw new Error("shots 里没有可应用的修改（每项至少带 voiceover/description/camera 之一）");
+  let scriptId = typeof args.scriptId === "string" && args.scriptId.trim() ? args.scriptId.trim() : "";
+  if (!scriptId) {
+    const scripts = await api(`/api/project/${projectId}/scripts`);
+    const selected = (Array.isArray(scripts) ? scripts : []).find((x) => x.selected) ?? (Array.isArray(scripts) ? scripts[0] : null);
+    if (!selected?.id) throw new Error("该项目没有脚本可改——先生成或导入脚本");
+    scriptId = selected.id;
+  }
+  await api(`/api/project/${projectId}/scripts`, { method: "PATCH", body: { scriptId, shotTexts: patches } });
+  return ok({
+    ok: true,
+    projectId,
+    scriptId,
+    updatedShots: patches.map((sh) => sh.shotId),
+    next: `已改 ${patches.length} 个分镜。重新 clipforge_compose { projectId: "${projectId}" } 出片使修改生效。`,
+  });
 }
 
 async function handleListVoices() {
@@ -718,7 +828,11 @@ async function handleListVoices() {
 async function handleGetVideo(args) {
   const projectId = String(args.projectId || "").trim();
   if (!projectId) throw new Error("projectId 不能为空");
-  const { composition } = await api(`/api/project/${projectId}/compose`);
+  // compositionId pins the query to one specific run — concurrent composes (retries, A/B
+  // variants) would otherwise cross results under "latest"
+  const compositionId = typeof args.compositionId === "string" && args.compositionId.trim() ? args.compositionId.trim() : "";
+  const query = compositionId ? `?compositionId=${encodeURIComponent(compositionId)}` : "";
+  const { composition } = await api(`/api/project/${projectId}/compose${query}`);
   if (!composition) {
     return ok({ ok: true, projectId, status: "none", videoUrl: null, hint: "该项目还没有合成记录，用 clipforge_compose 出片。" });
   }
@@ -1003,6 +1117,7 @@ const HANDLERS = {
   clipforge_search_stock: handleSearchStock,
   clipforge_list_projects: handleListProjects,
   clipforge_compose: handleCompose,
+  clipforge_update_shots: handleUpdateShots,
   clipforge_list_voices: handleListVoices,
   clipforge_get_video: handleGetVideo,
   clipforge_trends: handleTrends,

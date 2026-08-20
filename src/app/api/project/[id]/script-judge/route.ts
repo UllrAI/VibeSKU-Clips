@@ -43,13 +43,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const shots: JudgeShotInput[] = (Array.isArray(script.shots) ? script.shots : [])
       .filter((s) => typeof s.voiceover === "string" && s.voiceover.trim())
-      .map((s) => ({ shotId: s.shotId, voiceover: s.voiceover.trim() }));
+      // description rides along for the visual judge ("who does what in this second")
+      .map((s) => ({
+        shotId: s.shotId,
+        voiceover: s.voiceover.trim(),
+        ...(typeof s.description === "string" && s.description.trim() && { description: s.description.trim() }),
+      }));
     if (shots.length === 0) {
       return apiError(req, "该脚本没有台词可评审", "This script has no voiceover lines to judge", 400);
     }
 
     const styleLabel = script.styleType ? styleNameMap[script.styleType] : undefined;
-    const prompt = buildJudgePrompt(shots, { styleLabel });
+    const prompt = buildJudgePrompt(shots, { styleLabel, styleType: script.styleType ?? undefined });
 
     const client = createLLMClient({
       baseUrl: llmConfig.baseUrl ?? "",

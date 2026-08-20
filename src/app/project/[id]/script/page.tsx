@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import type { Shot } from "@/lib/db/schema";
-import { JUDGE_META, type JudgeReport } from "@/lib/script-judge";
+import { JUDGE_META, type JudgeReport, autoApplicableRewrites, autoApplicableDescriptionRewrites } from "@/lib/script-judge";
 import { useTemplateStore } from "@/lib/stores/template-store";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useCharacterStore } from "@/lib/stores/project-store";
@@ -374,13 +374,19 @@ export default function ScriptPage() {
       if (!res.ok) return;
       const report = (await res.json()) as JudgeReport;
       setJudgeReport(report);
-      if (!report.rewrites?.length) return;
+      // tier gate: hands-off flow auto-applies invariant/default only; taste stays display-only
+      const autoRewrites = autoApplicableRewrites(report);
+      const autoDescRewrites = autoApplicableDescriptionRewrites(report);
+      if (!autoRewrites.length && !autoDescRewrites.length) return;
+      // merge voiceover + visual-judge description rewrites into one shotTexts PATCH
+      const patchByShot = new Map<number, { shotId: number; voiceover?: string; description?: string }>();
+      for (const r of autoRewrites) patchByShot.set(r.shotId, { shotId: r.shotId, voiceover: r.voiceover });
+      for (const r of autoDescRewrites) {
+        patchByShot.set(r.shotId, { ...(patchByShot.get(r.shotId) ?? { shotId: r.shotId }), description: r.description });
+      }
       const applied = await fetch(`/api/project/${id}/scripts`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scriptId,
-          shotTexts: report.rewrites.map((r) => ({ shotId: r.shotId, voiceover: r.voiceover })),
-        }),
+        body: JSON.stringify({ scriptId, shotTexts: Array.from(patchByShot.values()) }),
       });
       if (!applied.ok) return;
       setJudgeApplied(true);
@@ -391,8 +397,8 @@ export default function ScriptPage() {
             ? {
                 ...s,
                 shots: s.shots.map((sh) => {
-                  const rw = report.rewrites.find((r) => r.shotId === sh.shotId);
-                  return rw ? { ...sh, voiceover: rw.voiceover } : sh;
+                  const p = patchByShot.get(sh.shotId);
+                  return p ? { ...sh, ...(p.voiceover && { voiceover: p.voiceover }), ...(p.description && { description: p.description }) } : sh;
                 }),
               }
             : s
@@ -461,11 +467,75 @@ export default function ScriptPage() {
   const [aiFilming, setAiFilming] = useState(false);
   const [aiFilmStage, setAiFilmStage] = useState("");
   const [aiFilmError, setAiFilmError] = useState("");
+  /** dryRun preview of the film pass — the paid submit needs an explicit confirm on this exact prompt */
+  const [filmPreview, setFilmPreview] = useState<{
+    prompt: string;
+    shotCount: number;
+    seconds: number;
+    referenceImages: number;
+    referenceQuota?: { ok: boolean; count: number; limit?: number };
+    dialogueWarnings: { index: number; seconds: number; count: number; limit: number }[];
+  } | null>(null);
+
+  /** Free dryRun call — full film prompt + counts + warnings, nothing submitted, nothing billed. */
+  const fetchFilmPreview = async (scriptId: string) => {
+    const presenter = presenterLib.find((c) => c.id === presenterParam);
+    const res = await fetch(`/api/project/${id}/storyboard-film`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        scriptId,
+        dryRun: true,
+        // a picked presenter WILL ride as a reference sheet (generated on demand later), so the
+        // preview must count its slot now — the dryRun branch only reads truthiness
+        ...(presenter && { characterSheetUrl: presenter.referenceImages?.[0] ?? "planned" }),
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || t("aiFilmFailed"));
+    return data as NonNullable<typeof filmPreview>;
+  };
+
+  // Phase 1 — quality + preview, all free: judge pass rewrites weak lines first, then a dryRun
+  // shows the exact film prompt / duration / reference count / density warnings. Money moves
+  // only after the user confirms THIS preview (text-level confirmation before any spend).
   const runAiFilm = async () => {
     if (!currentScript || aiFilming || autoFinishing) return;
     setAiFilming(true);
     setAiFilmError("");
+    setFilmPreview(null);
     try {
+      // make sure the picked variant is the one the pipeline uses
+      await fetch(`/api/project/${id}/scripts`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedScriptId: currentScript.id }),
+      }).catch(() => {});
+      // judge pass BEFORE the preview, so the confirm shows the final (reworked) lines
+      await runJudgePass(currentScript.id, setAiFilmStage);
+      setAiFilmStage(t("aiFilmPreviewing"));
+      setFilmPreview(await fetchFilmPreview(currentScript.id));
+      setAiFilming(false); // hand over to the preview card; nothing has been billed yet
+    } catch (err) {
+      setAiFilmError(friendlyError(err, locale));
+      setAiFilming(false);
+    }
+  };
+
+  // Phase 2 — the confirmed spend. The confirmation is bound to the previewed prompt: a fresh
+  // dryRun must return the identical prompt (script edited in between → abort and re-preview).
+  const confirmAiFilm = async () => {
+    if (!currentScript || !filmPreview || aiFilming) return;
+    setAiFilming(true);
+    setAiFilmError("");
+    try {
+      setAiFilmStage(t("aiFilmVerifying"));
+      const fresh = await fetchFilmPreview(currentScript.id);
+      if (fresh.prompt !== filmPreview.prompt) {
+        // stale confirmation: show the new preview instead of submitting outdated content
+        setFilmPreview(fresh);
+        setAiFilming(false);
+        setAiFilmError(t("aiFilmPreviewChanged"));
+        return;
+      }
       // resolve the configured default image + video models to their providers
       setAiFilmStage(t("aiFilmResolve"));
       const s = useSettingsStore.getState();
@@ -474,13 +544,6 @@ export default function ScriptPage() {
         resolveDefaultModelTarget(s.providers, s.defaultVideoModel, s.customModels, "video"),
       ]);
       if (!imgTarget || !vidTarget) throw new Error(t("aiFilmNeedModels"));
-      // make sure the picked variant is the one the pipeline uses
-      await fetch(`/api/project/${id}/scripts`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedScriptId: currentScript.id }),
-      }).catch(() => {});
-      // judge pass: rewrite weak lines BEFORE the paid grid/film calls spend anything
-      await runJudgePass(currentScript.id, setAiFilmStage);
       // identity/product anchors: presenter sheet (picked at creation) + first product photo
       const presenter = presenterLib.find((c) => c.id === presenterParam);
       let sheet = presenter?.referenceImages?.[0];
@@ -549,8 +612,10 @@ export default function ScriptPage() {
       const filmData = await filmRes.json().catch(() => ({}));
       if (!filmRes.ok) throw new Error(filmData.error || t("aiFilmFailed"));
       // 3) the film landed in compositions — the export page shows it
+      setFilmPreview(null);
       router.push(`/project/${id}/export`);
     } catch (err) {
+      // keep the preview card open: retrying confirm re-verifies via a fresh dryRun
       setAiFilmError(friendlyError(err, locale));
       setAiFilming(false);
     }
@@ -591,7 +656,16 @@ export default function ScriptPage() {
 
   // apply the judges' rewrites through the existing shotTexts PATCH channel (+ optimistic update)
   const applyJudgeRewrites = async () => {
-    if (!currentScript || !judgeReport || judgeReport.rewrites.length === 0 || judgeApplying) return;
+    if (!currentScript || !judgeReport || judgeApplying) return;
+    // tier gate applies to the button too: taste-tier rewrites stay suggestions in the list
+    const autoRewrites = autoApplicableRewrites(judgeReport);
+    const autoDescRewrites = autoApplicableDescriptionRewrites(judgeReport);
+    if (autoRewrites.length === 0 && autoDescRewrites.length === 0) return;
+    const patchByShot = new Map<number, { shotId: number; voiceover?: string; description?: string }>();
+    for (const r of autoRewrites) patchByShot.set(r.shotId, { shotId: r.shotId, voiceover: r.voiceover });
+    for (const r of autoDescRewrites) {
+      patchByShot.set(r.shotId, { ...(patchByShot.get(r.shotId) ?? { shotId: r.shotId }), description: r.description });
+    }
     setJudgeApplying(true);
     setScripts((prev) =>
       prev.map((s) =>
@@ -599,8 +673,8 @@ export default function ScriptPage() {
           ? {
               ...s,
               shots: s.shots.map((sh) => {
-                const rw = judgeReport.rewrites.find((r) => r.shotId === sh.shotId);
-                return rw ? { ...sh, voiceover: rw.voiceover } : sh;
+                const p = patchByShot.get(sh.shotId);
+                return p ? { ...sh, ...(p.voiceover && { voiceover: p.voiceover }), ...(p.description && { description: p.description }) } : sh;
               }),
             }
           : s
@@ -610,10 +684,7 @@ export default function ScriptPage() {
       const res = await fetch(`/api/project/${id}/scripts`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          scriptId: currentScript.id,
-          shotTexts: judgeReport.rewrites.map((r) => ({ shotId: r.shotId, voiceover: r.voiceover })),
-        }),
+        body: JSON.stringify({ scriptId: currentScript.id, shotTexts: Array.from(patchByShot.values()) }),
       });
       if (!res.ok) throw new Error("apply failed");
       setJudgeApplied(true);
@@ -727,6 +798,52 @@ export default function ScriptPage() {
 
   // Hands-off takeover: while the auto chain (free) or the AI film chain (paid) runs,
   // beginners see one progress card, not the editor
+  // dryRun preview card: the paid film call waits for an explicit confirm on this exact prompt
+  if (filmPreview && !aiFilming) {
+    const overQuota = filmPreview.referenceQuota && !filmPreview.referenceQuota.ok;
+    return (
+      <div className="min-h-screen grid-bg">
+        {headerBar}
+        <main className="mx-auto max-w-2xl px-6 py-12">
+          <Card className="glass-card">
+            <CardContent className="space-y-4 p-6">
+              <h2 className="text-lg font-bold">🎬 {t("aiFilmPreviewTitle")}</h2>
+              <p className="text-sm text-muted-foreground">
+                {t("aiFilmPreviewMeta", { shots: filmPreview.shotCount, seconds: filmPreview.seconds, refs: filmPreview.referenceImages })}
+              </p>
+              {overQuota && (
+                <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-xs text-destructive">
+                  {t("aiFilmQuotaWarn", { count: filmPreview.referenceQuota!.count, limit: filmPreview.referenceQuota!.limit ?? 0 })}
+                </div>
+              )}
+              {filmPreview.dialogueWarnings.length > 0 && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-600 dark:text-amber-500">
+                  {t("aiFilmDensityWarn", { shots: filmPreview.dialogueWarnings.map((w) => `#${w.index + 1}`).join("、") })}
+                </div>
+              )}
+              {aiFilmError && (
+                <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-xs text-destructive">{aiFilmError}</div>
+              )}
+              <details className="rounded-lg border border-border/60 p-3 text-xs">
+                <summary className="cursor-pointer font-medium">{t("aiFilmPromptToggle")}</summary>
+                <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap text-muted-foreground">{filmPreview.prompt}</pre>
+              </details>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button className="brand-gradient text-white" disabled={overQuota} onClick={confirmAiFilm}>
+                  ✨ {t("aiFilmConfirm")}
+                </Button>
+                <Button variant="outline" onClick={() => { setFilmPreview(null); setAiFilmError(""); }}>
+                  {t("aiFilmBackToEdit")}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground/80">{t("aiFilmCostNote")}</p>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
   if ((autoMode && !autoFinishError && (autoFinishing || !autoModeTriggered)) || aiFilming) {
     return (
       <div className="min-h-screen grid-bg">
@@ -954,9 +1071,9 @@ export default function ScriptPage() {
                       <div className="flex items-center gap-2">
                         {judgeApplied ? (
                           <span className="text-xs text-green-400">{t("judgeAppliedTip")}</span>
-                        ) : judgeReport.rewrites.length > 0 ? (
+                        ) : autoApplicableRewrites(judgeReport).length + autoApplicableDescriptionRewrites(judgeReport).length > 0 ? (
                           <Button size="sm" className="h-7 text-xs brand-gradient text-white" disabled={judgeApplying} onClick={applyJudgeRewrites}>
-                            {judgeApplying ? t("judgeApplying") : t("judgeApply", { n: judgeReport.rewrites.length })}
+                            {judgeApplying ? t("judgeApplying") : t("judgeApply", { n: autoApplicableRewrites(judgeReport).length + autoApplicableDescriptionRewrites(judgeReport).length })}
                           </Button>
                         ) : (
                           <span className="text-xs text-green-400">{t("judgeAllPass")}</span>
@@ -977,6 +1094,9 @@ export default function ScriptPage() {
                               {v.issues.map((iss, i) => (
                                 <li key={i}>
                                   {typeof iss.shotId === "number" && <span className="text-primary mr-1">#{iss.shotId}</span>}
+                                  <span className={`mr-1 rounded px-1 text-[10px] ${iss.tier === "invariant" ? "bg-red-500/15 text-red-400" : iss.tier === "default" ? "bg-amber-500/15 text-amber-500" : "bg-muted text-muted-foreground"}`}>
+                                    {t(`judgeTier_${iss.tier}`)}
+                                  </span>
                                   {iss.issue}
                                 </li>
                               ))}
@@ -985,7 +1105,7 @@ export default function ScriptPage() {
                         </div>
                       ))}
                     </div>
-                    {judgeReport.rewrites.length > 0 && !judgeApplied && (
+                    {(judgeReport.rewrites.length > 0 || judgeReport.descriptionRewrites.length > 0) && !judgeApplied && (
                       <div className="space-y-2">
                         <div className="text-xs font-medium">{t("judgeRewrites")}</div>
                         {judgeReport.rewrites.map((rw) => {
@@ -993,7 +1113,23 @@ export default function ScriptPage() {
                           return (
                             <div key={rw.shotId} className="rounded-lg border border-border/60 p-2.5 text-xs space-y-1">
                               <div className="text-muted-foreground line-through decoration-red-400/60">#{rw.shotId} {orig}</div>
-                              <div>#{rw.shotId} {rw.voiceover}</div>
+                              <div>
+                                #{rw.shotId} {rw.voiceover}
+                                {rw.tier === "taste" && <span className="ml-1 rounded bg-muted px-1 text-[10px] text-muted-foreground">{t("judgeTasteOnly")}</span>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {judgeReport.descriptionRewrites.map((rw) => {
+                          const orig = currentScript?.shots.find((s) => s.shotId === rw.shotId)?.description ?? "";
+                          return (
+                            <div key={`d${rw.shotId}`} className="rounded-lg border border-border/60 p-2.5 text-xs space-y-1">
+                              <div className="text-[10px] text-muted-foreground">{t("judgeDescRewrite")}</div>
+                              <div className="text-muted-foreground line-through decoration-red-400/60">#{rw.shotId} {orig}</div>
+                              <div>
+                                #{rw.shotId} {rw.description}
+                                {rw.tier === "taste" && <span className="ml-1 rounded bg-muted px-1 text-[10px] text-muted-foreground">{t("judgeTasteOnly")}</span>}
+                              </div>
                             </div>
                           );
                         })}

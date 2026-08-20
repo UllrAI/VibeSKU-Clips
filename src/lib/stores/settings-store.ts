@@ -10,7 +10,7 @@ import {
   type VideoGenParams,
 } from "@/lib/gen-params";
 import { ATLAS_BASE_URL, ATLAS_ONEKEY_MODELS, fillAtlasModelDefaults } from "@/lib/atlas-onekey";
-import type { MotionIntensity } from "@/lib/motion-prompt";
+import type { MotionIntensity, MotionRealismTier } from "@/lib/motion-prompt";
 
 // AI Provider 配置
 export interface ProviderSetting {
@@ -65,6 +65,10 @@ export interface SettingsState {
   videoParams: VideoGenParams;
   // i2v 运镜强度档位（轻/中/强，作用于 motion prompt 的运镜幅度措辞）
   motionIntensity: MotionIntensity;
+  // i2v 物理真实感层档位（auto=全层默认 / constraints=仅品类约束 / off=关闭）
+  motionRealism: MotionRealismTier;
+  // i2v 接缝模式（pin=下一镜关键帧钉尾帧[默认] / tail=用上一镜真实尾帧当首帧续拍 / off=不链）
+  chainMode: "pin" | "tail" | "off";
   // 全局画面风格 Look（look-presets.ts 预设 id，"none"=不加；同时注入生图 prompt 与 i2v 光线锚点）
   visualLook: string;
   // UI complexity mode: "simple" keeps only the happy path (beginner default),
@@ -91,6 +95,8 @@ export interface SettingsState {
   setImageParams: (params: ImageGenParams) => void;
   setVideoParams: (params: VideoGenParams) => void;
   setMotionIntensity: (intensity: MotionIntensity) => void;
+  setMotionRealism: (tier: MotionRealismTier) => void;
+  setChainMode: (mode: "pin" | "tail" | "off") => void;
   setVisualLook: (look: string) => void;
   setUiMode: (mode: "simple" | "pro") => void;
   /** 一个 Atlas Key 一键接入：脚本+看图+生图+生视频+配音全配好（不覆盖用户已选模型/已开的配音） */
@@ -178,6 +184,8 @@ export const useSettingsStore = create<SettingsState>()(
       imageParams: DEFAULT_IMAGE_PARAMS,
       videoParams: DEFAULT_VIDEO_PARAMS,
       motionIntensity: "normal",
+      motionRealism: "auto",
+      chainMode: "pin",
       visualLook: "none",
       uiMode: "simple",
       locale: DEFAULT_LOCALE,
@@ -204,6 +212,8 @@ export const useSettingsStore = create<SettingsState>()(
       setImageParams: (params) => set({ imageParams: params }),
       setVideoParams: (params) => set({ videoParams: params }),
       setMotionIntensity: (intensity) => set({ motionIntensity: intensity }),
+      setMotionRealism: (tier) => set({ motionRealism: tier }),
+      setChainMode: (mode) => set({ chainMode: mode }),
       setVisualLook: (look) => set({ visualLook: look }),
       setUiMode: (mode) => set({ uiMode: mode }),
       // 一个 Atlas Key 一键接入全套：LLM 脚本 + Vision 看图 + 生图 + 生视频 + Atlas 配音

@@ -11,9 +11,11 @@ import { useSettingsStore } from "@/lib/stores/settings-store";
 import { mergeCustomModels, buildImageOptions, buildVideoOptions, toEditVariant } from "@/lib/gen-params";
 import { useCharacterStore } from "@/lib/stores/project-store";
 import type { Shot } from "@/lib/db/schema";
-import { buildAssetRows, shouldOfferStockFill, needsImageModelWarning, nextChainKeyframe, type AssetItem } from "@/lib/assets-view";
+import { buildAssetRows, shouldOfferStockFill, needsImageModelWarning, nextChainKeyframe, type AssetItem, chainByDefault } from "@/lib/assets-view";
 import { realMixFromRows, shotReality } from "@/lib/real-mix";
 import { buildMotionPrompt } from "@/lib/motion-prompt";
+import { keyframeInstantLine, keyframeStaticWarnings } from "@/lib/prompt-lint";
+import { applyRetakePatch, RETAKE_SYMPTOMS, type RetakeSymptom } from "@/lib/retake-patch";
 import {
   CAMERA_PRESETS,
   CAMERA_PRESET_CATEGORIES,
@@ -67,7 +69,7 @@ export default function AssetsPage() {
   const tc = useT("common");
   const locale = useLocale();
   const { id } = useParams<{ id: string }>();
-  const { providers, defaultImageModel, defaultVideoModel, customModels, imageParams, videoParams, llm, motionIntensity, setMotionIntensity, visualLook, setVisualLook } = useSettingsStore();
+  const { providers, defaultImageModel, defaultVideoModel, customModels, imageParams, videoParams, llm, motionIntensity, setMotionIntensity, motionRealism, setMotionRealism, chainMode, setChainMode, visualLook, setVisualLook } = useSettingsStore();
   // beginner/director split: simple mode hides the director panel, the storyboard-grid button
   // and per-shot camera tooling — beginners see shots + generate, nothing else
   const uiMode = useSettingsStore((st) => st.uiMode);
@@ -81,6 +83,11 @@ export default function AssetsPage() {
   const [projectName, setProjectName] = useState("");
   // project type: topic (one-sentence-to-video without a product) uses the free stock library for automatic visuals
   const [contentType, setContentType] = useState<string>("");
+  // project product category — unlocks the category physical-realism layers in the i2v motion prompt
+  const [projectCategory, setProjectCategory] = useState<string>("");
+  // real tail frames of videos generated THIS session (shotId → extracted last-frame URL);
+  // tail-chain mode starts the next shot from here for a pixel-continuous cut
+  const lastFrameByShot = useRef(new Map<number, string>());
   const [modelTarget, setModelTarget] = useState<ImageModelTarget | null>(null);
   const [videoModelTarget, setVideoModelTarget] = useState<ImageModelTarget | null>(null);
   // shots currently being converted to motion
@@ -146,6 +153,7 @@ export default function AssetsPage() {
           setProjectName(project.name ?? project.productName ?? "");
           setProductImages(imgs);
           setContentType(typeof project.contentType === "string" ? project.contentType : "");
+          setProjectCategory(typeof project.productCategory === "string" ? project.productCategory : "");
         }
 
         // use the selected script (fall back to the first one if none is marked selected)
@@ -432,6 +440,8 @@ export default function AssetsPage() {
       if (saveRes.ok) {
         const saved = await saveRes.json();
         if (saved.filePath) savedUrl = saved.filePath;
+        // the server extracted this clip's REAL last frame — remember it for tail-chaining
+        if (typeof saved.lastFrameUrl === "string") lastFrameByShot.current.set(shotId, saved.lastFrameUrl);
       }
       setAssets((prev) =>
         prev.map((a) =>
@@ -500,7 +510,7 @@ export default function AssetsPage() {
   // supports a pinned last frame, the clip ends by flowing into the next scene — the transition is
   // generated inside the clip, and the composer's hard concat becomes seamless.
   const generateMotion = useCallback(
-    async (shotId: number, firstFrameOverride?: string, lastFrameOverride?: string | null) => {
+    async (shotId: number, firstFrameOverride?: string, lastFrameOverride?: string | null, retake?: RetakeSymptom) => {
       const asset = assets.find((a) => a.shotId === shotId);
       // prefer the freshly passed URL for the first frame: during auto-chaining React state hasn't updated yet, so the thumbnailUrl in the closure is stale
       const firstFrame = firstFrameOverride || asset?.thumbnailUrl;
@@ -513,9 +523,20 @@ export default function AssetsPage() {
       }
       // chain target: explicit override wins (null = explicitly no chain); otherwise the next shot's static keyframe
       const chainFrame =
-        lastFrameOverride === null || !modelSupportsLastFrame(videoModelTarget.model)
+        chainMode !== "pin" || lastFrameOverride === null || !modelSupportsLastFrame(videoModelTarget.model)
           ? undefined
-          : lastFrameOverride ?? nextChainKeyframe(assets, shotId);
+          : lastFrameOverride ??
+            // demo-type shots skip auto-chaining (their ending IS the content); explicit override still chains
+            (chainByDefault(asset?.type) ? nextChainKeyframe(assets, shotId) : undefined);
+      // tail mode: the previous shot's REAL last frame (extracted server-side after its save)
+      // becomes this shot's first frame — pixel-continuous seam; falls back to own keyframe
+      let tailFirstFrame: string | undefined;
+      if (chainMode === "tail" && !firstFrameOverride) {
+        const idx = assets.findIndex((a) => a.shotId === shotId);
+        const prev = idx > 0 ? assets[idx - 1] : undefined;
+        if (prev) tailFirstFrame = lastFrameByShot.current.get(prev.shotId);
+      }
+      const effectiveFirstFrame = tailFirstFrame ?? firstFrame;
       setMotionShots((prev) => new Set(prev).add(shotId));
       // Motion prompt, not the static image prompt: the first frame already fixes the
       // composition — the text's job is camera path + subject action + fidelity constraints
@@ -535,7 +556,19 @@ export default function AssetsPage() {
         // "real"-family looks also prepend their camera-identity opener (front tokens weigh most)
         look: getLookPreset(visualLook)?.motion,
         opener: getLookPreset(visualLook)?.opener,
+        // category physical-realism layers (tier is a user single-select; "auto" by default)
+        category: projectCategory,
+        realism: motionRealism,
       });
+      // diagnosis retake (user-initiated, billed): patch exactly ONE dimension onto the prompt.
+      // Base = the freshly rebuilt prompt — deterministic, so with unchanged settings it equals
+      // what the previous submit sent, and the patch is the only difference.
+      let finalPrompt = motionPrompt;
+      if (retake) {
+        const patched = applyRetakePatch(motionPrompt, retake);
+        finalPrompt = patched.prompt;
+        setTaskMsg(t("retakeApplied", { change: locale === "zh" ? patched.change.zh : patched.change.en }));
+      }
       // per-shot duration: the composer's slot follows the script duration (voice-fitted), and the
       // composer trims overshoot from the TAIL — which would cut a chained ending. Round to the
       // model's supported range instead of always sending the global 5s default.
@@ -553,8 +586,8 @@ export default function AssetsPage() {
             apiKey: videoModelTarget.apiKey,
             baseUrl: videoModelTarget.baseUrl,
             mode: "image-to-video",
-            prompt: motionPrompt,
-            imageUrl: firstFrame,
+            prompt: finalPrompt,
+            imageUrl: effectiveFirstFrame,
             ...(chainFrame && { lastImageUrl: chainFrame }),
             // issue #16: identify the task server-side so the paid task ID is persisted
             // against this project/shot and stays recoverable after timeout or restart
@@ -580,7 +613,7 @@ export default function AssetsPage() {
         if (!url) throw new Error(t("errorEmptyResult"));
         // save as this shot's asset (video will be downloaded locally); compose processes it as a video clip (including native audio track detection).
         // Persist the motion prompt actually sent AND the source keyframe (provenance + re-run/chaining)
-        await saveVideoAsset(shotId, url, motionPrompt, videoModelTarget.provider, data.modelId || videoModelTarget.model, firstFrame);
+        await saveVideoAsset(shotId, url, finalPrompt, videoModelTarget.provider, data.modelId || videoModelTarget.model, effectiveFirstFrame);
       } catch (e) {
         setAssets((prev) =>
           prev.map((a) => (a.shotId === shotId ? { ...a, error: e instanceof Error ? e.message : t("errorImageToVideoFailed") } : a))
@@ -593,7 +626,7 @@ export default function AssetsPage() {
         });
       }
     },
-    [assets, videoModelTarget, id, videoParams, motionIntensity, visualLook, saveVideoAsset, reloadPendingTasks, t]
+    [assets, videoModelTarget, id, videoParams, motionIntensity, motionRealism, chainMode, projectCategory, visualLook, saveVideoAsset, reloadPendingTasks, t, locale]
   );
 
   // actually generate a single asset. Returns the saved static keyframe URL (undefined on failure) so
@@ -649,9 +682,13 @@ export default function AssetsPage() {
       // from drifting between styles (the LLM improvises style words per shot otherwise)
       const lookText = lookImageSuffix(visualLook, basePrompt);
       const lookSuffix = lookText ? `。${lookText}` : "";
+      // frame-position directive: a keyframe is the frozen instant JUST BEFORE the action,
+      // holding visible potential energy — gives the i2v pass a beat to play out instead of
+      // animating an already-completed pose
+      const frameSuffix = `。${keyframeInstantLine(basePrompt)}`;
       const genPrompt = useProductSafe
-        ? `${basePrompt}。严格保持商品的外观、包装、颜色、logo 和文字完全不变，只重绘符合描述的场景、背景与光线。${castSuffix}${lookSuffix}`
-        : `${basePrompt}${castSuffix}${lookSuffix}`;
+        ? `${basePrompt}。严格保持商品的外观、包装、颜色、logo 和文字完全不变，只重绘符合描述的场景、背景与光线。${castSuffix}${lookSuffix}${frameSuffix}`
+        : `${basePrompt}${castSuffix}${lookSuffix}${frameSuffix}`;
 
       try {
         const res = await fetch("/api/ai/image", {
@@ -804,16 +841,20 @@ export default function AssetsPage() {
       for (let i = 0; i < assets.length; i++) {
         const row = assets[i];
         if (row.isVideo) continue; // already a motion/stock video — don't re-bill
-        const firstFrame = staticFrameOf(row);
+        // tail mode: sequential continuation — the previous shot's real tail frame (captured at
+        // save time in this very loop) beats the shot's own keyframe as the first frame
+        const tailFrame = chainMode === "tail" && i > 0 ? lastFrameByShot.current.get(assets[i - 1].shotId) : undefined;
+        const firstFrame = tailFrame ?? staticFrameOf(row);
         if (!firstFrame) continue;
         const next = assets[i + 1];
-        const lastFrame = next ? staticFrameOf(next) : undefined;
+        // pin mode pins the next keyframe as the last frame; tail/off modes never pin
+        const lastFrame = chainMode === "pin" && next && chainByDefault(row.type) ? staticFrameOf(next) : undefined;
         // null = explicitly no chain (last shot / next frame unavailable)
         await generateMotion(row.shotId, firstFrame, lastFrame ?? null);
       }
     }
     setIsBatchGenerating(false);
-  }, [assets, generateOne, generateMotion, autoMotion, videoModelTarget]);
+  }, [assets, generateOne, generateMotion, autoMotion, videoModelTarget, chainMode]);
 
   return (
     <div className="min-h-screen grid-bg">
@@ -1009,6 +1050,50 @@ export default function AssetsPage() {
                   }`}
                 >
                   {t(`motionIntensity_${v}`)}
+                </button>
+              ))}
+            </div>
+          )}
+          {videoModelTarget && (
+            <div
+              className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1 h-8"
+              title={t("motionRealismTip")}
+            >
+              <span className="text-xs font-medium text-muted-foreground mr-1">{t("motionRealism")}</span>
+              {(["auto", "constraints", "off"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setMotionRealism(v)}
+                  className={`rounded-full px-2 h-6 text-xs font-medium transition-all ${
+                    motionRealism === v
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t(`motionRealism_${v}`)}
+                </button>
+              ))}
+            </div>
+          )}
+          {videoModelTarget && modelSupportsLastFrame(videoModelTarget.model) && (
+            <div
+              className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1 h-8"
+              title={t("chainModeTip")}
+            >
+              <span className="text-xs font-medium text-muted-foreground mr-1">{t("chainMode")}</span>
+              {(["pin", "tail", "off"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setChainMode(v)}
+                  className={`rounded-full px-2 h-6 text-xs font-medium transition-all ${
+                    chainMode === v
+                      ? "bg-primary/15 text-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t(`chainMode_${v}`)}
                 </button>
               ))}
             </div>
@@ -1311,6 +1396,11 @@ export default function AssetsPage() {
                           </div>
                           {/* single error slot for the whole card: generation failures AND
                               non-fatal errors (camera save / i2v) that keep status "done" */}
+                          {!asset.isVideo && keyframeStaticWarnings(asset.prompt || asset.description).length > 0 && (
+                            <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                              {t("keyframeStaticWarn", { words: keyframeStaticWarnings(asset.prompt || asset.description).join("、") })}
+                            </p>
+                          )}
                           {asset.error && (
                             <p className="text-xs text-destructive mt-2">⚠ {asset.error}</p>
                           )}
@@ -1411,6 +1501,27 @@ export default function AssetsPage() {
                             >
                               {motionShots.has(asset.shotId) ? t("btnConvertingMotion") : t("btnRedoMotion")}
                             </Button>
+                          )}
+                          {/* diagnosis retake: pick ONE symptom → resubmit with exactly ONE prompt patch
+                              (user-initiated paid call; the notice states what the retake changed) */}
+                          {asset.isVideo && asset.keyframeUrl && videoModelTarget && (
+                            <select
+                              className="h-7 w-24 rounded-md border border-border/60 bg-background px-1 text-[11px] text-muted-foreground"
+                              disabled={motionShots.has(asset.shotId)}
+                              value=""
+                              title={t("retakeDiagTip")}
+                              onChange={(e) => {
+                                const v = e.target.value as RetakeSymptom | "";
+                                if (v) void generateMotion(asset.shotId, asset.keyframeUrl, undefined, v);
+                              }}
+                            >
+                              <option value="">{t("retakeDiag")}</option>
+                              {RETAKE_SYMPTOMS.map((sym) => (
+                                <option key={sym.id} value={sym.id}>
+                                  {locale === "zh" ? sym.label.zh : sym.label.en}
+                                </option>
+                              ))}
+                            </select>
                           )}
                           {/* error text lives in the middle column next to the shot content; not repeated here */}
                         </div>

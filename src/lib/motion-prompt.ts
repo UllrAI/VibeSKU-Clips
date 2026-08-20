@@ -19,6 +19,8 @@
  */
 import type { Shot } from "@/lib/db/schema";
 import { REAL_FACE_CONSTRAINT } from "@/lib/presenters";
+import { emotionActingLine, shotEmotion } from "@/lib/emotion-acting";
+import type { ProductCategory } from "@/lib/script-engine/templates";
 
 /** Camera-movement amplitude tier (Kling-style enumerated intensity instead of free text). */
 export type MotionIntensity = "subtle" | "normal" | "strong";
@@ -66,7 +68,27 @@ export interface MotionPromptInput {
    * biases the whole generation toward the phone-shot distribution).
    */
   opener?: { zh: string; en: string };
+  /**
+   * Project product category (free string from the DB; unknown values are ignored).
+   * Unlocks the category physical-realism layers:
+   *  - category fidelity constraint (productShot): what "intact" means for THIS material
+   *  - physical-interaction phrase (demo/product_reveal): action + material reaction
+   *  - both rotate deterministically via beatSeed against batch-level sameness
+   */
+  category?: string;
+  /**
+   * Physical-realism layer tier (user-selectable, single choice):
+   *  - "auto" (default): all layers — category constraint + interaction phrase +
+   *    living background + hair/fabric inertia + emotion process
+   *  - "constraints": category fidelity constraint only (no added motion phrases)
+   *  - "off": none of the realism layers (legacy prompt shape)
+   * Defaults to "auto" so every hands-off chain gets the quality layers without wiring.
+   */
+  realism?: MotionRealismTier;
 }
+
+/** Realism-layer tier for buildMotionPrompt (a user-facing single-select). */
+export type MotionRealismTier = "auto" | "constraints" | "off";
 
 /** True when the text contains CJK characters (used to pick the prompt language). */
 function hasCjk(s: string): boolean {
@@ -135,6 +157,103 @@ const PRODUCT_CONSTRAINT = {
   en: "the product's appearance, packaging, colors, logo and printed text must remain exactly unchanged, text stays sharp and undistorted",
 };
 
+/**
+ * Category-specific fidelity constraints — what "intact" physically means for THIS
+ * material class. The generic PRODUCT_CONSTRAINT protects print/logo; these protect the
+ * failure mode each category actually exhibits (cream clumping, food crumbling, fabric
+ * stiffening, glare on metal). Positive-phrased state descriptions, not negative lists.
+ */
+const CATEGORY_CONSTRAINTS: Record<ProductCategory, { zh: string; en: string }> = {
+  beauty: {
+    zh: "膏体与液体质地均匀顺滑，涂抹推开自然服帖不结块",
+    en: "cream and liquid textures stay smooth and even, spreading naturally without clumping",
+  },
+  food: {
+    zh: "食物色泽鲜亮自然、纹理清晰，形态完整不塌不散",
+    en: "food keeps vivid natural color and clear texture, holding its shape without collapsing or crumbling",
+  },
+  home: {
+    zh: "部件开合顺畅到位，接缝与结构稳定不错位",
+    en: "parts open and close smoothly and precisely, seams and structure stay aligned and stable",
+  },
+  fashion: {
+    zh: "面料垂坠自然、褶皱柔软真实，版型放松不僵硬",
+    en: "fabric drapes naturally with soft believable creases, the fit stays relaxed, never stiff",
+  },
+  tech: {
+    zh: "金属与屏幕反光干净克制，接缝对齐，屏幕内容清晰稳定",
+    en: "metal and screen reflections stay clean and restrained, seams aligned, on-screen content sharp and stable",
+  },
+};
+
+/**
+ * Physical-interaction phrase pool: "action + material reaction" pairs per category.
+ * A demo shot that shows the material RESPONDING (spring-back, crumbs, ripple, glide)
+ * reads as real footage; an action with no material feedback reads as CG. Rotated by
+ * beatSeed — identical interactions across a batch are an instant AI tell.
+ */
+const PHYSICAL_ACTION_LEXICON: Record<ProductCategory, { zh: string; en: string }[]> = {
+  beauty: [
+    { zh: "指腹蘸取膏体缓缓推开，质地在皮肤上自然延展服帖", en: "a fingertip spreads the cream slowly, the texture gliding open and settling onto the skin" },
+    { zh: "按压泵头挤出一滴，液体落在手背缓缓铺开", en: "one pump releases a drop that lands and spreads slowly on the back of the hand" },
+    { zh: "拧开瓶盖，膏体表面平整光洁泛着柔光", en: "the cap twists off to reveal a smooth untouched surface with a soft sheen" },
+  ],
+  food: [
+    { zh: "掰开的瞬间外层酥脆掉渣，断面组织分明", en: "it snaps open with crisp flakes falling, the cross-section clearly layered" },
+    { zh: "热气从表面缓缓升起，酱汁沿边缘慢慢流下", en: "steam rises gently from the surface while sauce runs slowly down the edge" },
+    { zh: "夹起时微微颤动，质地饱满有弹性", en: "it quivers slightly when lifted, plump and springy" },
+  ],
+  home: [
+    { zh: "开合部件顺滑归位，动作干净利落", en: "the moving part glides shut cleanly and precisely" },
+    { zh: "手掌按压表面，材质轻微回弹恢复原状", en: "a palm presses the surface, which flexes slightly and springs back" },
+    { zh: "水流冲过表面，水珠顺着材质纹理滑落", en: "water runs over the surface, beading and sliding along the texture" },
+  ],
+  fashion: [
+    { zh: "转身时衣摆自然摆动后垂落回位", en: "the hem swings out on the turn, then settles back naturally" },
+    { zh: "手指捏起面料轻轻一放，褶皱缓缓回弹展开", en: "fingers pinch and release the fabric, the crease easing back open slowly" },
+    { zh: "行走时面料随步伐轻微起伏", en: "the fabric ripples subtly with each step" },
+  ],
+  tech: [
+    { zh: "手指滑过屏幕，界面跟手流畅响应", en: "a finger swipes across the screen, the interface responding fluidly" },
+    { zh: "耳机放入充电仓，磁吸轻轻归位", en: "the earbud drops into the case, snapping gently into place magnetically" },
+    { zh: "转动机身，金属边框上一道高光缓缓扫过", en: "the device rotates as a single highlight sweeps along the metal edge" },
+  ],
+};
+
+/** Shot types that demonstrate the product physically (get a physical-interaction phrase). */
+const PHYSICAL_ACTION_TYPES = new Set(["demo", "product_reveal"]);
+
+/**
+ * Living-background pool: ONE named background element with its own ongoing state.
+ * AI clips die behind the subject — a frozen backdrop reads as a rendered set. One
+ * element is enough; more turns the background busy and steals focus.
+ */
+const LIVING_BG: { zh: string; en: string }[] = [
+  { zh: "背景里窗帘随气流轻轻晃动", en: "curtains in the background sway gently in the airflow" },
+  { zh: "背景虚化处有人自然走过，不抢主体", en: "someone drifts through the blurred background without pulling focus" },
+  { zh: "背景一盏灯的光斑有细微的明暗呼吸", en: "a lamp's glow in the background breathes subtly brighter and dimmer" },
+  { zh: "桌上一杯热饮冒着若有若无的热气", en: "a hot drink nearby gives off a faint wisp of steam" },
+  { zh: "窗外光线随云层缓慢变化", en: "the light from the window shifts slowly as clouds pass" },
+  { zh: "背景绿植的叶片偶尔轻颤", en: "leaves of a background plant tremble now and then" },
+];
+
+/** Hair/fabric inertia — secondary motion lag is the cheapest "real physics" signal on a person. */
+const FABRIC_HAIR_LAG = {
+  zh: "人物移动或转头时，头发与衣料带一点滞后的摆动再自然落回",
+  en: "when the person moves or turns, hair and fabric lag slightly then settle back naturally",
+};
+
+/** Deterministic pool pick shared by the category/background layers (same contract as pickBehaviorBeats). */
+function pickFrom<T>(pool: T[], seed: number): T {
+  const n = pool.length;
+  return pool[((Math.floor(seed) % n) + n) % n];
+}
+
+/** Normalize the free-form DB category string to a known category (undefined otherwise). */
+function normalizeCategory(category: string | undefined): ProductCategory | undefined {
+  return category && category in CATEGORY_CONSTRAINTS ? (category as ProductCategory) : undefined;
+}
+
 /** Universal stability/artifact tail — cheap, consistent win against flicker and morphing. */
 const QUALITY_TAIL = {
   zh: "画面稳定流畅，光影自然过渡，无闪烁、无变形、不出现新物体",
@@ -164,8 +283,8 @@ const SINGLE_SHOT = {
  * ambient-only, since the composer surfaces native audio on shots WITHOUT a voice-over track.
  */
 const SOUND_DIRECTION = {
-  zh: "音效：自然环境音与动作音效贴合画面，无人声说话",
-  en: "sound: natural ambient and action sound effects matching the scene, no speech",
+  zh: "音效：自然环境音与动作音效贴合画面，无人声说话，环境底噪保持同一空间的延续感",
+  en: "sound: natural ambient and action sound effects matching the scene, no speech, the ambient noise floor stays continuous as one space",
 };
 
 /** Camera amplitude wording per intensity tier ("normal" keeps the baseline prompt unchanged). */
@@ -210,13 +329,29 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
   const scripted = input.camera?.trim();
   const camera =
     scripted && !hasCameraConflict(scripted) ? scripted : (CAMERA_DEFAULTS[type] ?? CAMERA_FALLBACK)[lang];
+  const seed = input.beatSeed ?? 0;
+  const realism: MotionRealismTier = input.realism ?? "auto";
+  const category = realism === "off" ? undefined : normalizeCategory(input.category);
+  // motion-phrase layers (interaction/background/inertia/emotion) only at the full tier
+  const fullRealism = realism === "auto";
   // a speaking character overrides the per-type micro-action: the shot must read as
   // "mid-conversation", with two rotating behavior beats against batch-level repetition
-  const action = input.talking
-    ? `${TALKING_ACTION[lang]}${lang === "zh" ? "；" : "; "}${pickBehaviorBeats(input.beatSeed ?? 0, lang).join(lang === "zh" ? "、" : ", ")}`
+  let action = input.talking
+    ? `${TALKING_ACTION[lang]}${lang === "zh" ? "；" : "; "}${pickBehaviorBeats(seed, lang).join(lang === "zh" ? "、" : ", ")}`
     : (ACTION_DEFAULTS[type] ?? ACTION_FALLBACK)[lang];
+  // demonstration shots with a known category get one "action + material reaction" phrase:
+  // material feedback (spring-back, crumbs, ripple) is what separates footage from CG
+  if (fullRealism && category && PHYSICAL_ACTION_TYPES.has(type)) {
+    action += `${lang === "zh" ? "；" : "; "}${pickFrom(PHYSICAL_ACTION_LEXICON[category], seed)[lang]}`;
+  }
+  // non-talking person shots get one emotion process phrase (trigger → body-first →
+  // restrained face); talking shots already carry their own behavior direction
+  const emotion = fullRealism && !input.talking && input.personShot ? shotEmotion(type) : undefined;
   const anchor = (input.description ?? "").trim().slice(0, DESC_ANCHOR_MAX);
   const intensity = input.intensity && input.intensity !== "normal" ? INTENSITY_LINES[input.intensity][lang] : undefined;
+  // one living-background element for shots where a frozen backdrop would betray the render
+  const livingBg = fullRealism && (input.personShot || type === "demo") ? pickFrom(LIVING_BG, seed)[lang] : undefined;
+  const fabricLag = fullRealism && input.personShot;
 
   const parts: string[] = [];
   if (lang === "zh") {
@@ -224,6 +359,9 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
     parts.push(`运镜：${camera}`);
     if (intensity) parts.push(intensity);
     parts.push(`画面动态：${action}`);
+    if (emotion) parts.push(emotionActingLine(emotion, seed, "zh"));
+    if (livingBg) parts.push(livingBg);
+    if (fabricLag) parts.push(FABRIC_HAIR_LAG.zh);
     if (anchor) parts.push(`场景：${anchor}`);
     if (input.look) parts.push(`光线：${input.look.zh}`);
     // chained clip: CHAIN_GUIDANCE already demands one continuous move; SINGLE_SHOT's
@@ -231,6 +369,7 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
     parts.push(input.chainToNext ? CHAIN_GUIDANCE.zh : SINGLE_SHOT.zh);
     if (input.personShot) parts.push(REAL_FACE_CONSTRAINT.zh);
     if (input.productShot) parts.push(PRODUCT_CONSTRAINT.zh);
+    if (input.productShot && category) parts.push(CATEGORY_CONSTRAINTS[category].zh);
     parts.push(SOUND_DIRECTION.zh);
     parts.push(QUALITY_TAIL.zh);
     return parts.join("。") + "。";
@@ -239,11 +378,15 @@ export function buildMotionPrompt(input: MotionPromptInput): string {
   parts.push(`Camera: ${camera}`);
   if (intensity) parts.push(intensity);
   parts.push(`Motion: ${action}`);
+  if (emotion) parts.push(emotionActingLine(emotion, seed, "en"));
+  if (livingBg) parts.push(livingBg);
+  if (fabricLag) parts.push(FABRIC_HAIR_LAG.en);
   if (anchor) parts.push(`Scene: ${anchor}`);
   if (input.look) parts.push(`Lighting: ${input.look.en}`);
   parts.push(input.chainToNext ? CHAIN_GUIDANCE.en : SINGLE_SHOT.en);
   if (input.personShot) parts.push(REAL_FACE_CONSTRAINT.en);
   if (input.productShot) parts.push(PRODUCT_CONSTRAINT.en);
+  if (input.productShot && category) parts.push(CATEGORY_CONSTRAINTS[category].en);
   parts.push(SOUND_DIRECTION.en);
   parts.push(QUALITY_TAIL.en);
   return parts.join(". ") + ".";

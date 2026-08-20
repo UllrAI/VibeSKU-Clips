@@ -154,6 +154,8 @@ export interface VideoOptions {
   audioPrompt?: string
   /** Whether to enable audio generation */
   audioEnabled?: boolean
+  /** Reference audio URLs (voice/timbre reference for audio-capable models; Ark caps at 3) */
+  referenceAudioUrls?: string[]
   /** Additional parameters */
   extra?: Record<string, unknown>
 }
@@ -174,6 +176,8 @@ export interface VideoResult {
   modelId: string
   /** Whether the video contains an audio track */
   hasAudio?: boolean
+  /** The clip's final frame as returned by the provider (tail-frame chaining / >30s continuation) */
+  lastFrameUrl?: string
   /** Additional response data */
   extra?: Record<string, unknown>
 }

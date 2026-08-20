@@ -50,6 +50,8 @@ export interface AtlasVideoParamSpec {
   audioKey?: 'generate_audio' | 'sound'
   /** How reference materials are expressed (reference-to-video variants only) */
   referenceShape?: ReferenceShape
+  /** Max reference IMAGES the schema accepts (reference-to-video variants); omit = unknown, don't gate */
+  maxReferenceImages?: number
   supportsSeed?: boolean
   supportsWatermark?: boolean
   /**
@@ -181,6 +183,7 @@ export const ATLAS_VIDEO_PARAM_SPECS: Record<string, AtlasVideoParamSpec> = {
   },
   'bytedance/seedance-2.5/reference-to-video': {
     referenceShape: 'paired-arrays',
+    maxReferenceImages: 9,
     durationEnum: SEEDANCE_25_DURATIONS,
     resolutionEnum: SEEDANCE_25_RESOLUTIONS,
     ratioKey: 'ratio',
@@ -211,6 +214,7 @@ export const ATLAS_VIDEO_PARAM_SPECS: Record<string, AtlasVideoParamSpec> = {
   },
   'bytedance/seedance-2.0-mini/reference-to-video': {
     referenceShape: 'paired-arrays',
+    maxReferenceImages: 9,
     durationEnum: SEEDANCE_MINI_DURATIONS,
     resolutionEnum: SEEDANCE_MINI_RESOLUTIONS,
     ratioKey: 'ratio',

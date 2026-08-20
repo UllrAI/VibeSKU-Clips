@@ -6,7 +6,7 @@ import {
   filmRequestSeconds,
   FILM_MAX_SECONDS,
 } from "@/lib/storyboard-film";
-import type { Shot } from "@/lib/db/schema";
+import type { Shot, ScriptCharacter } from "@/lib/db/schema";
 
 /**
  * Grid-to-film prompt contract (v0.8.84). The exact shape was field-proven on a
@@ -173,5 +173,80 @@ describe("超长脚本的时间轴缩放", () => {
     const prompt = buildStoryboardFilmPrompt(long);
     expect(prompt).toContain("[0-15秒] 镜头1");
     expect(prompt).toContain("[15-30秒] 镜头2");
+  });
+});
+
+describe("多角色说话人归属与参考绑定纪律", () => {
+  const twoCast: ScriptCharacter[] = [
+    { id: "char_a", name: "小美", gender: "female", persona: "毒舌闺蜜", appearance: "32岁低马尾，日常淡妆，浅色居家服" },
+    { id: "char_b", name: "大壮", gender: "male", persona: "嘴硬心软", appearance: "30岁短发，格子衬衫" },
+  ];
+  const shots = [
+    mkShot({ shotId: 1, type: "hook", voiceover: "你这纸巾一擦就破？", characterId: "char_a" }),
+    mkShot({ shotId: 2, type: "demo", voiceover: "那你试试这个。", characterId: "char_b" }),
+    mkShot({ shotId: 3, type: "cta", voiceover: "链接放这了。" }),
+  ] as Shot[];
+
+  it("双角色：人物设定块列全员外观 + 方向词约定 + 台词行按角色归属（带一句短锚）", () => {
+    const p = buildStoryboardFilmPrompt(shots, twoCast);
+    expect(p).toContain("人物设定（下文提到角色一律用角色名指代");
+    expect(p).toContain("左/右一律指画面方向");
+    expect(p).toContain("小美（32岁低马尾，日常淡妆，浅色居家服）");
+    expect(p).toContain("由小美（32岁低马尾）说出）：{你这纸巾一擦就破？}");
+    expect(p).toContain("由大壮（30岁短发）说出）：{那你试试这个。}");
+    // 旁白镜（无 characterId）不归属到任何角色
+    expect(p).toContain("台词（逐字说出）：{链接放这了。}");
+    // 多角色时全局说话行改为「按标注角色说出」
+    expect(p).toContain("由该镜标注的角色自然说出台词");
+  });
+
+  it("双角色 + 定妆照：声明后跟背景剥离句（不得带入影棚灰底/分格）", () => {
+    const p = buildStoryboardFilmPrompt(shots, twoCast, { characterSheet: true });
+    expect(p).toContain("不得把定妆照的浅灰影棚背景、四格分格或边框带进任何镜头画面");
+  });
+
+  it("单角色不回归：仍走 soloName 说话行，台词行不加归属短锚", () => {
+    const solo: ScriptCharacter[] = [{ id: "char_a", name: "小美", gender: "female", persona: "", appearance: "32岁低马尾" }];
+    const p = buildStoryboardFilmPrompt(shots.slice(0, 1), solo);
+    expect(p).toContain("小美对着镜头自然说话");
+    expect(p).toContain("台词（逐字说出）：{你这纸巾一擦就破？}");
+    expect(p).not.toContain("由小美");
+    // 单角色也有人物设定块（外观锚仍有跨镜价值）
+    expect(p).toContain("人物设定（下文提到角色一律用角色名指代");
+  });
+
+  it("单角色 + 定妆照：声明句点名该角色", () => {
+    const solo: ScriptCharacter[] = [{ id: "char_a", name: "小美", gender: "female", persona: "", appearance: "32岁低马尾" }];
+    const p = buildStoryboardFilmPrompt(shots.slice(0, 1), solo, { characterSheet: true });
+    expect(p).toContain("@图片1 是小美的四视图定妆照");
+  });
+
+  it("英文脚本：cast 块与逐行归属走英文", () => {
+    const enShots = [
+      mkShot({ shotId: 1, description: "girl reacts", camera: "push in", voiceover: "This tissue tears instantly?", characterId: "char_a" }),
+      mkShot({ shotId: 2, description: "guy demos", camera: "follow", voiceover: "Try this one.", characterId: "char_b" }),
+    ] as Shot[];
+    const enCast: ScriptCharacter[] = [
+      { id: "char_a", name: "Mia", gender: "female", persona: "", appearance: "early 30s, low ponytail, light makeup" },
+      { id: "char_b", name: "Ben", gender: "male", persona: "", appearance: "30s, short hair, plaid shirt" },
+    ];
+    const p = buildStoryboardFilmPrompt(enShots, enCast);
+    expect(p).toContain("Cast (refer to characters strictly by these names");
+    expect(p).toContain("spoken verbatim by Mia (early 30s");
+    expect(p).toContain("the character named on that shot speaks the line verbatim");
+  });
+});
+
+describe("referenceQuotaCheck（付费前参考图配额闸）", () => {
+  it("Seedance r2v 上限 9：9 张过、10 张拦（9 关键帧 + 1 定妆照的经典溢出）", async () => {
+    const { referenceQuotaCheck } = await import("@/lib/storyboard-film");
+    expect(referenceQuotaCheck(9, "bytedance/seedance-2.5/reference-to-video")).toEqual({ ok: true, count: 9, limit: 9 });
+    expect(referenceQuotaCheck(10, "bytedance/seedance-2.5/reference-to-video")).toEqual({ ok: false, count: 10, limit: 9 });
+    expect(referenceQuotaCheck(10, "bytedance/seedance-2.0-mini/reference-to-video").ok).toBe(false);
+  });
+  it("无已知上限的模型不拦（拿不准就放行）", async () => {
+    const { referenceQuotaCheck } = await import("@/lib/storyboard-film");
+    expect(referenceQuotaCheck(99, "some/unknown-model")).toEqual({ ok: true, count: 99 });
+    expect(referenceQuotaCheck(99, "minimax/h3/reference-to-video").ok).toBe(true);
   });
 });

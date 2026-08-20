@@ -12,6 +12,8 @@
  * Pure functions only (prompt building + duration math); the route does the I/O.
  */
 import type { Shot, ScriptCharacter } from "@/lib/db/schema";
+import { stripPauseMarks } from "@/lib/voice-markup";
+import { getVideoParamSpec } from "@/lib/providers/atlas-video-params";
 
 /** Seedance 2.5 duration bounds (schema: integer 4-30 seconds) */
 export const FILM_MIN_SECONDS = 4;
@@ -68,7 +70,8 @@ export interface DialogueDensityWarning {
 export function dialogueDensityWarnings(shots: Shot[]): DialogueDensityWarning[] {
   const out: DialogueDensityWarning[] = [];
   shots.forEach((s, index) => {
-    const line = (s.voiceover ?? "").trim();
+    // density counts speakable characters only — the [pause] marker takes no speaking time
+    const line = stripPauseMarks((s.voiceover ?? "").trim());
     const seconds = Number.isFinite(s.duration) && s.duration > 0 ? s.duration : 0;
     if (!line || seconds <= 0) return;
     if (CJK_RE.test(line)) {
@@ -83,6 +86,26 @@ export function dialogueDensityWarnings(shots: Shot[]): DialogueDensityWarning[]
     }
   });
   return out;
+}
+
+export interface ReferenceQuotaCheck {
+  ok: boolean;
+  count: number;
+  /** The model's schema limit, when known */
+  limit?: number;
+}
+
+/**
+ * Pre-spend reference-image quota gate: a submission whose reference count exceeds the
+ * model's published schema limit is a GUARANTEED upstream rejection — catching it before
+ * the (billed) submit is free money. Models without a known limit pass unchecked
+ * (never block on a guess); the classic overflow is 9 grid keyframes + 1 presenter
+ * sheet = 10 refs against Seedance's 9-image cap.
+ */
+export function referenceQuotaCheck(referenceImageCount: number, modelId: string): ReferenceQuotaCheck {
+  const limit = getVideoParamSpec(modelId)?.maxReferenceImages;
+  if (limit === undefined) return { ok: true, count: referenceImageCount };
+  return { ok: referenceImageCount <= limit, count: referenceImageCount, limit };
 }
 
 /**
@@ -109,9 +132,17 @@ export function buildStoryboardFilmPrompt(
 ): string {
   const zh = shots.some((s) => CJK_RE.test(`${s.description ?? ""}${s.voiceover ?? ""}`));
   const total = filmRequestSeconds(shots);
+  const cast = (characters ?? []).filter((c) => (c.name ?? "").trim());
   // single named character → attribute dialogue to them; otherwise a generic on-camera creator
-  const soloName = (characters ?? []).length === 1 ? (characters![0].name ?? "").trim() : "";
+  const soloName = cast.length === 1 ? (cast[0].name ?? "").trim() : "";
   const speaker = soloName || (zh ? "出镜人物" : "the on-camera creator");
+  const multiCast = cast.length > 1;
+  // per-line speaker attribution (multi-character dialogue MUST name its speaker, or the
+  // model hands lines to whoever is centered); the anchor stays ONE short clause — full
+  // appearance repeated per line dilutes attention (identity lives in the cast block)
+  const charById = new Map(cast.map((c) => [c.id, c]));
+  const shortAnchor = (c: ScriptCharacter): string =>
+    (c.appearance ?? "").split(/[，、；,;]/)[0].trim().slice(0, 14);
   // shot keyframes start at @Image1, or @Image2 when the character sheet leads the array
   const offset = refs?.characterSheet ? 1 : 0;
 
@@ -125,7 +156,8 @@ export function buildStoryboardFilmPrompt(
     const rawLen = Number.isFinite(s.duration) && s.duration > 0 ? s.duration : rawTotal / shots.length;
     cursor = i === shots.length - 1 ? total : Math.min(total, cursor + rawLen * scale);
     const label = SHOT_TYPE_LABELS[String(s.type)]?.[zh ? "zh" : "en"] ?? (zh ? "分镜" : "shot");
-    const line = (s.voiceover ?? "").trim();
+    // the model speaks lines verbatim — the [pause] breath marker must never reach it
+    const line = stripPauseMarks((s.voiceover ?? "").trim());
     const imgN = i + 1 + offset;
     // camera moves come from the script (LLM writes them with the e-commerce preset vocabulary,
     // or the user picks a preset per shot) — dropping them here would flatten every shot to a
@@ -134,12 +166,21 @@ export function buildStoryboardFilmPrompt(
     // dialogue rides Seedance 2.5's official sound-bracket syntax: `{}` marks "lines to be
     // spoken aloud", separating them from scene description at the token level (the official
     // guide reserves () for music, <> for sound effects, {} for dialogue, 【】 for captions)
+    // multi-character: name the speaker on every line (one short appearance clause as a
+    // disambiguating anchor); solo/no-cast keeps the legacy unattributed wording
+    const speakerOfLine = multiCast && s.characterId ? charById.get(s.characterId) : undefined;
+    const whoZh = speakerOfLine
+      ? `，由${speakerOfLine.name}${shortAnchor(speakerOfLine) ? `（${shortAnchor(speakerOfLine)}）` : ""}说出`
+      : "";
+    const whoEn = speakerOfLine
+      ? ` by ${speakerOfLine.name}${shortAnchor(speakerOfLine) ? ` (${shortAnchor(speakerOfLine)})` : ""}`
+      : "";
     if (zh) {
-      const dialogue = line ? `台词（逐字说出）：{${line}}` : "（无台词，只保留环境音与动作声）";
+      const dialogue = line ? `台词（逐字说出${whoZh}）：{${line}}` : "（无台词，只保留环境音与动作声）";
       const camPart = cam ? `运镜：${cam}。` : "";
       return `[${fmtSec(start)}-${fmtSec(cursor)}秒] 镜头${i + 1}（${label}，画面以 @图片${imgN} 为基准）：${s.description ?? ""}。${camPart}${dialogue}`;
     }
-    const dialogue = line ? `Dialogue (spoken verbatim): {${line}}` : "(no dialogue — ambient and action sounds only)";
+    const dialogue = line ? `Dialogue (spoken verbatim${whoEn}): {${line}}` : "(no dialogue — ambient and action sounds only)";
     const camPart = cam ? `Camera: ${cam}. ` : "";
     return `[${fmtSec(start)}-${fmtSec(cursor)}s] Shot ${i + 1} (${label}, framing follows @Image${imgN}): ${s.description ?? ""}. ${camPart}${dialogue}`;
   });
@@ -163,15 +204,31 @@ export function buildStoryboardFilmPrompt(
   const realismZh = `画质与质感：真实手机直出质感，色彩自然未调色、带混合色温；人物肤质自然真实、保留毛孔细节不磨皮；构图带轻微手持感。`;
   const realismEn = `Texture: raw ungraded phone-footage look with mixed color temperature; natural realistic skin with visible pores, no beauty smoothing; framing carries a slight handheld feel.`;
 
+  // cast identity block: every character's name + appearance as the cross-shot anchor;
+  // the direction convention kills the #1 two-hander confusion ("left" = whose left?)
+  const castZh = cast.length
+    ? `人物设定（下文提到角色一律用角色名指代，外观以此为准；台词与画面中的左/右一律指画面方向）：${cast.map((c) => `${c.name}（${c.appearance ?? ""}）`).join("；")}。`
+    : "";
+  const castEn = cast.length
+    ? `Cast (refer to characters strictly by these names, appearance as written; "left/right" always means screen direction): ${cast.map((c) => `${c.name} (${c.appearance ?? ""})`).join("; ")}.`
+    : "";
+  // studio-backdrop strip: reference sheets are shot on a plain gray 2x2 board — without this
+  // line the model happily drags the gray backdrop or the grid split into real scenes
+  const sheetStripZh = `人物需自然融入各分镜自身的场景与光线，不得把定妆照的浅灰影棚背景、四格分格或边框带进任何镜头画面。`;
+  const sheetStripEn = `Blend the person naturally into each shot's own scene and lighting — never carry the sheet's plain gray studio backdrop, its 2x2 split or borders into any shot.`;
+
   if (zh) {
     return [
       `竖屏 9:16 UGC 手机实拍感带货短视频，总时长约 ${total} 秒，共 ${shots.length} 个镜头，严格按下面的时间段硬切，一次生成整片。`,
       bindingZh,
+      castZh,
       `全局一致性：所有镜头是同一支视频——同一人物、同一发型与同一身衣服、同一场景与光线方向；商品外观在所有镜头中保持完全一致。`,
       refs?.characterSheet
-        ? `@图片1 是出镜人物的四视图定妆照——全片人物的脸型、发型、体型与服装必须与其完全一致（定妆照只作人物参考，不作为任何分镜画面）。`
+        ? `@图片1 是${soloName || "出镜人物"}的四视图定妆照——全片人物的脸型、发型、体型与服装必须与其完全一致（定妆照只作人物参考，不作为任何分镜画面）。${sheetStripZh}`
         : "",
-      `有台词的镜头：${speaker}对着镜头自然说话，原声逐字说出该镜台词，口型与语速对齐，语气像日常聊天而不是播音腔；无台词的镜头不要出现说话声。`,
+      multiCast
+        ? `有台词的镜头：由该镜标注的角色自然说出台词，原声逐字说出，口型与语速对齐，语气像日常聊天而不是播音腔；无台词的镜头不要出现说话声。`
+        : `有台词的镜头：${speaker}对着镜头自然说话，原声逐字说出该镜台词，口型与语速对齐，语气像日常聊天而不是播音腔；无台词的镜头不要出现说话声。`,
       realism ? realismZh : "",
       // caption ban (positive frame line) + the official negative channel, which covers exactly
       // captions and audio: on-screen text is AI video's #1 tell, and bgm belongs to the
@@ -187,13 +244,16 @@ export function buildStoryboardFilmPrompt(
   return [
     `Vertical 9:16 UGC phone-shot style short video, about ${total} seconds total, ${shots.length} shots with hard cuts exactly at the timecodes below, generated as one continuous film.`,
     bindingEn,
+    castEn,
     `Global consistency: every shot belongs to the same video — same person, same hair and outfit, same location and light direction; the product looks identical in every shot.`,
     refs?.characterSheet
-      ? `@Image1 is the presenter's four-view reference sheet — the person's face, hair, build and outfit must match it exactly throughout (identity reference only, never a shot frame).`
+      ? `@Image1 is the four-view reference sheet of ${soloName || "the presenter"} — the person's face, hair, build and outfit must match it exactly throughout (identity reference only, never a shot frame). ${sheetStripEn}`
       : "",
     // non-Chinese dialogue needs an explicit language declaration (official 2.5 guidance)
     shots.some((s) => (s.voiceover ?? "").trim()) ? `Dialogue language: English.` : "",
-    `Shots with dialogue: ${speaker} talks to the camera naturally and speaks the lines verbatim with matching lip sync, casual everyday tone rather than announcer voice; shots without dialogue must contain no speech.`,
+    multiCast
+      ? `Shots with dialogue: the character named on that shot speaks the line verbatim with matching lip sync, casual everyday tone rather than announcer voice; shots without dialogue must contain no speech.`
+      : `Shots with dialogue: ${speaker} talks to the camera naturally and speaks the lines verbatim with matching lip sync, casual everyday tone rather than announcer voice; shots without dialogue must contain no speech.`,
     realism ? realismEn : "",
     `No captions, on-screen text, numbers or watermarks anywhere in the frame. No subtitles.`,
     `No bgm — only the spoken dialogue, ambient and action sounds.`,

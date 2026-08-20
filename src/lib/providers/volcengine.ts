@@ -41,9 +41,14 @@ interface ArkTaskQueryResponse {
   id: string
   model?: string
   status: 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
-  content?: { video_url?: string }
+  content?: { video_url?: string; last_frame_url?: string }
   error?: { code?: string; message?: string }
 }
+
+/** Ark content-role caps (Content Generation API schema; verified against a production integration) */
+const ARK_MAX_REFERENCE_IMAGES = 9
+const ARK_MAX_REFERENCE_VIDEOS = 3
+const ARK_MAX_REFERENCE_AUDIOS = 3
 
 /** Map width/height to an Ark video ratio */
 function toRatio(width?: number, height?: number): string {
@@ -126,27 +131,51 @@ export class VolcEngineProvider extends BaseProvider {
   }
 
   /**
-   * Generate a video (Seedance — async task + polling)
+   * Build the content array per the Ark Content Generation API role protocol:
+   * image_url entries carry role first_frame / last_frame / reference_image (≤9),
+   * video_url entries role reference_video (≤3), audio_url entries role
+   * reference_audio (≤3). Overflow is truncated client-side — the API hard-rejects it.
    */
-  async generateVideo(options: VideoOptions): Promise<VideoResult> {
+  private buildVideoContent(options: VideoOptions): Array<Record<string, unknown>> {
     let text = options.prompt
     if (options.audioEnabled && options.voiceover) {
       text = `${options.prompt}。旁白：「${options.voiceover}」`
     }
-
-    // content: text + optional first-frame image (image_url)
     const content: Array<Record<string, unknown>> = [{ type: 'text', text }]
     if (options.firstFrameUrl) {
-      content.push({ type: 'image_url', image_url: { url: options.firstFrameUrl } })
+      content.push({ type: 'image_url', image_url: { url: options.firstFrameUrl }, role: 'first_frame' })
     }
+    if (options.lastFrameUrl) {
+      content.push({ type: 'image_url', image_url: { url: options.lastFrameUrl }, role: 'last_frame' })
+    }
+    for (const url of (options.referenceImageUrls ?? []).slice(0, ARK_MAX_REFERENCE_IMAGES)) {
+      content.push({ type: 'image_url', image_url: { url }, role: 'reference_image' })
+    }
+    for (const url of (options.referenceVideoUrls ?? []).slice(0, ARK_MAX_REFERENCE_VIDEOS)) {
+      content.push({ type: 'video_url', video_url: { url }, role: 'reference_video' })
+    }
+    for (const url of (options.referenceAudioUrls ?? []).slice(0, ARK_MAX_REFERENCE_AUDIOS)) {
+      content.push({ type: 'audio_url', audio_url: { url }, role: 'reference_audio' })
+    }
+    return content
+  }
 
+  /**
+   * Phase 1 of the two-phase contract (paid-task safety): submit and return the task ID
+   * immediately so the caller can persist it BEFORE polling — a lost poll then recovers
+   * the paid task instead of double-billing a resubmit.
+   */
+  async submitVideoTask(options: VideoOptions): Promise<{ taskId: string; modelId: string }> {
     const body: Record<string, unknown> = {
       model: options.modelId,
-      content,
+      content: this.buildVideoContent(options),
       ratio: toRatio(options.width, options.height),
       ...(options.duration != null && { duration: options.duration }),
       generate_audio: options.audioEnabled ?? false,
       watermark: false,
+      // always ask for the clip's real final frame — it feeds tail-frame chaining and
+      // sequential continuation past the single-call duration cap
+      return_last_frame: true,
       ...(options.seed != null && { seed: options.seed }),
       ...options.extra,
     }
@@ -162,12 +191,17 @@ export class VolcEngineProvider extends BaseProvider {
         this.name
       )
     }
+    return { taskId: created.id, modelId: options.modelId }
+  }
 
-    const finalStatus = await this.pollTaskStatus(created.id, { interval: 5000 })
-    if (!finalStatus.result) {
-      throw new ProviderError('任务完成但未返回结果', 'NO_RESULT', this.name)
-    }
-    const result = finalStatus.result as VideoResult
+  /**
+   * Generate a video (Seedance — async task + polling). Prefer submitVideoTask +
+   * waitForTask when the task ID must be persisted before polling.
+   */
+  async generateVideo(options: VideoOptions): Promise<VideoResult> {
+    const { taskId } = await this.submitVideoTask(options)
+    const finalStatus = await this.pollTaskStatus(taskId, { interval: 5000 })
+    const result = this.requireResult(finalStatus.result) as VideoResult
     result.modelId = options.modelId
     return result
   }
@@ -189,6 +223,8 @@ export class VolcEngineProvider extends BaseProvider {
         videoUrls: [data.content.video_url],
         modelId: data.model ?? '',
         hasAudio: undefined,
+        // real final frame (return_last_frame:true) — the seam primitive for chaining
+        ...(data.content.last_frame_url && { lastFrameUrl: data.content.last_frame_url }),
       }
     }
     if (status === 'failed') {

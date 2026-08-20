@@ -586,6 +586,25 @@ export async function analyzeProduct(
  * @param config - LLM configuration
  * @returns Structured product analysis result
  */
+/** Max characters per selling point (a point longer than this is a paragraph, not a hook). */
+const SELLING_POINT_MAX_CHARS = 15;
+/** Max selling points kept (a script can only land ~3 points in 15-30s; more dilutes all of them). */
+const SELLING_POINT_MAX_COUNT = 3;
+
+/**
+ * Enforce the selling-point hard constraints server-side (the prompt asks for ≤15 chars /
+ * one dimension each, but models drift): keep the first 3 non-empty points, truncated.
+ * Enforcement here means every consumer (script prompt, judge, film prompt) sees tight
+ * points regardless of model discipline.
+ */
+export function clampSellingPoints(points: unknown): string[] {
+  if (!Array.isArray(points)) return [];
+  return points
+    .filter((p): p is string => typeof p === "string" && p.trim().length > 0)
+    .map((p) => p.trim().slice(0, SELLING_POINT_MAX_CHARS))
+    .slice(0, SELLING_POINT_MAX_COUNT);
+}
+
 export async function analyzeProductStructured(
   imageUrls: string[],
   config: LLMConfig,
@@ -593,9 +612,14 @@ export async function analyzeProductStructured(
   const rawResult = await analyzeProduct(imageUrls, config);
   const jsonStr = extractJSON(rawResult);
   try {
-    return JSON.parse(jsonStr) as ProductAnalysisResult;
-  } catch {
-    throw new Error(`商品分析结果不是合法 JSON${truncationHint(jsonStr)}: ${jsonStr.substring(0, 200)}`);
+    const parsed = JSON.parse(jsonStr) as ProductAnalysisResult;
+    parsed.sellingPoints = clampSellingPoints(parsed.sellingPoints);
+    return parsed;
+  } catch (e) {
+    if (e instanceof SyntaxError) {
+      throw new Error(`商品分析结果不是合法 JSON${truncationHint(jsonStr)}: ${jsonStr.substring(0, 200)}`);
+    }
+    throw e;
   }
 }
 

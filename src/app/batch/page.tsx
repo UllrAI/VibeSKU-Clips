@@ -276,14 +276,20 @@ export default function BatchPage() {
                 body: JSON.stringify({ scriptId: judgeScriptId, llmConfig: { baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model } }),
               });
               const judgeData = await judgeRes.json().catch(() => ({}));
-              if (judgeRes.ok && Array.isArray(judgeData?.rewrites) && judgeData.rewrites.length) {
+              // tier gate (judge v2): auto-apply invariant/default only; taste stays display-only.
+              // The visual judge's description rewrites ride the same shotTexts PATCH.
+              const gated = (rows: unknown): { shotId: number; voiceover?: string; description?: string }[] =>
+                Array.isArray(rows) ? (rows as { shotId: number; voiceover?: string; description?: string; tier?: string }[]).filter((r) => r.tier !== "taste") : [];
+              const shotTexts = new Map<number, { shotId: number; voiceover?: string; description?: string }>();
+              for (const r of gated(judgeData?.rewrites)) shotTexts.set(r.shotId, { shotId: r.shotId, voiceover: r.voiceover });
+              for (const r of gated(judgeData?.descriptionRewrites)) {
+                shotTexts.set(r.shotId, { ...(shotTexts.get(r.shotId) ?? { shotId: r.shotId }), description: r.description });
+              }
+              if (judgeRes.ok && shotTexts.size > 0) {
                 await fetch(`/api/project/${project.id}/scripts`, {
                   method: "PATCH",
                   headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    scriptId: judgeScriptId,
-                    shotTexts: judgeData.rewrites.map((r: { shotId: number; voiceover: string }) => ({ shotId: r.shotId, voiceover: r.voiceover })),
-                  }),
+                  body: JSON.stringify({ scriptId: judgeScriptId, shotTexts: Array.from(shotTexts.values()) }),
                 }).catch(() => {});
               }
             } catch {

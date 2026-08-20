@@ -233,7 +233,7 @@ Pick one of the three routes below.
 One key covers **script + image + video + voice-over**, so upgrading to AI films later needs no second setup.
 
 1. On the workspace, click **Start generating** — an inline card appears: "Connect Atlas Cloud and start now" (or go to **Settings → "Recommended · One key does it all"** at the top);
-2. Click **"No key? Get one free in a minute"**, sign up, copy the API key;
+2. Click **"No key? Get one free in a minute"** (or open the sign-up page directly: https://www.atlascloud.ai?ref=JPM683 ), register, copy the API key;
 3. Back in ClipForge, paste it and click **Connect & start**;
 4. The green **"Atlas Cloud connected"** message means the LLM / image / video / voice-over models are already wired up — nothing else to configure.
 

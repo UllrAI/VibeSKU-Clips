@@ -5,6 +5,8 @@ import { join } from "path";
 import { existsSync } from "fs";
 import { mkdir, writeFile } from "fs/promises";
 import { generateSpeech, estimateSpeechSeconds, type TTSConfig } from "@/lib/tts";
+import { stripPauseMarks } from "@/lib/voice-markup";
+import { shotEmotion, EMOTION_TTS } from "@/lib/emotion-acting";
 import { generateSpeechFreeDetailed, DEFAULT_FREE_VOICE, type TTSWord } from "@/lib/edge-tts";
 import { resolveRenderProfile, isRenderPreset } from "@/lib/compose-presets";
 import { isCaptionPreset, captionPresetOverrides, CAPTION_PRESETS } from "@/lib/caption-presets";
@@ -212,17 +214,23 @@ export async function POST(
     async function buildVoiceover(
       shotId: number,
       text: string,
-      characterVoice?: string
+      characterVoice?: string,
+      shotType?: string
     ): Promise<{ file: string; words?: TTSWord[] } | undefined> {
       if (!text || (!ttsConfig && !useFreeTts)) return undefined;
       const freeOpts = { voice: characterVoice || freeVoice, rate: freeRate };
+      // per-shot expressive delivery for paid engines that support it (hook → eager,
+      // pain_point → troubled, cta → confident); providers without the capability
+      // silently ignore these fields inside generateSpeech
+      const emo = shotType ? shotEmotion(shotType) : undefined;
+      const expressive = emo ? { emotion: EMOTION_TTS[emo].minimax, instruction: EMOTION_TTS[emo].instruction } : {};
       try {
         // 付费 TTS 优先；否则走免费 Edge keyless TTS（速度映射：speed 倍率 → SSML 带符号百分比）
         let audio: Buffer;
         let words: TTSWord[] | undefined;
         if (ttsConfig) {
           try {
-            audio = await generateSpeech(text, ttsConfig);
+            audio = await generateSpeech(text, { ...ttsConfig, ...expressive });
           } catch (e) {
             console.warn(`分镜 ${shotId} 付费配音失败，回退免费 Edge 配音:`, e);
             composeWarnings.push({ code: "tts_fallback_free", shotId });
@@ -326,7 +334,7 @@ export async function POST(
       const nativeAudio = isVideo ? await videoHasAudio(local) : false;
       const vo =
         shot.voiceover && !nativeAudio
-          ? await buildVoiceover(shot.shotId, shot.voiceover, shot.characterId ? characterVoices.get(shot.characterId) : undefined)
+          ? await buildVoiceover(shot.shotId, shot.voiceover, shot.characterId ? characterVoices.get(shot.characterId) : undefined, shot.type)
           : undefined;
       const audioPath = vo?.file;
 
@@ -343,7 +351,7 @@ export async function POST(
       let sourceDuration: number | undefined;
       if (audioPath) {
         const probed = await probeDuration(audioPath);
-        voiceSec = probed > 0 ? probed : estimateSpeechSeconds(shot.voiceover ?? "");
+        voiceSec = probed > 0 ? probed : estimateSpeechSeconds(stripPauseMarks(shot.voiceover ?? ""));
         duration = Math.min(Math.max(voiceSec + VOICE_GAP, 1.5), 20);
         if (isVideo) {
           const mediaDur = await probeDuration(local);
@@ -398,7 +406,8 @@ export async function POST(
         return {
           duration: r.duration,
           transition: r.clip.transition,
-          voiceover: r.shot.voiceover || undefined,
+          // captions must never show the [pause] breath marker
+          voiceover: r.shot.voiceover ? stripPauseMarks(r.shot.voiceover) : undefined,
           voiceSec: r.voiceSec,
           // real word timestamps (free Edge TTS) → exact karaoke sync + word-snapped caption cards
           ...(r.words ? { words: r.words } : {}),

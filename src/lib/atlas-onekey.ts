@@ -15,7 +15,10 @@ export const ATLAS_BASE_URL = "https://api.atlascloud.ai/api/v1";
  * Used by every "get a free key" CTA — deep-linking here instead of the homepage saves beginners
  * from hunting for the key console on their own.
  */
-export const ATLAS_KEYS_URL = "https://www.atlascloud.ai/console/api-keys";
+/** Atlas sign-up/landing link with the project referral — the in-app "get a key" CTA
+ * targets key-less new users, who must register first anyway (the console deep link
+ * bounces logged-out visitors to sign-in). */
+export const ATLAS_KEYS_URL = "https://www.atlascloud.ai?ref=JPM683";
 
 export const ATLAS_ONEKEY_MODELS = {
   /**

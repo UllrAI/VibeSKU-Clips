@@ -18,7 +18,7 @@ describe("buildStoryboardGridPrompt", () => {
     expect(p).toContain("第 1 格（钩子镜）：女生对镜头惊讶");
     expect(p).toContain("第 3 格（转化镜）：举起产品推荐");
     expect(p).toContain("不是精修网红脸"); // REAL_FACE 仍然生效
-    expect(p).toContain("光源要指名"); // UGC 首帧规则搭车
+    expect(p).toContain("光要写满四要素"); // UGC 首帧规则搭车
     expect(p).toContain("不出现任何文字"); // 裁切后当关键帧，文字会毒化画面
   });
 

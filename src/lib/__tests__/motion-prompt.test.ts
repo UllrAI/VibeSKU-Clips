@@ -128,3 +128,67 @@ describe("提示词工程包（强度三档 / 单镜头声明 / 音效 / 冲突�
     expect(p).toContain("无人声说话"); // clip 原生音频仍只要环境音
   });
 });
+
+describe("物理真实感层（品类约束/物理交互/活背景/情绪过程，档位单选）", () => {
+  it("productShot + 已知品类 → 通用约束后追加品类材质约束", () => {
+    const p = buildMotionPrompt({ shotType: "product_reveal", description: "口红展示", productShot: true, category: "beauty" });
+    expect(p).toContain("logo 与文字必须保持完全不变"); // 通用约束仍在
+    expect(p).toContain("膏体与液体质地均匀顺滑"); // 品类约束追加
+  });
+
+  it("未知品类（other/空）不加品类层，输出与不传 category 一致", () => {
+    const base = buildMotionPrompt({ shotType: "demo", description: "使用演示", productShot: true });
+    expect(buildMotionPrompt({ shotType: "demo", description: "使用演示", productShot: true, category: "other" })).toBe(base);
+    expect(buildMotionPrompt({ shotType: "demo", description: "使用演示", productShot: true, category: "" })).toBe(base);
+  });
+
+  it("demo/product_reveal + 品类 → 画面动态里拼一条「动作+材质反应」短语，beatSeed 确定性轮换", () => {
+    const a = buildMotionPrompt({ shotType: "demo", description: "试吃", category: "food", beatSeed: 0 });
+    const b = buildMotionPrompt({ shotType: "demo", description: "试吃", category: "food", beatSeed: 1 });
+    expect(a).toContain("酥脆掉渣");
+    expect(b).toContain("热气");
+    // 同 seed 幂等（批量出片可复现）
+    expect(buildMotionPrompt({ shotType: "demo", description: "试吃", category: "food", beatSeed: 0 })).toBe(a);
+  });
+
+  it("hook 镜不属演示类：有品类也不拼物理交互短语", () => {
+    const p = buildMotionPrompt({ shotType: "hook", description: "开场", category: "food", beatSeed: 0 });
+    expect(p).not.toContain("酥脆掉渣");
+  });
+
+  it("personShot → 活背景一条 + 头发衣料滞后回弹；非人非 demo 镜不加", () => {
+    const person = buildMotionPrompt({ shotType: "pain_point", description: "人物皱眉", personShot: true, beatSeed: 0 });
+    expect(person).toContain("窗帘随气流轻轻晃动");
+    expect(person).toContain("头发与衣料带一点滞后的摆动");
+    const product = buildMotionPrompt({ shotType: "product_reveal", description: "商品", productShot: true });
+    expect(product).not.toContain("窗帘");
+    expect(product).not.toContain("滞后的摆动");
+  });
+
+  it("非说话人物镜按镜头类型补情绪过程句（pain_point→身体先反应）；talking 镜不加（已有行为节拍）", () => {
+    const silent = buildMotionPrompt({ shotType: "pain_point", description: "人物困扰", personShot: true, beatSeed: 0 });
+    expect(silent).toContain("眉心先皱了一下");
+    const talking = buildMotionPrompt({ shotType: "pain_point", description: "人物吐槽", personShot: true, talking: true, beatSeed: 0 });
+    expect(talking).not.toContain("眉心先皱了一下");
+  });
+
+  it("档位单选：constraints=仅品类约束、off=全关（回到旧版形状）", () => {
+    const cons = buildMotionPrompt({ shotType: "demo", description: "演示", productShot: true, personShot: true, category: "food", beatSeed: 0, realism: "constraints" });
+    expect(cons).toContain("色泽鲜亮"); // 品类约束保留
+    expect(cons).not.toContain("酥脆掉渣"); // 物理交互关
+    expect(cons).not.toContain("窗帘"); // 活背景关
+    expect(cons).not.toContain("滞后的摆动"); // 惯性关
+    const off = buildMotionPrompt({ shotType: "demo", description: "演示", productShot: true, personShot: true, category: "food", beatSeed: 0, realism: "off" });
+    expect(off).not.toContain("色泽鲜亮");
+    const legacy = buildMotionPrompt({ shotType: "demo", description: "演示", productShot: true, personShot: true, beatSeed: 0, realism: "off" });
+    expect(off).toBe(legacy); // off 档 = 不传品类的旧版输出
+  });
+
+  it("英文脚本走英文层（品类约束/物理短语/活背景全英文）", () => {
+    const p = buildMotionPrompt({ shotType: "demo", camera: "smooth follow", description: "applying cream", productShot: true, personShot: true, category: "beauty", beatSeed: 0 });
+    expect(p).toContain("spreading naturally without clumping");
+    expect(p).toContain("gliding open");
+    expect(p).toContain("curtains in the background");
+    expect(p).not.toMatch(/[一-鿿]/); // 不混中文
+  });
+});

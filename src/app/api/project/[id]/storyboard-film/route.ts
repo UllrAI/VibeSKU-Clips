@@ -13,6 +13,7 @@ import {
   dialogueDensityWarnings,
   filmTotalSeconds,
   filmRequestSeconds,
+  referenceQuotaCheck,
   FILM_MAX_SECONDS,
 } from "@/lib/storyboard-film";
 import { toRemoteUsableImage } from "@/lib/remote-image";
@@ -51,7 +52,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return apiError(req, "无效的项目ID", "Invalid project id", 400);
     }
     const body = await req.json();
-    const { scriptId, provider: providerName, model, apiKey, baseUrl, options, characterSheetUrl } = body as {
+    const { scriptId, provider: providerName, model, apiKey, baseUrl, options, characterSheetUrl, dryRun } = body as {
       scriptId?: string;
       provider?: string;
       model?: string;
@@ -60,12 +61,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       options?: Record<string, unknown>;
       /** Presenter's multi-view sheet — leads reference_images as the identity anchor (@Image1) */
       characterSheetUrl?: string;
+      /** Preview only: return the full film prompt + counts + warnings, submit nothing, spend nothing */
+      dryRun?: boolean;
     };
-    if (!scriptId || !providerName) {
-      return apiError(req, "缺少 scriptId / provider", "Missing scriptId / provider", 400);
-    }
-    if (!apiKey) {
-      return apiError(req, "缺少 API Key，请先在设置中配置视频平台", "Missing API key — configure a video provider in settings first", 400);
+    if (!scriptId) {
+      return apiError(req, "缺少 scriptId", "Missing scriptId", 400);
     }
 
     const db = getDb();
@@ -96,6 +96,31 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       );
     }
 
+    if (dryRun) {
+      const prompt = buildStoryboardFilmPrompt(shots, script.characters, { characterSheet: !!characterSheetUrl });
+      // planned reference count: one keyframe per shot (+ the identity sheet when present) —
+      // computable before the grid pass has actually rendered the keyframes
+      const plannedRefs = shots.length + (characterSheetUrl ? 1 : 0);
+      return NextResponse.json({
+        dryRun: true,
+        prompt,
+        shotCount: shots.length,
+        seconds: filmRequestSeconds(shots),
+        referenceImages: plannedRefs,
+        referenceQuota: referenceQuotaCheck(plannedRefs, model || DEFAULT_FILM_MODEL),
+        dialogueWarnings: dialogueDensityWarnings(shots),
+      });
+    }
+
+    // past the dryRun branch money moves — provider and key become mandatory
+    // (dryRun spends nothing, so it needs neither)
+    if (!providerName) {
+      return apiError(req, "缺少 provider", "Missing provider", 400);
+    }
+    if (!apiKey) {
+      return apiError(req, "缺少 API Key，请先在设置中配置视频平台", "Missing API key — configure a video provider in settings first", 400);
+    }
+
     // every shot needs a keyframe IMAGE (grid cells or per-shot stills) to cite as @ImageN
     const assetRows = await db.select().from(assets).where(eq(assets.projectId, id));
     const byShot = new Map(assetRows.map((a) => [a.shotId, a]));
@@ -117,6 +142,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // remote providers can't reach localhost: local /api/files keyframes travel as Base64.
     // With a character sheet it leads the array (@Image1 = identity anchor, shots shift to @Image2..)
     const refInputs = [...(characterSheetUrl ? [characterSheetUrl] : []), ...keyframes];
+    // pre-spend quota gate: a reference count over the model's schema limit is a guaranteed
+    // upstream rejection — block BEFORE the paid submit instead of paying to find out
+    const quota = referenceQuotaCheck(refInputs.length, model || DEFAULT_FILM_MODEL);
+    if (!quota.ok) {
+      return apiError(
+        req,
+        `参考图 ${quota.count} 张超过该模型上限 ${quota.limit} 张——减少分镜数${characterSheetUrl ? "，或去掉定妆照（少一张参考位）" : ""}后再试`,
+        `${quota.count} reference images exceed this model's limit of ${quota.limit} — reduce the shot count${characterSheetUrl ? " or drop the presenter sheet (frees one slot)" : ""} and retry`,
+        400
+      );
+    }
     const referenceImageUrls = (await Promise.all(refInputs.map(toRemoteUsableImage))).filter(
       (u): u is string => !!u
     );

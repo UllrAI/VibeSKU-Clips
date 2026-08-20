@@ -519,7 +519,11 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
   const audioParts: string[] = [];
   // voice grounding defaults ON whenever a TTS track exists (quality features default into every
   // chain); voiceGround:false opts out. Native model audio never passes through the chain.
-  const voiceGround = config.output.voiceGround !== false && config.clips.some((c) => c.audioPath);
+  const hasTtsTrack = config.clips.some((c) => c.audioPath);
+  const voiceGround = config.output.voiceGround !== false && hasTtsTrack;
+  // the room-tone bed now covers native-audio timelines too (fainter: native clips carry their
+  // own ambience — the bed only unifies the space across cuts and silent segments)
+  const roomTone = config.output.voiceGround !== false && hasAnyAudio;
   if (hasAnyAudio) {
     config.clips.forEach((clip, i) => {
       if (clip.audioPath) {
@@ -533,8 +537,15 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
           `[${ai}:a]aresample=44100,${ground}apad,atrim=duration=${clip.duration},asetpts=PTS-STARTPTS[a${i}]`
         );
       } else if (clip.hasAudio && clip.type === "video") {
-        // extract the clip's native audio track (model-generated voice/sfx), padded or trimmed to shot duration
-        audioParts.push(`[${i}:a]aresample=44100,apad,atrim=duration=${clip.duration},asetpts=PTS-STARTPTS[a${i}]`);
+        // extract the clip's native audio track (model-generated voice/sfx), padded or trimmed to shot duration.
+        // 20ms edge micro-fades soften the noise-floor jump at hard cuts between native clips —
+        // deliberately NOT acrossfade (it would shorten audio 40ms per joint while the video concat
+        // keeps full length, accumulating A/V drift); edge fades smooth the same seam drift-free.
+        const edgeFade =
+          clip.duration > 0.1
+            ? `,afade=t=in:st=0:d=0.02,afade=t=out:st=${Math.max(0, clip.duration - 0.02).toFixed(3)}:d=0.02`
+            : "";
+        audioParts.push(`[${i}:a]aresample=44100,apad,atrim=duration=${clip.duration},asetpts=PTS-STARTPTS${edgeFade}[a${i}]`);
       } else {
         // generate a silent track of the same duration (using a lavfi virtual input)
         audioParts.push(`anullsrc=r=44100:cl=stereo,atrim=duration=${clip.duration},asetpts=PTS-STARTPTS[a${i}]`);
@@ -591,8 +602,8 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
     currentAudioStream = curA;
     // room-tone bed under the whole timeline: inter-sentence gaps must never fall to digital
     // zero (the loudest TTS tell). amix duration=first bounds the infinite lavfi source.
-    if (voiceGround) {
-      filterParts.push(`${roomToneSource()}[roomtone]`);
+    if (roomTone) {
+      filterParts.push(`${roomToneSource(hasTtsTrack ? undefined : 0.004)}[roomtone]`);
       filterParts.push(`[${currentAudioStream}][roomtone]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[voice_grounded]`);
       currentAudioStream = "voice_grounded";
     }

@@ -14,6 +14,7 @@
 import type { TTSProvider } from "./tts-presets";
 import { CircuitBreaker } from "@/lib/circuit-breaker";
 import { ttsCacheKey, readTtsCache, writeTtsCache } from "@/lib/tts-cache";
+import { stripPauseMarks } from "@/lib/voice-markup";
 
 export interface TTSConfig {
   /** Platform; defaults to "openai" */
@@ -29,7 +30,23 @@ export interface TTSConfig {
   speed?: number;
   /** GroupId for MiniMax domestic endpoint (optional) */
   groupId?: string;
+  /**
+   * Expressive delivery, per shot (optional):
+   *  - emotion: MiniMax voice_setting.emotion enum value — sent on the MiniMax path only,
+   *    and only when it is a known enum value; every other provider silently ignores it.
+   *  - instruction: natural-language delivery note — sent on the OpenAI-compatible path
+   *    only for models known to accept `instructions`; ignored elsewhere.
+   * Both are part of the cache identity (a different delivery is different audio).
+   */
+  emotion?: string;
+  instruction?: string;
 }
+
+/** MiniMax T2A official emotion enum — unknown values are never sent (400 risk). */
+const MINIMAX_EMOTIONS = new Set(["happy", "sad", "angry", "fearful", "disgusted", "surprised", "neutral"]);
+
+/** OpenAI-compatible TTS models known to accept the `instructions` parameter. */
+const OPENAI_INSTRUCTION_MODELS = /gpt-4o-mini-tts/i;
 
 /** Generate TTS audio, returns mp3 bytes. Throws on failure; caller decides on fallback. */
 // Circuit breaker: after 2 consecutive failures for the same provider (most likely an invalid key
@@ -78,7 +95,9 @@ async function withTTSRetry(fn: () => Promise<Buffer>): Promise<Buffer> {
 }
 
 export async function generateSpeech(text: string, config: TTSConfig): Promise<Buffer> {
-  const clean = (text || "").trim();
+  // paid engines would try to SPEAK the [pause] breath marker — only the free Edge
+  // path renders it (as a real SSML break); everyone else gets clean text
+  const clean = stripPauseMarks((text || "").trim());
   if (!clean) throw new Error("配音文本为空");
   const provider = config.provider || "openai";
   // Content-addressed cache: identical text + voice params reuse the previously synthesized
@@ -93,6 +112,9 @@ export async function generateSpeech(text: string, config: TTSConfig): Promise<B
     model: config.model,
     voice: config.voice,
     speed: config.speed,
+    // expressive delivery changes the audio → changes the identity
+    ...(config.emotion && { emotion: config.emotion }),
+    ...(config.instruction && { instruction: config.instruction }),
     text: clean,
   });
   const cached = await readTtsCache(cacheKey);
@@ -195,6 +217,8 @@ async function generateSpeechOpenAI(text: string, config: TTSConfig): Promise<Bu
       voice: config.voice,
       response_format: "mp3",
       ...(config.speed != null && { speed: config.speed }),
+      // delivery note only for models that accept it — others 400 on unknown params
+      ...(config.instruction && OPENAI_INSTRUCTION_MODELS.test(config.model) && { instructions: config.instruction }),
     }),
   });
   if (!resp.ok) {
@@ -298,6 +322,8 @@ async function generateSpeechMiniMax(text: string, config: TTSConfig): Promise<B
         speed: config.speed != null ? clamp(config.speed, 0.5, 2) : 1,
         vol: 1,
         pitch: 0,
+        // per-shot expressive delivery; only official enum values go on the wire
+        ...(config.emotion && MINIMAX_EMOTIONS.has(config.emotion) && { emotion: config.emotion }),
       },
       audio_setting: { sample_rate: 32000, bitrate: 128000, format: "mp3", channel: 1 },
     }),

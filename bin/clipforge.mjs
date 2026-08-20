@@ -173,8 +173,8 @@ function requireLlm() {
 }
 
 /**
- * Judge pass — the same quality bar the web hands-off chains run: four narrow judges
- * (pacing / spoken voice / freshness / structure) tear the voiceover lines apart and
+ * Judge pass — the same quality bar the web hands-off chains run: five narrow judges
+ * (pacing / spoken voice / freshness / structure / visuals) tear the lines apart and
  * their length-preserving rewrites are applied in place BEFORE footage/voice work.
  * Best-effort: any failure returns 0 and the chain continues with the original lines.
  * Returns the number of rewritten lines.
@@ -186,12 +186,20 @@ async function judgePass(projectId, scriptId) {
       method: "POST",
       body: { scriptId, llmConfig: LLM },
     });
-    if (!Array.isArray(report?.rewrites) || report.rewrites.length === 0) return 0;
+    // tier gate (judge v2): auto-apply invariant/default only — taste tier is opinion, not defect;
+    // the visual judge's description rewrites ride the same shotTexts PATCH
+    const gated = (rows) => (Array.isArray(rows) ? rows.filter((r) => r.tier !== "taste") : []);
+    const shotTexts = new Map();
+    for (const r of gated(report?.rewrites)) shotTexts.set(r.shotId, { shotId: r.shotId, voiceover: r.voiceover });
+    for (const r of gated(report?.descriptionRewrites)) {
+      shotTexts.set(r.shotId, { ...(shotTexts.get(r.shotId) ?? { shotId: r.shotId }), description: r.description });
+    }
+    if (shotTexts.size === 0) return 0;
     await api(`/api/project/${projectId}/scripts`, {
       method: "PATCH",
-      body: { scriptId, shotTexts: report.rewrites.map((r) => ({ shotId: r.shotId, voiceover: r.voiceover })) },
+      body: { scriptId, shotTexts: Array.from(shotTexts.values()) },
     });
-    return report.rewrites.length;
+    return shotTexts.size;
   } catch {
     return 0;
   }

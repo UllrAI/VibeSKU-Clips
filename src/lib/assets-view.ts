@@ -119,6 +119,19 @@ export function nextChainKeyframe(rows: AssetItem[], shotId: number): string | u
   return undefined;
 }
 
+/**
+ * Shot types whose PATH is the content: the demonstration's own ending is the payload, so
+ * chaining (which replaces the clip's ending with a transition into the next scene) eats
+ * exactly the frames that sell. These types skip keyframe chaining by default; an explicit
+ * lastFrame override still wins (transition-driven shots keep chaining).
+ */
+const CHAIN_SKIP_TYPES = new Set(["demo"]);
+
+/** Whether a shot type participates in keyframe chaining when no explicit choice was made. */
+export function chainByDefault(shotType: string | undefined): boolean {
+  return !CHAIN_SKIP_TYPES.has(String(shotType ?? ""));
+}
+
 /** Number of shots still awaiting an asset (pending) */
 export function pendingShotCount(rows: AssetItem[]): number {
   return rows.filter((r) => r.status === "pending").length;

@@ -238,6 +238,36 @@ export const CAMERA_PRESETS: CameraPreset[] = [
     goodFor: ["cta"],
   },
   {
+    id: "locked_on",
+    name: { zh: "锁定跟拍", en: "Locked-On" },
+    category: "special",
+    prompt: {
+      zh: "LOCKED-ON SHOT：镜头如刚性固定在主体上，主体在画面中位置锁定不动，背景随移动流动",
+      en: "LOCKED-ON SHOT: camera rigidly mounted to the subject, subject pinned in frame while the background streams past",
+    },
+    goodFor: ["demo", "product_reveal"],
+  },
+  {
+    id: "fpv_dive",
+    name: { zh: "FPV 俯冲", en: "FPV Dive" },
+    category: "special",
+    prompt: {
+      zh: "FPV 无人机视角向主体快速俯冲贴近，路径流畅带速度感",
+      en: "FPV drone dive swooping fast toward the subject, fluid path with real speed",
+    },
+    goodFor: ["hook"],
+  },
+  {
+    id: "body_orbit",
+    name: { zh: "贴身环走", en: "Close Orbit Walk" },
+    category: "handheld",
+    prompt: {
+      zh: "手持镜头贴近人物缓慢环走半圈，带自然呼吸晃动，背景视差流动",
+      en: "handheld camera walks a slow half-circle close around the person, natural breathing sway, background parallax flowing",
+    },
+    goodFor: ["social_proof", "pain_point"],
+  },
+  {
     id: "focus_shift",
     name: { zh: "焦点转移", en: "Rack Focus" },
     category: "special",
@@ -304,14 +334,18 @@ export function mixablePresets(base: CameraPreset, sampleText: string): CameraPr
   return CAMERA_PRESETS.filter((p) => mixCameraPrompt(base, p, sampleText) !== null);
 }
 
-/** Shot-type intent labels for the LLM vocabulary block (script-facing, Chinese prompt). */
-const GUIDE_INTENT_LABELS: Array<{ type: Shot["type"]; label: string }> = [
-  { type: "hook", label: "开场钩子" },
-  { type: "pain_point", label: "痛点共鸣" },
-  { type: "product_reveal", label: "商品展示" },
-  { type: "demo", label: "使用演示" },
-  { type: "social_proof", label: "氛围背书" },
-  { type: "cta", label: "收尾转化" },
+/**
+ * Shot-type intent labels for the LLM vocabulary block (script-facing, Chinese prompt).
+ * framing = shot size + equivalent focal length (the scale at which this beat's key
+ * information MUST be readable); mood = the emotional register the move should carry.
+ */
+const GUIDE_INTENT_LABELS: Array<{ type: Shot["type"]; label: string; framing: string; mood: string }> = [
+  { type: "hook", label: "开场钩子", framing: "极致特写~特写（等效85-135mm）", mood: "急切抓人" },
+  { type: "pain_point", label: "痛点共鸣", framing: "近景~中景（等效35-50mm）", mood: "代入困扰" },
+  { type: "product_reveal", label: "商品展示", framing: "特写~近景（等效85mm）", mood: "惊喜聚焦" },
+  { type: "demo", label: "使用演示", framing: "中景切特写（等效50mm）", mood: "专注可信" },
+  { type: "social_proof", label: "氛围背书", framing: "全景~中景（等效35mm）", mood: "松弛日常" },
+  { type: "cta", label: "收尾转化", framing: "特写定住（等效85mm）", mood: "笃定收束" },
 ];
 
 /** Max preset examples per shot type in the LLM guide (keeps the prompt block compact). */
@@ -324,12 +358,12 @@ const GUIDE_MAX_PER_TYPE = 3;
  * improvising, while staying free to fine-tune wording per scene.
  */
 export function cameraPresetGuide(): string {
-  const lines = GUIDE_INTENT_LABELS.map(({ type, label }) => {
+  const lines = GUIDE_INTENT_LABELS.map(({ type, label, framing, mood }) => {
     const examples = recommendedPresets(type)
       .slice(0, GUIDE_MAX_PER_TYPE)
       .map((p) => p.prompt.zh)
       .join(" ｜ ");
-    return `  · ${label}：${examples}`;
+    return `  · ${label}（${framing}，情绪${mood}）：${examples}`;
   });
   return [
     "中文镜头运动描述。优先从下列电商运镜词表中挑选最贴合分镜情绪的一条（可按画面微调用词），每镜保持单一明确的运动方向；不要把「固定镜头」与「环绕/推拉」写进同一句，除非用「先…随后…」表达先后顺序：",

@@ -261,7 +261,7 @@ describe("buildComposeCommand", () => {
     };
     const cmd = buildComposeCommand(config);
     // first clip has native audio, should be extracted and aligned to its duration
-    expect(cmd).toContain("[0:a]aresample=44100,apad,atrim=duration=3,asetpts=PTS-STARTPTS[a0]");
+    expect(cmd).toContain("[0:a]aresample=44100,apad,atrim=duration=3,asetpts=PTS-STARTPTS,afade=t=in:st=0:d=0.02,afade=t=out:st=2.980:d=0.02[a0]");
     // second clip has no audio, should generate silence
     expect(cmd).toContain("anullsrc");
   });

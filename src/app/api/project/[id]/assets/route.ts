@@ -7,6 +7,7 @@ import { assets } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { validateOrDelete } from "@/lib/media-validate";
 import { MAX_DOWNLOAD_BYTES } from "@/lib/providers/stock-types";
+import { extractLastFrame, LAST_FRAME_SUFFIX } from "@/lib/video-composer/frame-extract";
 
 /** Decode-level check after writing to disk: AI providers' expiring links often answer with an
  * error page or a truncated body — those must be stopped before the DB row exists, or the
@@ -102,6 +103,16 @@ export async function POST(
     }
 
     const filePath = await persistSource(id, sourceUrl, shotId);
+    // tail frame for video assets (seam primitive): the clip's REAL last frame, extracted next
+    // to the file — the next shot's i2v can start from it for a pixel-continuous cut. Best-effort:
+    // failure just omits lastFrameUrl and the caller falls back to pre-generated keyframes.
+    let lastFrameUrl: string | undefined;
+    if (/\.(mp4|webm|mov|m4v)$/i.test(filePath) && filePath.startsWith(`/api/files/${id}/`)) {
+      const fileName = filePath.slice(`/api/files/${id}/`.length);
+      const abs = join(getDataDir(), "uploads", id, fileName);
+      const frame = await extractLastFrame(abs);
+      if (frame) lastFrameUrl = `${filePath}${LAST_FRAME_SUFFIX}`;
+    }
     const db = getDb();
 
     const typeMap: Record<string, "ai_generated" | "product_image" | "user_upload"> = {
@@ -138,7 +149,7 @@ export async function POST(
       })
       .returning();
 
-    return NextResponse.json(rows[0]);
+    return NextResponse.json({ ...rows[0], ...(lastFrameUrl && { lastFrameUrl }) });
   } catch (error) {
     console.error("保存素材失败:", error);
     return NextResponse.json(

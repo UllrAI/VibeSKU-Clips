@@ -58,9 +58,16 @@ describe("buildMotionPrompt 的 look 光线锚点", () => {
 });
 
 describe("「实拍感」组（real family）与相机身份开场词", () => {
-  it("三款 real 预设齐全且都带 opener（前置注入用）", () => {
+  it("六款 real 预设齐全且都带 opener（前置注入用）", () => {
     const real = LOOK_PRESETS.filter((p) => p.group === "real");
-    expect(real.map((p) => p.id).sort()).toEqual(["phone_raw", "propped_static", "selfie_front"]);
+    expect(real.map((p) => p.id).sort()).toEqual([
+      "cctv_store",
+      "dashcam_ride",
+      "old_dv",
+      "phone_raw",
+      "propped_static",
+      "selfie_front",
+    ]);
     for (const p of real) {
       expect(p.opener?.zh).toBeTruthy();
       expect(p.opener?.en).toBeTruthy();
