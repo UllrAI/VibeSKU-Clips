@@ -45,6 +45,13 @@ export const batch: NamespaceMessages = {
     errorScriptFailed: "脚本生成失败",
     errorComposeFailed: "合成失败",
     errorGenerateFailed: "生成失败",
+    // 批次持久化：中断续跑
+    resumeTitle: "上次批量出片没跑完",
+    resumeDesc: "已完成 {done}/{total} 件。可以接着跑剩下的（已完成的不重来，设置沿用上次），也可以放弃这批重新开始。",
+    resumeContinue: "继续上次批次",
+    resumeDiscard: "放弃并开新批",
+    resumeProductMissing: "商品已从商品库删除",
+    abortBatch: "中止",
     projectNameSuffix: "{name} 推广",
     // 步骤 1
     step1Label: "步骤 1：选择商品",
@@ -117,6 +124,13 @@ export const batch: NamespaceMessages = {
     errorScriptFailed: "Script generation failed",
     errorComposeFailed: "Render failed",
     errorGenerateFailed: "Generation failed",
+    // Batch persistence: resume after interruption
+    resumeTitle: "Your last batch didn't finish",
+    resumeDesc: "{done}/{total} items done. Continue the rest (finished items are kept, same settings), or discard and start fresh.",
+    resumeContinue: "Continue last batch",
+    resumeDiscard: "Discard & start new",
+    resumeProductMissing: "Product was removed from the library",
+    abortBatch: "Stop",
     projectNameSuffix: "{name} promo",
     // 步骤 1
     step1Label: "Step 1: Select products",

@@ -476,7 +476,12 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
       // product image + motion effect. falls back to default motion when the motion key is invalid; never skips the clip
       // (otherwise the inputs/filter count would mismatch the [v${i}] references in the concat below, crashing ffmpeg)
       const motion = (clip.motion && MOTIONS[clip.motion]) || MOTIONS[DEFAULT_MOTION];
-      inputs.push({ loop: true, t: clip.duration, path: clip.filePath });
+      // .gif goes through ffmpeg's gif demuxer, which rejects the image2-only `-loop` option
+      // (a hard error since ffmpeg 8; free stock libraries do return GIFs). The flags are
+      // redundant anyway: the filter chain trims to frame 1 and zoompan+tpad generate the full
+      // slot duration, so GIFs simply skip them.
+      const isGif = /\.gif$/i.test(clip.filePath);
+      inputs.push(isGif ? { path: clip.filePath } : { loop: true, t: clip.duration, path: clip.filePath });
       // key: zoompan outputs d frames per input frame. -loop produces many input frames which causes frame count explosion
       // and stretches the video tens of times longer than intended; use trim to grab only the first frame, then let
       // zoompan's d=duration*fps control total output frame count.
@@ -749,7 +754,12 @@ function assembleComposeGraph(config: ComposeConfig): ComposeGraph {
   // product card overlay (opt-in): bottom-left card = product thumbnail + name + purchase CTA, shown for ~5s at the start to simulate a "shopping cart link"
   if (config.productCard?.imagePath) {
     const cardIdx = inputs.length;
-    inputs.push({ loop: true, path: config.productCard.imagePath });
+    // same gif demuxer guard as the clip images (`-loop` is image2-only)
+    inputs.push(
+      /\.gif$/i.test(config.productCard.imagePath)
+        ? { path: config.productCard.imagePath }
+        : { loop: true, path: config.productCard.imagePath }
+    );
     const thumb = Math.round(width * 0.16);
     const mx = Math.round(width * 0.045); // left margin
     const pad = Math.round(width * 0.022); // card inner padding

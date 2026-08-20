@@ -14,6 +14,7 @@ import { getDb } from "@/lib/db";
 import { scripts as scriptsTable, assets as assetsTable, projects, compositions } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { composeVideo, resolveChineseFontFamily, type ClipInput, type ComposeConfig } from "@/lib/video-composer/composer";
+import { extractFirstFrame } from "@/lib/video-composer/frame-extract";
 import { buildSubtitleTimeline, padDurationsForFade, segmentBoundaries, type TimelineSegment } from "@/lib/video-composer/timeline";
 import { buildKaraokeAss } from "@/lib/video-composer/karaoke";
 import { isAudibleFromVolumedetect } from "@/lib/video-composer/audio-probe";
@@ -509,8 +510,13 @@ export async function POST(
           }),
           "utf8"
         ).catch(() => {});
+        // 封面缩略图：抽首帧存成片旁（本地抽取永不过期），作品流/项目卡靠它凭画面找片；失败不阻断
+        const thumbnailPath = await extractFirstFrame(outputPath);
         // 完成：更新合成记录与项目状态
-        await db.update(compositions).set({ outputPath, status: "done" }).where(eq(compositions.id, comp.id));
+        await db
+          .update(compositions)
+          .set({ outputPath, status: "done", ...(thumbnailPath && { thumbnailPath }) })
+          .where(eq(compositions.id, comp.id));
         await db.update(projects).set({ status: "done", updatedAt: new Date() }).where(eq(projects.id, id));
       } catch (e) {
         console.error("后台合成失败:", e);

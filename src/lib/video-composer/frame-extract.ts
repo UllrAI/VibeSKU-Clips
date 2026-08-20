@@ -19,6 +19,30 @@ const execFileAsync = promisify(execFile);
 /** Suffix appended to the video path to name its extracted tail frame. */
 export const LAST_FRAME_SUFFIX = ".last.jpg";
 
+/** Suffix appended to a composed output path to name its poster thumbnail. */
+export const THUMB_SUFFIX = ".thumb.jpg";
+
+/**
+ * Extract the clip's FIRST frame as a small poster JPEG (`<video>.thumb.jpg` by
+ * default), scaled to 480px wide for gallery cards. Local extraction keeps the
+ * poster valid forever — never a third-party URL that can expire. Best-effort:
+ * returns undefined on any failure and never blocks the pipeline.
+ */
+export async function extractFirstFrame(videoPath: string, outPath?: string): Promise<string | undefined> {
+  const target = outPath ?? `${videoPath}${THUMB_SUFFIX}`;
+  try {
+    await execFileAsync(
+      ffmpegBin(),
+      ["-nostdin", "-v", "error", "-y", "-i", videoPath, "-frames:v", "1", "-vf", "scale=480:-2", "-q:v", "3", target],
+      { timeout: 60_000 }
+    );
+    const st = await stat(target);
+    return st.size > 0 ? target : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Extract the clip's last frame as a JPEG next to the video (`<video>.last.jpg`
  * by default). `-sseof -0.1` seeks 100ms before EOF so the grab never lands on

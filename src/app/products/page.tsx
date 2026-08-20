@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { LuPlus, LuTrash2, LuPencil, LuPackage, LuImage, LuX, LuVideo, LuCircleAlert } from "react-icons/lu";
+import { LuPlus, LuTrash2, LuPencil, LuPackage, LuImage, LuX, LuVideo, LuCircleAlert, LuLink, LuLoader } from "react-icons/lu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +94,53 @@ export default function ProductsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // ---- link import: paste a product URL → real page fetch + AI extraction (existing ingest
+  // chain) → the parsed fields land in the SAME editable form as a review gate — nothing
+  // enters the library until the user confirms with Save. ----
+  const [importOpen, setImportOpen] = useState(false);
+  const [importUrl, setImportUrl] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importedNotice, setImportedNotice] = useState(false);
+  // images are downloaded server-side under this pre-generated library id, so Save must reuse it
+  const importIdRef = useRef<string | null>(null);
+
+  const handleImportExtract = async () => {
+    const url = importUrl.trim();
+    if (!url || importLoading) return;
+    setImportLoading(true);
+    setImportError(null);
+    try {
+      const libraryProductId = crypto.randomUUID();
+      const res = await fetch("/api/ingest/product", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, createProject: false, libraryProductId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || t("importFailed"));
+      const parsed = (data?.product ?? {}) as { title?: string; priceText?: string; description?: string };
+      const savedImages = Array.isArray(data?.images) ? (data.images as string[]) : [];
+      // prefill the form as the review gate (all fields editable, category picked by hand)
+      importIdRef.current = libraryProductId;
+      setEditingId(null);
+      setName(parsed.title ?? "");
+      setCategory("other");
+      setDescription(parsed.description ?? "");
+      setPrice(parsed.priceText ?? "");
+      setTargetAudience("");
+      setImages(savedImages.map((u) => ({ id: crypto.randomUUID(), url: u })));
+      setSaveError(null);
+      setIsFormOpen(true);
+      setImportOpen(false);
+      setImportUrl("");
+    } catch (err) {
+      setImportError(err instanceof Error ? err.message : t("importFailed"));
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
   // Reset form
   const resetForm = () => {
     setName("");
@@ -111,6 +158,7 @@ export default function ProductsPage() {
     setSaveError(null);
     setIsFormOpen(false);
     setEditingId(null);
+    importIdRef.current = null;
   };
 
   // Handle image file selection
@@ -191,8 +239,10 @@ export default function ProductsPage() {
     setSaveError(null);
 
     try {
-      // Reuse existing id when editing; generate a new id when adding (used as the image storage directory name)
-      const productId = editingId ?? crypto.randomUUID();
+      // Reuse existing id when editing; a link import already stored its images under a
+      // pre-generated id, so Save must keep it; otherwise generate a new one
+      const productId = editingId ?? importIdRef.current ?? crypto.randomUUID();
+      const wasImport = !editingId && importIdRef.current !== null;
 
       // Only items with a file object are newly selected — those need uploading; existing server/example URLs stay as-is
       const filesToUpload = images.filter((img) => img.file);
@@ -245,6 +295,7 @@ export default function ProductsPage() {
         addProduct(newProduct);
       }
 
+      if (wasImport) setImportedNotice(true);
       resetForm();
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : t("uploadFailed"));
@@ -274,18 +325,100 @@ export default function ProductsPage() {
             </p>
           </div>
           {!isFormOpen && (
-            <Button
-              className="brand-gradient text-white"
-              onClick={() => {
-                resetForm();
-                setIsFormOpen(true);
-              }}
-            >
-              <LuPlus className="w-4 h-4 mr-1.5" />
-              {t("addProduct")}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setImportOpen((v) => !v);
+                  setImportError(null);
+                }}
+              >
+                <LuLink className="w-4 h-4 mr-1.5" />
+                {t("importLink")}
+              </Button>
+              <Button
+                className="brand-gradient text-white"
+                onClick={() => {
+                  resetForm();
+                  setIsFormOpen(true);
+                }}
+              >
+                <LuPlus className="w-4 h-4 mr-1.5" />
+                {t("addProduct")}
+              </Button>
+            </div>
           )}
         </div>
+
+        {/* post-confirm shortcut: the freshly stocked library feeds straight into batch rendering */}
+        {importedNotice && !isFormOpen && (
+          <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+            <p className="text-sm text-emerald-400">✓ {t("importSaved")}</p>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link href="/batch">
+                <Button size="sm" variant="outline" className="text-xs">{t("importGoBatch")}</Button>
+              </Link>
+              <button
+                type="button"
+                onClick={() => setImportedNotice(false)}
+                className="flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/50"
+                aria-label={t("cancel")}
+              >
+                <LuX className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* link-import entry: paste URL → extract → review in the form before it enters the library */}
+        {importOpen && !isFormOpen && (
+          <Card className="glass-card ring-1 ring-primary/30 mb-8">
+            <CardContent className="p-5 space-y-3">
+              <h3 className="text-sm font-semibold">{t("importLinkTitle")}</h3>
+              <div className="flex gap-2">
+                <Input
+                  value={importUrl}
+                  onChange={(e) => setImportUrl(e.target.value)}
+                  placeholder={t("importLinkPlaceholder")}
+                  className="bg-muted/30 border-border/50 focus:border-primary"
+                  onKeyDown={(e) => { if (e.key === "Enter") void handleImportExtract(); }}
+                />
+                <Button
+                  className="brand-gradient text-white shrink-0"
+                  disabled={!importUrl.trim() || importLoading}
+                  onClick={handleImportExtract}
+                >
+                  {importLoading ? (
+                    <>
+                      <LuLoader className="w-4 h-4 mr-1.5 animate-spin" />
+                      {t("importExtracting")}
+                    </>
+                  ) : (
+                    t("importExtract")
+                  )}
+                </Button>
+              </div>
+              {importError && (
+                <p className="text-sm text-destructive flex items-center gap-1.5">
+                  <LuCircleAlert className="w-4 h-4 shrink-0" />
+                  {importError}
+                  <button
+                    type="button"
+                    className="underline underline-offset-2 hover:text-foreground"
+                    onClick={() => {
+                      setImportOpen(false);
+                      resetForm();
+                      setIsFormOpen(true);
+                    }}
+                  >
+                    {t("importFallbackManual")}
+                  </button>
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground">{t("importHint")}</p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Add / edit form */}
         {isFormOpen && (
@@ -294,6 +427,12 @@ export default function ProductsPage() {
               <h3 className="text-sm font-semibold">
                 {editingId ? t("formEditTitle") : t("formAddTitle")}
               </h3>
+              {/* review gate for link imports: extracted fields are proposals — check, fix, then confirm */}
+              {!editingId && importIdRef.current && (
+                <p className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+                  {t("importReviewHint")}
+                </p>
+              )}
 
               {/* Product name */}
               <div className="space-y-2">

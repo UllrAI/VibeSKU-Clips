@@ -74,6 +74,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: errText(req, "没能从该链接解析出商品信息，请改用手动填写", "Could not parse product info from this link; please fill it in manually"), product }, { status: 422 });
   }
 
+  // Library-import mode: no project — download the product images into the product-library
+  // storage (uploads/products/<id>/) and return persistent /api/files URLs. The page shows the
+  // parsed fields in an editable review card; nothing enters the library until the user confirms.
+  const libraryProductId =
+    typeof body.libraryProductId === "string" && /^[a-zA-Z0-9\-]+$/.test(body.libraryProductId)
+      ? body.libraryProductId
+      : undefined;
+  if (libraryProductId) {
+    const destDir = join(getUploadsDir(), "products", libraryProductId);
+    await mkdir(destDir, { recursive: true });
+    const savedImages: string[] = [];
+    for (const [i, img] of product.images.slice(0, MAX_IMAGES).entries()) {
+      try {
+        const filePath = await safeDownloadImage(img, destDir, `ingest_${Date.now()}_${i}`);
+        savedImages.push(`/api/files/products/${libraryProductId}/${basename(filePath)}`);
+      } catch {
+        /* Skip images that fail to download or are blocked by SSRF protection */
+      }
+    }
+    return NextResponse.json({ product, images: savedImages });
+  }
+
   if (!createProject) return NextResponse.json({ product });
 
   // Create a commerce project + download the first few product images and persist them

@@ -157,6 +157,20 @@ describe("buildComposeCommand", () => {
     expect(cmd).toContain("-loop 1 -t 3");
   });
 
+  it("GIF 输入不带 -loop（gif 解复用器不认 image2 的 loop 选项，ffmpeg 8 起硬报错；免费素材源真会下到 gif）", () => {
+    const cmd = buildComposeCommand({
+      ...baseConfig,
+      clips: [
+        { type: "image", filePath: "/data/anim.gif", duration: 3, transition: "direct_concat", motion: "zoom_in_slow" },
+        { type: "image", filePath: "/data/img1.jpg", duration: 3, transition: "direct_concat", motion: "zoom_in_slow" },
+      ],
+    });
+    expect(cmd).toContain('-i "/data/anim.gif"');
+    expect(cmd).not.toContain('-loop 1 -t 3 -i "/data/anim.gif"');
+    // 普通图片照旧走 loop（zoompan 链不变，帧数由 filter 决定）
+    expect(cmd).toContain('-loop 1 -t 3 -i "/data/img1.jpg"');
+  });
+
   it("字幕底距随商品卡自适应：无卡抬到 h*0.78（清出 2026 平台底部 UI 区）、有卡维持 h*0.83 紧贴卡下", () => {
     const sub = { texts: [{ text: "测试字幕", startTime: 0, endTime: 3 }], position: "bottom" as const };
     // no product card → not constrained by card-above-text stacking, caption bottom edge raised to h*0.78

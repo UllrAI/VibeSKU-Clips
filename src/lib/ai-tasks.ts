@@ -106,3 +106,9 @@ export async function listAiTasks(projectId: string, activeOnly: boolean) {
     : eq(aiTasks.projectId, projectId);
   return db.select().from(aiTasks).where(where);
 }
+
+/** All still-active paid tasks across every project — the global task center's "money at risk" view */
+export async function listActiveAiTasksAllProjects() {
+  const db = getDb();
+  return db.select().from(aiTasks).where(inArray(aiTasks.status, ACTIVE_AI_TASK_STATUSES));
+}

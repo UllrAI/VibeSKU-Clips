@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { LanguageToggle } from "@/components/language-toggle";
+import { TaskCenter } from "@/components/task-center";
 import { useT } from "@/lib/i18n";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import {
@@ -189,6 +190,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </div>
           )}
+          {/* task center: cross-project running/attention feed (the "global" word would make eslint parse this comment as a globals directive) */}
+          <div className={collapsed ? "flex justify-center" : ""}>
+            <TaskCenter collapsed={collapsed} />
+          </div>
           <Link
             href="/settings"
             title={collapsed ? t("settings") : undefined}
@@ -224,6 +229,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-sm font-bold tracking-tight">ClipForge</span>
           </Link>
           <div className="flex items-center gap-1">
+            <TaskCenter collapsed />
             <LanguageToggle />
             <DropdownMenu>
               <DropdownMenuTrigger

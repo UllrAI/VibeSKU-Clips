@@ -85,6 +85,13 @@
       "when": 1786078335796,
       "tag": "0011_add_ad_template_recipes",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1787217121237,
+      "tag": "0012_pipeline_batch_thumbnail",
+      "breakpoints": true
     }
   ]
 }

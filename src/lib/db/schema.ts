@@ -132,6 +132,10 @@ export const compositions = sqliteTable("compositions", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   outputPath: text("output_path"),
+  // First-frame poster extracted right after a successful render (absolute path next to the
+  // output file). Local extraction — never a third-party URL that can expire. Backfilled
+  // lazily by /api/works for rows rendered before this column existed.
+  thumbnailPath: text("thumbnail_path"),
   resolution: text("resolution", { enum: ["720p", "1080p"] }).default("1080p"),
   aspectRatio: text("aspect_ratio", { enum: ["9:16", "16:9", "1:1"] }).default("9:16"), // Portrait-first
   duration: integer("duration"), // Milliseconds
@@ -144,6 +148,54 @@ export const compositions = sqliteTable("compositions", {
   label: text("label"),
   status: text("status", { enum: ["pending", "composing", "done", "failed"] }).notNull().default("pending"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+// Server-side pipeline runs — the hands-off chain (judge → stock-fill → compose) as a
+// persistent record instead of a string of browser fetches. Closing the tab no longer kills
+// the run: the page re-attaches via GET and a failed/interrupted run can resume from its
+// recorded stage instead of starting over.
+export const pipelineRuns = sqliteTable("pipeline_runs", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  scriptId: text("script_id"),
+  // the stage currently executing — on failure it marks the breakpoint to resume from
+  stage: text("stage", { enum: ["judge", "stock_fill", "compose"] }).notNull().default("judge"),
+  status: text("status", { enum: ["running", "done", "failed"] }).notNull().default("running"),
+  compositionId: text("composition_id"),
+  error: text("error"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+// Batch jobs — a /batch run persisted the moment it starts. The executor still lives in the
+// page (items only progress while it is open), but progress and per-item output links survive
+// any refresh/crash, and an unfinished job offers "continue where it left off" on reload.
+export const batchJobs = sqliteTable("batch_jobs", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  status: text("status", { enum: ["running", "done", "cancelled"] }).notNull().default("running"),
+  total: integer("total").notNull().default(0),
+  // full run config: videoMode/scriptStyle/duration/toggles + the anti-homogenization plan,
+  // so a resumed job re-runs remaining items with identical settings and variation slots
+  config: text("config", { mode: "json" }).$type<Record<string, unknown>>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+// Batch job items — one row per product in the batch, back-linking the produced project and
+// composition so nothing rendered is ever orphaned from its batch.
+export const batchJobItems = sqliteTable("batch_job_items", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  jobId: text("job_id").notNull().references(() => batchJobs.id, { onDelete: "cascade" }),
+  productId: text("product_id").notNull(),
+  productName: text("product_name").notNull(),
+  // human-readable variation-slot summary (display only; the machine slot lives in job config)
+  variation: text("variation"),
+  projectId: text("project_id"),
+  compositionId: text("composition_id"),
+  status: text("status", { enum: ["pending", "generating", "composing", "done", "failed"] }).notNull().default("pending"),
+  error: text("error"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
 // Products table — product information reused across projects

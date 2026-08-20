@@ -19,6 +19,7 @@ import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useCharacterStore } from "@/lib/stores/project-store";
 import { resolveDefaultModelTarget, buildImageOptions, buildVideoOptions, toEditVariant } from "@/lib/gen-params";
 import { useT, useLocale } from "@/lib/i18n";
+import { STAGE_LABEL_KEYS } from "@/lib/pipeline-stages";
 import { friendlyError } from "@/lib/friendly-error";
 import { ProjectHeader } from "@/components/project-header";
 
@@ -347,13 +348,7 @@ export default function ScriptPage() {
     const p = qs.get("presenter");
     if (p) setPresenterParam(p);
   }, []);
-  useEffect(() => {
-    if (!autoMode || autoModeTriggered || loading || !currentScript) return;
-    setAutoModeTriggered(true);
-    // the AI path lands on the "script ready" gate instead of auto-running the free chain
-    if (genPref !== "ai") autoFinish();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- autoFinish is a stable page-level handler; triggering once per auto entry
-  }, [autoMode, autoModeTriggered, loading, currentScript, genPref]);
+  // (the ?auto=1 fresh-start trigger lives below, after the pipeline re-attach check)
   // Judge pass — the quality bar runs in BOTH hands-off chains, not just the pro editor.
   // Four narrow judges tear the voiceover lines apart and their rewrites are applied
   // automatically BEFORE any footage matching / generation money. Beginners never operate
@@ -409,56 +404,98 @@ export default function ScriptPage() {
     }
   };
 
-  const autoFinish = async () => {
-    if (!currentScript || autoFinishing) return;
+  // The free chain now runs SERVER-SIDE (pipeline_runs): the page only starts a run and
+  // observes it, so closing/refreshing the tab no longer kills the chain — reopening the
+  // project re-attaches to the live run, and a failed run offers resume-from-breakpoint.
+  const [resumableRun, setResumableRun] = useState<{ id: string; stage: string; interrupted?: boolean } | null>(null);
+
+  /** Poll the project's latest pipeline run to a terminal status, mirroring stage labels. */
+  const attachPipeline = async () => {
     setAutoFinishing(true);
     setAutoFinishError("");
+    setResumableRun(null);
     try {
-      // 0) make sure the picked variant is the one the pipeline uses
-      setAutoFinishStage(t("autoFinishSelecting"));
-      await fetch(`/api/project/${id}/scripts`, {
-        method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedScriptId: currentScript.id }),
-      }).catch(() => {});
-      // 0.5) judge pass: rewrite weak lines before they get voiced (free chain still gets the quality bar)
-      await runJudgePass(currentScript.id, setAutoFinishStage);
-      // 1) auto-match free footage (per-shot video, fall back to image) — non-fatal
-      setAutoFinishStage(t("autoFinishAssets"));
-      await fetch(`/api/project/${id}/stock-fill`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        // llmConfig opt-in: semantic rerank picks the best-matching footage per shot (heuristic fallback inside the route)
-        body: JSON.stringify({
-          source: "all", mediaType: "auto",
-          ...(llm.baseUrl && llm.model ? { llmConfig: { baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model } } : {}),
-        }),
-      }).catch(() => {});
-      // 2) compose (free Edge TTS)
-      setAutoFinishStage(t("autoFinishComposing"));
-      const composeRes = await fetch(`/api/project/${id}/compose`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ freeTts: { enabled: true } }),
-      });
-      if (!composeRes.ok) throw new Error(t("autoFinishFailed"));
-      const composeData = await composeRes.json().catch(() => ({}));
-      const compositionId: string | undefined = composeData?.compositionId;
-      const query = compositionId ? `?compositionId=${encodeURIComponent(compositionId)}` : "";
-      // 3) poll until done/failed (up to ~11 min, > server render timeout)
-      let done = false;
-      for (let i = 0; i < 264; i++) {
+      // 2.5s × 312 ≈ 13 min, above the server-side compose polling budget
+      for (let i = 0; i < 312; i++) {
+        const d = await fetch(`/api/project/${id}/pipeline`).then((x) => x.json()).catch(() => ({}));
+        const run = d?.run;
+        if (!run) throw new Error(t("autoFinishFailed"));
+        const labelKey = STAGE_LABEL_KEYS[run.stage as keyof typeof STAGE_LABEL_KEYS];
+        setAutoFinishStage(labelKey ? t(labelKey) : t("autoFinishSelecting"));
+        if (run.status === "done") { router.push(`/project/${id}/export`); return; }
+        if (run.status === "failed") {
+          setResumableRun({ id: run.id, stage: run.stage, interrupted: run.interrupted });
+          throw new Error(run.error === "interrupted" ? t("pipelineInterrupted") : run.error || t("autoFinishFailed"));
+        }
         await new Promise((r) => setTimeout(r, 2500));
-        const c = await fetch(`/api/project/${id}/compose${query}`).then((x) => x.json()).catch(() => ({}));
-        const st = c?.composition?.status;
-        if (st === "done") { done = true; break; }
-        if (st === "failed") throw new Error(c?.composition?.errorMessage || t("autoFinishFailed"));
       }
-      if (!done) throw new Error(t("autoFinishFailed"));
-      // 4) land on export
-      router.push(`/project/${id}/export`);
+      throw new Error(t("autoFinishFailed"));
     } catch (err) {
       setAutoFinishError(friendlyError(err, locale));
       setAutoFinishing(false);
     }
   };
+
+  /** Start (or resume) the server-side run, then attach as an observer. */
+  const startPipeline = async (resume: boolean) => {
+    if (autoFinishing) return;
+    if (!resume && !currentScript) return;
+    setAutoFinishing(true);
+    setAutoFinishError("");
+    setAutoFinishStage(t("autoFinishSelecting"));
+    try {
+      const res = await fetch(`/api/project/${id}/pipeline`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(resume ? { resume: true } : { scriptId: currentScript!.id }),
+          // LLM config opt-in: enables the judge quality pass + semantic footage rerank
+          ...(llm.baseUrl && llm.model ? { llmConfig: { baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model } } : {}),
+        }),
+      });
+      if (!res.ok) throw new Error(t("autoFinishFailed"));
+      await attachPipeline();
+    } catch (err) {
+      setAutoFinishError(friendlyError(err, locale));
+      setAutoFinishing(false);
+    }
+  };
+
+  const autoFinish = () => startPipeline(false);
+
+  // On entry, look for a live or breakpointed run BEFORE any fresh auto start:
+  // live → re-attach (the "came back after closing the tab" path);
+  // failed → surface the resume/restart choice instead of silently starting over.
+  const [pipelineChecked, setPipelineChecked] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const d = await fetch(`/api/project/${id}/pipeline`).then((x) => x.json()).catch(() => ({}));
+        if (cancelled) return;
+        const run = d?.run;
+        if (run?.status === "running") {
+          setAutoModeTriggered(true); // suppress the fresh ?auto=1 trigger — we're already attached
+          void attachPipeline();
+        } else if (run?.status === "failed") {
+          setResumableRun({ id: run.id, stage: run.stage, interrupted: run.interrupted });
+        }
+      } finally {
+        if (!cancelled) setPipelineChecked(true);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- one-shot on mount; attachPipeline is a stable page-level handler
+  }, [id]);
+
+  // ?auto=1 fresh start (from the /start hero flows) — only after the re-attach check settled,
+  // so an already-live or breakpointed run is never silently restarted from the top
+  useEffect(() => {
+    if (!autoMode || autoModeTriggered || loading || !currentScript || !pipelineChecked || resumableRun) return;
+    setAutoModeTriggered(true);
+    // the AI path lands on the "script ready" gate instead of auto-running the free chain
+    if (genPref !== "ai") autoFinish();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- autoFinish is a stable page-level handler; triggering once per auto entry
+  }, [autoMode, autoModeTriggered, loading, currentScript, genPref, pipelineChecked, resumableRun]);
 
   // ---- AI film chain (grid → one-call film): the paid path. The free script above is the
   // zero-cost "video plan" gate — money is only spent after this one explicit click, and the
@@ -878,6 +915,30 @@ export default function ScriptPage() {
       {headerBar}
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {/* breakpoint choice: a failed/interrupted server-side run offers resume (default) or a
+            clean restart — the beginner never loses a half-finished chain to a closed tab again */}
+        {resumableRun && !autoFinishing && !aiFilming && (
+          <div className="mx-auto mb-5 max-w-2xl rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+            <p className="text-sm font-medium text-amber-500">
+              ⏸ {resumableRun.interrupted ? t("pipelineInterruptedTitle") : t("pipelineFailedTitle")}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("pipelineResumeDesc", {
+                stage: STAGE_LABEL_KEYS[resumableRun.stage as keyof typeof STAGE_LABEL_KEYS]
+                  ? t(STAGE_LABEL_KEYS[resumableRun.stage as keyof typeof STAGE_LABEL_KEYS])
+                  : resumableRun.stage,
+              })}
+            </p>
+            <div className="mt-2.5 flex gap-2">
+              <Button size="sm" className="brand-gradient text-white" onClick={() => startPipeline(true)}>
+                {t("pipelineResume")}
+              </Button>
+              <Button size="sm" variant="outline" disabled={!currentScript} onClick={() => startPipeline(false)}>
+                {t("pipelineRestart")}
+              </Button>
+            </div>
+          </div>
+        )}
         {uiMode === "simple" ? (
           /* Beginner view: script text + one big button. No storyboard, no panels. */
           <div className="mx-auto max-w-2xl space-y-4">

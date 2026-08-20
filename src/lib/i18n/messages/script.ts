@@ -99,6 +99,13 @@ export const script: NamespaceMessages = {
     autoFinishAssets: "配画面中…",
     autoFinishComposing: "合成中…",
     autoFinishFailed: "自动成片失败，可改用「下一步」手动逐步完成",
+    // 服务端流水线：断点续跑（关页不丢链）
+    pipelineInterrupted: "上次出片被中断（服务重启或异常退出）",
+    pipelineInterruptedTitle: "上次出片中断了",
+    pipelineFailedTitle: "上次出片没成功",
+    pipelineResumeDesc: "停在「{stage}」这一步。可以从断点接着跑（已完成的步骤不重来），也可以从头再来。",
+    pipelineResume: "从断点续跑",
+    pipelineRestart: "重新开始",
     autoModeTitle: "AI 正在为你出片",
     autoModeHint: "自动完成：写脚本 → 判官团审台词 → 配画面（免费素材）→ 配音合成。通常 1–3 分钟，完成后直接看成片。",
     autoModeManual: "转手动编辑",
@@ -253,6 +260,13 @@ export const script: NamespaceMessages = {
     aiFilmNeedModels: "No image/video model configured yet — pick one under Settings → Image model and Video model (Atlas covers both with one key)",
     simpleGoPro: "Open Director mode \u2192",
     autoFinishFailed: "Auto-finish failed — use “Next” to complete the steps manually",
+    // Server-side pipeline: resume from breakpoint (closing the tab no longer kills the chain)
+    pipelineInterrupted: "The last run was interrupted (server restart or crash)",
+    pipelineInterruptedTitle: "Your last run was interrupted",
+    pipelineFailedTitle: "Your last run didn't finish",
+    pipelineResumeDesc: "It stopped at “{stage}”. Resume from the breakpoint (finished steps are kept), or start over.",
+    pipelineResume: "Resume from breakpoint",
+    pipelineRestart: "Start over",
     // 保存模板弹窗
     saveTemplateTitle: "Save as template",
     saveTemplateDesc: "Save this script structure as a template to reuse on other products",

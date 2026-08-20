@@ -40,6 +40,10 @@ export async function GET(
     mp4: "video/mp4",
     webm: "video/webm",
     mov: "video/quicktime",
+    // poster thumbnails (<output>.thumb.jpg) ride the same file server as the videos
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    png: "image/png",
   };
 
   // Optional download: when ?download=1 is present, instruct the browser to download the file
