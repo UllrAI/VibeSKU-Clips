@@ -28,41 +28,17 @@
 
 | Exclusive | In one line |
 |---|---|
-| 🧭 **Two-mode workspace** | Easy mode: script → one-tap finished video, fully hands-off; Director mode unlocks the storyboard and every pro tool |
-| 🧠 **Production console** | Director mode brings workflow, real model-cost ranges, time estimates, smart routing, version history, failure diagnosis, and project visual memory into one view |
-| 🔍 **Media analysis → project memory** | Read subjects, lighting, composition, camera language, and pacing from any image/video; derive a reusable prompt and save it to a project |
-| 🧬 **Consistency + QC repair loop** | Character/product/outfit anchors enter real image/video requests; finished-video QC becomes free auto-fixes or confirmed single-stage repair plans |
-| 🚦 **Free / AI dual path** | Choose at creation: a free quick cut at $0, or an AI-generated film with the cost printed on the option and exactly one paid click (your own key, billed by the model platform) |
-| 🔁 **Close-the-tab-safe · resume from breakpoint** | The free one-tap chain now runs server-side and persists: reopen the project and it re-attaches to live progress; a failed/interrupted run offers "resume from breakpoint (default) / start over"; batch runs persist item by item and continue after a refresh, skipping finished items |
-| 🔔 **Global task center** | A sidebar bell shows everything running across ALL projects — pipelines, renders, paid cloud tasks, the active batch; billed tasks that lost contact get an amber alert linking straight to recovery |
-| 🖼 **Works feed · find clips by picture** | Every render auto-extracts a first-frame poster (history backfilled lazily); a new Works tab lists all finished videos across projects with posters and direct download; project cards gain posters and a delete entrance |
-| 🔗 **Stock the library from a link** | Paste a product URL: real page fetch + extraction of name/selling points/price/images → an editable review card → nothing enters the library until you confirm — then straight to batch |
-| ⚖️ **Easy mode, full quality** | The judge panel, multi-view sheets and camera moves run automatically inside every hands-off chain — beginners skip the operating, never the quality |
-| 🧑‍⚖️ **Judge panel v2 · five judges** | New visual judge ("who does what in THIS second" — purpose sentences rewritten into visible actions) + evidence-quoting required + three adoption tiers (critical/should-fix/taste); hands-off chains auto-apply only the first two |
-| 🎬 **Director-grade script discipline** | Action-generability rules (un-filmable writing banned + rewrite ladder) + three hard shot-design rules + scene-driven camera language + three-beat emotion process + wearable state anchors — scripts are born shootable |
-| 🔬 **i2v physical-realism layers** | Category material constraints (cream won't clump / food won't crumble / fabric drapes) + physical-interaction phrases + living background + hair/fabric inertia — a three-tier single-select, all-on by default |
-| 💸 **Pre-spend gate** | AI film shows a free preview first (full prompt + dialogue-density flags + reference quota check); confirmation invalidates on script edits; six-symptom single-variable retake diagnosis |
-| 🎤 **True karaoke sync + zero freeze-frames** | Free TTS returns word-level timestamps, so highlights follow real speech rhythm and caption cards flip on word edges; stock search binds to shot length with auto slow-fit — no more 8s frozen tails |
-| 🧱 **Triple reliability gate** | Every download is decode-validated with auto re-pick, paid TTS falls back to the free engine (never a silent shot), and reasoning-model `<think>` residue is scrubbed with an auto re-ask — defused before money or rendering |
-| 🎭 **Realism kit** | Real-shot looks (phone raw / front-cam selfie / propped static) + voice grounding (room tone + de-broadcast TTS) + walking/halation/transcode-look post + Seedance official `{}` dialogue syntax — built to kill the "obviously AI" look |
-| 🪝 **Attention upgrade** | Hook library grown to 16 patterns (confession / honest-flaw / elimination haul / cost math / comment reply / hype-confirm) + retention-and-conversion hard rules (product in 3s / mid-video re-hook / dual CTA placement / soft urgency) + a comment-ops kit in the publish pack |
-| 🎯 **Product fidelity** | Swap the background and relight — the product itself stays pixel-identical |
-| 🎞️ **One-tap full film** | Judges tear the lines → grid locks consistency → Seedance 2.5 renders the whole film, spoken in the character's own voice |
-| 🎬 **Real moving shots** | Image-to-video + seamless transitions + 18 camera presets — not a slideshow |
-| 🎭 **Mini-drama selling** | Ten script styles + ordinary-person presenters + UGC realism rules — no plastic AI-influencer look |
-| 👤 **Presenter library** | Multiple personas with four-view reference sheets — the same face across shots and videos |
-| 🎁 **391 ad templates** | Product-aware recommendations, one-click full-pipeline apply; AI-customizable, shareable, forkable |
-| 🔥 **What to post today** | Live trend picks, tap a trend to render, cron it for a hands-free daily machine |
-| 🔁 **Viral replication** | Parse a reference video's rhythm skeleton shot by shot, swap in your product |
-| 🧪 **Variant matrix** | Hook × caption × BGM combos batch-rendered for A/B, zero AI-generation cost |
-| 🆓 **A full video at $0** | Free stock + free voiceover + local compositing — no key, no watermark |
-| 🚦 **Don't get throttled** | AIGC labeling + banned-term scan + publish gate, on by default |
-| 📦 **Batch rendering** | 10 products rendered in one click |
-| 🤖 **Agent-native** | MCP / CLI / Skill — one sentence in Claude / Cursor makes the video |
-| 💰 **Paid calls never wasted** | Cloud tasks persisted and recoverable, never auto-retried |
+| 🚀 **Two paths to a finished video** | Render at $0 with free stock, voiceover, and local compose—or confirm the price before AI generation |
+| 🧭 **Easy / Director modes** | One-tap automation for beginners; storyboard, model, cost, version, and repair controls for pros |
+| 🧬 **Cross-shot consistency** | Character, product, wardrobe, and scene anchors enter real generation requests |
+| 🎬 **More than a slideshow** | Real image-to-video, seamless transitions, native speech, camera motion, and live-shot finishing |
+| 🛡️ **Protected spending** | Preview and validate before payment; recover tasks; run QC before choosing a rerender |
+| 📦 **Built to scale** | 391 templates, trend picks, viral replication, A/B variants, and batch production |
+| 🚦 **Compliance by default** | AIGC labels, banned-ad-term scanning, and publish checks ship enabled |
+| 🤖 **Agent-ready** | Web, MCP, CLI, and Skill share the same production capabilities |
 
 <details>
-<summary><b>📖 Expand: the full details behind each line</b></summary>
+<summary><b>📖 Optional: full feature and release details</b></summary>
 
 - 🎞️ **One-tap full film**: before generation costs a cent, four narrow judges (pacing / spoken voice / freshness / structure) tear the lines per shot and produce length-preserving rewrites, applied in one click (also a standalone [script-judges skill](skills/script-judges/SKILL.md)); the **storyboard grid** paints ≤9 shots into one 3x3 image — person, outfit, room and light physically consistent — auto-cropped into per-shot keyframes; all keyframes then ride one Seedance 2.5 reference-to-video call into a complete film (≤30s) — native cuts, lines spoken verbatim, continuous audio (real-product samples below).
 - 🎬 **Real moving shots**: i2v + keyframe-chained seamless transitions; 18 named camera presets per shot with Mix two-preset overlays; 8 one-click visual looks; redo any shot keeping its keyframe.
