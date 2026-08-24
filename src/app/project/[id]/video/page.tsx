@@ -218,6 +218,10 @@ export default function VideoPage() {
         if (project) {
           setProjectName(project.name ?? project.productName ?? "");
           setProjectCategory(typeof project.productCategory === "string" ? project.productCategory : "");
+          if (Array.isArray(project.productionWorkflow)) {
+            const voiceStage = project.productionWorkflow.find((stage: { id?: unknown }) => stage.id === "voice");
+            if (voiceStage) setConfig((current) => ({ ...current, ttsEnabled: voiceStage.enabled !== false }));
+          }
         }
         // 收集每个分镜已生成的画面，作时间线缩略图（已完成且有文件的才算）
         const thumbMap: Record<number, string> = {};
@@ -261,6 +265,13 @@ export default function VideoPage() {
   useEffect(() => {
     setConfig((c) => ({ ...c, resolution: defaultResolution, aspectRatio: defaultAspectRatio }));
   }, [defaultResolution, defaultAspectRatio]);
+
+  // Production-console preview hand-off: select the existing real fast profile
+  // (720p / veryfast / CRF 26) without touching any paid generation stage.
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("renderPreset") !== "fast") return;
+    setConfig((current) => ({ ...current, renderPreset: "fast", resolution: RENDER_PRESETS.fast.resolution }));
+  }, []);
 
   const totalDuration = clips.reduce((sum, c) => sum + c.duration, 0);
 

@@ -33,6 +33,7 @@ const NAV_SECTIONS: { labelKey: string; items: NavItem[] }[] = [
       { key: "navHome", href: "/start", icon: "home" },
       { key: "navNew", href: "/project/new", icon: "plus", proOnly: true },
       { key: "navClone", href: "/project/clone", icon: "flame" },
+      { key: "navMediaLab", href: "/media-lab", icon: "scan", proOnly: true },
       { key: "navBatch", href: "/batch", icon: "layers", proOnly: true },
     ],
   },
@@ -60,6 +61,7 @@ function NavIcon({ name }: { name: string }) {
       </>
     ),
     flame: <path d="M12 3c1 3-3 4.5-3 8a3 3 0 0 0 6 0c0-1-.5-2-.5-2s3 1.5 3 5a5.5 5.5 0 0 1-11 0c0-5 5.5-6.5 5.5-11Z" />,
+    scan: <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 12h8" />,
     layers: <path d="m12 3 9 5-9 5-9-5 9-5ZM3 13l9 5 9-5" />,
     folder: <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" />,
     box: <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m8-4.5L12 12 4 7.5" />,

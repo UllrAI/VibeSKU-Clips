@@ -11,6 +11,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSettingsStore } from "@/lib/stores/settings-store";
+import { ProductionProfilePicker } from "@/components/production-profile-picker";
 import { useProductLibraryStore } from "@/lib/stores/product-library-store";
 import { useCharacterStore } from "@/lib/stores/project-store";
 import { getExampleProducts, type ExampleProduct } from "@/lib/examples";
@@ -795,6 +796,7 @@ export default function StartPage() {
                 </select>
               </div>
             )}
+            {genMode === "ai" && <ProductionProfilePicker />}
 
             {needKey && !llmReady && (
               <div className="cf-keyform" ref={keyformRef}>

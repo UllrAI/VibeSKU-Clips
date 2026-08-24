@@ -11,6 +11,11 @@ import {
 } from "@/lib/gen-params";
 import { ATLAS_BASE_URL, ATLAS_ONEKEY_MODELS, fillAtlasModelDefaults } from "@/lib/atlas-onekey";
 import type { MotionIntensity, MotionRealismTier } from "@/lib/motion-prompt";
+import {
+  isProductionProfileId,
+  productionProfilePatch,
+  type ProductionProfileId,
+} from "@/lib/production-profiles";
 
 // AI Provider 配置
 export interface ProviderSetting {
@@ -74,6 +79,8 @@ export interface SettingsState {
   // UI complexity mode: "simple" keeps only the happy path (beginner default),
   // "pro" reveals the director panel, per-shot camera tools, template workshop etc.
   uiMode: "simple" | "pro";
+  // 面向创作目标的当前生产方案（原子更新下方 provider-agnostic 参数）
+  activeProductionProfile: ProductionProfileId;
   // 界面语言（首次按系统语言自动判定，可手动切换）
   locale: Locale;
   // 语言来源：auto=跟随系统语言自动判定，user=用户手动选过（不再自动覆盖）
@@ -99,6 +106,7 @@ export interface SettingsState {
   setChainMode: (mode: "pin" | "tail" | "off") => void;
   setVisualLook: (look: string) => void;
   setUiMode: (mode: "simple" | "pro") => void;
+  applyProductionProfile: (profile: ProductionProfileId) => void;
   /** 一个 Atlas Key 一键接入：脚本+看图+生图+生视频+配音全配好（不覆盖用户已选模型/已开的配音） */
   applyAtlasOneKey: (apiKey: string) => void;
 }
@@ -145,6 +153,9 @@ export function migrateSettings(state: SettingsState): SettingsState {
 
     llm.baseUrl = llm.baseUrl.replace(/^(https?:\/\/)localhost(:11434\b)/i, "$1127.0.0.1$2");
   }
+  if (!isProductionProfileId(state?.activeProductionProfile)) {
+    state.activeProductionProfile = "balanced";
+  }
   return state;
 }
 
@@ -188,6 +199,7 @@ export const useSettingsStore = create<SettingsState>()(
       chainMode: "pin",
       visualLook: "none",
       uiMode: "simple",
+      activeProductionProfile: "balanced",
       locale: DEFAULT_LOCALE,
       localeSource: "auto",
 
@@ -216,6 +228,8 @@ export const useSettingsStore = create<SettingsState>()(
       setChainMode: (mode) => set({ chainMode: mode }),
       setVisualLook: (look) => set({ visualLook: look }),
       setUiMode: (mode) => set({ uiMode: mode }),
+      applyProductionProfile: (profile) =>
+        set((state) => productionProfilePatch(profile, state)),
       // 一个 Atlas Key 一键接入全套：LLM 脚本 + Vision 看图 + 生图 + 生视频 + Atlas 配音
       applyAtlasOneKey: (apiKey) =>
         set((state) => {
@@ -252,7 +266,8 @@ export const useSettingsStore = create<SettingsState>()(
       // 只在 baseUrl 匹配对应官方端点时改写，避免误伤自建代理上的同名自定义模型。
       // v2：把已停用的 Pollinations 免 Key 地址迁到新端点（见 migrateSettings 注释）。
       // v3：Ollama 的 localhost:11434 改写成 127.0.0.1:11434（Windows 上 ::1 连不通）。
-      version: 3,
+      // v4：补充面向创作目标的生产方案；旧设置迁移到兼顾质量与成本的 balanced。
+      version: 4,
       migrate: (persisted) => migrateSettings(persisted as SettingsState),
     }
   )

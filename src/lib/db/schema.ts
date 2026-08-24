@@ -1,4 +1,11 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import type {
+  CreativeIntent,
+  ProductionSnapshot,
+  ProjectMediaInsight,
+  VisualBible,
+  WorkflowStagePlan,
+} from "@/lib/production-system";
 
 // Projects table
 export const projects = sqliteTable("projects", {
@@ -27,6 +34,13 @@ export const projects = sqliteTable("projects", {
   sourceType: text("source_type", { enum: ["manual", "clone"] }).default("manual"), // manual=created by hand, clone=viral-video remake
   sourceVideoUrl: text("source_video_url"), // Source video URL for viral-video remakes
   characterId: text("character_id"), // On-screen character bound to the project (live_presenter mode only)
+  // Project-level production intelligence. JSON columns keep the new planning/memory layer
+  // additive: existing projects read null and continue through the original pipeline unchanged.
+  creativeIntent: text("creative_intent", { mode: "json" }).$type<CreativeIntent>(),
+  visualBible: text("visual_bible", { mode: "json" }).$type<VisualBible>(),
+  mediaInsights: text("media_insights", { mode: "json" }).$type<ProjectMediaInsight[]>().default([]),
+  productionWorkflow: text("production_workflow", { mode: "json" }).$type<WorkflowStagePlan[]>(),
+  versionSnapshots: text("version_snapshots", { mode: "json" }).$type<ProductionSnapshot[]>().default([]),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });

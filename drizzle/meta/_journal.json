@@ -92,6 +92,13 @@
       "when": 1787217121237,
       "tag": "0012_pipeline_batch_thumbnail",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1787539647208,
+      "tag": "0013_production_intelligence",
+      "breakpoints": true
     }
   ]
 }

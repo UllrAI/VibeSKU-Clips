@@ -198,6 +198,6 @@ export function dynamicVideoModels(
         .join(' · ') || undefined,
       modes: modesFromCatalogEntry(e),
       mediaType: 'video' as const,
-      extra: { dynamic: true, ...(e.schemaUrl && { schemaUrl: e.schemaUrl }) },
+      extra: { dynamic: true, ...(e.schemaUrl && { schemaUrl: e.schemaUrl }), ...(e.priceBase && { priceBase: e.priceBase }) },
     }))
 }

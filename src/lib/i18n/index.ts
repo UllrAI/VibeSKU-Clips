@@ -9,6 +9,7 @@
  */
 
 import { useSettingsStore } from "@/lib/stores/settings-store";
+import { useCallback } from "react";
 import { DEFAULT_LOCALE, type Locale } from "./config";
 import { messages } from "./messages";
 
@@ -35,10 +36,10 @@ function interpolate(tpl: string, vars?: Vars): string {
  */
 export function useT(namespace: string): (key: string, vars?: Vars) => string {
   const locale = useLocale();
-  return (key: string, vars?: Vars): string => {
+  return useCallback((key: string, vars?: Vars): string => {
     const dict = messages[locale]?.[namespace];
     const fallback = messages[DEFAULT_LOCALE]?.[namespace];
     const tpl = dict?.[key] ?? fallback?.[key] ?? key;
     return interpolate(tpl, vars);
-  };
+  }, [locale, namespace]);
 }

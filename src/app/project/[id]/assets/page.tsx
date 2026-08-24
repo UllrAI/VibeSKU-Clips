@@ -32,6 +32,15 @@ import { realFaceLine } from "@/lib/presenters";
 import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
 import { useT, useLocale } from "@/lib/i18n";
 import { ProjectHeader } from "@/components/project-header";
+import { ModelCapabilityPreflight } from "@/components/model-capability-preflight";
+import {
+  checkPromptConsistency,
+  compileCreativePrompt,
+  sanitizeCreativeIntent,
+  sanitizeVisualBible,
+  type CreativeIntent,
+  type VisualBible,
+} from "@/lib/production-system";
 
 // shot type labels (label changed to i18n key in the assets namespace, resolved per locale)
 const shotTypeLabels: Record<Shot["type"], { key: string; color: string }> = {
@@ -49,6 +58,7 @@ interface ImageModelTarget {
   model: string;
   apiKey: string;
   baseUrl?: string;
+  supportsAudio?: boolean;
 }
 
 // persisted cloud AI task row (from /api/ai/tasks, issue #16 recovery flow)
@@ -85,6 +95,8 @@ export default function AssetsPage() {
   const [contentType, setContentType] = useState<string>("");
   // project product category — unlocks the category physical-realism layers in the i2v motion prompt
   const [projectCategory, setProjectCategory] = useState<string>("");
+  const [projectCreativeIntent, setProjectCreativeIntent] = useState<CreativeIntent>({ subject: "" });
+  const [projectVisualBible, setProjectVisualBible] = useState<VisualBible>({ characterAnchors: [], productAnchors: [], wardrobeAnchors: [], environmentAnchors: [], lightingAnchors: [], forbiddenChanges: [] });
   // real tail frames of videos generated THIS session (shotId → extracted last-frame URL);
   // tail-chain mode starts the next shot from here for a pixel-continuous cut
   const lastFrameByShot = useRef(new Map<number, string>());
@@ -154,6 +166,12 @@ export default function AssetsPage() {
           setProductImages(imgs);
           setContentType(typeof project.contentType === "string" ? project.contentType : "");
           setProjectCategory(typeof project.productCategory === "string" ? project.productCategory : "");
+          setProjectCreativeIntent(sanitizeCreativeIntent(project.creativeIntent));
+          setProjectVisualBible(sanitizeVisualBible(project.visualBible));
+          if (Array.isArray(project.productionWorkflow)) {
+            const motionStage = project.productionWorkflow.find((stage: { id?: unknown }) => stage.id === "motion");
+            if (motionStage) setAutoMotion(motionStage.enabled !== false);
+          }
         }
 
         // use the selected script (fall back to the first one if none is marked selected)
@@ -395,7 +413,7 @@ export default function AssetsPage() {
         if (cancelled || !model) return;
         const prov = enabled.find((e) => e.name === model.provider);
         if (prov) {
-          setVideoModelTarget({ provider: prov.name, model: defaultVideoModel, apiKey: prov.apiKey, baseUrl: prov.baseUrl });
+          setVideoModelTarget({ provider: prov.name, model: defaultVideoModel, apiKey: prov.apiKey, baseUrl: prov.baseUrl, supportsAudio: model.supportsAudio });
         }
       } catch {
         // ignore
@@ -563,7 +581,18 @@ export default function AssetsPage() {
       // diagnosis retake (user-initiated, billed): patch exactly ONE dimension onto the prompt.
       // Base = the freshly rebuilt prompt — deterministic, so with unchanged settings it equals
       // what the previous submit sent, and the patch is the only difference.
-      let finalPrompt = motionPrompt;
+      const projectDirection = compileCreativePrompt({
+        ...projectCreativeIntent,
+        continuity: [...(projectCreativeIntent.continuity ?? []), ...projectVisualBible.characterAnchors, ...projectVisualBible.wardrobeAnchors, ...projectVisualBible.environmentAnchors, ...projectVisualBible.lightingAnchors],
+        productConstraints: [...(projectCreativeIntent.productConstraints ?? []), ...projectVisualBible.productAnchors],
+      });
+      let finalPrompt = projectDirection.prompt ? `${motionPrompt}. Project direction: ${projectDirection.prompt}` : motionPrompt;
+      const consistencyFailure = checkPromptConsistency(finalPrompt, projectVisualBible).find((issue) => issue.severity === "fail");
+      if (consistencyFailure) {
+        setAssets((prev) => prev.map((item) => item.shotId === shotId ? { ...item, error: t("visualBibleBlocked", { anchor: consistencyFailure.anchor }) } : item));
+        setMotionShots((prev) => { const next = new Set(prev); next.delete(shotId); return next; });
+        return;
+      }
       if (retake) {
         const patched = applyRetakePatch(motionPrompt, retake);
         finalPrompt = patched.prompt;
@@ -573,6 +602,9 @@ export default function AssetsPage() {
       // composer trims overshoot from the TAIL — which would cut a chained ending. Round to the
       // model's supported range instead of always sending the global 5s default.
       const videoOptions = buildVideoOptions(videoParams);
+      if (projectDirection.negativePrompt) {
+        videoOptions.negativePrompt = [videoOptions.negativePrompt, projectDirection.negativePrompt].filter(Boolean).join(", ");
+      }
       if (asset?.duration) {
         videoOptions.duration = Math.min(15, Math.max(4, Math.round(asset.duration)));
       }
@@ -626,7 +658,7 @@ export default function AssetsPage() {
         });
       }
     },
-    [assets, videoModelTarget, id, videoParams, motionIntensity, motionRealism, chainMode, projectCategory, visualLook, saveVideoAsset, reloadPendingTasks, t, locale]
+    [assets, videoModelTarget, id, videoParams, motionIntensity, motionRealism, chainMode, projectCategory, projectCreativeIntent, projectVisualBible, visualLook, saveVideoAsset, reloadPendingTasks, t, locale]
   );
 
   // actually generate a single asset. Returns the saved static keyframe URL (undefined on failure) so
@@ -686,9 +718,20 @@ export default function AssetsPage() {
       // holding visible potential energy — gives the i2v pass a beat to play out instead of
       // animating an already-completed pose
       const frameSuffix = `。${keyframeInstantLine(basePrompt)}`;
-      const genPrompt = useProductSafe
+      const shotPrompt = useProductSafe
         ? `${basePrompt}。严格保持商品的外观、包装、颜色、logo 和文字完全不变，只重绘符合描述的场景、背景与光线。${castSuffix}${lookSuffix}${frameSuffix}`
         : `${basePrompt}${castSuffix}${lookSuffix}${frameSuffix}`;
+      const projectDirection = compileCreativePrompt({
+        ...projectCreativeIntent,
+        continuity: [...(projectCreativeIntent.continuity ?? []), ...projectVisualBible.characterAnchors, ...projectVisualBible.wardrobeAnchors, ...projectVisualBible.environmentAnchors, ...projectVisualBible.lightingAnchors],
+        productConstraints: [...(projectCreativeIntent.productConstraints ?? []), ...projectVisualBible.productAnchors],
+      });
+      const genPrompt = projectDirection.prompt ? `${shotPrompt}. Project direction: ${projectDirection.prompt}` : shotPrompt;
+      const consistencyFailure = checkPromptConsistency(genPrompt, projectVisualBible).find((issue) => issue.severity === "fail");
+      if (consistencyFailure) {
+        setAssets((prev) => prev.map((item) => item.shotId === shotId ? { ...item, status: "failed", error: t("visualBibleBlocked", { anchor: consistencyFailure.anchor }) } : item));
+        return undefined;
+      }
 
       try {
         const res = await fetch("/api/ai/image", {
@@ -703,7 +746,11 @@ export default function AssetsPage() {
             prompt: genPrompt,
             ...(useProductSafe && { imageUrl: productImages[0] }),
             // user-defined image parameters (aspect ratio → dimensions / count / steps / guidance / seed / negative prompt)
-            options: buildImageOptions(imageParams),
+            options: (() => {
+              const options = buildImageOptions(imageParams);
+              if (projectDirection.negativePrompt) options.negativePrompt = [options.negativePrompt, projectDirection.negativePrompt].filter(Boolean).join(", ");
+              return options;
+            })(),
           }),
         });
         const data = await res.json();
@@ -718,7 +765,7 @@ export default function AssetsPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               shotId, type: "ai_generate", sourceUrl: url,
-              prompt: asset.prompt, provider: modelTarget.provider, model: genModel,
+              prompt: genPrompt, provider: modelTarget.provider, model: genModel,
             }),
           });
           if (saveRes.ok) {
@@ -743,7 +790,7 @@ export default function AssetsPage() {
         return undefined;
       }
     },
-    [assets, modelTarget, productImages, productSafe, imageParams, autoMotion, videoModelTarget, visualLook, generateMotion]
+    [assets, modelTarget, productImages, productSafe, imageParams, autoMotion, videoModelTarget, projectCreativeIntent, projectVisualBible, visualLook, generateMotion, t]
   );
 
   // storyboard grid: ONE image generation renders every shot as a 3x3 grid cell (person /
@@ -979,6 +1026,9 @@ export default function AssetsPage() {
         {uiMode === "pro" && (
         <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-border/50 bg-muted/10 px-3 py-2.5">
           <span className="mr-1 text-xs font-semibold tracking-wide text-muted-foreground">{t("directorPanel")}</span>
+          <Link href={`/project/${id}/production`} className="inline-flex h-8 items-center rounded-full border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            {t("productionConsole")}
+          </Link>
           {/* Presenter picker: characters from the library; ones with a multi-view sheet
               anchor the person's identity through the grid and film passes */}
           {presenterLib.length > 0 && (
@@ -1129,6 +1179,17 @@ export default function AssetsPage() {
             </button>
           )}
         </div>
+        )}
+
+        {uiMode === "pro" && videoModelTarget && (
+          <ModelCapabilityPreflight
+            modelId={videoModelTarget.model}
+            supportsAudio={videoModelTarget.supportsAudio}
+            duration={videoParams.duration}
+            resolution={videoParams.resolution}
+            aspectRatio={videoParams.aspectRatio}
+            chainMode={chainMode}
+          />
         )}
 
         {/* storyboard-grid outcome line (success count or error) */}
