@@ -47,6 +47,9 @@ export async function GET(
     gif: "image/gif",
     mp4: "video/mp4",
     webm: "video/webm",
+    mov: "video/quicktime",
+    mkv: "video/x-matroska",
+    m4v: "video/x-m4v",
   };
 
   const baseHeaders: Record<string, string> = {

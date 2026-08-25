@@ -111,6 +111,7 @@
   <a href="#forms">5. Formats & presenters</a>
   <a href="#pro">6. Easy & Director modes</a>
   <a href="#production">6B. Media analysis & production console</a>
+  <a href="#text-edit">6C. Edit imported footage by text</a>
   <a href="#clone">7. Viral cloning & trends</a>
   <a href="#batch">8. Batch / MCP / CLI</a>
   <a href="#publish">9. Export & publishing</a>
@@ -194,6 +195,15 @@ cd clipforge &amp;&amp; pnpm install &amp;&amp; pnpm dev</code></pre>
   <li><b>Preview, snapshot, repair</b>: snapshot the current script/assets/output relationship; Fast Preview uses the local 720p / veryfast tier without regenerating AI assets; after compose, QC can turn free issues into a confirmed repair composition and re-check, while any paid shot regeneration stays a plan until you approve it.</li>
 </ol>
 <div class="tip"><p><b>Consistency gate:</b> character, product, and wardrobe anchors are appended to every shot. Only an explicit forbidden change blocks before spending; unknown custom models remain permissive.</p></div>
+
+<h2 id="text-edit">6C. Edit imported footage by text (v0.8.95)</h2>
+<ol>
+  <li>Open a project's Assets page, choose <b>Edit by text</b>, and import MP4 / MOV / WebM / MKV / M4V footage up to 1 GB.</li>
+  <li>Choose Tiny for speed or Base for accuracy, then transcribe locally. The model is cached after its first download; WebGPU is preferred and compatibility mode is automatic. Audio is not sent to an AI service.</li>
+  <li>Click transcript words to keep or remove them. Silence removal and word-level caption burn-in are optional, with an immediate duration estimate.</li>
+  <li>Choose <b>Create edit version</b>. The source stays untouched and the result enters version history, download, QC, and release checks as a separate composition.</li>
+</ol>
+<div class="tip"><p><b>Current limit:</b> browser-local transcription supports footage up to 45 minutes. Longer media can still be imported for future engine options.</p></div>
 
 <h2 id="clone">7. Viral cloning &amp; trend picks</h2>
 <ul>

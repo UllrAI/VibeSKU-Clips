@@ -17,6 +17,7 @@ import {
   LuRefreshCw,
   LuRoute,
   LuSave,
+  LuScissors,
   LuShieldCheck,
   LuSparkles,
   LuTags,
@@ -261,9 +262,12 @@ export default function ProductionPage() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("title")}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <Button variant="outline" className="h-10 self-start sm:self-auto" disabled={busy === "snapshot"} onClick={() => patchProduction({ action: "snapshot" }, "snapshot")}>
-          {busy === "snapshot" ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuGitBranch />}{t("snapshot")}
-        </Button>
+        <div className="flex self-start gap-2 sm:self-auto">
+          <Link href={`/project/${id}/transcript`} className="inline-flex h-10 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/8 px-3 text-sm font-medium text-primary hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><LuScissors />{t("textEditor")}</Link>
+          <Button variant="outline" className="h-10" disabled={busy === "snapshot"} onClick={() => patchProduction({ action: "snapshot" }, "snapshot")}>
+            {busy === "snapshot" ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuGitBranch />}{t("snapshot")}
+          </Button>
+        </div>
       </header>
 
       <div role="status" aria-live="polite" className="mb-4 min-h-5 text-sm text-primary">{status}</div>

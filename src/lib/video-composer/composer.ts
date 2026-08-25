@@ -50,7 +50,7 @@ function escapeDrawText(text: string): string {
 }
 
 /** Escape a path for the subtitles/ass filter: backslash → forward slash, escape colons (Windows drive letters) and single quotes to avoid breaking the filtergraph */
-function escapeSubtitlesPath(p: string): string {
+export function escapeSubtitlesPath(p: string): string {
   return p.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "\\'");
 }
 
@@ -909,6 +909,11 @@ export function resolveComposeMaxConcurrency(raw = process.env.COMPOSE_MAX_CONCU
 // timed out. Excess renders now queue in FIFO order instead of stampeding.
 const composeLimiter = createLimiter(resolveComposeMaxConcurrency());
 
+/** Share the same expensive-render gate with adjacent local editors so independent FFmpeg jobs cannot stampede the machine. */
+export function withComposeSlot<T>(fn: () => Promise<T> | T): Promise<T> {
+  return composeLimiter(fn);
+}
+
 /** Classify low-level ffmpeg composition errors into actionable messages (pure function, unit-testable); returns null for unknown error types (to be rethrown as-is) */
 export function composeErrorMessage(e: { killed?: boolean; signal?: string; stderr?: string; message?: string }): string | null {
   if (e.killed || e.signal === "SIGTERM") return "视频合成超时（已超过 10 分钟）——可能分镜过多或机器繁忙，请减少分镜或降到「快速」画质重试";
@@ -942,7 +947,7 @@ export async function composeVideo(config: ComposeConfig): Promise<string> {
     // Only the expensive ffmpeg run goes through the gate (cheap setup above runs unguarded);
     // execFile's timeout starts inside the limited fn, so time spent queueing never counts against it.
     // apply timeout (sends SIGTERM if exceeded); disk-full / timeout errors are mapped to readable messages
-    await composeLimiter(() =>
+    await withComposeSlot(() =>
       execFileAsync(ffmpegBin(), args, { maxBuffer: 50 * 1024 * 1024, timeout: COMPOSE_TIMEOUT_MS })
     );
   } catch (e) {

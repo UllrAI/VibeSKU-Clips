@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { LuZap, LuCheck, LuCircleX, LuImage, LuArrowRight, LuLoaderCircle, LuTriangleAlert, LuUpload } from "react-icons/lu";
+import { LuZap, LuCheck, LuCircleX, LuImage, LuArrowRight, LuLoaderCircle, LuTriangleAlert, LuUpload, LuScissors } from "react-icons/lu";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -928,6 +928,9 @@ export default function AssetsPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/project/${id}/transcript`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary/35 bg-primary/8 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+              <LuScissors className="h-3.5 w-3.5" />{t("textEditor")}
+            </Link>
             {offerStockFill && (
               <Button
                 onClick={fillStock}

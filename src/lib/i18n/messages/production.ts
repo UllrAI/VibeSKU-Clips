@@ -15,7 +15,7 @@ export const production: NamespaceMessages = {
     priceUnknown: "价格由供应商运行时决定", perCall: "约 ${price} / 次", modelApplied: "推荐模型已应用", applied: "已应用", mediaInsights: "项目媒体洞察",
     "recovery_resume-task": "继续查询原任务", "recovery_adapt-params": "自动适配参数", "recovery_switch-model": "切换备用模型", "recovery_neutralize-prompt": "中和提示词", "recovery_reduce-inputs": "减少参考素材", "recovery_repair-media": "修复媒体", "recovery_retry-stage": "单阶段重试", "recovery_configure-provider": "检查供应商配置",
     qcPassed: "质检通过，无需修复", qcPlanned: "已生成修复计划，不会自动触发付费生成", freeAutoFix: "免费自动项", manualReview: "需确认", applyFreeRepairs: "应用全部免费修复", repairStarting: "正在启动修复…", repairStarted: "修复版已开始本地合成，完成后可再次运行质检。", repairVersionLabel: "QC 自动修复版",
-    openConsole: "生产控制台",
+    openConsole: "生产控制台", textEditor: "文字剪辑",
   },
   en: {
     title: "Production console", subtitle: "Plan workflow, cost, models, project memory, versions, and quality repairs in one place.", back: "Back to assets", loading: "Collecting production data…", loadFailed: "Failed to load production data",
@@ -31,6 +31,6 @@ export const production: NamespaceMessages = {
     priceUnknown: "Price is decided by the provider at runtime", perCall: "About ${price} / call", modelApplied: "Recommended model applied", applied: "Applied", mediaInsights: "Project media insights",
     "recovery_resume-task": "Resume original task", "recovery_adapt-params": "Adapt parameters", "recovery_switch-model": "Switch fallback model", "recovery_neutralize-prompt": "Neutralize prompt", "recovery_reduce-inputs": "Reduce references", "recovery_repair-media": "Repair media", "recovery_retry-stage": "Retry one stage", "recovery_configure-provider": "Check provider setup",
     qcPassed: "QC passed; no repair needed", qcPlanned: "Repair plan created; no paid generation was started", freeAutoFix: "Free automatic fix", manualReview: "Confirmation needed", applyFreeRepairs: "Apply all free repairs", repairStarting: "Starting repair…", repairStarted: "A repaired local composition has started. Run QC again when it finishes.", repairVersionLabel: "QC auto-repair",
-    openConsole: "Production console",
+    openConsole: "Production console", textEditor: "Text edit",
   },
 };

@@ -6,6 +6,7 @@ import type {
   VisualBible,
   WorkflowStagePlan,
 } from "@/lib/production-system";
+import type { TimeRange, TranscriptDocument, TranscriptEditPlan } from "@/lib/transcript-editor";
 
 // Projects table
 export const projects = sqliteTable("projects", {
@@ -162,6 +163,48 @@ export const compositions = sqliteTable("compositions", {
   label: text("label"),
   status: text("status", { enum: ["pending", "composing", "done", "failed"] }).notNull().default("pending"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+// Imported long-form/raw media lives outside the per-shot assets table. The original file is
+// immutable; browser-local ASR writes a validated word timeline back to this row, and every edit
+// creates a separate media_edits revision + composition instead of modifying the source.
+export const mediaSources = sqliteTable("media_sources", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  originalName: text("original_name").notNull(),
+  filePath: text("file_path").notNull(),
+  mimeType: text("mime_type").notNull(),
+  sizeBytes: integer("size_bytes").notNull().default(0),
+  duration: integer("duration").notNull().default(0), // milliseconds
+  width: integer("width").notNull().default(0),
+  height: integer("height").notNull().default(0),
+  hasAudio: integer("has_audio", { mode: "boolean" }).notNull().default(false),
+  status: text("status", { enum: ["uploaded", "transcribing", "ready", "failed"] }).notNull().default("uploaded"),
+  progress: integer("progress").notNull().default(0),
+  model: text("model"),
+  device: text("device", { enum: ["webgpu", "wasm"] }),
+  language: text("language"),
+  transcript: text("transcript", { mode: "json" }).$type<TranscriptDocument>(),
+  error: text("error"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+// Immutable non-destructive edit revisions. The plan records intent (removed words / silence /
+// subtitles); keepRanges records the exact source-time result executed by FFmpeg for reproducible
+// rerenders and future Agent diffs.
+export const mediaEdits = sqliteTable("media_edits", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  sourceId: text("source_id").notNull().references(() => mediaSources.id, { onDelete: "cascade" }),
+  revision: integer("revision").notNull().default(1),
+  plan: text("plan", { mode: "json" }).$type<TranscriptEditPlan>().notNull(),
+  keepRanges: text("keep_ranges", { mode: "json" }).$type<TimeRange[]>().notNull(),
+  compositionId: text("composition_id").references(() => compositions.id, { onDelete: "set null" }),
+  status: text("status", { enum: ["queued", "rendering", "done", "failed"] }).notNull().default("queued"),
+  error: text("error"),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
 // Server-side pipeline runs — the hands-off chain (judge → stock-fill → compose) as a
