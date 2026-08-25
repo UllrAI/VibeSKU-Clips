@@ -19,7 +19,7 @@
  */
 
 import { explainLLMStatus, isLegacyPollinations, isTokenCapRejection, type LLMMessagePair } from "@/lib/llm-error";
-import { listModels, modelListHint, normalizeBase } from "@/lib/llm-models";
+import { listModels, modelListHint, normalizeChatBase } from "@/lib/llm-models";
 
 /** Probe completion budget. Large enough that no provider treats it as "cannot produce output". */
 export const PROBE_MAX_TOKENS = 64;
@@ -75,7 +75,7 @@ async function probeCompletion(
  */
 export async function probeLLMEndpoint(input: ProbeInput): Promise<ProbeOutcome> {
   const fetchImpl = input.fetchImpl ?? fetch;
-  const base = normalizeBase(input.baseUrl);
+  const base = normalizeChatBase(input.baseUrl);
   const model = input.model;
 
   // Known-dead endpoint: fail fast with migration steps instead of probing it.

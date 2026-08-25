@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   ATLAS_BASE_URL,
+  ATLAS_LLM_BASE_URL,
   ATLAS_ONEKEY_MODELS,
   fillAtlasModelDefaults,
 } from "@/lib/atlas-onekey";
@@ -40,5 +41,12 @@ describe("Atlas 一键接入预设常量", () => {
     for (const id of Object.values(ATLAS_ONEKEY_MODELS)) {
       expect(id.length).toBeGreaterThan(0);
     }
+  });
+
+  // issue #24：两个网关同域不同路径，写错一个就是「模型不存在」的假报错
+  it("素材网关走 /api/v1，聊天网关走 /v1，两者不可混用", () => {
+    expect(ATLAS_BASE_URL).toBe("https://api.atlascloud.ai/api/v1");
+    expect(ATLAS_LLM_BASE_URL).toBe("https://api.atlascloud.ai/v1");
+    expect(ATLAS_LLM_BASE_URL).not.toContain("/api/v1");
   });
 });

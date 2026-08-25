@@ -7,7 +7,20 @@
  * Model IDs are taken from the Atlas official on-sale catalog (verified via official MCP, 2026-06).
  */
 
+/**
+ * Media/predictions gateway: image gen, video gen and `POST /model/generateAudio` (TTS) all live
+ * under `/api/v1`. This is the base printed on the Atlas key console, so it is the one users copy.
+ */
 export const ATLAS_BASE_URL = "https://api.atlascloud.ai/api/v1";
+
+/**
+ * OpenAI-compatible chat gateway. Atlas serves it on a DIFFERENT path from the media one above:
+ * `/v1/chat/completions` and `/v1/models` (an OpenAI-shaped `{data:[{id}]}` catalog), while
+ * `/api/v1/models` lists only media models. Sending a chat request to `/api/v1` answers 404 with
+ * an empty body, which surfaces as "endpoint or model not found" and sends users hunting for a
+ * wrong model id (issue #24). Never use ATLAS_BASE_URL for LLM/Vision calls.
+ */
+export const ATLAS_LLM_BASE_URL = "https://api.atlascloud.ai/v1";
 
 /**
  * Deep link to the Atlas Cloud API-key console (verified 2026-07: page titled "API Keys - Atlas Cloud";

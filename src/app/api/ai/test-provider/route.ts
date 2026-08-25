@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { normalizeChatBase } from "@/lib/llm-models";
 
 /**
  * AI 平台 Key 连通性校验（生图/生视频平台）。
@@ -42,8 +43,10 @@ function buildProbe(name: string, apiKey: string, baseUrl?: string): Probe {
     // Atlas 的 GET /models 是公开模型目录，无效 Key 也返回 2xx（会误判为有效）。
     // Atlas 没有 /account、/me、/usage 这类只读鉴权端点，只能用 OpenAI 兼容的 chat/completions 做鉴权探针：
     // 选最便宜的聊天模型 + max_tokens:1，仅靠 401/403 判无效，2xx 即鉴权通过；成本/时延可忽略。
+    // 必须打聊天网关 /v1：素材网关 /api/v1 上的 chat/completions 对有效 Key 也只回 404，
+    // 于是「有效」被降级成「无法判定」，Key 明明能用却从来没被确认过（issue #24）。
     return {
-      url: `${base}/chat/completions`,
+      url: `${normalizeChatBase(base)}/chat/completions`,
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       method: "POST",
       body: JSON.stringify({

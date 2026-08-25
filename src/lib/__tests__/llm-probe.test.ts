@@ -13,9 +13,10 @@ import { createServer, type Server, type IncomingMessage, type ServerResponse } 
 import type { AddressInfo } from "node:net";
 import OpenAI from "openai";
 import { probeLLMEndpoint, PROBE_MAX_TOKENS } from "@/lib/llm-probe";
-import { listModels, modelListHint, isOllama, normalizeBase } from "@/lib/llm-models";
+import { listModels, modelListHint, isOllama, normalizeBase, normalizeChatBase } from "@/lib/llm-models";
 import { LLMRequestError, createLLMClient, explainLLMStatus, isTokenCapRejection, withLLMErrors } from "@/lib/llm-error";
 import { LLM_PRESETS } from "@/lib/llm-presets";
+import { ATLAS_BASE_URL, ATLAS_LLM_BASE_URL } from "@/lib/atlas-onekey";
 import { migrateSettings, type SettingsState } from "@/lib/stores/settings-store";
 import { settings } from "@/lib/i18n/messages/settings";
 
@@ -335,5 +336,44 @@ describe("Ollama 预设与迁移（Windows 上 localhost 会先解析到 ::1，�
       expect(settings.zh, `zh:${key}`).toHaveProperty(key);
       expect(settings.en, `en:${key}`).toHaveProperty(key);
     }
+  });
+});
+
+/**
+ * issue #24 —— Atlas 一键接入把「素材网关」(/api/v1) 写进了 LLM 地址，写脚本必挂在
+ * `404 null`，而报错文案只会说「模型可能没上线」，用户于是去改一个本来就正确的模型名。
+ * 两个网关同域不同路径，靠肉眼看不出差别，因此这里把「聊天必须走 /v1」钉成断言。
+ */
+describe("Atlas 双网关：聊天走 /v1，素材走 /api/v1（issue #24）", () => {
+  it("素材网关被填进 LLM 地址时改写成聊天网关，含末尾斜杠与大小写", () => {
+    expect(normalizeChatBase(ATLAS_BASE_URL)).toBe(ATLAS_LLM_BASE_URL);
+    expect(normalizeChatBase("https://api.atlascloud.ai/api/v1/")).toBe(ATLAS_LLM_BASE_URL);
+    expect(normalizeChatBase("https://API.AtlasCloud.ai/api/v1")).toBe("https://API.AtlasCloud.ai/v1");
+  });
+
+  it("已经正确的地址、别家的 /api/v1、自建代理都不许被动到", () => {
+    expect(normalizeChatBase(ATLAS_LLM_BASE_URL)).toBe(ATLAS_LLM_BASE_URL);
+    expect(normalizeChatBase("https://openrouter.ai/api/v1")).toBe("https://openrouter.ai/api/v1");
+    expect(normalizeChatBase("https://dashscope.aliyuncs.com/api/v1")).toBe("https://dashscope.aliyuncs.com/api/v1");
+    expect(normalizeChatBase("https://my-proxy.example.com/api/v1")).toBe("https://my-proxy.example.com/api/v1");
+    // 同域但更深的路径不是网关根，别乱改
+    expect(normalizeChatBase("https://api.atlascloud.ai/api/v1/model")).toBe("https://api.atlascloud.ai/api/v1/model");
+  });
+
+  it("真正发请求的客户端拿到的是聊天网关", () => {
+    const client = createLLMClient({ baseUrl: ATLAS_BASE_URL, apiKey: "k", model: "deepseek-ai/deepseek-v4-pro" });
+    expect(client.baseURL).toBe(ATLAS_LLM_BASE_URL);
+  });
+
+  it("已经踩坑的旧安装升级后自愈；别家配置不受影响", () => {
+    const build = (baseUrl: string): SettingsState => ({ llm: { provider: "", baseUrl, apiKey: "", model: "" } }) as SettingsState;
+    expect(migrateSettings(build(ATLAS_BASE_URL)).llm.baseUrl).toBe(ATLAS_LLM_BASE_URL);
+    expect(migrateSettings(build(ATLAS_LLM_BASE_URL)).llm.baseUrl).toBe(ATLAS_LLM_BASE_URL);
+    expect(migrateSettings(build("https://openrouter.ai/api/v1")).llm.baseUrl).toBe("https://openrouter.ai/api/v1");
+  });
+
+  it("一键接入与设置页预设填的是同一个地址（两条路各写各的，就是这次故障的成因）", () => {
+    const preset = LLM_PRESETS.find((p) => /atlascloud/i.test(p.baseUrl));
+    expect(preset?.baseUrl).toBe(ATLAS_LLM_BASE_URL);
   });
 });

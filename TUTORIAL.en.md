@@ -284,6 +284,7 @@ For the technically comfortable with a decent machine: the model runs on your ow
 | Connection failed ✗ / 401 | Wrong key, or a stray space when pasting | Re-copy the key, check leading/trailing spaces |
 | 402 / insufficient balance | No credit on the platform | Top up |
 | 404 / model not found | Model name typo | Click **Read available models** and pick from the list |
+| 404 on Atlas Cloud | baseUrl points at the media gateway `…/api/v1` | The script-model field needs `https://api.atlascloud.ai/v1` (`/api/v1` only serves image/video/TTS); v0.8.94+ repairs old settings automatically |
 | Timeout | Network can't reach that platform | Switch platform, or set a proxy endpoint in the custom baseUrl field |
 
 > The test runs **server-side**, so browser CORS is never the cause. It's almost always baseUrl, key, or model name.

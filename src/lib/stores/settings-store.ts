@@ -9,7 +9,7 @@ import {
   type ImageGenParams,
   type VideoGenParams,
 } from "@/lib/gen-params";
-import { ATLAS_BASE_URL, ATLAS_ONEKEY_MODELS, fillAtlasModelDefaults } from "@/lib/atlas-onekey";
+import { ATLAS_BASE_URL, ATLAS_LLM_BASE_URL, ATLAS_ONEKEY_MODELS, fillAtlasModelDefaults } from "@/lib/atlas-onekey";
 import type { MotionIntensity, MotionRealismTier } from "@/lib/motion-prompt";
 import {
   isProductionProfileId,
@@ -146,6 +146,12 @@ export function migrateSettings(state: SettingsState): SettingsState {
       if (llm.visionModel === f.from) llm.visionModel = f.to;
     }
 
+    // Atlas one-key used to write the media base into the LLM slot, so every script generation
+    // 404'd on a model that does exist (issue #24). Move those installs onto the chat gateway.
+    if (/^https?:\/\/api\.atlascloud\.ai\/api\/v1\/?$/i.test(llm.baseUrl)) {
+      llm.baseUrl = ATLAS_LLM_BASE_URL;
+    }
+
     if (/text\.pollinations\.ai/i.test(llm.baseUrl)) {
       llm.baseUrl = POLLINATIONS_BASE_URL;
       if (llm.apiKey === "pollinations") llm.apiKey = "";
@@ -241,7 +247,8 @@ export const useSettingsStore = create<SettingsState>()(
           return {
             llm: {
               provider: "Atlas Cloud",
-              baseUrl: ATLAS_BASE_URL,
+              // chat gateway, not ATLAS_BASE_URL — the media base 404s every chat call (issue #24)
+              baseUrl: ATLAS_LLM_BASE_URL,
               apiKey: key,
               model: ATLAS_ONEKEY_MODELS.llm,
               visionModel: ATLAS_ONEKEY_MODELS.vision,
@@ -267,7 +274,9 @@ export const useSettingsStore = create<SettingsState>()(
       // v2：把已停用的 Pollinations 免 Key 地址迁到新端点（见 migrateSettings 注释）。
       // v3：Ollama 的 localhost:11434 改写成 127.0.0.1:11434（Windows 上 ::1 连不通）。
       // v4：补充面向创作目标的生产方案；旧设置迁移到兼顾质量与成本的 balanced。
-      version: 4,
+      // v5：Atlas 一键接入曾把「素材网关」/api/v1 写进 LLM 地址，导致写脚本必 404（issue #24），
+      // 迁到 OpenAI 兼容的聊天网关 /v1。
+      version: 5,
       migrate: (persisted) => migrateSettings(persisted as SettingsState),
     }
   )

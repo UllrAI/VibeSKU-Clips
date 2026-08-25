@@ -18,7 +18,7 @@
  */
 
 import OpenAI, { APIConnectionError, APIConnectionTimeoutError } from "openai";
-import { listModels, modelListHint } from "@/lib/llm-models";
+import { listModels, modelListHint, normalizeChatBase } from "@/lib/llm-models";
 
 /** Endpoint + model a call was aimed at (used to tailor the hint). */
 export interface LLMTarget {
@@ -210,7 +210,8 @@ export function createLLMClient(config: LLMClientConfig): OpenAI {
   // in 5s, so retrying would just make the user wait 15s for the same message.
   const retryFreePool402 = isPollinations(config.baseUrl) && !config.apiKey;
   return new OpenAI({
-    baseURL: config.baseUrl,
+    // normalized so Atlas' media base pasted into the LLM field still reaches the chat gateway
+    baseURL: config.baseUrl ? normalizeChatBase(config.baseUrl) : config.baseUrl,
     apiKey: config.apiKey || "no-key",
     // SDK default is 2; free/shared endpoints flap enough to be worth one more attempt.
     maxRetries: 3,
