@@ -4,6 +4,7 @@ import { apiError, errText } from "@/lib/api-error";
 import { getDb } from "@/lib/db";
 import { mediaSources } from "@/lib/db/schema";
 import { isLocalAsrModel } from "@/lib/local-asr";
+import { publicMediaSource } from "@/lib/public-media-source";
 import { sanitizeTranscriptDocument } from "@/lib/transcript-editor";
 
 export const runtime = "nodejs";
@@ -38,7 +39,7 @@ export async function POST(
         error: null,
         updatedAt: now,
       }).where(eq(mediaSources.id, source.id)).returning();
-      return NextResponse.json(updated);
+      return NextResponse.json(publicMediaSource(updated));
     }
 
     if (body.action === "heartbeat") {
@@ -64,13 +65,13 @@ export async function POST(
         error: null,
         updatedAt: now,
       }).where(eq(mediaSources.id, source.id)).returning();
-      return NextResponse.json(updated);
+      return NextResponse.json(publicMediaSource(updated));
     }
 
     if (body.action === "fail") {
       const error = typeof body.error === "string" && body.error.trim() ? body.error.trim().slice(0, 500) : errText(req, "本地转写失败", "Local transcription failed");
       const [updated] = await db.update(mediaSources).set({ status: "failed", error, updatedAt: now }).where(eq(mediaSources.id, source.id)).returning();
-      return NextResponse.json(updated);
+      return NextResponse.json(publicMediaSource(updated));
     }
 
     return apiError(req, "不支持的转写操作", "Unsupported transcription action", 400);

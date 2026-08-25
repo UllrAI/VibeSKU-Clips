@@ -1,15 +1,21 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_TRANSCRIPT_EDIT_PLAN,
+  detectFillerWordIds,
   detectSilenceRanges,
+  findTranscriptWordAtTime,
   keepRangesForPlan,
   karaokeLinesFromWords,
+  nextPlayableSourceTime,
   normalizeTimeRanges,
+  outputTimeToSourceTime,
   outputDuration,
   remapKeptWords,
   sanitizeTranscriptDocument,
   sanitizeTranscriptEditPlan,
   segmentsFromWords,
+  sourceTimeToOutputTime,
+  transcriptWordsToCues,
   type TranscriptDocument,
 } from "@/lib/transcript-editor";
 
@@ -65,6 +71,33 @@ describe("transcript edit ranges", () => {
       { id: "w1", text: "你好", start: 0.4, end: 0.9 },
       { id: "w3", text: "继续", start: 1.4, end: 2 },
     ]);
+  });
+
+  it("maps preview time in both directions and skips removed source spans", () => {
+    const kept = [{ start: 0.5, end: 1.5 }, { start: 3, end: 5 }];
+    expect(sourceTimeToOutputTime(3.5, kept)).toBeCloseTo(1.5, 6);
+    expect(sourceTimeToOutputTime(2, kept)).toBeNull();
+    expect(outputTimeToSourceTime(1.5, kept)).toBeCloseTo(3.5, 6);
+    expect(nextPlayableSourceTime(2, kept)).toBe(3);
+    expect(nextPlayableSourceTime(6, kept)).toBeNull();
+  });
+
+  it("finds active words efficiently and builds edited subtitle cues", () => {
+    expect(findTranscriptWordAtTime(document.words, 1.4)?.id).toBe("w2");
+    expect(findTranscriptWordAtTime(document.words, 2.2)).toBeNull();
+    const cues = transcriptWordsToCues(document, [{ start: 0, end: 1 }, { start: 3, end: 5 }]);
+    expect(cues).toEqual([
+      { index: 1, startMs: 400, endMs: 2000, text: "你好继续" },
+    ]);
+  });
+
+  it("marks only conservative filler tokens for review", () => {
+    const fillers = { ...document, words: [
+      { id: "a", text: "嗯，", start: 0, end: 0.2 },
+      { id: "b", text: "然后", start: 0.3, end: 0.7 },
+      { id: "c", text: "UM", start: 0.8, end: 1 },
+    ] };
+    expect(detectFillerWordIds(fillers)).toEqual(["a", "c"]);
   });
 });
 describe("transcript normalization", () => {

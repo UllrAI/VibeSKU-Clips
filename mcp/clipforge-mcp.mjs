@@ -124,6 +124,20 @@ const PROJECT_ID_PROP = {
   description: "项目 ID（来自 clipforge_list_projects，或 create/ingest/generate 类工具返回的 projectId）",
 };
 
+const TRANSCRIPT_PLAN_PROP = {
+  type: "object",
+  description: "完整剪辑计划快照；先 inspect 获取词 ID 和 latestPlan，再修改后 preview",
+  properties: {
+    version: { type: "number", enum: [1] },
+    removedWordIds: { type: "array", items: { type: "string" }, description: "要删除的稳定词 ID 数组" },
+    removeSilence: { type: "boolean" },
+    silencePaddingMs: { type: "number", description: "静音两端保留毫秒，0-1000" },
+    wordPaddingMs: { type: "number", description: "删词两端扩展毫秒，0-250" },
+    burnSubtitles: { type: "boolean" },
+  },
+  required: ["version", "removedWordIds", "removeSilence", "silencePaddingMs", "wordPaddingMs", "burnSubtitles"],
+};
+
 /** Call the ClipForge HTTP API; throws an error with the backend error message on non-2xx responses */
 async function api(path, { method = "GET", body, timeoutMs = 600000 } = {}) {
   const ctrl = new AbortController();
@@ -560,6 +574,38 @@ const TOOLS = [
         format: { type: "string", enum: ["srt", "vtt"], description: "字幕格式，默认 srt" },
       },
       required: ["projectId"],
+    },
+  },
+  {
+    name: "clipforge_transcript_inspect",
+    description:
+      "检查一条已导入原片的本地逐字稿和当前剪辑版本。分页返回稳定词 ID、时间戳、latestRevision/latestPlan 和最新执行状态；不修改任何数据。长逐字稿用 offset/limit 分页读取。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectId: PROJECT_ID_PROP,
+        mediaId: { type: "string", description: "导入原片 ID（网页文字剪辑工作台或媒体 API 返回）" },
+        offset: { type: "number", description: "词偏移，默认 0" },
+        limit: { type: "number", description: "本页词数，默认 500，最大 2000" },
+      },
+      required: ["projectId", "mediaId"],
+    },
+  },
+  {
+    name: "clipforge_transcript_edit",
+    description:
+      "预演或应用文字剪辑计划。默认 apply=false，只返回删除词数、区间、缩短时长和下一 revision，不写库也不渲染；只有用户明确确认后才传 apply=true。正式应用必须携带 inspect 返回的 baseRevision 和稳定 operationId，重复 operationId 幂等，不覆盖原片或旧版本。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectId: PROJECT_ID_PROP,
+        mediaId: { type: "string", description: "导入原片 ID" },
+        baseRevision: { type: "number", description: "inspect 返回的 latestRevision；版本变化时服务端拒绝应用" },
+        operationId: { type: "string", description: "8-128 字符稳定操作 ID；apply=true 必填，重试必须复用同一个值" },
+        plan: TRANSCRIPT_PLAN_PROP,
+        apply: { type: "boolean", description: "默认 false=只预演；用户看过 diff 并明确确认后才能设 true" },
+      },
+      required: ["projectId", "mediaId", "baseRevision", "plan"],
     },
   },
   {
@@ -1097,6 +1143,52 @@ async function handleExportSubtitle(args) {
   return ok({ ok: true, projectId, format, subtitle });
 }
 
+async function handleTranscriptInspect(args) {
+  const projectId = String(args.projectId || "").trim();
+  const mediaId = String(args.mediaId || "").trim();
+  if (!projectId || !mediaId) throw new Error("projectId 和 mediaId 不能为空");
+  const offset = Number.isInteger(args.offset) ? Math.max(0, Number(args.offset)) : 0;
+  const limit = Number.isInteger(args.limit) ? Math.min(2000, Math.max(1, Number(args.limit))) : 500;
+  const result = await api(`/api/project/${encodeURIComponent(projectId)}/media/${encodeURIComponent(mediaId)}/edit?offset=${offset}&limit=${limit}`);
+  return ok({
+    ok: true,
+    ...result,
+    next: result.transcript?.hasMore
+      ? `继续读取 offset=${result.transcript.wordOffset + result.transcript.words.length}；修改完整 plan 后先调用 clipforge_transcript_edit（apply=false）预演。`
+      : "修改完整 plan 后先调用 clipforge_transcript_edit（apply=false）预演；向用户展示 diff，确认后才 apply=true。",
+  });
+}
+
+async function handleTranscriptEdit(args) {
+  const projectId = String(args.projectId || "").trim();
+  const mediaId = String(args.mediaId || "").trim();
+  if (!projectId || !mediaId) throw new Error("projectId 和 mediaId 不能为空");
+  if (!Number.isInteger(args.baseRevision) || Number(args.baseRevision) < 0) throw new Error("baseRevision 必须来自 clipforge_transcript_inspect");
+  if (!args.plan || typeof args.plan !== "object") throw new Error("plan 不能为空");
+  const apply = args.apply === true;
+  const operationId = typeof args.operationId === "string" ? args.operationId.trim() : "";
+  if (apply && !operationId) throw new Error("apply=true 必须提供稳定 operationId；重试时复用同一个值");
+  const result = await api(`/api/project/${encodeURIComponent(projectId)}/media/${encodeURIComponent(mediaId)}/edit`, {
+    method: "POST",
+    body: {
+      action: apply ? "apply" : "preview",
+      operationId: operationId || undefined,
+      actor: "mcp",
+      baseRevision: Number(args.baseRevision),
+      plan: args.plan,
+    },
+  });
+  return ok({
+    ok: true,
+    projectId,
+    mediaId,
+    ...result,
+    next: apply
+      ? "剪辑版本已提交；用 clipforge_transcript_inspect 查看 latestEdit.status，完成后再做 QC。"
+      : "这是 dry-run，尚未写库或渲染。把 proposal.diff/summary 展示给用户；明确确认后用同一 plan、baseRevision 与 proposal.operationId 调用 apply=true。",
+  });
+}
+
 // Image-card carousel from the script (Xiaohongshu 图文)
 async function handleCarousel(args) {
   const projectId = String(args.projectId || "").trim();
@@ -1134,12 +1226,14 @@ const HANDLERS = {
   clipforge_preview_gif: handlePreviewGif,
   clipforge_contact_sheet: handleContactSheet,
   clipforge_export_subtitle: handleExportSubtitle,
+  clipforge_transcript_inspect: handleTranscriptInspect,
+  clipforge_transcript_edit: handleTranscriptEdit,
   clipforge_carousel: handleCarousel,
 };
 
 // ---- Start MCP server ----
 const server = new Server(
-  { name: "clipforge", version: "0.1.1" },
+  { name: "clipforge", version: "0.1.2" },
   { capabilities: { tools: {} } },
 );
 

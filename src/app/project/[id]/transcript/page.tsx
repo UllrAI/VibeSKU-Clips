@@ -9,17 +9,24 @@ import {
   LuCircleCheckBig,
   LuCpu,
   LuDownload,
+  LuFileJson2,
   LuFileVideo,
   LuLoaderCircle,
+  LuPlay,
+  LuRedo2,
   LuRotateCcw,
   LuScissors,
   LuShieldCheck,
+  LuUndo2,
   LuUpload,
   LuVolume2,
+  LuWandSparkles,
 } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { useLocale, useT } from "@/lib/i18n";
 import { decodeAudioForAsr } from "@/lib/browser-audio";
+import { buildSrt, buildVtt } from "@/lib/subtitle-export";
+import { TRANSCRIPT_EDIT_FORMAT, type TranscriptEditActor, type TranscriptEditProposal, type TranscriptEditSummary } from "@/lib/transcript-edit-protocol";
 import {
   LOCAL_ASR_MODELS,
   type AsrWorkerMessage,
@@ -28,13 +35,19 @@ import {
 } from "@/lib/local-asr";
 import {
   DEFAULT_TRANSCRIPT_EDIT_PLAN,
+  detectFillerWordIds,
+  findTranscriptWordAtTime,
   keepRangesForPlan,
+  nextPlayableSourceTime,
   outputDuration,
   removedRangesForPlan,
   sanitizeTranscriptDocument,
+  transcriptWordsToCues,
+  type TimeRange,
   type TranscriptDocument,
   type TranscriptEditPlan,
 } from "@/lib/transcript-editor";
+import { EditTimeline } from "./_components/edit-timeline";
 
 interface CompositionResult {
   id: string;
@@ -46,9 +59,38 @@ interface CompositionResult {
 interface MediaEditRow {
   id: string;
   revision: number;
+  operationId?: string | null;
+  baseRevision?: number;
+  actor?: TranscriptEditActor;
+  plan: TranscriptEditPlan;
+  keepRanges?: TimeRange[];
+  summary?: TranscriptEditSummary | null;
   status: "queued" | "rendering" | "done" | "failed";
   error?: string | null;
   composition?: CompositionResult | null;
+}
+
+interface EditHistory {
+  past: TranscriptEditPlan[];
+  present: TranscriptEditPlan;
+  future: TranscriptEditPlan[];
+}
+
+function clonePlan(plan: TranscriptEditPlan): TranscriptEditPlan {
+  return { ...plan, removedWordIds: [...plan.removedWordIds] };
+}
+
+function createHistory(plan = DEFAULT_TRANSCRIPT_EDIT_PLAN): EditHistory {
+  return { past: [], present: clonePlan(plan), future: [] };
+}
+
+function samePlan(a: TranscriptEditPlan, b: TranscriptEditPlan): boolean {
+  return a.removeSilence === b.removeSilence
+    && a.burnSubtitles === b.burnSubtitles
+    && a.silencePaddingMs === b.silencePaddingMs
+    && a.wordPaddingMs === b.wordPaddingMs
+    && a.removedWordIds.length === b.removedWordIds.length
+    && a.removedWordIds.every((id, index) => id === b.removedWordIds[index]);
 }
 
 interface MediaSourceRow {
@@ -89,6 +131,7 @@ export default function TranscriptPage() {
   const t = useT("transcript");
   const locale = useLocale();
   const inputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const workerRef = useRef<Worker | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressRef = useRef(0);
@@ -96,17 +139,19 @@ export default function TranscriptPage() {
   const [sources, setSources] = useState<MediaSourceRow[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<"upload" | "decode" | "transcribe" | "render" | null>(null);
+  const [busy, setBusy] = useState<"upload" | "decode" | "transcribe" | "preview" | "render" | null>(null);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [model, setModel] = useState<LocalAsrModel>(LOCAL_ASR_MODELS[0].id);
   const [language, setLanguage] = useState("auto");
   const [device, setDevice] = useState<LocalAsrDevice | null>(null);
   const [fallback, setFallback] = useState(false);
   const [phase, setPhase] = useState<"loading" | "transcribing" | null>(null);
   const [progress, setProgress] = useState(0);
-  const [removedIds, setRemovedIds] = useState<string[]>([]);
-  const [removeSilence, setRemoveSilence] = useState(false);
-  const [burnSubtitles, setBurnSubtitles] = useState(true);
+  const [history, setHistory] = useState<EditHistory>(() => createHistory());
+  const [proposal, setProposal] = useState<TranscriptEditProposal | null>(null);
+  const [previewCuts, setPreviewCuts] = useState(true);
+  const [currentTime, setCurrentTime] = useState(0);
 
   const loadSources = useCallback(async (quiet = false) => {
     if (!quiet) setLoading(true);
@@ -146,26 +191,82 @@ export default function TranscriptPage() {
     () => selected ? sanitizeTranscriptDocument(selected.transcript, selected.duration / 1000) : null,
     [selected],
   );
-  const plan = useMemo<TranscriptEditPlan>(() => ({
-    ...DEFAULT_TRANSCRIPT_EDIT_PLAN,
-    removedWordIds: removedIds,
-    removeSilence,
-    burnSubtitles,
-  }), [burnSubtitles, removeSilence, removedIds]);
+  const plan = history.present;
+  const removedIds = plan.removedWordIds;
+  const removeSilence = plan.removeSilence;
+  const burnSubtitles = plan.burnSubtitles;
+  const removedIdSet = useMemo(() => new Set(removedIds), [removedIds]);
   const keepRanges = useMemo(() => transcript ? keepRangesForPlan(transcript, plan) : [], [plan, transcript]);
+  const removedRanges = useMemo(() => transcript ? removedRangesForPlan(transcript, plan) : [], [plan, transcript]);
   const editedSeconds = outputDuration(keepRanges);
-  const removedSeconds = transcript ? removedRangesForPlan(transcript, plan).reduce((sum, range) => sum + range.end - range.start, 0) : 0;
+  const removedSeconds = removedRanges.reduce((sum, range) => sum + range.end - range.start, 0);
+  const fillerIds = useMemo(() => transcript ? detectFillerWordIds(transcript) : [], [transcript]);
+  const remainingFillerIds = useMemo(() => fillerIds.filter((wordId) => !removedIdSet.has(wordId)), [fillerIds, removedIdSet]);
+  const activeWordId = transcript ? findTranscriptWordAtTime(transcript.words, currentTime)?.id ?? null : null;
 
   useEffect(() => {
-    setRemovedIds([]);
-    setRemoveSilence(false);
-    setBurnSubtitles(true);
+    setHistory(createHistory());
+    setProposal(null);
+    setNotice("");
+    setCurrentTime(0);
+    setPreviewCuts(true);
     setError("");
   }, [selectedId]);
 
   const patchSource = useCallback((sourceId: string, patch: Partial<MediaSourceRow>) => {
     setSources((current) => current.map((source) => source.id === sourceId ? { ...source, ...patch } : source));
   }, []);
+
+  const commitPlan = useCallback((nextPlan: TranscriptEditPlan) => {
+    setHistory((current) => {
+      const next = clonePlan(nextPlan);
+      if (samePlan(current.present, next)) return current;
+      return { past: [...current.past, clonePlan(current.present)].slice(-100), present: next, future: [] };
+    });
+    setProposal(null);
+    setNotice("");
+  }, []);
+
+  const undo = useCallback(() => {
+    setHistory((current) => {
+      const previous = current.past.at(-1);
+      if (!previous) return current;
+      return {
+        past: current.past.slice(0, -1),
+        present: clonePlan(previous),
+        future: [clonePlan(current.present), ...current.future].slice(0, 100),
+      };
+    });
+    setProposal(null);
+    setNotice("");
+  }, []);
+
+  const redo = useCallback(() => {
+    setHistory((current) => {
+      const next = current.future[0];
+      if (!next) return current;
+      return {
+        past: [...current.past, clonePlan(current.present)].slice(-100),
+        present: clonePlan(next),
+        future: current.future.slice(1),
+      };
+    });
+    setProposal(null);
+    setNotice("");
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "z") return;
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      if (event.shiftKey) redo();
+      else undo();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [redo, undo]);
 
   async function upload(file: File) {
     setBusy("upload");
@@ -285,28 +386,136 @@ export default function TranscriptPage() {
     setPhase(null);
   }
 
+  const latestRevision = selected?.edits.reduce((max, edit) => Math.max(max, edit.revision), 0) ?? 0;
+
   function toggleWord(wordId: string) {
-    setRemovedIds((current) => current.includes(wordId) ? current.filter((id) => id !== wordId) : [...current, wordId]);
+    commitPlan({
+      ...plan,
+      removedWordIds: removedIdSet.has(wordId)
+        ? removedIds.filter((id) => id !== wordId)
+        : [...removedIds, wordId],
+    });
   }
 
-  async function renderEdit() {
+  function markFillers() {
+    if (!remainingFillerIds.length) return;
+    commitPlan({ ...plan, removedWordIds: [...removedIds, ...remainingFillerIds] });
+  }
+
+  function resetPlan() {
+    commitPlan(DEFAULT_TRANSCRIPT_EDIT_PLAN);
+  }
+
+  function seekTo(time: number) {
+    const video = videoRef.current;
+    if (!video) return;
+    const maxTime = transcript?.duration ?? (Number.isFinite(video.duration) ? video.duration : time);
+    const target = previewCuts && transcript
+      ? nextPlayableSourceTime(time, keepRanges) ?? Math.max(0, (keepRanges.at(-1)?.end ?? 0) - 0.02)
+      : Math.min(time, maxTime);
+    video.currentTime = Math.max(0, target);
+    setCurrentTime(Math.max(0, target));
+  }
+
+  function handleVideoTimeUpdate() {
+    const video = videoRef.current;
+    if (!video) return;
+    if (previewCuts && transcript) {
+      const playable = nextPlayableSourceTime(video.currentTime, keepRanges);
+      if (playable === null) {
+        const lastPlayable = Math.max(0, (keepRanges.at(-1)?.end ?? 0) - 0.02);
+        video.pause();
+        if (Math.abs(video.currentTime - lastPlayable) > 0.03) video.currentTime = lastPlayable;
+        setCurrentTime(lastPlayable);
+        return;
+      }
+      if (playable - video.currentTime > 0.02) {
+        video.currentTime = playable;
+        setCurrentTime(playable);
+        return;
+      }
+    }
+    setCurrentTime(video.currentTime);
+  }
+
+  function downloadText(fileName: string, mimeType: string, content: string) {
+    const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportDraft(format: "srt" | "vtt" | "json") {
     if (!selected || !transcript) return;
+    const stem = `clipforge-${selected.id.slice(0, 8)}-draft`;
+    if (format === "json") {
+      downloadText(`${stem}.json`, "application/json", JSON.stringify({
+        format: TRANSCRIPT_EDIT_FORMAT,
+        operationId: crypto.randomUUID(),
+        actor: "human",
+        projectId: id,
+        mediaId: selected.id,
+        baseRevision: latestRevision,
+        plan,
+      }, null, 2));
+      return;
+    }
+    const cues = transcriptWordsToCues(transcript, keepRanges);
+    downloadText(`${stem}.${format}`, format === "srt" ? "application/x-subrip" : "text/vtt", format === "srt" ? buildSrt(cues) : buildVtt(cues));
+  }
+
+  async function previewEdit() {
+    if (!selected || !transcript) return;
+    setBusy("preview");
+    setError("");
+    try {
+      const response = await fetch(`/api/project/${id}/media/${selected.id}/edit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept-Language": locale },
+        body: JSON.stringify({ action: "preview", operationId: crypto.randomUUID(), actor: "human", baseRevision: latestRevision, plan }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t("renderFailed"));
+      setProposal(data.proposal as TranscriptEditProposal);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("renderFailed"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function applyEdit() {
+    if (!selected || !transcript || !proposal) return;
     setBusy("render");
     setError("");
     try {
       const response = await fetch(`/api/project/${id}/media/${selected.id}/edit`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Accept-Language": locale },
-        body: JSON.stringify({ plan }),
+        body: JSON.stringify({
+          action: "apply",
+          operationId: proposal.operationId,
+          actor: "human",
+          baseRevision: proposal.baseRevision,
+          plan: proposal.plan,
+        }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || t("renderFailed"));
+      if (!response.ok) throw new Error(data.error || (response.status === 409 ? t("revisionConflict") : t("renderFailed")));
+      setProposal(null);
       await loadSources(true);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : t("renderFailed"));
     } finally {
       setBusy(null);
     }
+  }
+
+  function loadEditAsDraft(edit: MediaEditRow) {
+    commitPlan(edit.plan);
+    setNotice(t("draftLoaded", { n: edit.revision }));
   }
 
   const activeRender = selected?.edits.some((edit) => edit.status === "rendering" || edit.status === "queued") ?? false;
@@ -334,6 +543,7 @@ export default function TranscriptPage() {
       </header>
 
       {error && <div role="alert" className="mb-5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
+      {notice && <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-emerald-500/25 bg-emerald-500/8 p-3 text-sm text-emerald-700 dark:text-emerald-300">{notice}</div>}
 
       <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
         <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
@@ -363,7 +573,27 @@ export default function TranscriptPage() {
 
         <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
           {selected ? <>
-            <div className="overflow-hidden rounded-xl bg-black"><video key={selected.id} src={selected.url} controls preload="metadata" className="aspect-video max-h-[460px] w-full object-contain" /></div>
+            <div className="overflow-hidden rounded-xl bg-black"><video ref={videoRef} key={selected.id} src={selected.url} controls preload="metadata" onTimeUpdate={handleVideoTimeUpdate} onSeeked={handleVideoTimeUpdate} onPlay={handleVideoTimeUpdate} className="aspect-video max-h-[460px] w-full object-contain" /></div>
+            {transcript && <div className="mt-4 rounded-xl border border-border/60 bg-background/30 p-3">
+              <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                <div><h3 className="flex items-center gap-2 text-sm font-semibold"><LuPlay className="text-primary" />{t("livePreview")}</h3><p className="mt-1 text-xs leading-5 text-muted-foreground">{t("livePreviewHint")}</p></div>
+                <label className="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-border/60 px-3 text-xs font-medium">
+                  <input type="checkbox" className="h-4 w-4 accent-primary" checked={previewCuts} onChange={(event) => setPreviewCuts(event.target.checked)} />
+                  {t("previewCuts")}
+                </label>
+              </div>
+              <EditTimeline
+                duration={originalSeconds}
+                currentTime={currentTime}
+                removedRanges={removedRanges}
+                silenceRanges={transcript.silenceRanges}
+                onSeek={seekTo}
+                ariaLabel={t("timelineLabel")}
+                removedLabel={t("removedRegion")}
+                silenceLabel={t("silenceRegion")}
+                currentLabel={t("currentTime")}
+              />
+            </div>}
             <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
               <label className="flex-1 text-xs font-medium text-muted-foreground">{t("model")}
                 <select value={model} disabled={busy === "decode" || busy === "transcribe"} onChange={(event) => setModel(event.target.value as LocalAsrModel)} className="mt-1.5 h-10 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary">
@@ -395,12 +625,20 @@ export default function TranscriptPage() {
         <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div><h2 className="flex items-center gap-2 font-semibold"><LuScissors className="text-primary" />{t("editorTitle")}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{transcript ? t("editorHint") : t("needTranscript")}</p></div>
-            {transcript && <div className="flex items-center gap-2"><span className="text-xs text-muted-foreground">{t("selectedWords", { n: removedIds.length })}</span><Button variant="outline" size="sm" disabled={!removedIds.length} onClick={() => setRemovedIds([])}><LuRotateCcw />{t("reset")}</Button></div>}
+            {transcript && <div className="flex flex-wrap items-center justify-end gap-2">
+              <span className="mr-1 text-xs text-muted-foreground">{t("selectedWords", { n: removedIds.length })}</span>
+              <Button variant="outline" size="sm" className="h-11 px-3" disabled={!history.past.length} onClick={undo} title={t("undo")} aria-label={t("undo")}><LuUndo2 />{t("undo")}</Button>
+              <Button variant="outline" size="sm" className="h-11 px-3" disabled={!history.future.length} onClick={redo} title={t("redo")} aria-label={t("redo")}><LuRedo2 />{t("redo")}</Button>
+              <Button variant="outline" size="sm" className="h-11 px-3" disabled={!remainingFillerIds.length} onClick={markFillers} title={remainingFillerIds.length ? t("fillerHint", { n: remainingFillerIds.length }) : t("fillerNone")}><LuWandSparkles />{t("fillers")}{remainingFillerIds.length ? ` · ${remainingFillerIds.length}` : ""}</Button>
+              <Button variant="outline" size="sm" className="h-11 px-3" disabled={!removedIds.length && !removeSilence && burnSubtitles} onClick={resetPlan}><LuRotateCcw />{t("reset")}</Button>
+            </div>}
           </div>
+          {transcript && <p className="mb-3 text-[11px] text-muted-foreground">{t("keyboardHint")}</p>}
           {transcript ? <div className="max-h-[520px] overflow-y-auto rounded-xl border border-border/50 bg-background/30 p-3 leading-8 sm:p-4">
             {transcript.words.map((word) => {
-              const removed = removedIds.includes(word.id);
-              return <button key={word.id} type="button" aria-pressed={removed} title={`${word.start.toFixed(2)}s – ${word.end.toFixed(2)}s`} onClick={() => toggleWord(word.id)} className={`mr-1 rounded px-1.5 py-0.5 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary ${removed ? "bg-destructive/12 text-destructive line-through decoration-2" : "hover:bg-primary/10"}`}>{word.text}</button>;
+              const removed = removedIdSet.has(word.id);
+              const active = word.id === activeWordId;
+              return <button key={word.id} type="button" aria-pressed={removed} title={`${word.start.toFixed(2)}s – ${word.end.toFixed(2)}s`} onClick={() => toggleWord(word.id)} className={`mr-1 rounded px-1.5 py-1 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary ${removed ? "bg-destructive/12 text-destructive line-through decoration-2" : "hover:bg-primary/10"} ${active ? "ring-2 ring-primary/70" : ""}`}>{word.text}</button>;
             })}
           </div> : <div className="flex min-h-48 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">{selected ? t("needTranscript") : t("noSourceHint")}</div>}
         </div>
@@ -408,11 +646,11 @@ export default function TranscriptPage() {
         <aside className="space-y-5">
           <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/50 bg-background/30 p-3">
-              <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={removeSilence} disabled={!transcript} onChange={(event) => setRemoveSilence(event.target.checked)} />
+              <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={removeSilence} disabled={!transcript} onChange={(event) => commitPlan({ ...plan, removeSilence: event.target.checked })} />
               <span><span className="flex items-center gap-2 text-sm font-medium"><LuVolume2 className="text-primary" />{t("silence")}</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">{t("silenceHint", { n: transcript?.silenceRanges.length ?? 0 })}</span></span>
             </label>
             <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-xl border border-border/50 bg-background/30 p-3">
-              <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={burnSubtitles} disabled={!transcript} onChange={(event) => setBurnSubtitles(event.target.checked)} />
+              <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={burnSubtitles} disabled={!transcript} onChange={(event) => commitPlan({ ...plan, burnSubtitles: event.target.checked })} />
               <span><span className="flex items-center gap-2 text-sm font-medium"><LuCaptions className="text-primary" />{t("subtitles")}</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">{t("subtitlesHint")}</span></span>
             </label>
 
@@ -421,18 +659,43 @@ export default function TranscriptPage() {
               <div className="rounded-lg bg-primary/8 p-2"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("output")}</p><p className="mt-1 text-sm font-semibold tabular-nums text-primary">{formatDuration(editedSeconds)}</p></div>
               <div className="rounded-lg bg-destructive/8 p-2"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("removed")}</p><p className="mt-1 text-sm font-semibold tabular-nums text-destructive">-{formatDuration(removedSeconds)}</p></div>
             </div>
-            <Button className="mt-4 h-10 w-full" disabled={!transcript || editedSeconds < 0.5 || busy === "render" || activeRender} onClick={() => void renderEdit()}>
-              {busy === "render" || activeRender ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuScissors />}
-              {busy === "render" || activeRender ? t("rendering") : t("render")}
+            <Button className="mt-4 h-11 w-full" disabled={!transcript || editedSeconds < 0.5 || busy === "preview" || busy === "render" || activeRender} onClick={() => void previewEdit()}>
+              {busy === "preview" ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuScissors />}
+              {busy === "preview" ? t("reviewing") : proposal ? t("previewAgain") : t("render")}
             </Button>
+
+            {proposal && <div className={`mt-3 rounded-xl border p-3 ${proposal.conflict ? "border-destructive/30 bg-destructive/8" : "border-primary/30 bg-primary/8"}`}>
+              <h3 className="text-sm font-semibold">{t("reviewTitle")}</h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{proposal.conflict ? t("revisionConflict") : t("reviewHint", { n: proposal.nextRevision })}</p>
+              <div className="mt-3 space-y-1.5 text-xs">
+                <p>{t("reviewSummary", { words: proposal.summary.removedWordCount, ranges: proposal.summary.removedRangeCount, duration: formatDuration(proposal.summary.removedDuration) })}</p>
+                {proposal.plan.burnSubtitles && <p>{t("reviewCaptions", { n: proposal.summary.subtitleCueCount })}</p>}
+                {proposal.summary.removedTextPreview && <p className="line-clamp-3 text-muted-foreground">{t("reviewText", { text: proposal.summary.removedTextPreview })}</p>}
+              </div>
+              <Button className="mt-3 h-11 w-full" disabled={proposal.conflict || busy === "render" || activeRender} onClick={() => void applyEdit()}>
+                {busy === "render" || activeRender ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuCircleCheckBig />}
+                {busy === "render" || activeRender ? t("rendering") : t("confirmRender", { n: proposal.nextRevision })}
+              </Button>
+            </div>}
+
+            {transcript && <div className="mt-5 border-t border-border/60 pt-4">
+              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("exportDraft")}</h3>
+              <div className="grid grid-cols-3 gap-2">
+                <Button variant="outline" size="sm" className="h-11 px-2 text-xs" onClick={() => exportDraft("srt")}><LuDownload />SRT</Button>
+                <Button variant="outline" size="sm" className="h-11 px-2 text-xs" onClick={() => exportDraft("vtt")}><LuDownload />VTT</Button>
+                <Button variant="outline" size="sm" className="h-11 px-2 text-xs" onClick={() => exportDraft("json")}><LuFileJson2 />JSON</Button>
+              </div>
+            </div>}
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
             <h2 className="mb-3 font-semibold">{t("versions")}</h2>
             {selected?.edits.length ? <div className="space-y-2">{selected.edits.map((edit) => <div key={edit.id} className="rounded-xl border border-border/50 bg-background/30 p-3">
-              <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-sm font-medium">{edit.status === "done" ? <LuCircleCheckBig className="text-emerald-500" /> : edit.status === "failed" ? <span className="h-2 w-2 rounded-full bg-destructive" /> : <LuLoaderCircle className="animate-spin text-primary motion-reduce:animate-none" />}{t("revision", { n: edit.revision })}</span><span className="text-[10px] uppercase text-muted-foreground">{edit.status === "done" ? t("done") : edit.status === "failed" ? t("failed") : t("rendering")}</span></div>
+              <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-sm font-medium">{edit.status === "done" ? <LuCircleCheckBig className="text-emerald-500" /> : edit.status === "failed" ? <span className="h-2 w-2 rounded-full bg-destructive" /> : <LuLoaderCircle className="animate-spin text-primary motion-reduce:animate-none" />}{t("revision", { n: edit.revision })}</span><span className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground"><span className="rounded-full border border-border px-1.5 py-0.5 normal-case">{t(`actor_${edit.actor ?? "human"}`)}</span>{edit.status === "done" ? t("done") : edit.status === "failed" ? t("failed") : t("rendering")}</span></div>
+              {edit.summary && <p className="mt-2 text-xs text-muted-foreground">{t("reviewSummary", { words: edit.summary.removedWordCount, ranges: edit.summary.removedRangeCount, duration: formatDuration(edit.summary.removedDuration) })}</p>}
               {edit.error && <p className="mt-2 text-xs text-destructive">{edit.error}</p>}
-              {edit.composition?.status === "done" && edit.composition.outputUrl && <><video controls preload="metadata" src={edit.composition.outputUrl} className="mt-3 aspect-video w-full rounded-lg bg-black object-contain" /><div className="mt-2 flex gap-2"><a href={edit.composition.downloadUrl || edit.composition.outputUrl} className="inline-flex h-7 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-xs font-medium hover:bg-muted"><LuDownload />{t("download")}</a><Link href={`/project/${id}/export`} className="inline-flex h-7 items-center rounded-lg px-2.5 text-xs font-medium text-primary hover:bg-primary/10">{t("openExport")}</Link></div></>}
+              {edit.composition?.status === "done" && edit.composition.outputUrl && <><video controls preload="metadata" src={edit.composition.outputUrl} className="mt-3 aspect-video w-full rounded-lg bg-black object-contain" /><div className="mt-2 flex flex-wrap gap-2"><a href={edit.composition.downloadUrl || edit.composition.outputUrl} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-xs font-medium hover:bg-muted"><LuDownload />{t("download")}</a><Link href={`/project/${id}/export`} className="inline-flex min-h-9 items-center rounded-lg px-2.5 text-xs font-medium text-primary hover:bg-primary/10">{t("openExport")}</Link></div></>}
+              <Button variant="ghost" size="sm" className="mt-2 h-10 w-full text-xs" onClick={() => loadEditAsDraft(edit)}><LuRotateCcw />{t("loadDraft")}</Button>
             </div>)}</div> : <p className="text-sm text-muted-foreground">{t("noVersions")}</p>}
           </div>
         </aside>

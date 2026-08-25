@@ -96,7 +96,7 @@
 
 <article class="doc">
 <h1>MCP 视频生成:让 Claude 一句话出片 — ClipForge MCP Server + CLI + 定时日更</h1>
-<p class="lead"><b>先说结论:接上 ClipForge MCP Server,你在 Claude / Cursor 等 AI agent 里贴一条商品链接、说一句话主题,几十秒后就能拿到可下载的竖屏带货成片。</b>素材(Openverse / Wikimedia Commons)与配音(微软 Edge TTS)全程免 Key,只有写脚本需要一个 OpenAI 兼容的 LLM Key;再配上 CLI 命令行 + cron 定时 + 按人设自动选题,就是一台不用碰界面的全自动短视频日更机。开源 AGPL-3.0、986 条单测护航,免费自部署。想先了解产品全貌?看<a href="index.html">首页</a>与<a href="guide.html">使用手册</a>。</p>
+<p class="lead"><b>先说结论:接上 ClipForge MCP Server,你在 Claude / Cursor 等 AI agent 里贴一条商品链接、说一句话主题,几十秒后就能拿到可下载的竖屏带货成片。</b>素材(Openverse / Wikimedia Commons)与配音(微软 Edge TTS)全程免 Key,只有写脚本需要一个 OpenAI 兼容的 LLM Key;再配上 CLI 命令行 + cron 定时 + 按人设自动选题,就是一台不用碰界面的全自动短视频日更机。开源 AGPL-3.0、免费自部署。想先了解产品全貌?看<a href="index.html">首页</a>与<a href="guide.html">使用手册</a>。</p>
 
 <div class="toc">
   <b>目录</b>
@@ -147,7 +147,7 @@
 <div class="tip"><p>本地想直接试 Server 本体:仓库根目录 <code>pnpm mcp</code>(等价于 <code>node mcp/clipforge-mcp.mjs</code>,stdio 模式)。</p></div>
 
 <h2 id="tools">三、MCP 工具清单:从建项目到发布把关</h2>
-<p>共 <b>24 个 MCP 工具</b>覆盖出片全流程,核心几个:</p>
+<p>共 <b>27 个 MCP 工具</b>覆盖出片与原片剪辑全流程,核心几个:</p>
 <table>
   <thead><tr><th>工具</th><th>做什么</th><th>需要 LLM Key</th></tr></thead>
   <tbody>
@@ -159,6 +159,8 @@
     <tr><td><code>clipforge_trends</code></td><td>拉热榜选题(国内榜 / Google Trends),不知道做什么先问它</td><td>—</td></tr>
     <tr><td><code>clipforge_list_voices</code></td><td>列出免费 Edge TTS 多语言音色(中/英/日/韩/西)</td><td>—</td></tr>
     <tr><td><code>clipforge_get_video</code></td><td>查询项目最新合成结果(状态/下载地址),轮询异步产物</td><td>—</td></tr>
+    <tr><td><code>clipforge_transcript_inspect</code></td><td>分页读取原片逐词稿、稳定词 ID 与当前剪辑版本</td><td>—</td></tr>
+    <tr><td><code>clipforge_transcript_edit</code></td><td>预演或应用剪辑计划;默认只返回 diff,明确确认后才渲染新版本</td><td>—</td></tr>
   </tbody>
 </table>
 <p>出片之后还有<b>交付把关</b>工具:发布门禁 <code>clipforge_gate</code>(脚本就绪+质检+素材授权一键体检,<code>fail</code> 别交付)、成片质检 <code>clipforge_qc</code>(黑屏/静音/响度)、成片速览 <code>clipforge_contact_sheet</code>(agent 看图自检)、素材授权清单 <code>clipforge_credits</code>、平台导出 <code>clipforge_export_platform</code> 等——agent 不只是能出片,还能自己检查完再交给你。完整清单见 <a href="https://github.com/xixihhhh/clipforge/tree/main/mcp" rel="noopener">mcp/README</a>。</p>
@@ -169,6 +171,8 @@
 npm run cli -- create --topic "在家手冲咖啡" --quality hd --bgm   # 一句话出片,回填 videoUrl
 npm run cli -- qc --project &lt;id&gt;                   # 成片质检(黑屏/静音/响度)
 npm run cli -- gate --project &lt;id&gt; --strict        # 发布门禁,拦截时退出码 2(可接 CI)
+npm run cli -- transcript --project &lt;id&gt; --media &lt;mediaId&gt;  # 检查逐词稿与版本
+npm run cli -- transcript-edit --project &lt;id&gt; --media &lt;mediaId&gt; --plan edit.json --revision 0 --operation edit-001  # 默认预演;--apply 才执行
 npm run cli -- --help                              # 全部命令与参数</code></pre>
 <p>等价写法 <code>node bin/clipforge.mjs create --topic "..."</code>。还有 <code>import</code>(自带稿子出片)、<code>dub</code>(换语种译制出海)、<code>cover</code>(封面图)、<code>carousel</code>(小红书图文卡)等子命令,全部可编排进脚本。</p>
 

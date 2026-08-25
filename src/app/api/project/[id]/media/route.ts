@@ -11,6 +11,7 @@ import { compositions, mediaEdits, mediaSources, projects } from "@/lib/db/schem
 import { probeMedia } from "@/lib/media-probe";
 import { validateOrDelete } from "@/lib/media-validate";
 import { fileNameOf, getUploadsDir } from "@/lib/paths";
+import { publicMediaComposition, publicMediaSource } from "@/lib/public-media-source";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,24 +57,25 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const sources = sourceRows.map((source) => staleIds.includes(source.id) ? { ...source, status: "failed" as const, error: errText(req, "转写已中断，可直接重新开始", "Transcription was interrupted; you can restart it") } : source);
     const compositionById = new Map(projectCompositions.map((composition) => [composition.id, composition]));
     return NextResponse.json({
-      sources: sources.map((source) => ({
-        ...source,
-        url: `/api/files/${id}/imported/${basename(source.filePath)}`,
-        edits: edits
+      sources: sources.map((source) => {
+        return {
+          ...publicMediaSource(source),
+          url: `/api/files/${id}/imported/${basename(source.filePath)}`,
+          edits: edits
           .filter((edit) => edit.sourceId === source.id)
           .map((edit) => {
             const composition = edit.compositionId ? compositionById.get(edit.compositionId) ?? null : null;
             const outputName = composition?.outputPath ? fileNameOf(composition.outputPath) : null;
             return {
               ...edit,
-              composition: composition ? {
-                ...composition,
+              composition: composition ? publicMediaComposition(composition, {
                 outputUrl: outputName ? `/api/output/${id}/${outputName}` : null,
                 downloadUrl: outputName ? `/api/output/${id}/${outputName}?download=1` : null,
-              } : null,
+              }) : null,
             };
           }),
-      })),
+        };
+      }),
     });
   } catch (error) {
     console.error("Imported media list failed:", error);
@@ -138,7 +140,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       hasAudio: metadata.hasAudio,
       status: "uploaded",
     }).returning();
-    return NextResponse.json({ ...source, url: `/api/files/${id}/imported/${fileName}`, edits: [] }, { status: 201 });
+    return NextResponse.json({ ...publicMediaSource(source), url: `/api/files/${id}/imported/${fileName}`, edits: [] }, { status: 201 });
   } catch (error) {
     await rm(filePath, { force: true }).catch(() => {});
     if (error instanceof Error && error.message === "IMPORT_TOO_LARGE") {

@@ -1,4 +1,5 @@
 import type { KaraokeLine, KaraokeWord } from "@/lib/video-composer/karaoke";
+import type { SubtitleCue } from "@/lib/subtitle-export";
 
 export interface TimeRange {
   start: number;
@@ -195,7 +196,7 @@ export function outputDuration(kept: TimeRange[]): number {
   return kept.reduce((sum, range) => sum + Math.max(0, range.end - range.start), 0);
 }
 
-function mapSourceTime(time: number, kept: TimeRange[]): number | null {
+export function sourceTimeToOutputTime(time: number, kept: TimeRange[]): number | null {
   let outputCursor = 0;
   for (const range of kept) {
     if (time >= range.start - 0.001 && time <= range.end + 0.001) {
@@ -209,12 +210,75 @@ function mapSourceTime(time: number, kept: TimeRange[]): number | null {
 export function remapKeptWords(document: TranscriptDocument, kept: TimeRange[]): TranscriptWord[] {
   const out: TranscriptWord[] = [];
   for (const word of document.words) {
-    const start = mapSourceTime(word.start, kept);
-    const end = mapSourceTime(word.end, kept);
+    const start = sourceTimeToOutputTime(word.start, kept);
+    const end = sourceTimeToOutputTime(word.end, kept);
     if (start === null || end === null || end <= start) continue;
     out.push({ ...word, start, end });
   }
   return out;
+}
+
+export function outputTimeToSourceTime(time: number, kept: TimeRange[]): number | null {
+  if (!kept.length) return null;
+  const target = clamp(finite(time), 0, outputDuration(kept));
+  let outputCursor = 0;
+  for (const range of kept) {
+    const length = range.end - range.start;
+    if (target <= outputCursor + length + 0.001) return range.start + clamp(target - outputCursor, 0, length);
+    outputCursor += length;
+  }
+  return kept.at(-1)!.end;
+}
+
+export function nextPlayableSourceTime(time: number, kept: TimeRange[]): number | null {
+  const current = Math.max(0, finite(time));
+  for (const range of kept) {
+    if (current >= range.start - 0.001 && current < range.end - 0.001) return current;
+    if (current < range.start) return range.start;
+  }
+  return null;
+}
+
+export function findTranscriptWordAtTime(words: TranscriptWord[], time: number): TranscriptWord | null {
+  let low = 0;
+  let high = words.length - 1;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    const word = words[middle];
+    if (time < word.start) high = middle - 1;
+    else if (time > word.end) low = middle + 1;
+    else return word;
+  }
+  return null;
+}
+
+const FILLER_WORDS = new Set([
+  "um", "uh", "erm", "er", "hmm", "mm", "mhm",
+  "嗯", "呃", "额", "唔", "嗯嗯", "呃呃",
+  "えー", "ええと", "あの", "어", "음",
+]);
+
+function normalizedFillerToken(text: string): string {
+  return text
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(/^[\s.,!?;:，。！？；：、~～…—-]+|[\s.,!?;:，。！？；：、~～…—-]+$/g, "")
+    .trim();
+}
+
+export function detectFillerWordIds(document: TranscriptDocument): string[] {
+  return document.words
+    .filter((word) => FILLER_WORDS.has(normalizedFillerToken(word.text)))
+    .map((word) => word.id);
+}
+
+export function transcriptWordsToCues(document: TranscriptDocument, kept: TimeRange[]): SubtitleCue[] {
+  return segmentsFromWords(remapKeptWords(document, kept)).map((segment, index) => ({
+    index: index + 1,
+    startMs: Math.round(segment.start * 1000),
+    endMs: Math.max(Math.round(segment.start * 1000) + 1, Math.round(segment.end * 1000)),
+    text: segment.text,
+  }));
 }
 
 const sentenceEnd = transcriptSentenceEnd;

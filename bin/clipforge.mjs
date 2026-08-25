@@ -558,6 +558,47 @@ async function cmdGet(flags) {
   return { ok: true, projectId, status: composition.status, videoUrl: absVideoUrl(composition) };
 }
 
+async function cmdTranscriptInspect(flags) {
+  const projectId = String(flags.project || "").trim();
+  const mediaId = String(flags.media || "").trim();
+  if (!projectId || !mediaId) throw new Error("--project 和 --media 不能为空");
+  const offset = Number.isInteger(Number(flags.offset)) ? Math.max(0, Number(flags.offset)) : 0;
+  const limit = Number.isInteger(Number(flags.limit)) ? Math.min(2000, Math.max(1, Number(flags.limit))) : 500;
+  return api(`/api/project/${encodeURIComponent(projectId)}/media/${encodeURIComponent(mediaId)}/edit?offset=${offset}&limit=${limit}`);
+}
+
+async function cmdTranscriptEdit(flags) {
+  const projectId = String(flags.project || "").trim();
+  const mediaId = String(flags.media || "").trim();
+  if (!projectId || !mediaId) throw new Error("--project 和 --media 不能为空");
+  if (!flags.plan) throw new Error("用 --plan <edit-plan.json> 提供网页导出的剪辑计划");
+  let envelope;
+  try {
+    envelope = JSON.parse(readFileSync(String(flags.plan), "utf8"));
+  } catch (error) {
+    throw new Error(`剪辑计划 JSON 无法读取：${error?.message || error}`);
+  }
+  const plan = envelope?.plan && typeof envelope.plan === "object" ? envelope.plan : envelope;
+  const revisionValue = flags.revision ?? envelope?.baseRevision;
+  const baseRevision = Number(revisionValue);
+  if (!Number.isInteger(baseRevision) || baseRevision < 0) throw new Error("--revision 必须是 transcript 返回的 latestRevision，或写在计划 JSON 的 baseRevision");
+  const apply = flags.apply === true;
+  const operationId = String(flags.operation || envelope?.operationId || "").trim();
+  if (apply && !operationId) throw new Error("--apply 必须搭配 --operation <稳定ID>，或使用网页导出的 operationId；重试时复用同一个值");
+  const result = await api(`/api/project/${encodeURIComponent(projectId)}/media/${encodeURIComponent(mediaId)}/edit`, {
+    method: "POST",
+    body: {
+      action: apply ? "apply" : "preview",
+      operationId: operationId || undefined,
+      actor: "cli",
+      baseRevision,
+      plan,
+    },
+  });
+  step(apply ? "剪辑版本已提交；可用 transcript 命令查询 latestEdit.status" : "dry-run 完成：未写库、未渲染；确认 diff 后再加 --apply");
+  return { ok: true, projectId, mediaId, ...result };
+}
+
 // Import your own script: split a pre-written script into shots and save as the current script, then use compose to render (combine with local assets for a fully self-sufficient pipeline)
 async function cmdImport(flags) {
   const projectId = String(flags.project || "").trim();
@@ -612,6 +653,9 @@ const HELP = `ClipForge CLI · 命令行一句话出片
   clipforge preview --project <id> [--start 0 --duration 4 --width 360]   生成预览 GIF
   clipforge sheet --project <id> [--frames 8 --proxy --mode smart|even]   成片速览一张图(scene感知抽帧+拼接点标注+波形;--proxy 出720p时间码审片小样)
   clipforge carousel --project <id> [--theme night|warm|mint|mono|rose]   生成小红书图文卡片(标题+逐条要点)
+  clipforge transcript --project <id> --media <id> [--offset 0 --limit 500]   分页检查逐字稿、latestRevision 和当前计划
+  clipforge transcript-edit --project <id> --media <id> --plan edit-plan.json [--revision 0 --operation <id> --apply]
+                                默认只预演 diff；用户确认后加 --apply，重试必须复用 operation ID
   clipforge get --project <id>  查最新成片地址
   clipforge --help | --version
 
@@ -622,7 +666,7 @@ const HELP = `ClipForge CLI · 命令行一句话出片
 
 进度打印到 stderr，最终结果（含 videoUrl）打印到 stdout，便于管道取值。`;
 
-const COMMANDS = { create: cmdCreate, product: cmdProduct, import: cmdImport, dub: cmdDub, compose: cmdCompose, cover: cmdCover, qr: cmdQr, endcard: cmdEndcard, export: cmdExport, qc: cmdQc, gate: cmdGate, credits: cmdCredits, native: cmdNative, preview: cmdPreview, sheet: cmdSheet, carousel: cmdCarousel, list: cmdList, voices: cmdVoices, get: cmdGet, trends: cmdTrends };
+const COMMANDS = { create: cmdCreate, product: cmdProduct, import: cmdImport, dub: cmdDub, compose: cmdCompose, cover: cmdCover, qr: cmdQr, endcard: cmdEndcard, export: cmdExport, qc: cmdQc, gate: cmdGate, credits: cmdCredits, native: cmdNative, preview: cmdPreview, sheet: cmdSheet, carousel: cmdCarousel, transcript: cmdTranscriptInspect, "transcript-edit": cmdTranscriptEdit, list: cmdList, voices: cmdVoices, get: cmdGet, trends: cmdTrends };
 
 async function main() {
   const { _, flags } = parseArgs(process.argv.slice(2));

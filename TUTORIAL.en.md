@@ -526,6 +526,8 @@ node bin/clipforge.mjs list                                          # list proj
 node bin/clipforge.mjs get --project <id>                            # latest rendered video URL
 node bin/clipforge.mjs qc --project <id>                             # QC (black frames / silence / loudness)
 node bin/clipforge.mjs gate --project <id> --strict                  # release gate, exit code 2 when it blocks
+node bin/clipforge.mjs transcript --project <id> --media <mediaId>   # inspect footage transcript and edit revision
+node bin/clipforge.mjs transcript-edit --project <id> --media <mediaId> --plan edit.json --revision 0 --operation edit-001  # dry-run first; add --apply after confirmation
 node bin/clipforge.mjs --help                                        # everything else
 ```
 

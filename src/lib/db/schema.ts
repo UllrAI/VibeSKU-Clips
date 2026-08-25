@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex } from "drizzle-orm/sqlite-core";
 import type {
   CreativeIntent,
   ProductionSnapshot,
@@ -7,6 +7,7 @@ import type {
   WorkflowStagePlan,
 } from "@/lib/production-system";
 import type { TimeRange, TranscriptDocument, TranscriptEditPlan } from "@/lib/transcript-editor";
+import type { TranscriptEditSummary } from "@/lib/transcript-edit-protocol";
 
 // Projects table
 export const projects = sqliteTable("projects", {
@@ -198,14 +199,21 @@ export const mediaEdits = sqliteTable("media_edits", {
   projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   sourceId: text("source_id").notNull().references(() => mediaSources.id, { onDelete: "cascade" }),
   revision: integer("revision").notNull().default(1),
+  operationId: text("operation_id"),
+  baseRevision: integer("base_revision").notNull().default(0),
+  actor: text("actor", { enum: ["human", "agent", "cli", "mcp", "api"] }).notNull().default("human"),
   plan: text("plan", { mode: "json" }).$type<TranscriptEditPlan>().notNull(),
   keepRanges: text("keep_ranges", { mode: "json" }).$type<TimeRange[]>().notNull(),
+  summary: text("summary", { mode: "json" }).$type<TranscriptEditSummary>(),
   compositionId: text("composition_id").references(() => compositions.id, { onDelete: "set null" }),
   status: text("status", { enum: ["queued", "rendering", "done", "failed"] }).notNull().default("queued"),
   error: text("error"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
-});
+}, (table) => [
+  uniqueIndex("media_edits_operation_id_unique").on(table.operationId),
+  uniqueIndex("media_edits_source_revision_unique").on(table.sourceId, table.revision),
+]);
 
 // Server-side pipeline runs — the hands-off chain (judge → stock-fill → compose) as a
 // persistent record instead of a string of browser fetches. Closing the tab no longer kills

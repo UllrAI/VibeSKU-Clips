@@ -19,9 +19,14 @@ Drive ClipForge's text-to-video pipeline from any MCP client (Claude Desktop / C
 | `clipforge_compose` | 为已有脚本+素材的项目合成出片（免费 Edge TTS）；可开 卡拉OK字幕 / 商品卡 / AI合规标识 / 购买CTA / BGM情绪 / 旁白闪避 等带货增强 | — |
 | `clipforge_list_voices` | 列出可用的免费 Edge TTS 多语言音色（中/英/日/韩/西，供 voice 参数选用） | — |
 | `clipforge_get_video` | 查询某项目最新合成结果（状态/可下载地址），不重合成；用于轮询异步产物或取回旧视频 | — |
+| `clipforge_transcript_inspect` | 分页读取导入原片的逐词稿、稳定词 ID、当前版本和渲染状态 | — |
+| `clipforge_transcript_edit` | 预演或应用文字剪辑计划；默认只返回 diff，确认后才渲染新版本 | — |
 
 > 素材（Openverse）与配音（微软 Edge TTS）全程 **免 Key**；只有「生成脚本」需要一个 OpenAI 兼容的 LLM Key。
 > Stock footage (Openverse) and voiceover (Edge TTS) are **key-less**; only script generation needs an OpenAI-compatible LLM key.
+
+> **原片剪辑安全流程**：先用 `clipforge_transcript_inspect` 读取 `latestRevision` 与稳定词 ID，再调用 `clipforge_transcript_edit` 预演（`apply:false`）并向用户展示 diff；只有明确确认后才复用同一 `operationId` 以 `apply:true` 执行。重试幂等，版本过期会被拒绝。
+> **Safe footage-edit flow**: inspect for `latestRevision` and stable word IDs, dry-run with `apply:false`, show the diff, then reuse the same `operationId` with `apply:true` only after explicit confirmation. Retries are idempotent and stale revisions are rejected.
 
 > **出片后工具**（同为 MCP 工具，交付前把关/变现增强）：发布门禁 `clipforge_gate`（脚本就绪+质检+授权一键体检，`fail` 别交付）、成片质检 `clipforge_qc`、成片速览 `clipforge_contact_sheet`（agent 看图自检）、素材授权 `clipforge_credits`、平台导出 `clipforge_export_platform`、原生感 `clipforge_native_feel`、封面/图文卡/二维码/片尾扫码/译制等——完整清单与交付检查单见 [`skills/clipforge-video/SKILL.md`](../skills/clipforge-video/SKILL.md)。
 > **Post-compose tools** (also MCP tools): release gate `clipforge_gate` (readiness + QC + licensing in one verdict — don't deliver on `fail`), `clipforge_qc`, `clipforge_contact_sheet` (visual self-check), `clipforge_credits`, `clipforge_export_platform`, `clipforge_native_feel`, plus cover/carousel/QR/end-card/dub — full list and the delivery checklist live in [`skills/clipforge-video/SKILL.md`](../skills/clipforge-video/SKILL.md).
