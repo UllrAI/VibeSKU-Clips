@@ -71,6 +71,10 @@
 
 </details>
 
+### 🎭 Making AI short dramas? Try Dramake
+
+[**Dramake**](https://github.com/xixihhhh/ai-short-drama-skill) is my new open-source, director-level Agent Skill. It turns an idea, novel, or screenplay into a traceable workflow covering scripts, character bibles, storyboards, model and budget routing, voices, editing, and QA, with support for Codex, Claude Code, and WorkBuddy. Install it with `npx skills add xixihhhh/ai-short-drama-skill --skill dramake`.
+
 Want higher quality? Add one key: a single interface aggregates **7 platforms, 30+ curated models** (GPT Image 2 / **Seedance 2.5** / **MiniMax H3** / Kling O3 / Veo 3.1…), plus **200+ video models dynamically discovered** from the whole Atlas catalog — new models show up without upgrading the app. Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
 
 ## 🎬 Sample: one product photo in, a postable video out (Seedance 2.5 field test)

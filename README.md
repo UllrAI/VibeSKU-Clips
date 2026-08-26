@@ -71,6 +71,10 @@
 
 </details>
 
+### 🎭 做 AI 短剧？试试 Dramake
+
+[**Dramake**](https://github.com/xixihhhh/ai-short-drama-skill) 是我新开源的导演级 Agent Skill：把点子、小说或剧本串成可追踪的剧本、角色母版、分镜、模型与预算路线、配音、剪辑和质检流程，适配 Codex、Claude Code 与 WorkBuddy。安装：`npx skills add xixihhhh/ai-short-drama-skill --skill dramake`
+
 想更高画质再加 Key：一个接口聚合 **7 大平台 30+ 精选模型**（GPT Image 2 / **Seedance 2.5** / **MiniMax H3** / Kling O3 / Veo 3.1…），Atlas 全站 **200+ 视频模型动态直连**——平台新上的模型无需升级就能用；自部署开源（AGPL-3.0），数据全在本机不上云。
 
 ## 🎬 示例：一张商品图进去，一条能发的片出来（Seedance 2.5 实测）
