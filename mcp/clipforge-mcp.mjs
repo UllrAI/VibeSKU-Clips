@@ -609,6 +609,22 @@ const TOOLS = [
     },
   },
   {
+    name: "clipforge_timeline_export",
+    description:
+      "把文字剪辑计划导出为专业时间线。OTIO 保留可编辑视频/音频切片，EDL 用于传统 NLE 交换，CSV 用于人工审阅；只返回文件内容和元数据，不写库、不渲染、不包含本机绝对路径。先用 clipforge_transcript_inspect 获取 latestPlan，修改后可先用 transcript_edit dry-run 审阅。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectId: PROJECT_ID_PROP,
+        mediaId: { type: "string", description: "导入原片 ID" },
+        format: { type: "string", enum: ["otio", "edl", "csv"], description: "默认 otio" },
+        revision: { type: "number", description: "可选版本号，仅写入交付元数据和文件名" },
+        plan: TRANSCRIPT_PLAN_PROP,
+      },
+      required: ["projectId", "mediaId", "plan"],
+    },
+  },
+  {
     name: "clipforge_carousel",
     description:
       "把某项目脚本渲成小红书图文卡片（标题卡 + 逐条要点卡，渐变底，默认 3:4），返回各卡片图地址。视频之外的图文输出。不需要 LLM。",
@@ -1189,6 +1205,36 @@ async function handleTranscriptEdit(args) {
   });
 }
 
+async function handleTimelineExport(args) {
+  const projectId = String(args.projectId || "").trim();
+  const mediaId = String(args.mediaId || "").trim();
+  if (!projectId || !mediaId) throw new Error("projectId 和 mediaId 不能为空");
+  if (!args.plan || typeof args.plan !== "object") throw new Error("plan 不能为空");
+  const format = ["otio", "edl", "csv"].includes(args.format) ? args.format : "otio";
+  const result = await api(`/api/project/${encodeURIComponent(projectId)}/media/${encodeURIComponent(mediaId)}/timeline`, {
+    method: "POST",
+    body: {
+      format,
+      plan: args.plan,
+      inline: true,
+      ...(Number.isInteger(args.revision) && args.revision > 0 ? { revision: args.revision } : {}),
+    },
+  });
+  return ok({
+    ok: true,
+    projectId,
+    mediaId,
+    format,
+    fileName: result.fileName,
+    mimeType: result.mimeType,
+    clips: result.clips,
+    duration: result.duration,
+    frameRate: result.frameRate,
+    content: result.content,
+    next: `把 content 原样保存为 ${result.fileName}；导入剪辑软件后按原文件名重链素材。`,
+  });
+}
+
 // Image-card carousel from the script (Xiaohongshu 图文)
 async function handleCarousel(args) {
   const projectId = String(args.projectId || "").trim();
@@ -1228,12 +1274,13 @@ const HANDLERS = {
   clipforge_export_subtitle: handleExportSubtitle,
   clipforge_transcript_inspect: handleTranscriptInspect,
   clipforge_transcript_edit: handleTranscriptEdit,
+  clipforge_timeline_export: handleTimelineExport,
   clipforge_carousel: handleCarousel,
 };
 
 // ---- Start MCP server ----
 const server = new Server(
-  { name: "clipforge", version: "0.1.2" },
+  { name: "clipforge", version: "0.1.3" },
   { capabilities: { tools: {} } },
 );
 

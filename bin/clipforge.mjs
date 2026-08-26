@@ -21,7 +21,7 @@
  *   CLIPFORGE_LLM_BASE_URL / CLIPFORGE_LLM_API_KEY / CLIPFORGE_LLM_MODEL (required for create, OpenAI-compatible)
  *   CLIPFORGE_PEXELS_KEY / CLIPFORGE_PIXABAY_KEY (optional, for supplemental paid high-quality video sources)
  */
-import { readFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
@@ -599,6 +599,30 @@ async function cmdTranscriptEdit(flags) {
   return { ok: true, projectId, mediaId, ...result };
 }
 
+async function cmdTimelineExport(flags) {
+  const projectId = String(flags.project || "").trim();
+  const mediaId = String(flags.media || "").trim();
+  if (!projectId || !mediaId) throw new Error("--project 和 --media 不能为空");
+  if (!flags.plan) throw new Error("用 --plan <edit-plan.json> 提供网页导出的剪辑计划");
+  const format = ["otio", "edl", "csv"].includes(flags.format) ? flags.format : "otio";
+  let envelope;
+  try {
+    envelope = JSON.parse(readFileSync(String(flags.plan), "utf8"));
+  } catch (error) {
+    throw new Error(`剪辑计划 JSON 无法读取：${error?.message || error}`);
+  }
+  const plan = envelope?.plan && typeof envelope.plan === "object" ? envelope.plan : envelope;
+  const revision = Number(flags.revision ?? envelope?.baseRevision);
+  const result = await api(`/api/project/${encodeURIComponent(projectId)}/media/${encodeURIComponent(mediaId)}/timeline`, {
+    method: "POST",
+    body: { format, plan, inline: true, ...(Number.isInteger(revision) && revision > 0 ? { revision } : {}) },
+  });
+  const outputPath = String(flags.out || result.fileName || `clipforge-draft.${format}`);
+  writeFileSync(outputPath, result.content, "utf8");
+  step(`专业时间线已导出：${outputPath}（${result.clips} 段 · ${result.frameRate}fps）`);
+  return { ok: true, projectId, mediaId, format, outputPath, clips: result.clips, duration: result.duration, frameRate: result.frameRate };
+}
+
 // Import your own script: split a pre-written script into shots and save as the current script, then use compose to render (combine with local assets for a fully self-sufficient pipeline)
 async function cmdImport(flags) {
   const projectId = String(flags.project || "").trim();
@@ -656,6 +680,8 @@ const HELP = `ClipForge CLI · 命令行一句话出片
   clipforge transcript --project <id> --media <id> [--offset 0 --limit 500]   分页检查逐字稿、latestRevision 和当前计划
   clipforge transcript-edit --project <id> --media <id> --plan edit-plan.json [--revision 0 --operation <id> --apply]
                                 默认只预演 diff；用户确认后加 --apply，重试必须复用 operation ID
+  clipforge timeline --project <id> --media <id> --plan edit-plan.json [--format otio|edl|csv --out edit.otio]
+                                导出可编辑专业时间线；素材按原文件名重链，不写本机绝对路径
   clipforge get --project <id>  查最新成片地址
   clipforge --help | --version
 
@@ -666,7 +692,7 @@ const HELP = `ClipForge CLI · 命令行一句话出片
 
 进度打印到 stderr，最终结果（含 videoUrl）打印到 stdout，便于管道取值。`;
 
-const COMMANDS = { create: cmdCreate, product: cmdProduct, import: cmdImport, dub: cmdDub, compose: cmdCompose, cover: cmdCover, qr: cmdQr, endcard: cmdEndcard, export: cmdExport, qc: cmdQc, gate: cmdGate, credits: cmdCredits, native: cmdNative, preview: cmdPreview, sheet: cmdSheet, carousel: cmdCarousel, transcript: cmdTranscriptInspect, "transcript-edit": cmdTranscriptEdit, list: cmdList, voices: cmdVoices, get: cmdGet, trends: cmdTrends };
+const COMMANDS = { create: cmdCreate, product: cmdProduct, import: cmdImport, dub: cmdDub, compose: cmdCompose, cover: cmdCover, qr: cmdQr, endcard: cmdEndcard, export: cmdExport, qc: cmdQc, gate: cmdGate, credits: cmdCredits, native: cmdNative, preview: cmdPreview, sheet: cmdSheet, carousel: cmdCarousel, transcript: cmdTranscriptInspect, "transcript-edit": cmdTranscriptEdit, timeline: cmdTimelineExport, list: cmdList, voices: cmdVoices, get: cmdGet, trends: cmdTrends };
 
 async function main() {
   const { _, flags } = parseArgs(process.argv.slice(2));

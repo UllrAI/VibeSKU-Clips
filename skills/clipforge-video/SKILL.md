@@ -5,7 +5,7 @@ license: AGPL-3.0-only
 compatibility: Requires a running local ClipForge instance (Node 20+, FFmpeg). Designed for Claude Code and other local coding agents — web sandboxes cannot reach the local pipeline.
 metadata:
   {
-    "version": "0.8.96",
+    "version": "0.8.97",
     "homepage": "https://github.com/xixihhhh/clipforge",
     "keywords": "ai-video, faceless-video, text-to-video, tiktok, reels, shorts, 抖音, 快手, 小红书, product-video, tiktok-shop, ugc, ffmpeg, edge-tts",
     "openclaw":
@@ -45,8 +45,8 @@ These are pipeline-correctness facts — violating them produces broken output o
 
 ## Three ways to create
 
-- **MCP tools** (in Claude Desktop / Cursor / Claude Code): `clipforge_create_video`, `clipforge_ingest_product`, `clipforge_product_script`, `clipforge_generate_script`, `clipforge_compose`, `clipforge_search_stock`, `clipforge_list_voices`, `clipforge_list_projects`, `clipforge_get_video`, `clipforge_update_shots`, `clipforge_trends`, `clipforge_import_script`, `clipforge_dub`, `clipforge_cover`, `clipforge_carousel`, `clipforge_shop_qr`, `clipforge_end_card`, `clipforge_qc`, `clipforge_gate`, `clipforge_credits`, `clipforge_native_feel`, `clipforge_preview_gif`, `clipforge_contact_sheet`, `clipforge_export_subtitle`, `clipforge_transcript_inspect`, `clipforge_transcript_edit`, `clipforge_export_platform`.
-- **CLI**: `node bin/clipforge.mjs <create|product|import|compose|dub|cover|qr|endcard|export|qc|gate|credits|native|preview|sheet|carousel|transcript|transcript-edit|list|voices|get|trends> [flags]` (`--help` for all). `gate` exits with code 2 when blocked (fail, or warn under `--strict`) — pipe it straight into shell scripts and CI.
+- **MCP tools** (in Claude Desktop / Cursor / Claude Code): `clipforge_create_video`, `clipforge_ingest_product`, `clipforge_product_script`, `clipforge_generate_script`, `clipforge_compose`, `clipforge_search_stock`, `clipforge_list_voices`, `clipforge_list_projects`, `clipforge_get_video`, `clipforge_update_shots`, `clipforge_trends`, `clipforge_import_script`, `clipforge_dub`, `clipforge_cover`, `clipforge_carousel`, `clipforge_shop_qr`, `clipforge_end_card`, `clipforge_qc`, `clipforge_gate`, `clipforge_credits`, `clipforge_native_feel`, `clipforge_preview_gif`, `clipforge_contact_sheet`, `clipforge_export_subtitle`, `clipforge_transcript_inspect`, `clipforge_transcript_edit`, `clipforge_timeline_export`, `clipforge_export_platform`.
+- **CLI**: `node bin/clipforge.mjs <create|product|import|compose|dub|cover|qr|endcard|export|qc|gate|credits|native|preview|sheet|carousel|transcript|transcript-edit|timeline|list|voices|get|trends> [flags]` (`--help` for all). `gate` exits with code 2 when blocked (fail, or warn under `--strict`) — pipe it straight into shell scripts and CI.
 - **HTTP**: `POST /api/topic/script` → `POST /api/project/[id]/stock-fill` → `POST /api/project/[id]/compose` → poll `GET /api/project/[id]/compose`.
 
 **Delivery checklist (hard rules 2–4 in tool form):** compose done → `clipforge_gate` → `clipforge_contact_sheet` (look at it) → only then report the video URL, together with any `warn` items the gate raised.
@@ -119,6 +119,8 @@ ClipForge can cut a user's own recording from its local word-level transcript wh
 5. After explicit confirmation, repeat the exact plan and operation ID with `apply: true`. Poll through `clipforge_transcript_inspect` until the edit is done, then run the normal gate and visual check.
 
 CLI follows the same contract: `transcript` inspects, while `transcript-edit --plan edit.json --revision <n> --operation <id>` dry-runs by default; append `--apply` only after confirmation. A stale revision is a signal to inspect again, never a reason to force the edit.
+
+For a professional handoff, pass the reviewed complete plan to `clipforge_timeline_export` (or CLI `timeline`). Prefer OTIO when the next editor supports it, EDL for traditional NLE interchange, and CSV for human review. Save the returned content exactly as named; the timeline intentionally relinks by original file name and never carries a local absolute path. Exporting a timeline is read-only and does not replace the required render + gate + visual check when the user also asked for a finished video.
 
 ## Anti-patterns
 

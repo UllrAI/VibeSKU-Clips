@@ -8,6 +8,7 @@ import type {
 } from "@/lib/production-system";
 import type { TimeRange, TranscriptDocument, TranscriptEditPlan } from "@/lib/transcript-editor";
 import type { TranscriptEditSummary } from "@/lib/transcript-edit-protocol";
+import type { TranscriptCheckpoint } from "@/lib/transcript-checkpoint";
 
 // Projects table
 export const projects = sqliteTable("projects", {
@@ -186,6 +187,7 @@ export const mediaSources = sqliteTable("media_sources", {
   device: text("device", { enum: ["webgpu", "wasm"] }),
   language: text("language"),
   transcript: text("transcript", { mode: "json" }).$type<TranscriptDocument>(),
+  transcriptCheckpoint: text("transcript_checkpoint", { mode: "json" }).$type<TranscriptCheckpoint>(),
   error: text("error"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),

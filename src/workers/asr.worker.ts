@@ -48,13 +48,18 @@ async function loadPipeline(model: LocalAsrModel, device: LocalAsrDevice) {
   return transcriber;
 }
 
-function wordsFromOutput(output: AutomaticSpeechRecognitionOutput): TranscriptWord[] {
+function wordsFromOutput(output: AutomaticSpeechRecognitionOutput, offsetSeconds = 0, chunkIndex = 0): TranscriptWord[] {
   return (output.chunks ?? []).flatMap((chunk, index) => {
     const text = String(chunk.text ?? "").replace(/\s+/g, " ").trim();
     const start = Number(chunk.timestamp?.[0]);
     const end = Number(chunk.timestamp?.[1]);
     if (!text || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) return [];
-    return [{ id: `w${index + 1}`, text, start: Math.max(0, start), end: Math.max(0, end) }];
+    return [{
+      id: `c${chunkIndex + 1}w${index + 1}`,
+      text,
+      start: Math.max(0, start + offsetSeconds),
+      end: Math.max(0, end + offsetSeconds),
+    }];
   });
 }
 
@@ -71,9 +76,11 @@ async function transcribe(request: AsrWorkerRequest, device: LocalAsrDevice): Pr
     ...(request.language && request.language !== "auto" ? { language: request.language } : {}),
   });
   const result = Array.isArray(output) ? output[0] : output;
-  const words = wordsFromOutput(result);
-  if (!words.length) throw new Error("没有识别到可编辑的语音内容");
-  const duration = request.audio.length / 16_000;
+  const offsetSeconds = Math.max(0, request.offsetSeconds ?? 0);
+  const chunkIndex = Math.max(0, Math.round(request.chunkIndex ?? 0));
+  const words = wordsFromOutput(result, offsetSeconds, chunkIndex);
+  const chunkDuration = request.audio.length / 16_000;
+  const duration = Math.max(offsetSeconds + chunkDuration, request.sourceDuration ?? 0);
   return {
     version: 1,
     text: result.text.trim() || words.map((word) => word.text).join(" "),
@@ -83,7 +90,7 @@ async function transcribe(request: AsrWorkerRequest, device: LocalAsrDevice): Pr
     device,
     words,
     segments: segmentsFromWords(words),
-    silenceRanges: detectSilenceRanges(request.audio, 16_000),
+    silenceRanges: detectSilenceRanges(request.audio, 16_000).map((range) => ({ start: range.start + offsetSeconds, end: range.end + offsetSeconds })),
     createdAt: new Date().toISOString(),
   };
 }

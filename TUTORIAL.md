@@ -533,6 +533,7 @@ node bin/clipforge.mjs qc --project <id>                               # 成片�
 node bin/clipforge.mjs gate --project <id> --strict                    # 发布门禁，拦截时退出码 2
 node bin/clipforge.mjs transcript --project <id> --media <mediaId>     # 检查原片逐词稿和剪辑版本
 node bin/clipforge.mjs transcript-edit --project <id> --media <mediaId> --plan edit.json --revision 0 --operation edit-001  # 先预演，确认后加 --apply
+node bin/clipforge.mjs timeline --project <id> --media <mediaId> --plan edit.json --format otio --out edit.otio  # 导出可编辑专业时间线
 node bin/clipforge.mjs --help                                          # 全部命令
 ```
 

@@ -196,14 +196,14 @@ cd clipforge &amp;&amp; pnpm install &amp;&amp; pnpm dev</code></pre>
 </ol>
 <div class="tip"><p><b>Consistency gate:</b> character, product, and wardrobe anchors are appended to every shot. Only an explicit forbidden change blocks before spending; unknown custom models remain permissive.</p></div>
 
-<h2 id="text-edit">6C. Edit imported footage by text (v0.8.96)</h2>
+<h2 id="text-edit">6C. Edit long-form footage by text (v0.8.97)</h2>
 <ol>
   <li>Open a project's Assets page, choose <b>Edit by text</b>, and import MP4 / MOV / WebM / MKV / M4V footage up to 1 GB.</li>
-  <li>Choose Tiny for speed or Base for accuracy, then transcribe locally. The model is cached after its first download; WebGPU is preferred and compatibility mode is automatic. Audio is not sent to an AI service.</li>
+  <li>Choose Tiny for speed or Base for accuracy, then transcribe locally. Sources up to two hours are processed in fixed five-minute chunks, keeping memory bounded; cancel at any time and resume from the latest checkpoint while the earlier transcript remains usable until the new one finishes. The model is cached after its first download; WebGPU is preferred and compatibility mode is automatic.</li>
   <li>Click words to keep or remove them, or batch-mark fillers and silence. Playback skips removed ranges immediately; the timeline, duration estimate, undo, and redo update live.</li>
-  <li>Choose <b>Review changes</b> to inspect removed words, ranges, and duration before confirming a new version. SRT / VTT / JSON exports are immediate; MCP / CLI also dry-run by default and apply only after explicit confirmation.</li>
+  <li>Choose <b>Review changes</b> to inspect removed words, ranges, and duration before confirming a new version. SRT / VTT / JSON cover captions and the edit plan; OTIO preserves editable A/V clips, EDL supports traditional NLE handoff, and CSV carries source/record timecodes plus transcript notes for review. MCP and CLI expose the same exports.</li>
 </ol>
-<div class="tip"><p><b>Current limit:</b> browser-local transcription supports footage up to 45 minutes. Longer media can still be imported for future engine options.</p></div>
+<div class="tip"><p><b>Relinking media:</b> professional timelines contain only the original file name, never a local absolute path. Select the source once after importing into Premiere, Resolve, or another NLE.</p></div>
 
 <h2 id="clone">7. Viral cloning &amp; trend picks</h2>
 <ul>

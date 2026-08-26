@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   LuArrowLeft,
+  LuCircleStop,
   LuCaptions,
   LuCircleCheckBig,
   LuCpu,
@@ -24,7 +25,6 @@ import {
 } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { useLocale, useT } from "@/lib/i18n";
-import { decodeAudioForAsr } from "@/lib/browser-audio";
 import { buildSrt, buildVtt } from "@/lib/subtitle-export";
 import { TRANSCRIPT_EDIT_FORMAT, type TranscriptEditActor, type TranscriptEditProposal, type TranscriptEditSummary } from "@/lib/transcript-edit-protocol";
 import {
@@ -33,6 +33,14 @@ import {
   type LocalAsrDevice,
   type LocalAsrModel,
 } from "@/lib/local-asr";
+import {
+  ASR_CHUNK_SECONDS,
+  appendTranscriptChunk,
+  decodeFloat32Pcm,
+  transcriptFromCheckpoint,
+  type TranscriptCheckpoint,
+  type TranscriptCheckpointSummary,
+} from "@/lib/transcript-checkpoint";
 import {
   DEFAULT_TRANSCRIPT_EDIT_PLAN,
   detectFillerWordIds,
@@ -108,6 +116,7 @@ interface MediaSourceRow {
   model?: string | null;
   device?: LocalAsrDevice | null;
   transcript?: TranscriptDocument | null;
+  checkpoint?: TranscriptCheckpointSummary | null;
   error?: string | null;
   edits: MediaEditRow[];
 }
@@ -133,13 +142,16 @@ export default function TranscriptPage() {
   const inputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const workerRef = useRef<Worker | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const cancelRequestedRef = useRef(false);
+  const deviceRef = useRef<LocalAsrDevice | null>(null);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressRef = useRef(0);
   const [projectName, setProjectName] = useState("");
   const [sources, setSources] = useState<MediaSourceRow[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<"upload" | "decode" | "transcribe" | "preview" | "render" | null>(null);
+  const [busy, setBusy] = useState<"upload" | "decode" | "transcribe" | "preview" | "render" | "export" | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [model, setModel] = useState<LocalAsrModel>(LOCAL_ASR_MODELS[0].id);
@@ -147,6 +159,7 @@ export default function TranscriptPage() {
   const [device, setDevice] = useState<LocalAsrDevice | null>(null);
   const [fallback, setFallback] = useState(false);
   const [phase, setPhase] = useState<"loading" | "transcribing" | null>(null);
+  const [chunkState, setChunkState] = useState({ index: 0, total: 0 });
   const [progress, setProgress] = useState(0);
   const [history, setHistory] = useState<EditHistory>(() => createHistory());
   const [proposal, setProposal] = useState<TranscriptEditProposal | null>(null);
@@ -175,6 +188,7 @@ export default function TranscriptPage() {
   }, [id, loadSources]);
 
   useEffect(() => () => {
+    abortRef.current?.abort();
     workerRef.current?.terminate();
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
   }, []);
@@ -307,6 +321,8 @@ export default function TranscriptPage() {
   async function startTranscription() {
     if (!selected) return;
     let taskStarted = false;
+    cancelRequestedRef.current = false;
+    deviceRef.current = null;
     setError("");
     setFallback(false);
     setDevice(null);
@@ -314,13 +330,20 @@ export default function TranscriptPage() {
     progressRef.current = 0;
     setBusy("decode");
     try {
-      const mediaResponse = await fetch(selected.url);
-      if (!mediaResponse.ok) throw new Error(t("loadFailed"));
-      const pcm = await decodeAudioForAsr(await mediaResponse.arrayBuffer());
-      await updateTranscriptState(selected.id, { action: "start", model, language });
+      const started = await updateTranscriptState(selected.id, { action: "start", model, language, resume: true }) as { resumeCheckpoint?: TranscriptCheckpoint | null };
       taskStarted = true;
-      patchSource(selected.id, { status: "transcribing", progress: 0, error: null });
-      setBusy("transcribe");
+      let checkpoint = started.resumeCheckpoint ?? null;
+      const sourceDuration = selected.duration / 1000;
+      let processedSeconds = checkpoint?.processedSeconds ?? 0;
+      const totalChunks = Math.max(1, Math.ceil(sourceDuration / ASR_CHUNK_SECONDS));
+      progressRef.current = Math.min(99, Math.round(processedSeconds / sourceDuration * 100));
+      setProgress(progressRef.current);
+      patchSource(selected.id, { status: "transcribing", progress: progressRef.current, error: null });
+      if (checkpoint) {
+        deviceRef.current = checkpoint.device;
+        setDevice(checkpoint.device);
+        setNotice(t("resuming", { time: formatDuration(processedSeconds) }));
+      }
 
       const worker = new Worker(new URL("../../../../workers/asr.worker.ts", import.meta.url), { type: "module" });
       workerRef.current = worker;
@@ -328,48 +351,48 @@ export default function TranscriptPage() {
         void updateTranscriptState(selected.id, { action: "heartbeat", progress: progressRef.current }).catch(() => {});
       }, 15_000);
 
-      worker.onmessage = async (event: MessageEvent<AsrWorkerMessage>) => {
-        const message = event.data;
-        if (message.type === "device") {
-          setDevice(message.device);
-          if (message.fallback) setFallback(true);
-          return;
+      while (processedSeconds < sourceDuration - 0.05) {
+        if (cancelRequestedRef.current) break;
+        const startSeconds = processedSeconds;
+        const durationSeconds = Math.min(ASR_CHUNK_SECONDS, sourceDuration - startSeconds);
+        const chunkIndex = Math.floor(startSeconds / ASR_CHUNK_SECONDS);
+        setChunkState({ index: chunkIndex + 1, total: totalChunks });
+        setBusy("decode");
+        setPhase(null);
+        const controller = new AbortController();
+        abortRef.current = controller;
+        const audioResponse = await fetch(`/api/project/${id}/media/${selected.id}/audio?start=${startSeconds.toFixed(3)}&duration=${durationSeconds.toFixed(3)}`, { signal: controller.signal, headers: { "Accept-Language": locale } });
+        if (!audioResponse.ok) {
+          const data = await audioResponse.json().catch(() => ({})) as { error?: string };
+          throw new Error(data.error || t("audioChunkFailed"));
         }
-        if (message.type === "progress") {
-          setPhase(message.phase);
-          const mapped = message.phase === "loading" ? Math.round(message.progress * 0.55) : Math.round(55 + message.progress * 0.44);
-          progressRef.current = Math.max(progressRef.current, Math.min(99, mapped));
-          setProgress(progressRef.current);
-          return;
-        }
-        if (message.type === "complete") {
-          try {
-            await updateTranscriptState(selected.id, { action: "complete", transcript: message.transcript });
-            await loadSources(true);
-            setProgress(100);
-          } catch (cause) {
-            setError(cause instanceof Error ? cause.message : t("transcriptionFailed"));
-          } finally {
-            finishWorker();
-          }
-          return;
-        }
-        if (message.type === "error") {
-          setError(message.error || t("transcriptionFailed"));
-          await updateTranscriptState(selected.id, { action: "fail", error: message.error }).catch(() => {});
-          patchSource(selected.id, { status: "failed", error: message.error });
-          finishWorker();
-        }
-      };
-      worker.onerror = (event) => {
-        const message = event.message || t("transcriptionFailed");
-        setError(message);
-        void updateTranscriptState(selected.id, { action: "fail", error: message });
-        patchSource(selected.id, { status: "failed", error: message });
-        finishWorker();
-      };
-      worker.postMessage({ type: "transcribe", audio: pcm, model, language, preferWebGpu: true }, [pcm.buffer]);
+        const pcm = decodeFloat32Pcm(await audioResponse.arrayBuffer());
+        setBusy("transcribe");
+        const chunk = await transcribeAudioChunk(worker, pcm, {
+          model,
+          language,
+          offsetSeconds: startSeconds,
+          sourceDuration,
+          chunkIndex,
+          totalChunks,
+        });
+        const nextProcessed = Math.min(sourceDuration, startSeconds + durationSeconds);
+        checkpoint = appendTranscriptChunk({ checkpoint, chunk, sourceDuration, processedSeconds: nextProcessed, model, language });
+        const saved = await updateTranscriptState(selected.id, { action: "checkpoint", chunk, processedSeconds: nextProcessed }) as { progress?: number };
+        processedSeconds = nextProcessed;
+        progressRef.current = Math.max(progressRef.current, saved.progress ?? Math.min(99, Math.round(processedSeconds / sourceDuration * 100)));
+        setProgress(progressRef.current);
+      }
+
+      if (cancelRequestedRef.current) return;
+      if (!checkpoint) throw new Error(t("emptyTranscript"));
+      await updateTranscriptState(selected.id, { action: "complete", transcript: transcriptFromCheckpoint(checkpoint) });
+      await loadSources(true);
+      setProgress(100);
+      setNotice(t("transcriptionComplete"));
+      finishWorker();
     } catch (cause) {
+      if (cancelRequestedRef.current || (cause instanceof DOMException && cause.name === "AbortError")) return;
       const message = cause instanceof Error ? cause.message : t("transcriptionFailed");
       setError(message);
       if (taskStarted) await updateTranscriptState(selected.id, { action: "fail", error: message }).catch(() => {});
@@ -377,13 +400,66 @@ export default function TranscriptPage() {
     }
   }
 
+  function transcribeAudioChunk(
+    worker: Worker,
+    pcm: Float32Array,
+    input: { model: LocalAsrModel; language: string; offsetSeconds: number; sourceDuration: number; chunkIndex: number; totalChunks: number },
+  ): Promise<TranscriptDocument> {
+    return new Promise((resolve, reject) => {
+      const base = input.chunkIndex / input.totalChunks * 99;
+      const weight = 99 / input.totalChunks;
+      worker.onmessage = (event: MessageEvent<AsrWorkerMessage>) => {
+        const message = event.data;
+        if (message.type === "device") {
+          deviceRef.current = message.device;
+          setDevice(message.device);
+          if (message.fallback) setFallback(true);
+          return;
+        }
+        if (message.type === "progress") {
+          setPhase(message.phase);
+          const fraction = message.phase === "loading" ? message.progress / 100 * 0.2 : 0.2 + message.progress / 100 * 0.8;
+          progressRef.current = Math.max(progressRef.current, Math.min(99, Math.round(base + weight * fraction)));
+          setProgress(progressRef.current);
+          return;
+        }
+        if (message.type === "complete") resolve(message.transcript);
+        if (message.type === "error") reject(new Error(message.error || t("transcriptionFailed")));
+      };
+      worker.onerror = (event) => reject(new Error(event.message || t("transcriptionFailed")));
+      worker.postMessage({
+        type: "transcribe",
+        audio: pcm,
+        model: input.model,
+        language: input.language,
+        preferWebGpu: deviceRef.current !== "wasm",
+        offsetSeconds: input.offsetSeconds,
+        sourceDuration: input.sourceDuration,
+        chunkIndex: input.chunkIndex,
+      }, [pcm.buffer]);
+    });
+  }
+
+  async function cancelTranscription() {
+    if (!selected || (busy !== "decode" && busy !== "transcribe")) return;
+    cancelRequestedRef.current = true;
+    abortRef.current?.abort();
+    workerRef.current?.terminate();
+    await updateTranscriptState(selected.id, { action: "cancel" }).catch(() => {});
+    finishWorker();
+    await loadSources(true);
+    setNotice(t("cancelledResume"));
+  }
+
   function finishWorker() {
+    abortRef.current = null;
     workerRef.current?.terminate();
     workerRef.current = null;
     if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     heartbeatRef.current = null;
     setBusy(null);
     setPhase(null);
+    setChunkState({ index: 0, total: 0 });
   }
 
   const latestRevision = selected?.edits.reduce((max, edit) => Math.max(max, edit.revision), 0) ?? 0;
@@ -466,6 +542,37 @@ export default function TranscriptPage() {
     downloadText(`${stem}.${format}`, format === "srt" ? "application/x-subrip" : "text/vtt", format === "srt" ? buildSrt(cues) : buildVtt(cues));
   }
 
+  async function exportTimelineDraft(format: "otio" | "edl" | "csv") {
+    if (!selected || !transcript) return;
+    setBusy("export");
+    setError("");
+    try {
+      const response = await fetch(`/api/project/${id}/media/${selected.id}/timeline`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept-Language": locale },
+        body: JSON.stringify({ format, plan }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error || t("timelineExportFailed"));
+      }
+      const disposition = response.headers.get("content-disposition") ?? "";
+      const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+      const fileName = encodedName ? decodeURIComponent(encodedName) : `clipforge-draft.${format}`;
+      const url = URL.createObjectURL(await response.blob());
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = fileName;
+      anchor.click();
+      URL.revokeObjectURL(url);
+      setNotice(t("timelineExported", { format: format.toUpperCase() }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : t("timelineExportFailed"));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function previewEdit() {
     if (!selected || !transcript) return;
     setBusy("preview");
@@ -520,11 +627,13 @@ export default function TranscriptPage() {
 
   const activeRender = selected?.edits.some((edit) => edit.status === "rendering" || edit.status === "queued") ?? false;
   const originalSeconds = transcript?.duration ?? (selected?.duration ?? 0) / 1000;
-  const progressLabel = busy === "decode"
-    ? t("decoding")
+  const progressLabel = busy === "decode" && chunkState.total
+    ? t("extractingChunk", { n: chunkState.index, total: chunkState.total })
     : phase === "loading"
       ? t("loadingModel", { n: progress })
-      : t("transcribing");
+      : chunkState.total
+        ? t("transcribingChunk", { n: chunkState.index, total: chunkState.total })
+        : t("transcribing");
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -606,13 +715,10 @@ export default function TranscriptPage() {
                   <option value="auto">{t("languageAuto")}</option><option value="zh">{t("languageZh")}</option><option value="en">{t("languageEn")}</option>
                 </select>
               </label>
-              <Button className="h-10 sm:min-w-36" disabled={!selected.hasAudio || selected.duration > 45 * 60 * 1000 || busy === "decode" || busy === "transcribe"} onClick={() => void startTranscription()}>
-                {busy === "decode" || busy === "transcribe" ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuCpu />}
-                {transcript ? t("retryTranscribe") : t("startTranscribe")}
-              </Button>
+              {busy === "decode" || busy === "transcribe" ? <Button variant="outline" className="h-11 sm:min-w-36" onClick={() => void cancelTranscription()}><LuCircleStop />{t("cancelTranscribe")}</Button> : <Button className="h-11 sm:min-w-36" disabled={!selected.hasAudio} onClick={() => void startTranscription()}><LuCpu />{selected.checkpoint?.resumable ? t("resumeTranscribe") : transcript ? t("retryTranscribe") : t("startTranscribe")}</Button>}
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>{!selected.hasAudio ? t("noAudio") : selected.duration > 45 * 60 * 1000 ? t("tooLong") : t("transcribeHint")}</span>
+              <span>{!selected.hasAudio ? t("noAudio") : selected.checkpoint?.resumable ? t("resumeAvailable", { time: formatDuration(selected.checkpoint.processedSeconds) }) : t("transcribeHint")}</span>
               {(device || selected.device) && <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-foreground">{(device || selected.device) === "webgpu" ? t("deviceWebgpu") : t("deviceWasm")}</span>}
             </div>
             {(busy === "decode" || busy === "transcribe") && <div className="mt-4" role="status" aria-live="polite"><div className="mb-1.5 flex items-center justify-between text-xs"><span>{progressLabel}</span><span className="tabular-nums text-muted-foreground">{progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${Math.max(3, progress)}%` }} /></div>{fallback && <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">{t("fallbackWasm")}</p>}</div>}
@@ -684,6 +790,13 @@ export default function TranscriptPage() {
                 <Button variant="outline" size="sm" className="h-11 px-2 text-xs" onClick={() => exportDraft("srt")}><LuDownload />SRT</Button>
                 <Button variant="outline" size="sm" className="h-11 px-2 text-xs" onClick={() => exportDraft("vtt")}><LuDownload />VTT</Button>
                 <Button variant="outline" size="sm" className="h-11 px-2 text-xs" onClick={() => exportDraft("json")}><LuFileJson2 />JSON</Button>
+              </div>
+              <div className="mt-4 rounded-xl border border-border/50 bg-background/30 p-3">
+                <h4 className="text-xs font-semibold">{t("timelineExportTitle")}</h4>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("timelineExportHint")}</p>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {(["otio", "edl", "csv"] as const).map((format) => <Button key={format} variant="outline" size="sm" className="h-11 px-2 text-xs" disabled={busy === "export"} onClick={() => void exportTimelineDraft(format)}>{busy === "export" ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuDownload />}{format.toUpperCase()}</Button>)}
+                </div>
               </div>
             </div>}
           </div>

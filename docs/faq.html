@@ -46,8 +46,8 @@
     { "@type": "Question", "name": "支持哪些 AI 模型平台?", "acceptedAnswer": { "@type": "Answer", "text": "一个接口聚合 7 大平台 30+ 模型:Atlas Cloud(推荐,一个 Key 覆盖脚本+生图+视频+配音)、火山方舟、fal.ai、OpenAI、DeepSeek 等。" } },
     { "@type": "Question", "name": "生成失败会白扣费吗?", "acceptedAnswer": { "@type": "Answer", "text": "不会白扣。付费任务走两阶段任务表:已提交的云端任务记录在案,可在素材页恢复领取结果,不会因为页面关闭或中断而重复提交扣费;免费链路则可以随便重试。" } },
     { "@type": "Question", "name": "怎么控制 AI 生成成本并保持跨镜头一致?", "acceptedAnswer": { "@type": "Answer", "text": "导演模式的生产控制台会在执行前展示真实价格区间、预计耗时与模型推荐;视觉记忆会作为角色、商品和风格约束进入实际生成请求,用于保持跨镜头一致。生成后可通过 QC 定位问题并选择修复,系统不会静默触发付费重做。" } },
-    { "@type": "Question", "name": "可以导入自己拍的视频按文字剪吗?", "acceptedAnswer": { "@type": "Answer", "text": "可以。原片在浏览器本地转成逐词时间轴,删文字即删画面;播放会即时跳过删除段,并支持撤销、口头禅标记、静音删除和字幕导出。渲染前先看修改摘要,原片与旧版本都不覆盖。" } },
-    { "@type": "Question", "name": "怎么自动化批量出片?", "acceptedAnswer": { "@type": "Answer", "text": "三个入口:MCP Server(在 Claude / Cursor 等 agent 里一句话出片)、CLI(脚本化出片,配 cron 就是全自动日更机)、agent Skill。项目有 1140 个单元测试保障链路稳定。" } }
+    { "@type": "Question", "name": "可以导入自己拍的视频按文字剪吗?", "acceptedAnswer": { "@type": "Answer", "text": "可以。最长 2 小时原片按固定 5 分钟分块本地转写,可取消并从检查点继续,旧稿在新稿完成前保持可用;删文字即删画面,渲染前先看修改摘要。还可导出 OTIO、EDL、CSV 继续专业精修,原片与旧版本都不覆盖。" } },
+    { "@type": "Question", "name": "怎么自动化批量出片?", "acceptedAnswer": { "@type": "Answer", "text": "三个入口:MCP Server(在 Claude / Cursor 等 agent 里一句话出片)、CLI(脚本化出片,配 cron 就是全自动日更机)、agent Skill。项目有 1151 个单元测试保障链路稳定。" } }
   ]
 }
 </script>
@@ -140,8 +140,8 @@
   <details><summary>支持哪些 AI 模型平台?</summary><p>一个接口聚合 <b>7 大平台 30+ 模型</b>:<a href="https://www.atlascloud.ai?ref=JPM683" target="_blank" rel="noopener">Atlas Cloud</a>(推荐,一个 Key 覆盖脚本+生图+视频+配音)、火山方舟、fal.ai、OpenAI、DeepSeek 等,配置方法见<a href="guide.html#keys">使用手册第三节</a>。</p></details>
   <details><summary>生成失败会白扣费吗?</summary><p>不会白扣。付费任务走<b>两阶段任务表</b>:已提交的云端任务记录在案,可在素材页<b>恢复领取</b>结果,不会因为页面关闭或中断而重复提交扣费;免费链路则可以随便重试。</p></details>
   <details><summary>怎么控制 AI 生成成本并保持跨镜头一致?</summary><p>导演模式的<b>生产控制台</b>会在执行前展示真实价格区间、预计耗时与模型推荐;角色、商品和风格等<b>视觉记忆</b>会进入实际生成请求,用于保持跨镜头一致。生成后可通过 QC 定位问题并选择修复,系统<b>不会静默触发付费重做</b>。</p></details>
-  <details><summary>可以导入自己拍的视频按文字剪吗?</summary><p>可以。原片在浏览器本地转成逐词时间轴,<b>删文字即删画面</b>;播放会即时跳过删除段,并支持撤销、口头禅标记、静音删除和字幕导出。渲染前先看修改摘要,<b>原片与旧版本都不覆盖</b>。</p></details>
-  <details><summary>怎么自动化批量出片?</summary><p>三个入口:<b>MCP Server</b>(在 Claude / Cursor 等 agent 里一句话出片)、<b>CLI</b>(脚本化出片,配 cron 就是全自动日更机)、<b>agent Skill</b>。项目有 <b>1140 个单元测试</b>保障链路稳定。</p></details>
+  <details><summary>可以导入自己拍的视频按文字剪吗?</summary><p>可以。最长 2 小时原片按固定 5 分钟分块本地转写,<b>可取消并从检查点继续</b>,旧稿在新稿完成前保持可用;<b>删文字即删画面</b>,渲染前先看修改摘要。还可导出 OTIO / EDL / CSV 继续专业精修,<b>原片与旧版本都不覆盖</b>。</p></details>
+  <details><summary>怎么自动化批量出片?</summary><p>三个入口:<b>MCP Server</b>(在 Claude / Cursor 等 agent 里一句话出片)、<b>CLI</b>(脚本化出片,配 cron 就是全自动日更机)、<b>agent Skill</b>。项目有 <b>1151 个单元测试</b>保障链路稳定。</p></details>
 </div>
 
 <div class="tip" style="margin-top:28px"><p>没找到你的问题?去 <a href="https://github.com/xixihhhh/clipforge/issues" rel="noopener">GitHub Issues</a> 或 <a href="https://github.com/xixihhhh/clipforge/discussions" rel="noopener">Discussions</a> 提问,中英文都可以。</p></div>

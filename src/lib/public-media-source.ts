@@ -1,4 +1,5 @@
 import { compositions, mediaSources } from "@/lib/db/schema";
+import { summarizeTranscriptCheckpoint } from "@/lib/transcript-checkpoint";
 
 type MediaSourceRow = typeof mediaSources.$inferSelect;
 type CompositionRow = typeof compositions.$inferSelect;
@@ -21,6 +22,7 @@ export function publicMediaSource(source: MediaSourceRow) {
     device: source.device,
     language: source.language,
     transcript: source.transcript,
+    checkpoint: summarizeTranscriptCheckpoint(source.transcriptCheckpoint),
     error: source.error,
     createdAt: source.createdAt,
     updatedAt: source.updatedAt,

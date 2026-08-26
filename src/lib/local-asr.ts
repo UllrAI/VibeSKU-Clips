@@ -25,6 +25,9 @@ export interface AsrWorkerRequest {
   model: LocalAsrModel;
   language: string;
   preferWebGpu: boolean;
+  offsetSeconds?: number;
+  sourceDuration?: number;
+  chunkIndex?: number;
 }
 
 export type AsrWorkerMessage =
