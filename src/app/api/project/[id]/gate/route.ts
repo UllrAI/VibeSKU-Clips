@@ -5,7 +5,7 @@ import { existsSync } from "fs";
 import { readFile } from "fs/promises";
 import { getDb } from "@/lib/db";
 import { getDataDir } from "@/lib/paths";
-import { projects, scripts as scriptsTable, assets as assetsTable, compositions } from "@/lib/db/schema";
+import { projects, scripts as scriptsTable, assets as assetsTable, compositions, generationReviews } from "@/lib/db/schema";
 import { runQc, expectedDimensions, type QcReport } from "@/lib/video-composer/qc";
 import { buildCreditsManifest, type BgmCredit, type CreditsManifest } from "@/lib/asset-credits";
 import { checkPublishReadiness } from "@/lib/publish-readiness";
@@ -13,6 +13,7 @@ import {
   buildGateReport,
   gateItemFromAiPolicy,
   gateItemFromCredits,
+  gateItemFromGenerationQuality,
   gateItemFromQc,
   gateItemFromReadiness,
   gateItemFromRealMix,
@@ -104,17 +105,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
-    // 3) asset license manifest — newest done asset per shot + the BGM sidecar free-bgm writes
+    // 3) asset license manifest — active done asset per shot + the BGM sidecar free-bgm writes
     const rows = await db
       .select()
       .from(assetsTable)
-      .where(and(eq(assetsTable.projectId, id), eq(assetsTable.status, "done")))
+      .where(and(eq(assetsTable.projectId, id), eq(assetsTable.status, "done"), eq(assetsTable.selected, true)))
       .orderBy(desc(assetsTable.createdAt));
-    const seen = new Set<number>();
-    const current = rows.filter((r) => {
-      if (seen.has(r.shotId)) return false;
-      seen.add(r.shotId);
-      return true;
+    const current = rows;
+    const reviewRows = await db.select().from(generationReviews).where(eq(generationReviews.projectId, id)).orderBy(desc(generationReviews.createdAt));
+    const latestReviewByAsset = new Map<string, typeof generationReviews.$inferSelect>();
+    for (const review of reviewRows) if (!latestReviewByAsset.has(review.assetId)) latestReviewByAsset.set(review.assetId, review);
+    const qualityRows = current.filter((row) => row.type === "ai_generated").map((row) => {
+      const review = latestReviewByAsset.get(row.id);
+      return {
+        shotId: row.shotId,
+        verdict: review?.verdict,
+        humanDecision: review?.humanDecision,
+        overall: review?.report.overall,
+      };
     });
     let credits: CreditsManifest | null = null;
     if (current.length > 0) {
@@ -172,6 +180,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const report = buildGateReport([
       readinessItem,
       gateItemFromQc(qc),
+      gateItemFromGenerationQuality(qualityRows),
       gateItemFromCredits(credits),
       gateItemFromAiPolicy(aiPolicyWarnings),
       gateItemFromRealMix(realMix),

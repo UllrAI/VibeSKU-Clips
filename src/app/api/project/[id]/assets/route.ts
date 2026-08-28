@@ -4,10 +4,12 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { getDb } from "@/lib/db";
 import { assets } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { validateOrDelete } from "@/lib/media-validate";
 import { MAX_DOWNLOAD_BYTES } from "@/lib/providers/stock-types";
 import { extractLastFrame, LAST_FRAME_SUFFIX } from "@/lib/video-composer/frame-extract";
+import { resolveUploadFilePath } from "@/lib/remote-image";
+import { existsSync } from "fs";
 
 /** Decode-level check after writing to disk: AI providers' expiring links often answer with an
  * error page or a truncated body — those must be stopped before the DB row exists, or the
@@ -27,8 +29,13 @@ export async function GET(
   try {
     const { id } = await params;
     const db = getDb();
-    const rows = await db.select().from(assets).where(eq(assets.projectId, id));
-    return NextResponse.json(rows);
+    const rows = await db.select().from(assets).where(eq(assets.projectId, id)).orderBy(desc(assets.createdAt));
+    return NextResponse.json(rows.map((row) => {
+      const tailPath = row.filePath && /\.(mp4|webm|mov|m4v)$/i.test(row.filePath)
+        ? resolveUploadFilePath(`${row.filePath}${LAST_FRAME_SUFFIX}`)
+        : null;
+      return { ...row, ...(tailPath && existsSync(tailPath) && { lastFrameUrl: `${row.filePath}${LAST_FRAME_SUFFIX}` }) };
+    }));
   } catch (error) {
     console.error("获取素材失败:", error);
     return NextResponse.json(
@@ -132,22 +139,23 @@ export async function POST(
         ? body.thumbnailPath
         : undefined;
 
-    // 按 (projectId, shotId) upsert：先删旧再插
-    await db.delete(assets).where(and(eq(assets.projectId, id), eq(assets.shotId, shotId)));
-    const rows = await db
-      .insert(assets)
-      .values({
-        projectId: id,
-        shotId,
-        type: assetType,
-        filePath,
-        thumbnailPath,
-        provider: body.provider,
-        model: body.model,
-        prompt: body.prompt,
-        status: "done",
-      })
-      .returning();
+    // Preserve every take for comparison/rollback, but atomically make the new take the
+    // only active composition input for this shot.
+    const rows = db.transaction((tx) => {
+      tx.update(assets).set({ selected: false }).where(and(eq(assets.projectId, id), eq(assets.shotId, shotId))).run();
+      return tx.insert(assets).values({
+          projectId: id,
+          shotId,
+          type: assetType,
+          filePath,
+          thumbnailPath,
+          provider: body.provider,
+          model: body.model,
+          prompt: body.prompt,
+          selected: true,
+          status: "done",
+        }).returning().all();
+    });
 
     return NextResponse.json({ ...rows[0], ...(lastFrameUrl && { lastFrameUrl }) });
   } catch (error) {
@@ -156,5 +164,30 @@ export async function POST(
       { error: error instanceof Error ? error.message : "保存素材失败" },
       { status: 500 }
     );
+  }
+}
+
+/** Select an existing take as the real composition input. No media is deleted. */
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    if (!/^[a-zA-Z0-9-]+$/.test(id)) return NextResponse.json({ error: "无效的项目ID" }, { status: 400 });
+    const body = await req.json() as { assetId?: unknown };
+    if (typeof body.assetId !== "string" || !/^[a-zA-Z0-9-]+$/.test(body.assetId)) {
+      return NextResponse.json({ error: "缺少有效的 assetId" }, { status: 400 });
+    }
+    const db = getDb();
+    const [target] = await db.select().from(assets).where(and(eq(assets.id, body.assetId), eq(assets.projectId, id))).limit(1);
+    if (!target || target.status !== "done") return NextResponse.json({ error: "素材不存在或尚未就绪" }, { status: 404 });
+    db.transaction((tx) => {
+      tx.update(assets).set({ selected: false }).where(and(eq(assets.projectId, id), eq(assets.shotId, target.shotId))).run();
+      tx.update(assets).set({ selected: true }).where(eq(assets.id, target.id)).run();
+    });
+    return NextResponse.json({ ...target, selected: true });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "切换素材失败" }, { status: 500 });
   }
 }

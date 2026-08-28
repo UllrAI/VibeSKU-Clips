@@ -145,7 +145,7 @@ export async function POST(
     }
 
     // 已生成的素材（assets 表，按 shotId 索引）
-    const assetRows = await db.select().from(assetsTable).where(eq(assetsTable.projectId, id));
+    const assetRows = await db.select().from(assetsTable).where(and(eq(assetsTable.projectId, id), eq(assetsTable.selected, true)));
     const assetByShot = new Map<number, string>();
     for (const a of assetRows) {
       if (a.filePath) assetByShot.set(a.shotId, a.filePath);

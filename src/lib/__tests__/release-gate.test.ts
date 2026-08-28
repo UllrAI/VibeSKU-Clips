@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   buildGateReport,
   gateItemFromCredits,
+  gateItemFromGenerationQuality,
   gateItemFromQc,
   gateItemFromReadiness,
 } from "@/lib/release-gate";
@@ -79,6 +80,21 @@ describe("gateItemFromQc", () => {
   it("maps warn → warn and ok → pass", () => {
     expect(gateItemFromQc(qcReport("warn")).status).toBe("warn");
     expect(gateItemFromQc(qcReport("ok")).status).toBe("pass");
+  });
+});
+
+describe("gateItemFromGenerationQuality", () => {
+  it("passes accepted takes and warns when semantic review is missing or uncertain", () => {
+    expect(gateItemFromGenerationQuality([{ shotId: 1, verdict: "accept" }, { shotId: 2, humanDecision: "accepted", verdict: "reject" }]).status).toBe("pass");
+    const pending = gateItemFromGenerationQuality([{ shotId: 1 }, { shotId: 2, verdict: "review", overall: 72 }]);
+    expect(pending.status).toBe("warn");
+    expect(pending.problems).toHaveLength(2);
+  });
+
+  it("fails only when a human explicitly rejects the currently selected take", () => {
+    const item = gateItemFromGenerationQuality([{ shotId: 3, humanDecision: "rejected", verdict: "accept" }]);
+    expect(item.status).toBe("fail");
+    expect(item.problems[0].zh).toContain("人工");
   });
 });
 

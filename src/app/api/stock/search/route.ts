@@ -20,6 +20,7 @@ import { broadenQuery } from "@/lib/stock-matcher";
 import { getDb } from "@/lib/db";
 import { assets as assetsTable } from "@/lib/db/schema";
 import { apiError, errText } from "@/lib/api-error";
+import { and, eq } from "drizzle-orm";
 
 /** validate projectId to prevent path traversal (consistent with the upload route) */
 const SAFE_ID = /^[a-zA-Z0-9\-]+$/;
@@ -154,6 +155,7 @@ export async function POST(req: NextRequest) {
   const picked = candidates.slice(0, count);
   const saved: Array<Record<string, unknown>> = [];
   const db = getDb();
+  await db.update(assetsTable).set({ selected: false }).where(and(eq(assetsTable.projectId, projectId), eq(assetsTable.shotId, shotId)));
 
   for (let i = 0; i < picked.length; i++) {
     const c = picked[i];
@@ -175,6 +177,7 @@ export async function POST(req: NextRequest) {
           sourceUrl: c.pageUrl,
           author: c.author,
           license: c.license,
+          selected: i === 0,
           status: "done",
         })
         .returning();

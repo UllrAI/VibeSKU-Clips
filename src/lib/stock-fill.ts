@@ -17,6 +17,7 @@ import { broadenQuery, pickBestCandidate, authorKeyOf, fallbackLevelOf, type Fal
 import { validateOrDelete } from "@/lib/media-validate";
 import { getDb } from "@/lib/db";
 import { assets as assetsTable } from "@/lib/db/schema";
+import { and, eq } from "drizzle-orm";
 
 export interface FillShotInput {
   projectId: string;
@@ -112,9 +113,10 @@ export async function persistCandidate(
   }
   const publicUrl = `/api/files/${projectId}/stock/${basename(filePath)}`;
 
-  const [row] = await getDb()
-    .insert(assetsTable)
-    .values({
+  const db = getDb();
+  const [row] = db.transaction((tx) => {
+    tx.update(assetsTable).set({ selected: false }).where(and(eq(assetsTable.projectId, projectId), eq(assetsTable.shotId, shotId))).run();
+    return tx.insert(assetsTable).values({
       projectId,
       shotId,
       type: "stock_footage",
@@ -125,9 +127,10 @@ export async function persistCandidate(
       sourceUrl: c.pageUrl,
       author: c.author,
       license: c.license,
+      selected: true,
       status: "done",
-    })
-    .returning();
+    }).returning().all();
+  });
 
   return { ...row, mediaType: c.mediaType, attributionText: c.attributionText };
 }

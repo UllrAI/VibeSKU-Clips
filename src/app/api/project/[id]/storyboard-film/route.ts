@@ -122,7 +122,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     // every shot needs a keyframe IMAGE (grid cells or per-shot stills) to cite as @ImageN
-    const assetRows = await db.select().from(assets).where(eq(assets.projectId, id));
+    const assetRows = await db.select().from(assets).where(and(eq(assets.projectId, id), eq(assets.selected, true)));
     const byShot = new Map(assetRows.map((a) => [a.shotId, a]));
     const keyframes: string[] = [];
     const missing: number[] = [];

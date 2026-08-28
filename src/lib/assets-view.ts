@@ -5,6 +5,7 @@ import type { Shot } from "@/lib/db/schema";
  * Pure data, no React dependency — shared between initial asset-page load and post-fill refresh (unit-testable).
  */
 export interface AssetItem {
+  assetId?: string;
   shotId: number;
   type: Shot["type"];
   duration: number;
@@ -37,12 +38,15 @@ const VIDEO_EXT = /\.(mp4|webm|mov|m4v)$/i;
 
 /** Subset of fields from GET /api/project/[id]/assets response rows that this module cares about */
 export interface SavedAssetRow {
+  id?: string;
   shotId: number;
   filePath?: string | null;
   status?: string | null;
   type?: string | null;
   /** Static preview image for video assets (free-library videos populate this column); used as <img> thumbnail to avoid rendering an mp4 as an image */
   thumbnailPath?: string | null;
+  selected?: boolean | null;
+  createdAt?: Date | string | number | null;
 }
 
 /**
@@ -57,10 +61,21 @@ export function buildAssetRows(
   savedAssets: SavedAssetRow[],
   productImages: string[],
 ): AssetItem[] {
-  // Index persisted ready assets by shotId
+  // Index the active persisted take by shotId. Older databases/fixtures without the
+  // selected field fall back to the newest row, preserving the previous single-take behavior.
   const savedByShot = new Map<number, SavedAssetRow>();
   for (const a of savedAssets) {
-    if (a && a.filePath && a.status === "done") savedByShot.set(a.shotId, a);
+    if (!a || !a.filePath || a.status !== "done") continue;
+    const current = savedByShot.get(a.shotId);
+    if (!current || (a.selected === true && current.selected !== true)) {
+      savedByShot.set(a.shotId, a);
+      continue;
+    }
+    if (a.selected === current.selected) {
+      const nextTime = new Date(a.createdAt ?? 0).getTime();
+      const currentTime = new Date(current.createdAt ?? 0).getTime();
+      if (nextTime >= currentTime) savedByShot.set(a.shotId, a);
+    }
   }
   const firstProduct = productImages[0];
 
@@ -70,6 +85,7 @@ export function buildAssetRows(
       // Video asset: use the static preview image as thumbnail (rendering an mp4 as <img> breaks), and mark isVideo to correctly hide the "animate" entry point
       const isVideo = VIDEO_EXT.test(saved.filePath);
       return {
+        assetId: saved.id,
         shotId: s.shotId,
         type: s.type,
         duration: s.duration,

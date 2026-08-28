@@ -120,6 +120,13 @@
       "when": 1787715551989,
       "tag": "0016_resumable_transcription",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1787888496007,
+      "tag": "0017_generation_quality_gate",
+      "breakpoints": true
     }
   ]
 }

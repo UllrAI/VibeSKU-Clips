@@ -95,6 +95,14 @@ describe("buildAssetRows", () => {
     expect(rows[0].thumbnailUrl).toBe("/api/files/p1/a.png");
     expect(rows[0].assetType).toBe("ai_generated");
   });
+
+  it("同一分镜保留多候选时只使用 active 素材，不被较新的未选中候选覆盖", () => {
+    const rows = buildAssetRows([shot({ shotId: 1 })], [
+      { id: "chosen", shotId: 1, filePath: "/api/files/p/chosen.png", status: "done", type: "ai_generated", selected: true, createdAt: 1 },
+      { id: "newer", shotId: 1, filePath: "/api/files/p/newer.png", status: "done", type: "ai_generated", selected: false, createdAt: 2 },
+    ], []);
+    expect(rows[0]).toMatchObject({ assetId: "chosen", thumbnailUrl: "/api/files/p/chosen.png" });
+  });
 });
 
 describe("pendingShotCount", () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -9,6 +10,7 @@ import {
   LuBadgeDollarSign,
   LuBrainCircuit,
   LuCheck,
+  LuChevronDown,
   LuCircleAlert,
   LuClock3,
   LuFilm,
@@ -17,10 +19,13 @@ import {
   LuRefreshCw,
   LuRoute,
   LuSave,
+  LuScanSearch,
   LuScissors,
   LuShieldCheck,
   LuSparkles,
   LuTags,
+  LuThumbsDown,
+  LuThumbsUp,
   LuWandSparkles,
 } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
@@ -47,6 +52,12 @@ import {
 import type { Model } from "@/lib/providers/types";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import type { QcReport } from "@/lib/video-composer/qc";
+import {
+  rankQualityCandidates,
+  type GenerationQualityReport,
+  type QualityDisposition,
+  type ShotQualityContract,
+} from "@/lib/generation-quality";
 
 interface ProductionOverview {
   project: { id: string; name: string; sourceVideoUrl?: string | null };
@@ -62,6 +73,40 @@ interface ProductionOverview {
   latestFailure: { source: "task" | "pipeline"; id: string; stage: string; error: string } | null;
   selectedScript: { id: string; shotCount: number; totalDuration: number } | null;
   counts: { scripts: number; assets: number; clips: number; tasks: number; compositions: number };
+}
+
+interface QualityReview {
+  id: string;
+  assetId: string;
+  shotId: number;
+  contract: ShotQualityContract;
+  report: GenerationQualityReport;
+  disposition: QualityDisposition;
+  evaluatorModel: string;
+  verdict: "accept" | "review" | "reject";
+  humanDecision: "accepted" | "rejected" | null;
+  createdAt?: Date | string | null;
+}
+
+interface QualityCandidate {
+  id: string;
+  shotId: number;
+  type: string;
+  filePath?: string | null;
+  thumbnailPath?: string | null;
+  provider?: string | null;
+  model?: string | null;
+  prompt?: string | null;
+  selected: boolean;
+  createdAt?: Date | string | null;
+  latestReview: QualityReview | null;
+}
+
+interface ModelQualityStat {
+  model: string;
+  reviews: number;
+  averageOverall: number;
+  rejectionRate: number;
 }
 
 const EMPTY_BIBLE: VisualBible = {
@@ -105,7 +150,7 @@ export default function ProductionPage() {
   const { id } = useParams<{ id: string }>();
   const t = useT("production");
   const locale = useLocale();
-  const { providers, customModels, defaultImageModel, defaultVideoModel, chainMode, setDefaultVideoModel } = useSettingsStore();
+  const { providers, customModels, defaultImageModel, defaultVideoModel, chainMode, llm, setDefaultVideoModel } = useSettingsStore();
   const [overview, setOverview] = useState<ProductionOverview | null>(null);
   const [models, setModels] = useState<Model[]>([]);
   const [workflow, setWorkflow] = useState<WorkflowStagePlan[]>([]);
@@ -116,6 +161,17 @@ export default function ProductionPage() {
   const [busy, setBusy] = useState<"workflow" | "memory" | "snapshot" | "qc" | "repair" | null>(null);
   const [status, setStatus] = useState("");
   const [repairs, setRepairs] = useState<RepairAction[]>([]);
+  const [qualityCandidates, setQualityCandidates] = useState<QualityCandidate[]>([]);
+  const [modelQualityStats, setModelQualityStats] = useState<ModelQualityStat[]>([]);
+  const [qualityBusy, setQualityBusy] = useState<string | null>(null);
+
+  const loadQuality = useCallback(async () => {
+    const response = await fetch(`/api/project/${id}/quality`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || t("qualityLoadFailed"));
+    setQualityCandidates(Array.isArray(data.candidates) ? data.candidates : []);
+    setModelQualityStats(Array.isArray(data.modelStats) ? data.modelStats : []);
+  }, [id, t]);
 
   const loadOverview = useCallback(async () => {
     const response = await fetch(`/api/project/${id}/production`);
@@ -139,7 +195,7 @@ export default function ProductionPage() {
     (async () => {
       setLoading(true);
       try {
-        await loadOverview();
+        await Promise.all([loadOverview(), loadQuality()]);
         const enabled = Object.entries(providers).filter(([, value]) => value.enabled && value.apiKey).map(([name, value]) => ({ name, apiKey: value.apiKey, baseUrl: value.baseUrl }));
         if (!enabled.length || cancelled) return;
         const response = await fetch("/api/ai/models", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ providers: enabled }) });
@@ -159,19 +215,23 @@ export default function ProductionPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [customModels, loadOverview, providers, t]);
+  }, [customModels, loadOverview, loadQuality, providers, t]);
 
   const videoModels = useMemo(() => models.filter((model) => model.mediaType === "video"), [models]);
   const routeDecision = useMemo(() => routeModel(videoModels.map((model) => {
     const capability = getVideoModelCapabilities(model.id, model.supportsAudio);
     const id = model.id.toLowerCase();
+    const observed = modelQualityStats.find((stat) => stat.model === model.id);
     return {
       id: model.id, name: model.name, modes: model.modes, supportsAudio: model.supportsAudio,
       supportsLastFrame: capability.lastFrame, pricePerCall: priceOf(model),
       quality: /pro|max|quality|master/.test(id) ? 3 : /lite|turbo|fast/.test(id) ? 1 : 2,
       speed: /lite|turbo|fast|flash/.test(id) ? 3 : /pro|max|quality/.test(id) ? 1 : 2,
+      observedQuality: observed?.averageOverall,
+      observedReviews: observed?.reviews,
+      rejectionRate: observed?.rejectionRate,
     };
-  }), { mode: "image-to-video", goal, requireLastFrame: chainMode !== "off" }), [chainMode, goal, videoModels]);
+  }), { mode: "image-to-video", goal, requireLastFrame: chainMode !== "off" }), [chainMode, goal, modelQualityStats, videoModels]);
 
   const estimate = useMemo(() => estimateProduction({
     shotCount: overview?.selectedScript?.shotCount || Math.max(1, overview?.counts.assets || 1), workflow,
@@ -181,6 +241,28 @@ export default function ProductionPage() {
 
   const previewPlan = useMemo(() => buildPreviewPlan({ duration: overview?.selectedScript?.totalDuration || 15, hasGeneratedMotion: Boolean(overview?.counts.clips) }), [overview]);
   const diagnosis = overview?.latestFailure ? diagnoseGenerationFailure(overview.latestFailure.error) : null;
+  const qualityGroups = useMemo(() => {
+    const groups = new Map<number, QualityCandidate[]>();
+    for (const candidate of qualityCandidates) groups.set(candidate.shotId, [...(groups.get(candidate.shotId) ?? []), candidate]);
+    return [...groups.entries()].sort(([a], [b]) => a - b).map(([shotId, candidates]) => {
+      const rankedIds = rankQualityCandidates(candidates.map((candidate) => ({
+        id: candidate.id,
+        selected: candidate.selected,
+        report: candidate.latestReview?.report,
+      }))).map((candidate) => candidate.id);
+      const byId = new Map(candidates.map((candidate) => [candidate.id, candidate]));
+      return { shotId, candidates: rankedIds.map((candidateId) => byId.get(candidateId)!) };
+    });
+  }, [qualityCandidates]);
+  const qualitySummary = useMemo(() => {
+    const selected = qualityCandidates.filter((candidate) => candidate.selected);
+    return {
+      total: selected.length,
+      reviewed: selected.filter((candidate) => candidate.latestReview).length,
+      accepted: selected.filter((candidate) => candidate.latestReview?.humanDecision === "accepted" || (!candidate.latestReview?.humanDecision && candidate.latestReview?.verdict === "accept")).length,
+      needsAttention: selected.filter((candidate) => candidate.latestReview?.humanDecision === "rejected" || (!candidate.latestReview?.humanDecision && (candidate.latestReview?.verdict === "review" || candidate.latestReview?.verdict === "reject"))).length,
+    };
+  }, [qualityCandidates]);
 
   const toggleWorkflowStage = (id: WorkflowStageId) => {
     if (!OPTIONAL_STAGES.has(id)) return;
@@ -250,6 +332,57 @@ export default function ProductionPage() {
     finally { setBusy(null); }
   };
 
+  const evaluateCandidate = async (assetId: string) => {
+    setQualityBusy(`evaluate:${assetId}`); setStatus("");
+    try {
+      const response = await fetch(`/api/project/${id}/quality`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Accept-Language": locale },
+        body: JSON.stringify({ assetId, llmConfig: llm }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t("qualityFailed"));
+      setStatus(t("qualityComplete"));
+      await loadQuality();
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : t("qualityFailed"));
+    } finally { setQualityBusy(null); }
+  };
+
+  const decideQuality = async (reviewId: string, decision: "accepted" | "rejected") => {
+    setQualityBusy(`decision:${reviewId}`); setStatus("");
+    try {
+      const response = await fetch(`/api/project/${id}/quality`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Accept-Language": locale },
+        body: JSON.stringify({ reviewId, decision }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t("qualityDecisionFailed"));
+      setStatus(decision === "accepted" ? t("qualityAccepted") : t("qualityRejected"));
+      await Promise.all([loadOverview(), loadQuality()]);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : t("qualityDecisionFailed"));
+    } finally { setQualityBusy(null); }
+  };
+
+  const selectCandidate = async (assetId: string) => {
+    setQualityBusy(`select:${assetId}`); setStatus("");
+    try {
+      const response = await fetch(`/api/project/${id}/assets`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "Accept-Language": locale },
+        body: JSON.stringify({ assetId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || t("qualityDecisionFailed"));
+      setStatus(t("takeSelected"));
+      await Promise.all([loadOverview(), loadQuality()]);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : t("qualityDecisionFailed"));
+    } finally { setQualityBusy(null); }
+  };
+
   if (loading && !overview) return <main className="flex min-h-[60vh] items-center justify-center"><div role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LuLoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" />{t("loading")}</div></main>;
   if (!overview) return <main className="mx-auto max-w-xl px-4 py-16"><div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive">{status || t("loadFailed")}</div></main>;
 
@@ -302,6 +435,58 @@ export default function ProductionPage() {
             <Button className="mt-4 h-10" disabled={busy === "memory"} onClick={() => patchProduction({ creativeIntent: intent, visualBible: bible }, "memory")}><LuSave />{busy === "memory" ? t("saving") : t("saveMemory")}</Button>
           </Section>
 
+          <Section title={t("qualityGate")} hint={t("qualityGateHint")} icon={<LuScanSearch className="h-4 w-4" />}>
+            <div className="mb-4 grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-border/50 bg-background/30 p-3"><p className="text-[11px] text-muted-foreground">{t("qualityReviewed")}</p><p className="mt-1 text-lg font-bold tabular-nums">{qualitySummary.reviewed}/{qualitySummary.total}</p></div>
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 p-3"><p className="text-[11px] text-muted-foreground">{t("qualityAcceptedCount")}</p><p className="mt-1 text-lg font-bold tabular-nums text-emerald-400">{qualitySummary.accepted}</p></div>
+              <div className="rounded-xl border border-amber-500/20 bg-amber-500/8 p-3"><p className="text-[11px] text-muted-foreground">{t("qualityAttention")}</p><p className="mt-1 text-lg font-bold tabular-nums text-amber-300">{qualitySummary.needsAttention}</p></div>
+            </div>
+            {!llm.baseUrl || !llm.apiKey || !(llm.visionModel || llm.model) ? <p className="mb-3 rounded-xl border border-amber-500/25 bg-amber-500/8 p-3 text-xs leading-5 text-amber-200">{t("qualityNeedsVision")}</p> : null}
+            <div className="space-y-2" aria-busy={qualityBusy !== null}>
+              {qualityGroups.length ? qualityGroups.map((group) => {
+                const active = group.candidates.find((candidate) => candidate.selected) ?? group.candidates[0];
+                const activeReview = active?.latestReview;
+                const activeVerdict = activeReview?.humanDecision || activeReview?.verdict;
+                return <details key={group.shotId} className="group overflow-hidden rounded-xl border border-border/60 bg-background/25">
+                  <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2 outline-none transition-colors hover:bg-muted/30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary">
+                    <div className="min-w-0"><p className="text-sm font-semibold">{t("qualityShot", { n: group.shotId })}</p><p className="truncate text-[11px] text-muted-foreground">{group.candidates.length > 1 ? t("qualityTakes", { n: group.candidates.length }) : active?.model || active?.provider || t("qualityOneTake")}</p></div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {activeReview ? <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${activeVerdict === "accepted" || activeVerdict === "accept" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400" : activeVerdict === "rejected" || activeVerdict === "reject" ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-amber-500/30 bg-amber-500/10 text-amber-300"}`}>{activeReview.report.overall} · {t(`qualityVerdict_${activeVerdict}`)}</span> : <span className="rounded-full border border-border/60 px-2 py-1 text-[10px] text-muted-foreground">{t("qualityPending")}</span>}
+                      <LuChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+                    </div>
+                  </summary>
+                  <div className="space-y-3 border-t border-border/50 p-3">
+                    {group.candidates.map((candidate, candidateIndex) => {
+                      const review = candidate.latestReview;
+                      const preview = candidate.thumbnailPath || (candidate.filePath && !/\.(mp4|webm|mov|m4v)$/i.test(candidate.filePath) ? candidate.filePath : null);
+                      const actionBusy = qualityBusy?.endsWith(candidate.id) || (review && qualityBusy === `decision:${review.id}`);
+                      return <article key={candidate.id} className={`rounded-xl border p-3 ${candidate.selected ? "border-primary/35 bg-primary/6" : "border-border/50 bg-card/35"}`}>
+                        <div className="flex items-start gap-3">
+                          {preview ? <Image src={preview} alt={t("qualityPreview", { n: candidateIndex + 1 })} width={64} height={64} unoptimized className="h-16 w-16 shrink-0 rounded-lg border border-border/50 object-cover" loading="lazy" /> : <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/30 text-muted-foreground" aria-hidden="true"><LuFilm /></div>}
+                          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><span className="text-xs font-semibold">{t("qualityTake", { n: candidateIndex + 1 })}</span>{candidate.selected && <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-medium text-primary">{t("activeTake")}</span>}</div><p className="mt-1 truncate text-[11px] text-muted-foreground">{candidate.model || candidate.provider || candidate.type}</p>{review && <p className="mt-1 line-clamp-2 text-xs leading-5 text-foreground/90">{review.report.summary || t("qualityNoSummary")}</p>}</div>
+                        </div>
+                        {review ? <>
+                          <details className="mt-3 rounded-lg border border-border/50 bg-background/30">
+                            <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-3 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary"><span>{t("qualityEvidence")}</span><span className="text-muted-foreground">{review.report.dimensions.length} {t("qualityDimensions")}</span></summary>
+                            <div className="grid gap-2 border-t border-border/50 p-3 sm:grid-cols-2">
+                              {review.report.dimensions.map((dimension) => <div key={dimension.id} className="rounded-lg bg-muted/25 p-2.5"><div className="flex items-center justify-between gap-2"><span className="text-[11px] font-medium">{t(`quality_${dimension.id}`)}</span><span className="text-xs font-bold tabular-nums">{dimension.score}</span></div><p className="mt-1 text-[10px] text-muted-foreground">{t("qualityConfidence", { n: Math.round(dimension.confidence * 100) })}</p><p className="mt-1 text-[11px] leading-4 text-muted-foreground">{dimension.summary}</p>{dimension.evidence.slice(0, 2).map((evidence, evidenceIndex) => <p key={`${evidence.time ?? "image"}-${evidenceIndex}`} className="mt-1.5 border-l-2 border-border/70 pl-2 text-[10px] leading-4 text-foreground/75">{evidence.time != null ? `${evidence.time.toFixed(1)}s · ` : ""}{evidence.observation}</p>)}</div>)}
+                            </div>
+                          </details>
+                          {review.report.issues.length > 0 && <div className="mt-3 space-y-1.5">{review.report.issues.slice(0, 3).map((issue) => <p key={`${issue.code}-${issue.time ?? "x"}`} className={`rounded-lg border px-2.5 py-2 text-[11px] leading-4 ${issue.severity === "critical" ? "border-destructive/25 bg-destructive/8 text-destructive" : "border-amber-500/20 bg-amber-500/8 text-amber-200"}`}>{issue.time != null ? `${issue.time.toFixed(1)}s · ` : ""}{issue.summary}</p>)}</div>}
+                          <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{t(`qualityAction_${review.disposition.action}`)}{review.disposition.paid ? ` · ${t("qualityPaidNotRun")}` : ""}</p>
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <Button className="h-11" disabled={Boolean(actionBusy) || review.humanDecision === "accepted"} onClick={() => void decideQuality(review.id, "accepted")}><LuThumbsUp />{review.humanDecision === "accepted" ? t("qualityAccepted") : t("qualityAccept")}</Button>
+                            <Button variant="outline" className="h-11" disabled={Boolean(actionBusy) || review.humanDecision === "rejected"} onClick={() => void decideQuality(review.id, "rejected")}><LuThumbsDown />{review.humanDecision === "rejected" ? t("qualityRejected") : t("qualityReject")}</Button>
+                          </div>
+                        </> : <div className="mt-3 grid gap-2 sm:grid-cols-2"><Button className="h-11" disabled={Boolean(qualityBusy) || !llm.baseUrl || !llm.apiKey || !(llm.visionModel || llm.model)} onClick={() => void evaluateCandidate(candidate.id)}>{qualityBusy === `evaluate:${candidate.id}` ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuScanSearch />}{qualityBusy === `evaluate:${candidate.id}` ? t("qualityRunning") : t("qualityEvaluate")}</Button>{!candidate.selected && <Button variant="outline" className="h-11" disabled={Boolean(qualityBusy)} onClick={() => void selectCandidate(candidate.id)}><LuCheck />{t("selectTake")}</Button>}</div>}
+                      </article>;
+                    })}
+                  </div>
+                </details>;
+              }) : <p className="text-sm text-muted-foreground">{t("qualityNoAssets")}</p>}
+            </div>
+          </Section>
+
           <Section title={t("versions")} icon={<LuGitBranch className="h-4 w-4" />}>
             {!overview.versionTree.scripts.length && !overview.versionTree.generations.length && !overview.snapshots.length ? <p className="text-sm text-muted-foreground">{t("noVersions")}</p> : <div className="grid gap-4 md:grid-cols-2">
               <div><h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("snapshots")}</h3><div className="space-y-2">{overview.snapshots.slice(0, 5).map((item) => <div key={item.id} className="rounded-lg border border-border/50 bg-background/30 px-3 py-2"><p className="truncate text-sm font-medium">{item.label}</p><p className="mt-1 text-[11px] text-muted-foreground">{formatDate(item.createdAt, locale)} · {item.assetIds.length} {t("assetsUnit")}</p></div>)}</div></div>
@@ -313,7 +498,7 @@ export default function ProductionPage() {
         <div className="space-y-5">
           <Section title={t("router")} hint={t("routerHint")} icon={<LuWandSparkles className="h-4 w-4" />}>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 xl:grid-cols-2">{(["balanced", "cost", "speed", "quality", "consistency"] as RoutingGoal[]).map((item) => <button key={item} type="button" aria-pressed={goal === item} onClick={() => setGoal(item)} className={`min-h-9 rounded-lg border px-2 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary ${goal === item ? "border-primary/40 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:text-foreground"}`}>{t(`goal_${item}`)}</button>)}</div>
-            {routeDecision.selected ? <div className="mt-4 rounded-xl border border-primary/25 bg-primary/8 p-3"><p className="text-[11px] font-semibold uppercase tracking-wider text-primary">{t("recommended")}</p><p className="mt-1 break-words text-sm font-semibold">{routeDecision.selected.name}</p><p className="mt-1 text-[11px] text-muted-foreground">{priceOf(videoModels.find((model) => model.id === routeDecision.selected?.id)) == null ? t("priceUnknown") : t("perCall", { price: priceOf(videoModels.find((model) => model.id === routeDecision.selected?.id))!.toFixed(3) })}</p><Button className="mt-3 h-9 w-full" disabled={defaultVideoModel === routeDecision.selected.id} onClick={() => { setDefaultVideoModel(routeDecision.selected!.id); setStatus(t("modelApplied")); }}><LuCheck />{defaultVideoModel === routeDecision.selected.id ? t("applied") : t("applyModel")}</Button></div> : <p className="mt-4 text-sm text-muted-foreground">{t("noModel")}</p>}
+            {routeDecision.selected ? <div className="mt-4 rounded-xl border border-primary/25 bg-primary/8 p-3"><p className="text-[11px] font-semibold uppercase tracking-wider text-primary">{t("recommended")}</p><p className="mt-1 break-words text-sm font-semibold">{routeDecision.selected.name}</p><p className="mt-1 text-[11px] text-muted-foreground">{priceOf(videoModels.find((model) => model.id === routeDecision.selected?.id)) == null ? t("priceUnknown") : t("perCall", { price: priceOf(videoModels.find((model) => model.id === routeDecision.selected?.id))!.toFixed(3) })}</p>{modelQualityStats.find((stat) => stat.model === routeDecision.selected?.id) ? <p className="mt-1 text-[11px] text-muted-foreground">{t("modelQualityHistory", { score: modelQualityStats.find((stat) => stat.model === routeDecision.selected?.id)!.averageOverall, n: modelQualityStats.find((stat) => stat.model === routeDecision.selected?.id)!.reviews })}</p> : <p className="mt-1 text-[11px] text-muted-foreground">{t("modelNoHistory")}</p>}<Button className="mt-3 h-10 w-full" disabled={defaultVideoModel === routeDecision.selected.id} onClick={() => { setDefaultVideoModel(routeDecision.selected!.id); setStatus(t("modelApplied")); }}><LuCheck />{defaultVideoModel === routeDecision.selected.id ? t("applied") : t("applyModel")}</Button></div> : <p className="mt-4 text-sm text-muted-foreground">{t("noModel")}</p>}
           </Section>
 
           <Section title={t("assets")} hint={t("assetCount", { n: overview.semanticAssets.length })} icon={<LuTags className="h-4 w-4" />}>

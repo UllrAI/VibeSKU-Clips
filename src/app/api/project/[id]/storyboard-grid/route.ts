@@ -147,8 +147,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         outPath,
       ]);
       const filePath = `/api/files/${id}/${fileName}`;
-      // upsert per (projectId, shotId) — same contract as the assets save route
-      await db.delete(assets).where(and(eq(assets.projectId, id), eq(assets.shotId, shots[i].shotId)));
+      // Keep older takes for review/rollback while making this fresh grid cell active.
+      await db.update(assets).set({ selected: false }).where(and(eq(assets.projectId, id), eq(assets.shotId, shots[i].shotId)));
       await db.insert(assets).values({
         projectId: id,
         shotId: shots[i].shotId,
@@ -157,6 +157,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         provider: providerName,
         model,
         prompt: `[storyboard-grid 第${i + 1}格] ${shots[i].description ?? ""}`.trim(),
+        selected: true,
         status: "done",
       });
       saved.push({ shotId: shots[i].shotId, filePath });

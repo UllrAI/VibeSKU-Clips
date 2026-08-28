@@ -227,6 +227,10 @@ export interface RouteCandidate {
   pricePerCall?: number;
   quality?: number;
   speed?: number;
+  /** Project-local evidence from reviewed generations, never a fabricated global leaderboard. */
+  observedQuality?: number;
+  observedReviews?: number;
+  rejectionRate?: number;
 }
 
 export interface ModelRouteDecision {
@@ -255,6 +259,16 @@ export function routeModel(candidates: RouteCandidate[], input: { mode: Generati
       else if (input.goal === "consistency") score += (candidate.supportsLastFrame === true ? 28 : 0) + quality * 5;
       else if (input.goal === "cost") score += candidate.pricePerCall == null ? 0 : Math.max(0, 30 - candidate.pricePerCall * 30);
       else score += quality * 5 + speed * 5 + (candidate.pricePerCall == null ? 0 : Math.max(0, 10 - candidate.pricePerCall * 10));
+      const evidence = Math.min(1, Math.max(0, candidate.observedReviews ?? 0) / 8);
+      if (candidate.observedQuality != null && evidence > 0) {
+        const strength = input.goal === "quality" || input.goal === "consistency" ? 0.35 : input.goal === "balanced" ? 0.18 : 0.08;
+        score += (Math.max(0, Math.min(100, candidate.observedQuality)) - 50) * strength * evidence;
+        reasons.push("project-quality-evidence");
+      }
+      if (candidate.rejectionRate != null && evidence > 0) {
+        score -= Math.max(0, Math.min(1, candidate.rejectionRate)) * 25 * evidence;
+        reasons.push("project-rejection-history");
+      }
       return { candidate, score: Math.round(score * 100) / 100, reasons };
     })
     .sort((a, b) => b.score - a.score || a.candidate.id.localeCompare(b.candidate.id));

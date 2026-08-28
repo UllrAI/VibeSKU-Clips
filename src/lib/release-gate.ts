@@ -19,7 +19,7 @@ import type { AiCommerceWarning } from "@/lib/ai-commerce-compliance";
 import type { RealMixReport } from "@/lib/real-mix";
 
 export type GateStatus = "pass" | "warn" | "fail";
-export type GateItemId = "readiness" | "qc" | "credits" | "aiPolicy" | "realMix";
+export type GateItemId = "readiness" | "qc" | "quality" | "credits" | "aiPolicy" | "realMix";
 
 export interface GateItem {
   id: GateItemId;
@@ -124,6 +124,58 @@ export function gateItemFromQc(qc: QcReport | null): GateItem {
     id: "qc",
     status: "pass",
     message: { zh: "成片质检通过", en: "Video QC passed" },
+    problems: [],
+  };
+}
+
+export interface QualityGateRow {
+  shotId: number;
+  verdict?: "accept" | "review" | "reject" | null;
+  humanDecision?: "accepted" | "rejected" | null;
+  overall?: number | null;
+}
+
+/** Semantic generation quality → gate item. Automated doubt warns; an explicit human rejection fails. */
+export function gateItemFromGenerationQuality(rows: QualityGateRow[]): GateItem {
+  if (rows.length === 0) {
+    return {
+      id: "quality",
+      status: "pass",
+      message: { zh: "没有需要语义验收的 AI 生成镜头", en: "No AI-generated shots require semantic review" },
+      problems: [],
+    };
+  }
+  const rejected = rows.filter((row) => row.humanDecision === "rejected");
+  const pending = rows.filter((row) => !row.humanDecision && !row.verdict);
+  const flagged = rows.filter((row) => !row.humanDecision && (row.verdict === "review" || row.verdict === "reject"));
+  const problems = [
+    ...rejected.map((row) => ({ zh: `分镜 ${row.shotId}：人工已标记不采用`, en: `Shot ${row.shotId}: explicitly rejected by the reviewer` })),
+    ...pending.map((row) => ({ zh: `分镜 ${row.shotId}：尚未运行镜头质量评估`, en: `Shot ${row.shotId}: shot quality has not been evaluated` })),
+    ...flagged.map((row) => ({
+      zh: `分镜 ${row.shotId}：自动评估${row.overall != null ? ` ${Math.round(row.overall)} 分` : ""}，需人工确认`,
+      en: `Shot ${row.shotId}: automated review${row.overall != null ? ` scored ${Math.round(row.overall)}` : ""}; human confirmation needed`,
+    })),
+  ];
+  if (rejected.length > 0) {
+    return {
+      id: "quality",
+      status: "fail",
+      message: { zh: `${rejected.length} 个当前镜头已被人工拒绝，请先切换或修复`, en: `${rejected.length} active shot(s) were explicitly rejected; replace or fix them before release` },
+      problems,
+    };
+  }
+  if (pending.length > 0 || flagged.length > 0) {
+    return {
+      id: "quality",
+      status: "warn",
+      message: { zh: `${pending.length + flagged.length} 个 AI 镜头仍需质量确认`, en: `${pending.length + flagged.length} AI-generated shot(s) still need quality confirmation` },
+      problems,
+    };
+  }
+  return {
+    id: "quality",
+    status: "pass",
+    message: { zh: "当前 AI 镜头均已通过自动建议或人工验收", en: "All active AI-generated shots passed automated or human review" },
     problems: [],
   };
 }

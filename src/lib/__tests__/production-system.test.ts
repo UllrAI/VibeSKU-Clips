@@ -36,6 +36,15 @@ describe("production system contracts", () => {
     expect(result.selected?.id).toBe("steady");
   });
 
+  it("uses enough project-local review evidence without inventing a global model ranking", () => {
+    const result = routeModel([
+      { id: "prior-pro", name: "Prior Pro", modes: ["image-to-video"], quality: 3, observedQuality: 45, observedReviews: 8, rejectionRate: 0.75 },
+      { id: "proven", name: "Proven", modes: ["image-to-video"], quality: 2, observedQuality: 91, observedReviews: 8, rejectionRate: 0.05 },
+    ], { mode: "image-to-video", goal: "quality" });
+    expect(result.selected?.id).toBe("proven");
+    expect(result.ranked[0].reasons).toContain("project-quality-evidence");
+  });
+
   it("diagnoses paid task detachment without recommending resubmission", () => {
     expect(diagnoseGenerationFailure("poll timeout; taskId=abc")).toMatchObject({ code: "paid-task-detached", actions: ["resume-task"] });
   });

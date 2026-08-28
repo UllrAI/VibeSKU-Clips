@@ -71,7 +71,7 @@ export const exportPage: NamespaceMessages = {
     // 发布门禁
     gateTitle: "发布门禁",
     gateRun: "一键体检",
-    gateHint: "发布/投流前一键跑完三层检查：脚本发布就绪（风险词/钩子/前3秒亮品）+ 成片质检（黑屏/静音/响度）+ 素材授权（商用风险/署名）。有 fail 别直接发。",
+    gateHint: "发布/投流前一键检查脚本、成片、AI 镜头验收、素材授权与平台风险；人工已拒绝的当前镜头会直接拦截发布。",
     // 成片质检
     qcTitle: "成片质检",
     qcRun: "运行质检",
@@ -222,7 +222,7 @@ export const exportPage: NamespaceMessages = {
     // release gate
     gateTitle: "Release gate",
     gateRun: "Run gate",
-    gateHint: "One click runs all three pre-publish layers: script readiness (risk words / hook / early product), video QC (black frames / silence / loudness) and asset licensing (commercial risk / attribution). Don't publish with a fail.",
+    gateHint: "One click checks script readiness, video QC, AI-shot approval, asset licensing, and platform risk. An explicitly rejected active shot blocks release.",
     // composed-video quality check
     qcTitle: "Video quality check",
     qcRun: "Run QC",

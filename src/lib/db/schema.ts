@@ -9,6 +9,11 @@ import type {
 import type { TimeRange, TranscriptDocument, TranscriptEditPlan } from "@/lib/transcript-editor";
 import type { TranscriptEditSummary } from "@/lib/transcript-edit-protocol";
 import type { TranscriptCheckpoint } from "@/lib/transcript-checkpoint";
+import type {
+  GenerationQualityReport,
+  QualityDisposition,
+  ShotQualityContract,
+} from "@/lib/generation-quality";
 
 // Projects table
 export const projects = sqliteTable("projects", {
@@ -101,8 +106,28 @@ export const assets = sqliteTable("assets", {
   sourceUrl: text("source_url"), // Source page URL (e.g. Pexels video detail page)
   author: text("author"), // Asset author (for attribution)
   license: text("license"), // License type, e.g. "Pexels"
+  // Multiple takes may coexist for one shot. Exactly one active take feeds composition;
+  // old takes remain available for comparison, rollback, and quality learning.
+  selected: integer("selected", { mode: "boolean" }).notNull().default(true),
   status: text("status", { enum: ["pending", "generating", "done", "failed"] }).notNull().default("pending"),
   createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+});
+
+// Multimodal shot reviews are append-only: the same asset can be reassessed when the
+// contract or evaluator improves while preserving the evidence behind earlier decisions.
+export const generationReviews = sqliteTable("generation_reviews", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  assetId: text("asset_id").notNull().references(() => assets.id, { onDelete: "cascade" }),
+  shotId: integer("shot_id").notNull(),
+  contract: text("contract", { mode: "json" }).$type<ShotQualityContract>().notNull(),
+  report: text("report", { mode: "json" }).$type<GenerationQualityReport>().notNull(),
+  disposition: text("disposition", { mode: "json" }).$type<QualityDisposition>().notNull(),
+  evaluatorModel: text("evaluator_model").notNull(),
+  verdict: text("verdict", { enum: ["accept", "review", "reject"] }).notNull(),
+  humanDecision: text("human_decision", { enum: ["accepted", "rejected"] }),
+  createdAt: integer("created_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(() => new Date()),
 });
 
 // Video clips table

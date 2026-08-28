@@ -30,18 +30,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const [proj] = await db.select().from(projects).where(eq(projects.id, id)).limit(1);
   if (!proj) return apiError(req, "项目不存在", "Project not found", 404);
 
-  // newest asset per shot = what the latest composition actually used (older rows are replaced takes)
+  // Active asset per shot = what composition actually uses; older takes remain reviewable.
   const rows = await db
     .select()
     .from(assetsTable)
-    .where(and(eq(assetsTable.projectId, id), eq(assetsTable.status, "done")))
+    .where(and(eq(assetsTable.projectId, id), eq(assetsTable.status, "done"), eq(assetsTable.selected, true)))
     .orderBy(desc(assetsTable.createdAt));
-  const seen = new Set<number>();
-  const current = rows.filter((r) => {
-    if (seen.has(r.shotId)) return false;
-    seen.add(r.shotId);
-    return true;
-  });
+  const current = rows;
   if (current.length === 0) {
     return apiError(req, "该项目还没有素材，先自动配画面或上传素材", "This project has no assets yet; auto-fill or upload materials first", 404);
   }
