@@ -8,11 +8,15 @@ import { useT } from "@/lib/i18n";
 
 export function ModelCapabilityPreflight(props: {
   modelId: string;
+  provider?: string;
   supportsAudio?: boolean;
   duration?: number;
   resolution: GenResolution;
   aspectRatio: GenAspectRatio;
   chainMode: "pin" | "tail" | "off";
+  audioEnabled?: boolean;
+  referenceImageCount?: number;
+  referenceAudioCount?: number;
 }) {
   const t = useT("assets");
   const result = useMemo(() => preflightVideoGeneration(props), [props]);
@@ -20,8 +24,10 @@ export function ModelCapabilityPreflight(props: {
   const badges = [
     ["imageToVideo", caps.imageToVideo],
     ["lastFrame", caps.lastFrame],
+    ["referenceImages", caps.referenceImages],
     ["referenceVideo", caps.referenceVideo],
     ["nativeAudio", caps.nativeAudio],
+    ["referenceAudio", caps.referenceAudio],
   ] as const;
 
   return (

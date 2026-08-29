@@ -5,7 +5,7 @@ license: AGPL-3.0-only
 compatibility: Requires a running local ClipForge instance (Node 20+, FFmpeg). Designed for Claude Code and other local coding agents — web sandboxes cannot reach the local pipeline.
 metadata:
   {
-    "version": "0.8.98",
+    "version": "0.8.99",
     "homepage": "https://github.com/xixihhhh/clipforge",
     "keywords": "ai-video, faceless-video, text-to-video, tiktok, reels, shorts, 抖音, 快手, 小红书, product-video, tiktok-shop, ugc, ffmpeg, edge-tts",
     "openclaw":

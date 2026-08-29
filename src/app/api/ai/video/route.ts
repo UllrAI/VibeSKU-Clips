@@ -4,6 +4,7 @@ import { ProviderError } from "@/lib/providers/base";
 import { toRemoteUsableImage, resolveUploadFilePath } from "@/lib/remote-image";
 import { apiError, errText } from "@/lib/api-error";
 import { recordAiTask, updateAiTask } from "@/lib/ai-tasks";
+import { sanitizeVideoControlSummary } from "@/lib/video-control-plan";
 
 // AI video generation.
 //
@@ -13,7 +14,8 @@ import { recordAiTask, updateAiTask } from "@/lib/ai-tasks";
 // so the client can resume via /api/ai/video/task instead of paying again.
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { provider: providerName, model, prompt, imageUrl, lastImageUrl, mode, apiKey, baseUrl, options, projectId, shotId, referenceVideoUrls, referenceImageUrls } = body;
+  const { provider: providerName, model, prompt, imageUrl, lastImageUrl, mode, apiKey, baseUrl, options, projectId, shotId, referenceVideoUrls, referenceImageUrls, referenceAudioUrls } = body;
+  const controlPlan = sanitizeVideoControlSummary(body.controlPlan);
 
   if (!providerName || !model) {
     return apiError(req, "缺少必要参数", "Missing required parameters");
@@ -36,9 +38,10 @@ export async function POST(req: NextRequest) {
     // are uploaded to the provider's temporary hosting first (Atlas /model/uploadMedia)
     let refVideos: string[] | undefined;
     let refImages: string[] | undefined;
+    let refAudios: string[] | undefined;
     if (Array.isArray(referenceVideoUrls) && referenceVideoUrls.length > 0) {
       refVideos = [];
-      for (const ref of referenceVideoUrls as string[]) {
+      for (const ref of (referenceVideoUrls as unknown[]).slice(0, 3)) {
         if (typeof ref !== "string" || !ref) continue;
         if (ref.startsWith("http")) {
           refVideos.push(ref);
@@ -52,9 +55,25 @@ export async function POST(req: NextRequest) {
       }
     }
     if (Array.isArray(referenceImageUrls) && referenceImageUrls.length > 0) {
-      refImages = (await Promise.all((referenceImageUrls as string[]).map(toRemoteUsableImage))).filter(
+      const imageRefs = (referenceImageUrls as unknown[]).filter((ref): ref is string => typeof ref === "string" && Boolean(ref)).slice(0, 9);
+      refImages = (await Promise.all(imageRefs.map(toRemoteUsableImage))).filter(
         (u): u is string => !!u
       );
+    }
+    if (Array.isArray(referenceAudioUrls) && referenceAudioUrls.length > 0) {
+      refAudios = [];
+      for (const ref of (referenceAudioUrls as unknown[]).slice(0, 3)) {
+        if (typeof ref !== "string" || !ref) continue;
+        if (ref.startsWith("http")) {
+          refAudios.push(ref);
+          continue;
+        }
+        const localPath = resolveUploadFilePath(ref);
+        if (!localPath || !provider.uploadLocalMedia) {
+          return apiError(req, "参考音频不可用：需要可访问的音频地址", "Reference audio unavailable: a reachable audio URL is required");
+        }
+        refAudios.push(await provider.uploadLocalMedia(localPath));
+      }
     }
 
     const videoOptions = {
@@ -65,6 +84,7 @@ export async function POST(req: NextRequest) {
       ...(lastFrameUrl && { lastFrameUrl }),
       ...(refVideos?.length && { referenceVideoUrls: refVideos }),
       ...(refImages?.length && { referenceImageUrls: refImages }),
+      ...(refAudios?.length && { referenceAudioUrls: refAudios }),
       ...options,
     };
 
@@ -89,6 +109,7 @@ export async function POST(req: NextRequest) {
       mode: videoOptions.mode,
       prompt: videoOptions.prompt,
       taskId,
+      ...(controlPlan && { controlPlan }),
     });
 
     // Phase 2: wait. Transient status-query failures are tolerated inside waitForTask;

@@ -316,15 +316,17 @@ export function buildAtlasVideoBody(
   if (options.mode === 'video-to-video' && spec.referenceShape) {
     const images = options.referenceImageUrls ?? []
     const videos = options.referenceVideoUrls ?? []
+    const audios = options.referenceAudioUrls ?? []
     switch (spec.referenceShape) {
       case 'refers':
         // H3 takes one mixed array; keep videos first so ordinal prompt references
         // ("视频1 … 图1…") keep pointing at the reference clip before product photos
-        body.refers = [...videos, ...images]
+        body.refers = [...videos, ...images, ...audios]
         break
       case 'paired-arrays':
         if (images.length) body.reference_images = images
         if (videos.length) body.reference_videos = videos
+        if (audios.length) body.reference_audios = audios
         break
       case 'images-plus-video':
         if (images.length) body.images = images

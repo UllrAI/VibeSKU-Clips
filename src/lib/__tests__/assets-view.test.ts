@@ -8,6 +8,7 @@ import {
   type SavedAssetRow,
 } from "@/lib/assets-view";
 import type { Shot } from "@/lib/db/schema";
+import type { VideoControlSummary } from "@/lib/video-control-plan";
 
 // Create a minimal usable shot
 function shot(partial: Partial<Shot> & { shotId: number }): Shot {
@@ -102,6 +103,32 @@ describe("buildAssetRows", () => {
       { id: "newer", shotId: 1, filePath: "/api/files/p/newer.png", status: "done", type: "ai_generated", selected: false, createdAt: 2 },
     ], []);
     expect(rows[0]).toMatchObject({ assetId: "chosen", thumbnailUrl: "/api/files/p/chosen.png" });
+  });
+
+  it("视频素材恢复真实尾帧和生成控制摘要", () => {
+    const generationPlan = {
+      version: 1 as const,
+      strategy: "reference-pack" as const,
+      mode: "video-to-video" as const,
+      referenceRoles: ["keyframe", "character"],
+      referenceCount: 2,
+      audioMode: "native" as const,
+      voiceoverBound: true,
+      warnings: [],
+    } satisfies VideoControlSummary;
+    const rows = buildAssetRows([shot({ shotId: 1 })], [{
+      shotId: 1,
+      filePath: "/api/files/p/clip.mp4",
+      thumbnailPath: "/api/files/p/key.png",
+      lastFrameUrl: "/api/files/p/clip.mp4__last-frame.jpg",
+      status: "done",
+      type: "ai_generated",
+      generationPlan,
+    }], []);
+    expect(rows[0]).toMatchObject({
+      lastFrameUrl: "/api/files/p/clip.mp4__last-frame.jpg",
+      generationPlan,
+    });
   });
 });
 

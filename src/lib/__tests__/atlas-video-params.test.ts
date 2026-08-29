@@ -108,9 +108,10 @@ describe("MiniMax H3 请求体（发布于 2026-07-31 的海螺 3.0）", () => {
       prompt: "x",
       referenceImageUrls: ["https://e.com/p1.png", "https://e.com/p2.png"],
       referenceVideoUrls: ["https://e.com/ref.mp4"],
+      referenceAudioUrls: ["https://e.com/voice.wav"],
       duration: 8,
     }, "x");
-    expect(body.refers).toEqual(["https://e.com/ref.mp4", "https://e.com/p1.png", "https://e.com/p2.png"]);
+    expect(body.refers).toEqual(["https://e.com/ref.mp4", "https://e.com/p1.png", "https://e.com/p2.png", "https://e.com/voice.wav"]);
     expect(body).not.toHaveProperty("reference_images");
   });
 });

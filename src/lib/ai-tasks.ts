@@ -12,6 +12,7 @@
 import { getDb } from "@/lib/db";
 import { aiTasks } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
+import type { VideoControlSummary } from "@/lib/video-control-plan";
 
 export type AiTaskStatus = "submitted" | "processing" | "completed" | "failed" | "unknown";
 
@@ -27,6 +28,7 @@ export interface RecordAiTaskInput {
   mode?: string;
   prompt?: string;
   taskId: string;
+  controlPlan?: VideoControlSummary;
 }
 
 /** Insert a row right after task submission; returns the row id (null if the DB write failed) */
@@ -44,6 +46,7 @@ export async function recordAiTask(input: RecordAiTaskInput): Promise<string | n
         mode: input.mode ?? null,
         prompt: input.prompt ?? null,
         taskId: input.taskId,
+        controlPlan: input.controlPlan ?? null,
         status: "submitted",
       })
       .returning({ id: aiTasks.id });

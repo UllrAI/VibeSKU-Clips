@@ -52,6 +52,7 @@ import {
 import type { Model } from "@/lib/providers/types";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import type { QcReport } from "@/lib/video-composer/qc";
+import type { VideoControlSummary } from "@/lib/video-control-plan";
 import {
   rankQualityCandidates,
   type GenerationQualityReport,
@@ -97,6 +98,7 @@ interface QualityCandidate {
   provider?: string | null;
   model?: string | null;
   prompt?: string | null;
+  generationPlan?: VideoControlSummary | null;
   selected: boolean;
   createdAt?: Date | string | null;
   latestReview: QualityReview | null;
@@ -463,7 +465,7 @@ export default function ProductionPage() {
                       return <article key={candidate.id} className={`rounded-xl border p-3 ${candidate.selected ? "border-primary/35 bg-primary/6" : "border-border/50 bg-card/35"}`}>
                         <div className="flex items-start gap-3">
                           {preview ? <Image src={preview} alt={t("qualityPreview", { n: candidateIndex + 1 })} width={64} height={64} unoptimized className="h-16 w-16 shrink-0 rounded-lg border border-border/50 object-cover" loading="lazy" /> : <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/30 text-muted-foreground" aria-hidden="true"><LuFilm /></div>}
-                          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><span className="text-xs font-semibold">{t("qualityTake", { n: candidateIndex + 1 })}</span>{candidate.selected && <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-medium text-primary">{t("activeTake")}</span>}</div><p className="mt-1 truncate text-[11px] text-muted-foreground">{candidate.model || candidate.provider || candidate.type}</p>{review && <p className="mt-1 line-clamp-2 text-xs leading-5 text-foreground/90">{review.report.summary || t("qualityNoSummary")}</p>}</div>
+                          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><span className="text-xs font-semibold">{t("qualityTake", { n: candidateIndex + 1 })}</span>{candidate.selected && <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-medium text-primary">{t("activeTake")}</span>}</div><p className="mt-1 truncate text-[11px] text-muted-foreground">{candidate.model || candidate.provider || candidate.type}</p>{candidate.generationPlan && <div className="mt-1.5 flex flex-wrap gap-1" aria-label={t("qualityControlPlan")}><span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground">{t(candidate.generationPlan.strategy === "reference-pack" ? "qualityPlanReference" : "qualityPlanKeyframe", { n: candidate.generationPlan.referenceCount })}</span><span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground">{t(`qualityAudio_${candidate.generationPlan.audioMode}`)}</span>{candidate.generationPlan.warnings.length > 0 && <span className="rounded-full border border-amber-500/25 bg-amber-500/8 px-2 py-0.5 text-[10px] text-amber-300">{t("qualityPlanDegraded")}</span>}</div>}{review && <p className="mt-1 line-clamp-2 text-xs leading-5 text-foreground/90">{review.report.summary || t("qualityNoSummary")}</p>}</div>
                         </div>
                         {review ? <>
                           <details className="mt-3 rounded-lg border border-border/50 bg-background/30">

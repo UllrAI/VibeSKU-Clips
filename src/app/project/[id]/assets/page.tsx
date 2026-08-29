@@ -30,6 +30,11 @@ import {
 import { LOOK_PRESETS, getLookPreset, lookImageSuffix } from "@/lib/look-presets";
 import { realFaceLine } from "@/lib/presenters";
 import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
+import {
+  buildVideoControlPlan,
+  sanitizeVideoControlSummary,
+  type VideoControlSummary,
+} from "@/lib/video-control-plan";
 import { useT, useLocale } from "@/lib/i18n";
 import { ProjectHeader } from "@/components/project-header";
 import { ModelCapabilityPreflight } from "@/components/model-capability-preflight";
@@ -69,6 +74,7 @@ interface PendingAiTask {
   model: string;
   taskId: string;
   status: "submitted" | "processing" | "completed" | "failed" | "unknown";
+  controlPlan?: VideoControlSummary | null;
 }
 
 // shot types that "feature the product": when product fidelity is enabled, these AI shots use image-to-image (redraw with product photo to lock in the subject)
@@ -188,7 +194,9 @@ export default function AssetsPage() {
         setScriptId(typeof selected.id === "string" ? selected.id : "");
 
         // selected script shots + persisted assets → view rows (shared pure function used by "refresh after filling visuals")
-        setAssets(buildAssetRows(selected.shots as Shot[], Array.isArray(savedAssets) ? savedAssets : [], imgs));
+        const rows = buildAssetRows(selected.shots as Shot[], Array.isArray(savedAssets) ? savedAssets : [], imgs);
+        for (const row of rows) if (row.lastFrameUrl) lastFrameByShot.current.set(row.shotId, row.lastFrameUrl);
+        setAssets(rows);
       } catch (e) {
         if (!cancelled) setLoadError(e instanceof Error ? e.message : t("errorLoadFailed"));
       } finally {
@@ -216,7 +224,9 @@ export default function AssetsPage() {
       : null;
     if (selected && Array.isArray(selected.shots)) {
       setScriptId(typeof selected.id === "string" ? selected.id : "");
-      setAssets(buildAssetRows(selected.shots as Shot[], Array.isArray(savedAssets) ? savedAssets : [], imgs));
+      const rows = buildAssetRows(selected.shots as Shot[], Array.isArray(savedAssets) ? savedAssets : [], imgs);
+      for (const row of rows) if (row.lastFrameUrl) lastFrameByShot.current.set(row.shotId, row.lastFrameUrl);
+      setAssets(rows);
     }
   }, [id]);
 
@@ -445,26 +455,40 @@ export default function AssetsPage() {
   // keyframeUrl = the static first frame the i2v ran from: persisted as thumbnailPath so the
   // keyframe survives the upsert — it powers the per-shot motion re-run and keyframe chaining
   const saveVideoAsset = useCallback(
-    async (shotId: number, url: string, prompt: string | undefined, provider: string, model: string, keyframeUrl?: string) => {
+    async (shotId: number, url: string, prompt: string | undefined, provider: string, model: string, keyframeUrl?: string, generationPlan?: VideoControlSummary | null) => {
       const saveRes = await fetch(`/api/project/${id}/assets`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           shotId, type: "ai_generate", sourceUrl: url, prompt, provider, model,
           ...(keyframeUrl && { thumbnailPath: keyframeUrl }),
+          ...(generationPlan && { generationPlan }),
         }),
       });
       let savedUrl = url;
+      let savedLastFrame: string | undefined;
       if (saveRes.ok) {
         const saved = await saveRes.json();
         if (saved.filePath) savedUrl = saved.filePath;
         // the server extracted this clip's REAL last frame — remember it for tail-chaining
-        if (typeof saved.lastFrameUrl === "string") lastFrameByShot.current.set(shotId, saved.lastFrameUrl);
+        if (typeof saved.lastFrameUrl === "string") {
+          savedLastFrame = saved.lastFrameUrl;
+          lastFrameByShot.current.set(shotId, saved.lastFrameUrl);
+        }
       }
       setAssets((prev) =>
         prev.map((a) =>
           a.shotId === shotId
-            ? { ...a, status: "done", thumbnailUrl: keyframeUrl ?? savedUrl, isVideo: true, keyframeUrl, error: undefined }
+            ? {
+                ...a,
+                status: "done",
+                thumbnailUrl: keyframeUrl ?? savedUrl,
+                isVideo: true,
+                keyframeUrl,
+                lastFrameUrl: savedLastFrame ?? a.lastFrameUrl,
+                generationPlan: generationPlan ?? a.generationPlan,
+                error: undefined,
+              }
             : a
         )
       );
@@ -501,7 +525,7 @@ export default function AssetsPage() {
             const asset = assets.find((a) => a.shotId === task.shotId);
             // best-effort keyframe provenance: the task was submitted from the shot's static frame
             const keyframe = asset && !asset.isVideo ? asset.thumbnailUrl : asset?.keyframeUrl;
-            await saveVideoAsset(task.shotId, data.videoUrls[0], asset?.prompt, task.provider, task.model, keyframe);
+            await saveVideoAsset(task.shotId, data.videoUrls[0], asset?.prompt, task.provider, task.model, keyframe, task.controlPlan);
           }
           setTaskMsg(t("taskResumeDone"));
         } else if (data.status === "failed" || data.status === "cancelled") {
@@ -552,7 +576,7 @@ export default function AssetsPage() {
       if (chainMode === "tail" && !firstFrameOverride) {
         const idx = assets.findIndex((a) => a.shotId === shotId);
         const prev = idx > 0 ? assets[idx - 1] : undefined;
-        if (prev) tailFirstFrame = lastFrameByShot.current.get(prev.shotId);
+        if (prev) tailFirstFrame = prev.lastFrameUrl ?? lastFrameByShot.current.get(prev.shotId);
       }
       const effectiveFirstFrame = tailFirstFrame ?? firstFrame;
       setMotionShots((prev) => new Set(prev).add(shotId));
@@ -587,16 +611,40 @@ export default function AssetsPage() {
         productConstraints: [...(projectCreativeIntent.productConstraints ?? []), ...projectVisualBible.productAnchors],
       });
       let finalPrompt = projectDirection.prompt ? `${motionPrompt}. Project direction: ${projectDirection.prompt}` : motionPrompt;
+      if (retake) {
+        const patched = applyRetakePatch(finalPrompt, retake);
+        finalPrompt = patched.prompt;
+        setTaskMsg(t("retakeApplied", { change: locale === "zh" ? patched.change.zh : patched.change.en }));
+      }
+      const assetIndex = assets.findIndex((item) => item.shotId === shotId);
+      const previousAsset = assetIndex > 0 ? assets[assetIndex - 1] : undefined;
+      const previousTail = previousAsset?.lastFrameUrl ?? (previousAsset ? lastFrameByShot.current.get(previousAsset.shotId) : undefined);
+      const characterReference = asset?.characterId
+        ? presenterLib.find((character) => character.id === asset.characterId)?.referenceImages?.[0] ?? presenterSheet
+        : undefined;
+      const productReference = productSafe && (asset?.visualSource === "product_image" || PRODUCT_SHOT_TYPES.has(asset?.type ?? ""))
+        ? productImages[0]
+        : undefined;
+      const controlPlan = buildVideoControlPlan({
+        provider: videoModelTarget.provider,
+        modelId: videoModelTarget.model,
+        supportsAudio: videoModelTarget.supportsAudio,
+        firstFrameUrl: effectiveFirstFrame,
+        lastFrameUrl: chainFrame,
+        characterReferenceUrl: characterReference,
+        productReferenceUrl: productReference,
+        continuityReferenceUrl: previousTail,
+        voiceover: asset?.voiceover,
+        speakerVisible: Boolean(asset?.characterId),
+        description: asset?.description,
+        locale,
+      });
+      if (controlPlan.promptSuffix) finalPrompt = `${finalPrompt}. ${controlPlan.promptSuffix}`;
       const consistencyFailure = checkPromptConsistency(finalPrompt, projectVisualBible).find((issue) => issue.severity === "fail");
       if (consistencyFailure) {
         setAssets((prev) => prev.map((item) => item.shotId === shotId ? { ...item, error: t("visualBibleBlocked", { anchor: consistencyFailure.anchor }) } : item));
         setMotionShots((prev) => { const next = new Set(prev); next.delete(shotId); return next; });
         return;
-      }
-      if (retake) {
-        const patched = applyRetakePatch(motionPrompt, retake);
-        finalPrompt = patched.prompt;
-        setTaskMsg(t("retakeApplied", { change: locale === "zh" ? patched.change.zh : patched.change.en }));
       }
       // per-shot duration: the composer's slot follows the script duration (voice-fitted), and the
       // composer trims overshoot from the TAIL — which would cut a chained ending. Round to the
@@ -608,6 +656,15 @@ export default function AssetsPage() {
       if (asset?.duration) {
         videoOptions.duration = Math.min(15, Math.max(4, Math.round(asset.duration)));
       }
+      if (controlPlan.audioMode === "native") {
+        videoOptions.audioEnabled = true;
+        if (asset?.voiceover?.trim()) videoOptions.voiceover = asset.voiceover.trim();
+        if (controlPlan.audioPrompt) videoOptions.audioPrompt = controlPlan.audioPrompt;
+      }
+      const referenceImageUrls = controlPlan.referenceInputs.filter((item) => item.mediaType === "image").map((item) => item.url);
+      const referenceVideoUrls = controlPlan.referenceInputs.filter((item) => item.mediaType === "video").map((item) => item.url);
+      const referenceAudioUrls = controlPlan.referenceInputs.filter((item) => item.mediaType === "audio").map((item) => item.url);
+      const controlSummary = sanitizeVideoControlSummary(controlPlan);
       try {
         const res = await fetch("/api/ai/video", {
           method: "POST",
@@ -617,10 +674,14 @@ export default function AssetsPage() {
             model: videoModelTarget.model,
             apiKey: videoModelTarget.apiKey,
             baseUrl: videoModelTarget.baseUrl,
-            mode: "image-to-video",
+            mode: controlPlan.mode,
             prompt: finalPrompt,
-            imageUrl: effectiveFirstFrame,
-            ...(chainFrame && { lastImageUrl: chainFrame }),
+            ...(controlPlan.firstFrameUrl && { imageUrl: controlPlan.firstFrameUrl }),
+            ...(controlPlan.lastFrameUrl && { lastImageUrl: controlPlan.lastFrameUrl }),
+            ...(referenceImageUrls.length && { referenceImageUrls }),
+            ...(referenceVideoUrls.length && { referenceVideoUrls }),
+            ...(referenceAudioUrls.length && { referenceAudioUrls }),
+            ...(controlSummary && { controlPlan: controlSummary }),
             // issue #16: identify the task server-side so the paid task ID is persisted
             // against this project/shot and stays recoverable after timeout or restart
             projectId: id,
@@ -645,7 +706,7 @@ export default function AssetsPage() {
         if (!url) throw new Error(t("errorEmptyResult"));
         // save as this shot's asset (video will be downloaded locally); compose processes it as a video clip (including native audio track detection).
         // Persist the motion prompt actually sent AND the source keyframe (provenance + re-run/chaining)
-        await saveVideoAsset(shotId, url, finalPrompt, videoModelTarget.provider, data.modelId || videoModelTarget.model, effectiveFirstFrame);
+        await saveVideoAsset(shotId, url, finalPrompt, videoModelTarget.provider, data.modelId || videoModelTarget.model, effectiveFirstFrame, controlSummary);
       } catch (e) {
         setAssets((prev) =>
           prev.map((a) => (a.shotId === shotId ? { ...a, error: e instanceof Error ? e.message : t("errorImageToVideoFailed") } : a))
@@ -658,7 +719,7 @@ export default function AssetsPage() {
         });
       }
     },
-    [assets, videoModelTarget, id, videoParams, motionIntensity, motionRealism, chainMode, projectCategory, projectCreativeIntent, projectVisualBible, visualLook, saveVideoAsset, reloadPendingTasks, t, locale]
+    [assets, videoModelTarget, id, videoParams, motionIntensity, motionRealism, chainMode, projectCategory, projectCreativeIntent, projectVisualBible, visualLook, productSafe, productImages, presenterLib, presenterSheet, saveVideoAsset, reloadPendingTasks, t, locale]
   );
 
   // actually generate a single asset. Returns the saved static keyframe URL (undefined on failure) so
@@ -890,7 +951,7 @@ export default function AssetsPage() {
         if (row.isVideo) continue; // already a motion/stock video — don't re-bill
         // tail mode: sequential continuation — the previous shot's real tail frame (captured at
         // save time in this very loop) beats the shot's own keyframe as the first frame
-        const tailFrame = chainMode === "tail" && i > 0 ? lastFrameByShot.current.get(assets[i - 1].shotId) : undefined;
+        const tailFrame = chainMode === "tail" && i > 0 ? assets[i - 1].lastFrameUrl ?? lastFrameByShot.current.get(assets[i - 1].shotId) : undefined;
         const firstFrame = tailFrame ?? staticFrameOf(row);
         if (!firstFrame) continue;
         const next = assets[i + 1];
@@ -1187,11 +1248,14 @@ export default function AssetsPage() {
         {uiMode === "pro" && videoModelTarget && (
           <ModelCapabilityPreflight
             modelId={videoModelTarget.model}
+            provider={videoModelTarget.provider}
             supportsAudio={videoModelTarget.supportsAudio}
             duration={videoParams.duration}
             resolution={videoParams.resolution}
             aspectRatio={videoParams.aspectRatio}
             chainMode={chainMode}
+            audioEnabled={videoModelTarget.supportsAudio === true}
+            referenceImageCount={Number(Boolean(presenterSheet)) + Number(Boolean(productSafe && productImages[0]))}
           />
         )}
 

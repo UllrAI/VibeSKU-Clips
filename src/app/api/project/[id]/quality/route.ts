@@ -95,6 +95,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         provider: asset.provider,
         model: asset.model,
         prompt: asset.prompt,
+        generationPlan: asset.generationPlan,
         selected: asset.selected,
         createdAt: asset.createdAt,
         latestReview: latestByAsset.has(asset.id) ? publicReview(latestByAsset.get(asset.id)!) : null,

@@ -10,6 +10,7 @@ import { MAX_DOWNLOAD_BYTES } from "@/lib/providers/stock-types";
 import { extractLastFrame, LAST_FRAME_SUFFIX } from "@/lib/video-composer/frame-extract";
 import { resolveUploadFilePath } from "@/lib/remote-image";
 import { existsSync } from "fs";
+import { sanitizeVideoControlSummary } from "@/lib/video-control-plan";
 
 /** Decode-level check after writing to disk: AI providers' expiring links often answer with an
  * error page or a truncated body — those must be stopped before the DB row exists, or the
@@ -129,6 +130,7 @@ export async function POST(
       user_upload: "user_upload",
     };
     const assetType = typeMap[body.type] ?? "ai_generated";
+    const generationPlan = sanitizeVideoControlSummary(body.generationPlan);
 
     // Static keyframe (first frame) accompanying an i2v video asset: serves as the assets-page
     // thumbnail AND as the source frame for per-shot motion re-runs / keyframe chaining — the
@@ -152,6 +154,7 @@ export async function POST(
           provider: body.provider,
           model: body.model,
           prompt: body.prompt,
+          generationPlan,
           selected: true,
           status: "done",
         }).returning().all();

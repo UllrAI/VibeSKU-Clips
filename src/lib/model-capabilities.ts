@@ -14,7 +14,9 @@ export interface VideoModelCapabilities {
   confidence: CapabilityConfidence;
   textToVideo: boolean | null;
   imageToVideo: boolean | null;
+  referenceImages: boolean | null;
   referenceVideo: boolean | null;
+  referenceAudio: boolean | null;
   lastFrame: boolean | null;
   nativeAudio: boolean | null;
   durationValues?: number[];
@@ -33,7 +35,38 @@ export interface PreflightAdjustment {
 export interface VideoGenerationPreflight {
   capabilities: VideoModelCapabilities;
   adjustments: PreflightAdjustment[];
-  warnings: Array<"capabilities-unknown" | "native-audio-unavailable" | "reference-images-trimmed">;
+  warnings: Array<
+    | "capabilities-unknown"
+    | "native-audio-unavailable"
+    | "reference-images-trimmed"
+    | "reference-conditioning-unavailable"
+    | "reference-audio-unavailable"
+  >;
+}
+
+function referenceSibling(modelId: string): string | undefined {
+  if (/\/reference-to-video$/.test(modelId)) return modelId;
+  const sibling = modelId.replace(/\/(?:text|image)-to-video$/, "/reference-to-video");
+  if (sibling === modelId) return undefined;
+  if (getVideoParamSpec(sibling)?.referenceShape) return sibling;
+  // Older catalog families use the same endpoint naming but predate schema-backed specs.
+  if (/^bytedance\/seedance-2\.0\/reference-to-video$/.test(sibling)) return sibling;
+  return undefined;
+}
+
+function referenceCapabilities(modelId: string, provider?: string): Pick<VideoModelCapabilities, "referenceImages" | "referenceVideo" | "referenceAudio" | "maxReferenceImages"> {
+  const sibling = referenceSibling(modelId);
+  const spec = sibling ? getVideoParamSpec(sibling) : undefined;
+  const arkMultimodal = provider === "volcengine" && /seedance|doubao/i.test(modelId);
+  const referenceKnown = Boolean(sibling || spec?.referenceShape || arkMultimodal);
+  const referenceAudio = arkMultimodal || /(?:minimax\/h3|bytedance\/seedance-2\.(?:0|5))/.test(sibling ?? modelId);
+  const explicitReferenceMode = inferredModes(modelId).referenceVideo;
+  return {
+    referenceImages: referenceKnown ? true : explicitReferenceMode !== null ? false : null,
+    referenceVideo: referenceKnown ? true : explicitReferenceMode !== null ? false : null,
+    referenceAudio: referenceKnown ? referenceAudio : explicitReferenceMode !== null ? false : null,
+    ...(spec?.maxReferenceImages != null && { maxReferenceImages: spec.maxReferenceImages }),
+  };
 }
 
 function inferredModes(modelId: string): Pick<VideoModelCapabilities, "textToVideo" | "imageToVideo" | "referenceVideo"> {
@@ -54,14 +87,16 @@ function inferredModes(modelId: string): Pick<VideoModelCapabilities, "textToVid
 }
 
 /** Normalize provider-specific video metadata into one UI-facing capability contract. */
-export function getVideoModelCapabilities(modelId: string, supportsAudio?: boolean): VideoModelCapabilities {
+export function getVideoModelCapabilities(modelId: string, supportsAudio?: boolean, provider?: string): VideoModelCapabilities {
   const spec = getVideoParamSpec(modelId);
   const modes = inferredModes(modelId);
+  const references = referenceCapabilities(modelId, provider);
   if (!spec) {
     const hasInference = Object.values(modes).some((value) => value !== null);
     return {
       confidence: hasInference || supportsAudio !== undefined ? "inferred" : "unknown",
       ...modes,
+      ...references,
       // An allowlist hit proves support; a miss on an unknown/custom model proves nothing.
       lastFrame: modelId && modelSupportsLastFrame(modelId) ? true : null,
       nativeAudio: supportsAudio ?? null,
@@ -71,13 +106,15 @@ export function getVideoModelCapabilities(modelId: string, supportsAudio?: boole
   return {
     confidence: "known",
     ...modes,
+    ...references,
+    referenceAudio: references.referenceAudio ?? false,
     lastFrame: Boolean(spec.lastFrameKey),
     // H3 creates stereo audio without exposing an on/off field.
     nativeAudio: supportsAudio ?? (Boolean(spec.audioKey) || /minimax\/h3\//.test(modelId)),
     durationValues: spec.durationEnum,
     resolutionValues: spec.resolutionEnum,
     aspectRatioValues: spec.ratioEnum,
-    maxReferenceImages: spec.maxReferenceImages,
+    maxReferenceImages: references.maxReferenceImages ?? spec.maxReferenceImages,
   };
 }
 
@@ -87,6 +124,7 @@ export function getVideoModelCapabilities(modelId: string, supportsAudio?: boole
  */
 export function preflightVideoGeneration(input: {
   modelId: string;
+  provider?: string;
   supportsAudio?: boolean;
   duration?: number;
   resolution: GenResolution;
@@ -94,8 +132,9 @@ export function preflightVideoGeneration(input: {
   chainMode: "pin" | "tail" | "off";
   audioEnabled?: boolean;
   referenceImageCount?: number;
+  referenceAudioCount?: number;
 }): VideoGenerationPreflight {
-  const capabilities = getVideoModelCapabilities(input.modelId, input.supportsAudio);
+  const capabilities = getVideoModelCapabilities(input.modelId, input.supportsAudio, input.provider);
   const spec = getVideoParamSpec(input.modelId);
   const adjustments: PreflightAdjustment[] = [];
   const warnings: VideoGenerationPreflight["warnings"] = [];
@@ -103,6 +142,8 @@ export function preflightVideoGeneration(input: {
   if (!spec) {
     if (capabilities.confidence === "unknown") warnings.push("capabilities-unknown");
     if (input.audioEnabled && capabilities.nativeAudio === false) warnings.push("native-audio-unavailable");
+    if ((input.referenceImageCount ?? 0) > 0 && capabilities.referenceImages === false) warnings.push("reference-conditioning-unavailable");
+    if ((input.referenceAudioCount ?? 0) > 0 && capabilities.referenceAudio === false) warnings.push("reference-audio-unavailable");
     return { capabilities, adjustments, warnings };
   }
 
@@ -129,7 +170,9 @@ export function preflightVideoGeneration(input: {
     adjustments.push({ field: "chainMode", requested: input.chainMode, effective: "off", code: "unsupported-last-frame" });
   }
   if (input.audioEnabled && capabilities.nativeAudio === false) warnings.push("native-audio-unavailable");
-  if (spec.maxReferenceImages != null && (input.referenceImageCount ?? 0) > spec.maxReferenceImages) {
+  if ((input.referenceImageCount ?? 0) > 0 && capabilities.referenceImages === false) warnings.push("reference-conditioning-unavailable");
+  if ((input.referenceAudioCount ?? 0) > 0 && capabilities.referenceAudio === false) warnings.push("reference-audio-unavailable");
+  if (capabilities.maxReferenceImages != null && (input.referenceImageCount ?? 0) > capabilities.maxReferenceImages) {
     warnings.push("reference-images-trimmed");
   }
   return { capabilities, adjustments, warnings };

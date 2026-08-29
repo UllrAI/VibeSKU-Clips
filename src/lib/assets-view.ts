@@ -1,4 +1,5 @@
 import type { Shot } from "@/lib/db/schema";
+import type { VideoControlSummary } from "@/lib/video-control-plan";
 
 /**
  * Asset page view row: derived from "shots of the selected script" + "persisted assets".
@@ -31,6 +32,10 @@ export interface AssetItem {
    * shot chain into this clip's first frame even after the shot has become a video.
    */
   keyframeUrl?: string;
+  /** Persisted final-frame reference for continuity after refresh/restart. */
+  lastFrameUrl?: string;
+  /** Non-sensitive summary of the conditions actually sent for this take. */
+  generationPlan?: VideoControlSummary;
 }
 
 /** Video asset file extensions (used to distinguish video vs. static image, determining thumbnail display and the "animate" entry point) */
@@ -47,6 +52,8 @@ export interface SavedAssetRow {
   thumbnailPath?: string | null;
   selected?: boolean | null;
   createdAt?: Date | string | number | null;
+  lastFrameUrl?: string | null;
+  generationPlan?: VideoControlSummary | null;
 }
 
 /**
@@ -100,6 +107,8 @@ export function buildAssetRows(
         isVideo: isVideo || undefined,
         assetType: saved.type ?? undefined,
         keyframeUrl: isVideo && saved.thumbnailPath ? saved.thumbnailPath : undefined,
+        lastFrameUrl: isVideo && saved.lastFrameUrl ? saved.lastFrameUrl : undefined,
+        generationPlan: saved.generationPlan ?? undefined,
       };
     }
     return {

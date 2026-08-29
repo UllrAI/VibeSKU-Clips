@@ -138,7 +138,9 @@ export class VolcEngineProvider extends BaseProvider {
    */
   private buildVideoContent(options: VideoOptions): Array<Record<string, unknown>> {
     let text = options.prompt
-    if (options.audioEnabled && options.voiceover) {
+    if (options.audioEnabled && options.audioPrompt && !text.includes(options.audioPrompt)) {
+      text = `${text}。${options.audioPrompt}`
+    } else if (options.audioEnabled && options.voiceover && !options.audioPrompt) {
       text = `${options.prompt}。旁白：「${options.voiceover}」`
     }
     const content: Array<Record<string, unknown>> = [{ type: 'text', text }]

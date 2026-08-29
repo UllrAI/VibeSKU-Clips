@@ -355,7 +355,9 @@ export class AtlasCloudProvider extends BaseProvider {
 
     // models that support audio (e.g. Seedance 2.0) embed the voiceover copy into the prompt
     let prompt = options.prompt
-    if (options.audioEnabled && options.voiceover) {
+    if (options.audioEnabled && options.audioPrompt && !prompt.includes(options.audioPrompt)) {
+      prompt = `${prompt}. ${options.audioPrompt}`
+    } else if (options.audioEnabled && options.voiceover && !options.audioPrompt) {
       prompt = `${options.prompt}. 旁白: "${options.voiceover}"`
     }
 
@@ -376,6 +378,7 @@ export class AtlasCloudProvider extends BaseProvider {
           prompt,
           ...(options.referenceVideoUrls?.length && { reference_videos: options.referenceVideoUrls }),
           ...(options.referenceImageUrls?.length && { reference_images: options.referenceImageUrls }),
+          ...(options.referenceAudioUrls?.length && { reference_audios: options.referenceAudioUrls }),
           ...(options.duration && { duration: options.duration }),
           ...(options.width && options.height && {
             resolution: this.mapResolution(options.width, options.height),
