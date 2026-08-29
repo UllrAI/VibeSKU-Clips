@@ -22,6 +22,30 @@ export const LAST_FRAME_SUFFIX = ".last.jpg";
 /** Suffix appended to a composed output path to name its poster thumbnail. */
 export const THUMB_SUFFIX = ".thumb.jpg";
 
+/** Extract a boundary/reference frame at an exact timeline position (seconds). */
+export async function extractFrameAtTime(videoPath: string, time: number, outPath: string): Promise<string | undefined> {
+  const safeTime = Number.isFinite(time) ? Math.max(0, time) : 0;
+  try {
+    await execFileAsync(
+      ffmpegBin(),
+      [
+        "-nostdin", "-v", "error", "-y",
+        "-ss", safeTime.toFixed(3),
+        "-i", videoPath,
+        "-frames:v", "1",
+        "-vf", "scale=1280:1280:force_original_aspect_ratio=decrease",
+        "-q:v", "2",
+        outPath,
+      ],
+      { timeout: 60_000 }
+    );
+    const st = await stat(outPath);
+    return st.size > 0 ? outPath : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
  * Extract the clip's FIRST frame as a small poster JPEG (`<video>.thumb.jpg` by
  * default), scaled to 480px wide for gallery cards. Local extraction keeps the

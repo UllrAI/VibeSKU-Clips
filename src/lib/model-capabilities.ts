@@ -19,10 +19,41 @@ export interface VideoModelCapabilities {
   referenceAudio: boolean | null;
   lastFrame: boolean | null;
   nativeAudio: boolean | null;
+  /** Accepts an existing video as an editing/conditioning source. */
+  videoEdit: boolean | null;
+  /** Accepts an explicit time window for provider-native partial regeneration. */
+  temporalRetake: boolean | null;
+  /** Accepts a spatial mask/region for provider-native inpainting. */
+  regionMask: boolean | null;
+  /** Accepts keyframes with native timeline positions rather than unordered references. */
+  multiKeyframes: boolean | null;
+  /** Can use a reference video to guide body motion or performance. */
+  performanceReference: boolean | null;
   durationValues?: number[];
   resolutionValues?: string[];
   aspectRatioValues?: string[];
   maxReferenceImages?: number;
+}
+
+function advancedCapabilities(
+  modelId: string,
+  referenceVideo: boolean | null,
+  referenceImages: boolean | null,
+  provider?: string,
+): Pick<VideoModelCapabilities, "videoEdit" | "temporalRetake" | "regionMask" | "multiKeyframes" | "performanceReference"> {
+  const id = modelId.toLowerCase();
+  const seedanceEdit = /seedance-2\.0/.test(id) && (referenceVideo === true || provider === "volcengine");
+  const known = referenceVideo !== null || referenceImages !== null;
+  return {
+    videoEdit: seedanceEdit ? true : referenceVideo === true ? false : referenceVideo,
+    // Current provider request schemas do not expose native time ranges, masks, or
+    // timeline-positioned keyframes. Local retake/splice and ordered references are
+    // negotiated separately, so the UI never overstates provider-native precision.
+    temporalRetake: known ? false : null,
+    regionMask: known ? false : null,
+    multiKeyframes: known ? false : null,
+    performanceReference: referenceVideo,
+  };
 }
 
 export interface PreflightAdjustment {
@@ -93,6 +124,7 @@ export function getVideoModelCapabilities(modelId: string, supportsAudio?: boole
   const references = referenceCapabilities(modelId, provider);
   if (!spec) {
     const hasInference = Object.values(modes).some((value) => value !== null);
+    const advanced = advancedCapabilities(modelId, references.referenceVideo, references.referenceImages, provider);
     return {
       confidence: hasInference || supportsAudio !== undefined ? "inferred" : "unknown",
       ...modes,
@@ -100,9 +132,11 @@ export function getVideoModelCapabilities(modelId: string, supportsAudio?: boole
       // An allowlist hit proves support; a miss on an unknown/custom model proves nothing.
       lastFrame: modelId && modelSupportsLastFrame(modelId) ? true : null,
       nativeAudio: supportsAudio ?? null,
+      ...advanced,
     };
   }
 
+  const advanced = advancedCapabilities(modelId, references.referenceVideo, references.referenceImages, provider);
   return {
     confidence: "known",
     ...modes,
@@ -111,6 +145,7 @@ export function getVideoModelCapabilities(modelId: string, supportsAudio?: boole
     lastFrame: Boolean(spec.lastFrameKey),
     // H3 creates stereo audio without exposing an on/off field.
     nativeAudio: supportsAudio ?? (Boolean(spec.audioKey) || /minimax\/h3\//.test(modelId)),
+    ...advanced,
     durationValues: spec.durationEnum,
     resolutionValues: spec.resolutionEnum,
     aspectRatioValues: spec.ratioEnum,

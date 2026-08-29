@@ -4,7 +4,7 @@ import { ProviderError } from "@/lib/providers/base";
 import { toRemoteUsableImage, resolveUploadFilePath } from "@/lib/remote-image";
 import { apiError, errText } from "@/lib/api-error";
 import { recordAiTask, updateAiTask } from "@/lib/ai-tasks";
-import { sanitizeVideoControlSummary } from "@/lib/video-control-plan";
+import { sanitizeGenerationControlSummary } from "@/lib/video-repair-plan";
 
 // AI video generation.
 //
@@ -15,7 +15,7 @@ import { sanitizeVideoControlSummary } from "@/lib/video-control-plan";
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { provider: providerName, model, prompt, imageUrl, lastImageUrl, mode, apiKey, baseUrl, options, projectId, shotId, referenceVideoUrls, referenceImageUrls, referenceAudioUrls } = body;
-  const controlPlan = sanitizeVideoControlSummary(body.controlPlan);
+  const controlPlan = sanitizeGenerationControlSummary(body.controlPlan);
 
   if (!providerName || !model) {
     return apiError(req, "缺少必要参数", "Missing required parameters");

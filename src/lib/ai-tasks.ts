@@ -12,7 +12,7 @@
 import { getDb } from "@/lib/db";
 import { aiTasks } from "@/lib/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
-import type { VideoControlSummary } from "@/lib/video-control-plan";
+import type { GenerationControlSummary } from "@/lib/video-repair-plan";
 
 export type AiTaskStatus = "submitted" | "processing" | "completed" | "failed" | "unknown";
 
@@ -28,7 +28,7 @@ export interface RecordAiTaskInput {
   mode?: string;
   prompt?: string;
   taskId: string;
-  controlPlan?: VideoControlSummary;
+  controlPlan?: GenerationControlSummary;
 }
 
 /** Insert a row right after task submission; returns the row id (null if the DB write failed) */

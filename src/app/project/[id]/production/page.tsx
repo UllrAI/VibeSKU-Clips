@@ -29,6 +29,7 @@ import {
   LuWandSparkles,
 } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
+import { VideoRepairPanel } from "@/components/video-repair-panel";
 import { useLocale, useT } from "@/lib/i18n";
 import { getVideoModelCapabilities } from "@/lib/model-capabilities";
 import {
@@ -52,7 +53,7 @@ import {
 import type { Model } from "@/lib/providers/types";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import type { QcReport } from "@/lib/video-composer/qc";
-import type { VideoControlSummary } from "@/lib/video-control-plan";
+import type { GenerationControlSummary } from "@/lib/video-repair-plan";
 import {
   rankQualityCandidates,
   type GenerationQualityReport,
@@ -98,7 +99,7 @@ interface QualityCandidate {
   provider?: string | null;
   model?: string | null;
   prompt?: string | null;
-  generationPlan?: VideoControlSummary | null;
+  generationPlan?: GenerationControlSummary | null;
   selected: boolean;
   createdAt?: Date | string | null;
   latestReview: QualityReview | null;
@@ -414,7 +415,7 @@ export default function ProductionPage() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <Section title={t("workflow")} hint={t("workflowHint")} icon={<LuRoute className="h-4 w-4" />}>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {workflow.map((stage) => {
@@ -465,7 +466,7 @@ export default function ProductionPage() {
                       return <article key={candidate.id} className={`rounded-xl border p-3 ${candidate.selected ? "border-primary/35 bg-primary/6" : "border-border/50 bg-card/35"}`}>
                         <div className="flex items-start gap-3">
                           {preview ? <Image src={preview} alt={t("qualityPreview", { n: candidateIndex + 1 })} width={64} height={64} unoptimized className="h-16 w-16 shrink-0 rounded-lg border border-border/50 object-cover" loading="lazy" /> : <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-muted/30 text-muted-foreground" aria-hidden="true"><LuFilm /></div>}
-                          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><span className="text-xs font-semibold">{t("qualityTake", { n: candidateIndex + 1 })}</span>{candidate.selected && <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-medium text-primary">{t("activeTake")}</span>}</div><p className="mt-1 truncate text-[11px] text-muted-foreground">{candidate.model || candidate.provider || candidate.type}</p>{candidate.generationPlan && <div className="mt-1.5 flex flex-wrap gap-1" aria-label={t("qualityControlPlan")}><span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground">{t(candidate.generationPlan.strategy === "reference-pack" ? "qualityPlanReference" : "qualityPlanKeyframe", { n: candidate.generationPlan.referenceCount })}</span><span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground">{t(`qualityAudio_${candidate.generationPlan.audioMode}`)}</span>{candidate.generationPlan.warnings.length > 0 && <span className="rounded-full border border-amber-500/25 bg-amber-500/8 px-2 py-0.5 text-[10px] text-amber-300">{t("qualityPlanDegraded")}</span>}</div>}{review && <p className="mt-1 line-clamp-2 text-xs leading-5 text-foreground/90">{review.report.summary || t("qualityNoSummary")}</p>}</div>
+                          <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-1.5"><span className="text-xs font-semibold">{t("qualityTake", { n: candidateIndex + 1 })}</span>{candidate.selected && <span className="rounded-full bg-primary/12 px-2 py-0.5 text-[10px] font-medium text-primary">{t("activeTake")}</span>}</div><p className="mt-1 truncate text-[11px] text-muted-foreground">{candidate.model || candidate.provider || candidate.type}</p>{candidate.generationPlan && <div className="mt-1.5 flex flex-wrap gap-1" aria-label={t("qualityControlPlan")}>{"kind" in candidate.generationPlan ? <><span className="rounded-full border border-primary/25 bg-primary/8 px-2 py-0.5 text-[10px] text-primary">{t("qualityPlanRepair", { start: candidate.generationPlan.window.start.toFixed(1), end: candidate.generationPlan.window.end.toFixed(1) })}</span><span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground">{t("repairPreserveAudio")}</span></> : <><span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground">{t(candidate.generationPlan.strategy === "reference-pack" ? "qualityPlanReference" : "qualityPlanKeyframe", { n: candidate.generationPlan.referenceCount })}</span><span className="rounded-full border border-border/60 px-2 py-0.5 text-[10px] text-muted-foreground">{t(`qualityAudio_${candidate.generationPlan.audioMode}`)}</span></>}{candidate.generationPlan.warnings.length > 0 && <span className="rounded-full border border-amber-500/25 bg-amber-500/8 px-2 py-0.5 text-[10px] text-amber-300">{t("qualityPlanDegraded")}</span>}</div>}{review && <p className="mt-1 line-clamp-2 text-xs leading-5 text-foreground/90">{review.report.summary || t("qualityNoSummary")}</p>}</div>
                         </div>
                         {review ? <>
                           <details className="mt-3 rounded-lg border border-border/50 bg-background/30">
@@ -476,6 +477,17 @@ export default function ProductionPage() {
                           </details>
                           {review.report.issues.length > 0 && <div className="mt-3 space-y-1.5">{review.report.issues.slice(0, 3).map((issue) => <p key={`${issue.code}-${issue.time ?? "x"}`} className={`rounded-lg border px-2.5 py-2 text-[11px] leading-4 ${issue.severity === "critical" ? "border-destructive/25 bg-destructive/8 text-destructive" : "border-amber-500/20 bg-amber-500/8 text-amber-200"}`}>{issue.time != null ? `${issue.time.toFixed(1)}s · ` : ""}{issue.summary}</p>)}</div>}
                           <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{t(`qualityAction_${review.disposition.action}`)}{review.disposition.paid ? ` · ${t("qualityPaidNotRun")}` : ""}</p>
+                          {candidate.filePath && /\.(mp4|webm|mov|m4v)$/i.test(candidate.filePath) && <VideoRepairPanel
+                            projectId={id}
+                            assetId={candidate.id}
+                            reviewId={review.id}
+                            currentModel={candidate.model}
+                            defaultVideoModel={defaultVideoModel}
+                            models={videoModels}
+                            providers={providers}
+                            anchors={qualityCandidates.filter((item) => item.filePath && !/\.(mp4|webm|mov|m4v)$/i.test(item.filePath)).map((item) => ({ id: item.id, shotId: item.shotId, label: t("repairAnchorLabel", { shot: item.shotId, model: item.model || item.provider || item.type }) }))}
+                            onComplete={async () => { setStatus(t("repairComplete")); await Promise.all([loadOverview(), loadQuality()]); }}
+                          />}
                           <div className="mt-3 grid grid-cols-2 gap-2">
                             <Button className="h-11" disabled={Boolean(actionBusy) || review.humanDecision === "accepted"} onClick={() => void decideQuality(review.id, "accepted")}><LuThumbsUp />{review.humanDecision === "accepted" ? t("qualityAccepted") : t("qualityAccept")}</Button>
                             <Button variant="outline" className="h-11" disabled={Boolean(actionBusy) || review.humanDecision === "rejected"} onClick={() => void decideQuality(review.id, "rejected")}><LuThumbsDown />{review.humanDecision === "rejected" ? t("qualityRejected") : t("qualityReject")}</Button>
@@ -491,13 +503,13 @@ export default function ProductionPage() {
 
           <Section title={t("versions")} icon={<LuGitBranch className="h-4 w-4" />}>
             {!overview.versionTree.scripts.length && !overview.versionTree.generations.length && !overview.snapshots.length ? <p className="text-sm text-muted-foreground">{t("noVersions")}</p> : <div className="grid gap-4 md:grid-cols-2">
-              <div><h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("snapshots")}</h3><div className="space-y-2">{overview.snapshots.slice(0, 5).map((item) => <div key={item.id} className="rounded-lg border border-border/50 bg-background/30 px-3 py-2"><p className="truncate text-sm font-medium">{item.label}</p><p className="mt-1 text-[11px] text-muted-foreground">{formatDate(item.createdAt, locale)} · {item.assetIds.length} {t("assetsUnit")}</p></div>)}</div></div>
-              <div><h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("generations")}</h3><div className="space-y-2">{overview.versionTree.generations.slice(0, 6).map((item) => <div key={`${item.kind}-${item.id}`} className="flex items-center justify-between gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2"><div className="min-w-0"><p className="truncate text-sm font-medium">{item.label}</p><p className="text-[11px] text-muted-foreground">{item.kind}{item.shotId != null ? ` · #${item.shotId}` : ""}</p></div><span className="shrink-0 rounded-full border border-border/60 px-2 py-0.5 text-[10px]">{item.status}</span></div>)}</div></div>
+              <div className="min-w-0"><h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("snapshots")}</h3><div className="space-y-2">{overview.snapshots.slice(0, 5).map((item) => <div key={item.id} className="rounded-lg border border-border/50 bg-background/30 px-3 py-2"><p className="truncate text-sm font-medium">{item.label}</p><p className="mt-1 text-[11px] text-muted-foreground">{formatDate(item.createdAt, locale)} · {item.assetIds.length} {t("assetsUnit")}</p></div>)}</div></div>
+              <div className="min-w-0"><h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("generations")}</h3><div className="space-y-2">{overview.versionTree.generations.slice(0, 6).map((item) => <div key={`${item.kind}-${item.id}`} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-border/50 bg-background/30 px-3 py-2"><div className="min-w-0"><p className="truncate text-sm font-medium">{item.label}</p><p className="text-[11px] text-muted-foreground">{item.kind}{item.shotId != null ? ` · #${item.shotId}` : ""}</p></div><span className="shrink-0 rounded-full border border-border/60 px-2 py-0.5 text-[10px]">{item.status}</span></div>)}</div></div>
             </div>}
           </Section>
         </div>
 
-        <div className="space-y-5">
+        <div className="min-w-0 space-y-5">
           <Section title={t("router")} hint={t("routerHint")} icon={<LuWandSparkles className="h-4 w-4" />}>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5 xl:grid-cols-2">{(["balanced", "cost", "speed", "quality", "consistency"] as RoutingGoal[]).map((item) => <button key={item} type="button" aria-pressed={goal === item} onClick={() => setGoal(item)} className={`min-h-9 rounded-lg border px-2 text-xs font-medium outline-none focus-visible:ring-2 focus-visible:ring-primary ${goal === item ? "border-primary/40 bg-primary/10 text-primary" : "border-border/60 text-muted-foreground hover:text-foreground"}`}>{t(`goal_${item}`)}</button>)}</div>
             {routeDecision.selected ? <div className="mt-4 rounded-xl border border-primary/25 bg-primary/8 p-3"><p className="text-[11px] font-semibold uppercase tracking-wider text-primary">{t("recommended")}</p><p className="mt-1 break-words text-sm font-semibold">{routeDecision.selected.name}</p><p className="mt-1 text-[11px] text-muted-foreground">{priceOf(videoModels.find((model) => model.id === routeDecision.selected?.id)) == null ? t("priceUnknown") : t("perCall", { price: priceOf(videoModels.find((model) => model.id === routeDecision.selected?.id))!.toFixed(3) })}</p>{modelQualityStats.find((stat) => stat.model === routeDecision.selected?.id) ? <p className="mt-1 text-[11px] text-muted-foreground">{t("modelQualityHistory", { score: modelQualityStats.find((stat) => stat.model === routeDecision.selected?.id)!.averageOverall, n: modelQualityStats.find((stat) => stat.model === routeDecision.selected?.id)!.reviews })}</p> : <p className="mt-1 text-[11px] text-muted-foreground">{t("modelNoHistory")}</p>}<Button className="mt-3 h-10 w-full" disabled={defaultVideoModel === routeDecision.selected.id} onClick={() => { setDefaultVideoModel(routeDecision.selected!.id); setStatus(t("modelApplied")); }}><LuCheck />{defaultVideoModel === routeDecision.selected.id ? t("applied") : t("applyModel")}</Button></div> : <p className="mt-4 text-sm text-muted-foreground">{t("noModel")}</p>}

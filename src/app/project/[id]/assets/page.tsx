@@ -33,8 +33,8 @@ import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
 import {
   buildVideoControlPlan,
   sanitizeVideoControlSummary,
-  type VideoControlSummary,
 } from "@/lib/video-control-plan";
+import type { GenerationControlSummary } from "@/lib/video-repair-plan";
 import { useT, useLocale } from "@/lib/i18n";
 import { ProjectHeader } from "@/components/project-header";
 import { ModelCapabilityPreflight } from "@/components/model-capability-preflight";
@@ -74,7 +74,7 @@ interface PendingAiTask {
   model: string;
   taskId: string;
   status: "submitted" | "processing" | "completed" | "failed" | "unknown";
-  controlPlan?: VideoControlSummary | null;
+  controlPlan?: GenerationControlSummary | null;
 }
 
 // shot types that "feature the product": when product fidelity is enabled, these AI shots use image-to-image (redraw with product photo to lock in the subject)
@@ -455,7 +455,7 @@ export default function AssetsPage() {
   // keyframeUrl = the static first frame the i2v ran from: persisted as thumbnailPath so the
   // keyframe survives the upsert — it powers the per-shot motion re-run and keyframe chaining
   const saveVideoAsset = useCallback(
-    async (shotId: number, url: string, prompt: string | undefined, provider: string, model: string, keyframeUrl?: string, generationPlan?: VideoControlSummary | null) => {
+    async (shotId: number, url: string, prompt: string | undefined, provider: string, model: string, keyframeUrl?: string, generationPlan?: GenerationControlSummary | null) => {
       const saveRes = await fetch(`/api/project/${id}/assets`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -521,7 +521,16 @@ export default function AssetsPage() {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || t("taskResumeFailed"));
         if (data.status === "completed" && data.videoUrls?.[0]) {
-          if (task.shotId != null) {
+          if (task.controlPlan && "kind" in task.controlPlan && task.controlPlan.kind === "repair") {
+            const finalizeRes = await fetch(`/api/project/${id}/repair`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ action: "finalize", plan: task.controlPlan, resultUrl: data.videoUrls[0] }),
+            });
+            const finalized = await finalizeRes.json();
+            if (!finalizeRes.ok) throw new Error(finalized.error || t("taskResumeFailed"));
+            await reloadAssets();
+          } else if (task.shotId != null) {
             const asset = assets.find((a) => a.shotId === task.shotId);
             // best-effort keyframe provenance: the task was submitted from the shot's static frame
             const keyframe = asset && !asset.isVideo ? asset.thumbnailUrl : asset?.keyframeUrl;
@@ -544,7 +553,7 @@ export default function AssetsPage() {
         });
       }
     },
-    [providers, assets, saveVideoAsset, reloadPendingTasks, t]
+    [providers, assets, saveVideoAsset, reloadAssets, reloadPendingTasks, id, t]
   );
 
   // convert to motion shot: use the already-generated image for this shot as the first frame, call the image-to-video model, and save the result as the shot's asset (video).

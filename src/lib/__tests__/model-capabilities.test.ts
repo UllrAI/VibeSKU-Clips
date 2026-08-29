@@ -24,6 +24,11 @@ describe("video model capabilities", () => {
       referenceVideo: true,
       referenceAudio: true,
       nativeAudio: true,
+      videoEdit: false,
+      temporalRetake: false,
+      regionMask: false,
+      multiKeyframes: false,
+      performanceReference: true,
     });
     expect(caps.maxReferenceImages).toBeGreaterThan(0);
   });

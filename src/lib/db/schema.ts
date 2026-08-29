@@ -14,7 +14,7 @@ import type {
   QualityDisposition,
   ShotQualityContract,
 } from "@/lib/generation-quality";
-import type { VideoControlSummary } from "@/lib/video-control-plan";
+import type { GenerationControlSummary } from "@/lib/video-repair-plan";
 
 // Projects table
 export const projects = sqliteTable("projects", {
@@ -103,7 +103,7 @@ export const assets = sqliteTable("assets", {
   provider: text("provider"),
   model: text("model"),
   prompt: text("prompt"),
-  generationPlan: text("generation_plan", { mode: "json" }).$type<VideoControlSummary>(),
+  generationPlan: text("generation_plan", { mode: "json" }).$type<GenerationControlSummary>(),
   // Asset provenance (required for stock_footage compliance: retain source link/author/license; generate credits on export)
   sourceUrl: text("source_url"), // Source page URL (e.g. Pexels video detail page)
   author: text("author"), // Asset author (for attribution)
@@ -161,7 +161,7 @@ export const aiTasks = sqliteTable("ai_tasks", {
   mediaType: text("media_type", { enum: ["image", "video"] }).notNull().default("video"),
   mode: text("mode"),
   prompt: text("prompt"),
-  controlPlan: text("control_plan", { mode: "json" }).$type<VideoControlSummary>(),
+  controlPlan: text("control_plan", { mode: "json" }).$type<GenerationControlSummary>(),
   // provider-side task/prediction ID — the recovery handle for a paid task
   taskId: text("task_id").notNull(),
   // unknown = client lost contact (poll timeout / restart); the cloud task may still be running

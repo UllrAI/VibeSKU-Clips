@@ -1,5 +1,5 @@
 import type { Shot } from "@/lib/db/schema";
-import type { VideoControlSummary } from "@/lib/video-control-plan";
+import type { GenerationControlSummary } from "@/lib/video-repair-plan";
 
 /**
  * Asset page view row: derived from "shots of the selected script" + "persisted assets".
@@ -35,7 +35,7 @@ export interface AssetItem {
   /** Persisted final-frame reference for continuity after refresh/restart. */
   lastFrameUrl?: string;
   /** Non-sensitive summary of the conditions actually sent for this take. */
-  generationPlan?: VideoControlSummary;
+  generationPlan?: GenerationControlSummary;
 }
 
 /** Video asset file extensions (used to distinguish video vs. static image, determining thumbnail display and the "animate" entry point) */
@@ -53,7 +53,7 @@ export interface SavedAssetRow {
   selected?: boolean | null;
   createdAt?: Date | string | number | null;
   lastFrameUrl?: string | null;
-  generationPlan?: VideoControlSummary | null;
+  generationPlan?: GenerationControlSummary | null;
 }
 
 /**

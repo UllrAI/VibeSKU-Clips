@@ -5,7 +5,7 @@ import { stat, mkdtemp, rm } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
 import { ffmpegBin } from "../ffmpeg-path";
-import { extractFirstFrame, extractLastFrame, THUMB_SUFFIX, LAST_FRAME_SUFFIX } from "../video-composer/frame-extract";
+import { extractFirstFrame, extractFrameAtTime, extractLastFrame, THUMB_SUFFIX, LAST_FRAME_SUFFIX } from "../video-composer/frame-extract";
 
 const execFileAsync = promisify(execFile);
 
@@ -29,6 +29,11 @@ describe("frame extraction（首帧封面 + 尾帧续拍）", () => {
       const tail = await extractLastFrame(video);
       expect(tail).toBe(`${video}${LAST_FRAME_SUFFIX}`);
       expect((await stat(tail!)).size).toBeGreaterThan(0);
+
+      const exactPath = join(dir, "middle.jpg");
+      const exact = await extractFrameAtTime(video, 0.5, exactPath);
+      expect(exact).toBe(exactPath);
+      expect((await stat(exact!)).size).toBeGreaterThan(0);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
