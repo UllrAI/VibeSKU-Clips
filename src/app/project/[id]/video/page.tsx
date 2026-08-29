@@ -356,7 +356,7 @@ export default function VideoPage() {
     URL.revokeObjectURL(url);
   };
 
-  // —— Variant matrix (Creatify-Batch / Higgsfield UGC Factory pattern): same assets,
+  // —— Variant matrix: same assets,
   // hook copy × caption preset × BGM mood combos rendered as separate labeled outputs
   // for A/B testing. Zero extra AI-generation cost — only compose (FFmpeg + TTS) reruns. ——
   const [scriptShots, setScriptShots] = useState<Shot[]>([]);
@@ -1067,7 +1067,7 @@ export default function VideoPage() {
                 </>
               )}
 
-              {/* Variant matrix (Creatify-Batch pattern): hook × caption × BGM combos as
+              {/* Variant matrix: hook × caption × BGM combos as
                   labeled outputs — same assets, compose-only reruns, zero AI-gen cost */}
               {clips.length > 0 && (
                 <div className="rounded-lg border border-border/50 bg-muted/10 p-3 space-y-2">

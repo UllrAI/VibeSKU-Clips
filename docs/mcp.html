@@ -147,7 +147,7 @@
 <div class="tip"><p>本地想直接试 Server 本体:仓库根目录 <code>pnpm mcp</code>(等价于 <code>node mcp/clipforge-mcp.mjs</code>,stdio 模式)。</p></div>
 
 <h2 id="tools">三、MCP 工具清单:从建项目到发布把关</h2>
-<p>共 <b>28 个 MCP 工具</b>覆盖出片、原片剪辑与专业交付全流程,核心几个:</p>
+<p>共 <b>29 个 MCP 工具</b>覆盖出片、原片剪辑与专业交付全流程,核心几个:</p>
 <table>
   <thead><tr><th>工具</th><th>做什么</th><th>需要 LLM Key</th></tr></thead>
   <tbody>
@@ -159,18 +159,21 @@
     <tr><td><code>clipforge_trends</code></td><td>拉热榜选题(国内榜 / Google Trends),不知道做什么先问它</td><td>—</td></tr>
     <tr><td><code>clipforge_list_voices</code></td><td>列出免费 Edge TTS 多语言音色(中/英/日/韩/西)</td><td>—</td></tr>
     <tr><td><code>clipforge_get_video</code></td><td>查询项目最新合成结果(状态/下载地址),轮询异步产物</td><td>—</td></tr>
+    <tr><td><code>clipforge_master</code></td><td>默认只读分析切点连续性与响度;显式应用后另存两遍响度或去闪烁母版</td><td>—</td></tr>
     <tr><td><code>clipforge_transcript_inspect</code></td><td>分页读取原片逐词稿、稳定词 ID 与当前剪辑版本</td><td>—</td></tr>
     <tr><td><code>clipforge_transcript_edit</code></td><td>预演或应用剪辑计划;默认只返回 diff,明确确认后才渲染新版本</td><td>—</td></tr>
     <tr><td><code>clipforge_timeline_export</code></td><td>导出 OTIO / EDL / CSV 专业时间线;不写库、不含本机绝对路径</td><td>—</td></tr>
   </tbody>
 </table>
-<p>出片之后还有<b>交付把关</b>工具:发布门禁 <code>clipforge_gate</code>(脚本就绪+质检+素材授权一键体检,<code>fail</code> 别交付)、成片质检 <code>clipforge_qc</code>(黑屏/静音/响度)、成片速览 <code>clipforge_contact_sheet</code>(agent 看图自检)、素材授权清单 <code>clipforge_credits</code>、平台导出 <code>clipforge_export_platform</code> 等——agent 不只是能出片,还能自己检查完再交给你。完整清单见 <a href="https://github.com/xixihhhh/clipforge/tree/main/mcp" rel="noopener">mcp/README</a>。</p>
+<p>出片之后还有<b>交付把关</b>工具:连续性与母版 <code>clipforge_master</code>(默认只分析切点和响度)、发布门禁 <code>clipforge_gate</code>(脚本就绪+质检+素材授权一键体检,<code>fail</code> 别交付)、成片质检 <code>clipforge_qc</code>(黑屏/静音/响度)、成片速览 <code>clipforge_contact_sheet</code>(agent 看图自检)、素材授权清单 <code>clipforge_credits</code>、平台导出 <code>clipforge_export_platform</code> 等——agent 不只是能出片,还能自己检查完再交给你。完整清单见 <a href="https://github.com/xixihhhh/clipforge/tree/main/mcp" rel="noopener">mcp/README</a>。</p>
 
 <h2 id="cli">四、CLI 脚本化出片:一行命令一条片</h2>
 <p>不走 agent 也可以纯命令行(先启动实例、设好 <code>CLIPFORGE_LLM_*</code> 环境变量):</p>
 <pre><code>npm run cli -- trends                              # 不知道做什么?先拉热搜选题
 npm run cli -- create --topic "在家手冲咖啡" --quality hd --bgm   # 一句话出片,回填 videoUrl
 npm run cli -- qc --project &lt;id&gt;                   # 成片质检(黑屏/静音/响度)
+npm run cli -- master --project &lt;id&gt;               # 默认只读:切点连续性+响度分析
+npm run cli -- master --project &lt;id&gt; --apply --normalize-audio  # 新建两遍响度母版,不覆盖原片
 npm run cli -- gate --project &lt;id&gt; --strict        # 发布门禁,拦截时退出码 2(可接 CI)
 npm run cli -- transcript --project &lt;id&gt; --media &lt;mediaId&gt;  # 检查逐词稿与版本
 npm run cli -- transcript-edit --project &lt;id&gt; --media &lt;mediaId&gt; --plan edit.json --revision 0 --operation edit-001  # 默认预演;--apply 才执行

@@ -1,11 +1,9 @@
 /**
- * Named camera-move preset library — the "Click-to-Video" mechanism borrowed from
- * Higgsfield (60+ named camera presets as one-click cards) and LibTV (~100 one-click
- * camera/effect templates), adapted to commerce short-video shots.
+ * Named camera-move preset library for commerce short-video shots.
  *
  * Why this exists: `Shot.camera` is LLM free text and used to be read-only end-to-end.
- * Free text is exactly what these platforms replaced — curated named moves kill the
- * prompt-guessing problem and give every shot a known-good, conflict-free instruction.
+ * Curated named moves remove prompt guessing and give every shot a known-good,
+ * conflict-free instruction.
  * The library serves three consumers:
  *  1. Script LLM: `cameraPresetGuide()` injects a per-shot-type vocabulary into the
  *     output-format prompt (the old spec was one vague line — the top quality bottleneck).
@@ -316,7 +314,7 @@ export function findPresetByPrompt(cameraText: string | undefined): CameraPreset
 }
 
 /**
- * Higgsfield-Mix-style two-move overlay: join two preset sentences into one combined
+ * Two-move overlay: join two preset sentences into one combined
  * instruction ("A，同时B" / "A, while B"). Returns null when the combination would trip
  * the camera-conflict lint (e.g. a locked-off move over a moving one) — the UI only
  * offers combinations this function accepts. Two moves max by design: once mixed, the

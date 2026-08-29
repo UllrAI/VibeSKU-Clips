@@ -493,6 +493,54 @@ async function cmdQc(flags) {
   return { ok: res.status !== "fail", projectId, status: res.status, checks: res.checks };
 }
 
+// Local master: analyze shot-boundary continuity and loudness by default; only
+// create a new non-destructive composition when --apply names an explicit operation.
+async function cmdMaster(flags) {
+  const projectId = String(flags.project || "").trim();
+  if (!projectId) throw new Error("--project 不能为空");
+  const apply = flags.apply === true;
+  const normalizeAudio = flags["normalize-audio"] === true;
+  const deflicker = flags.deflicker === true;
+  if (!apply && (normalizeAudio || deflicker)) {
+    throw new Error("--normalize-audio / --deflicker 需要同时添加 --apply；不加处理项时默认只分析");
+  }
+  if (apply && !normalizeAudio && !deflicker) {
+    throw new Error("--apply 需要至少选择 --normalize-audio 或 --deflicker");
+  }
+  const body = { action: apply ? "render" : "analyze" };
+  if (typeof flags.composition === "string" && flags.composition.trim()) body.compositionId = flags.composition.trim();
+  if (apply) {
+    body.normalizeAudio = normalizeAudio;
+    body.deflicker = deflicker;
+    if (typeof flags.label === "string" && flags.label.trim()) body.label = flags.label.trim();
+  }
+  const res = await api(`/api/project/${projectId}/mastering`, { method: "POST", body });
+  const analysis = res.analysis || {};
+  const summary = analysis.summary || {};
+  const loudness = analysis.loudness;
+  step(`连续性分析：${summary.total || 0} 个切点，${(summary.review || 0) + (summary.strong || 0)} 个建议复核`);
+  if (loudness) step(`整片响度：${Number(loudness.inputI).toFixed(1)} LUFS，真峰值 ${Number(loudness.inputTp).toFixed(1)} dBTP`);
+  if (analysis.recommendations?.normalizeAudio) step("建议：可启用两遍响度母版（--apply --normalize-audio）");
+  for (const item of (analysis.boundaries || []).filter((entry) => entry.level !== "ok")) {
+    step(`⚠ ${Number(item.at).toFixed(2)}s · 连续性 ${item.score}/100 · 亮度差 ${item.lumaDelta}% · 色度差 ${item.chromaDelta}%`);
+  }
+  if (!apply) return { ok: true, projectId, compositionId: res.compositionId, analysis };
+  step(`母版版本已提交：${res.compositionId}`);
+  if (flags["no-wait"] === true) {
+    return { ok: true, projectId, compositionId: res.compositionId, status: res.status, analysis, options: res.options };
+  }
+  const composition = await pollCompose(projectId, { compositionId: res.compositionId });
+  return {
+    ok: true,
+    projectId,
+    compositionId: composition.id,
+    status: composition.status,
+    videoUrl: absVideoUrl(composition),
+    analysis,
+    options: res.options,
+  };
+}
+
 // GIF preview: turn a slice of the latest composed video into a shareable looping GIF
 async function cmdPreview(flags) {
   const projectId = String(flags.project || "").trim();
@@ -670,6 +718,9 @@ const HELP = `ClipForge CLI · 命令行一句话出片
   clipforge endcard --project <id> [--platform douyin --seconds 3 --cta "扫码购买"]   把扫码购买二维码烧进成片片尾(需先合成)
   clipforge export --project <id> --platform douyin|kuaishou|xiaohongshu|shipinhao|tiktok|reels|shorts   按平台导出(码率卡线免二压+实测报告)
   clipforge qc --project <id> [--composition <id>]   成片质检(黑屏/静音/响度/流完整性,批量出片前把关)
+  clipforge master --project <id> [--composition <id>]   分析切点连续性与响度(默认只读,不调用模型)
+                   [--apply --normalize-audio|--deflicker] [--label "投流母版" --no-wait]
+                                显式应用后生成新版本且不覆盖原片;deflicker 会重编码画面,仅在确认闪烁时使用
   clipforge gate --project <id> [--strict] [--composition <id>]   发布门禁:一条命令聚合 脚本就绪+成片质检+素材授权 三层检查
                                 fail(或 --strict 下 warn)退出码为 2,可直接接进脚本/CI 拦截发布
   clipforge credits --project <id> [--format md --lang zh|en]   素材授权清单(商用风险+署名行,投流审核用)
@@ -692,7 +743,7 @@ const HELP = `ClipForge CLI · 命令行一句话出片
 
 进度打印到 stderr，最终结果（含 videoUrl）打印到 stdout，便于管道取值。`;
 
-const COMMANDS = { create: cmdCreate, product: cmdProduct, import: cmdImport, dub: cmdDub, compose: cmdCompose, cover: cmdCover, qr: cmdQr, endcard: cmdEndcard, export: cmdExport, qc: cmdQc, gate: cmdGate, credits: cmdCredits, native: cmdNative, preview: cmdPreview, sheet: cmdSheet, carousel: cmdCarousel, transcript: cmdTranscriptInspect, "transcript-edit": cmdTranscriptEdit, timeline: cmdTimelineExport, list: cmdList, voices: cmdVoices, get: cmdGet, trends: cmdTrends };
+const COMMANDS = { create: cmdCreate, product: cmdProduct, import: cmdImport, dub: cmdDub, compose: cmdCompose, cover: cmdCover, qr: cmdQr, endcard: cmdEndcard, export: cmdExport, qc: cmdQc, master: cmdMaster, gate: cmdGate, credits: cmdCredits, native: cmdNative, preview: cmdPreview, sheet: cmdSheet, carousel: cmdCarousel, transcript: cmdTranscriptInspect, "transcript-edit": cmdTranscriptEdit, timeline: cmdTimelineExport, list: cmdList, voices: cmdVoices, get: cmdGet, trends: cmdTrends };
 
 async function main() {
   const { _, flags } = parseArgs(process.argv.slice(2));

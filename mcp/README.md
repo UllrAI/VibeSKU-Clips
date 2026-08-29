@@ -19,6 +19,7 @@ Drive ClipForge's text-to-video pipeline from any MCP client (Claude Desktop / C
 | `clipforge_compose` | 为已有脚本+素材的项目合成出片（免费 Edge TTS）；可开 卡拉OK字幕 / 商品卡 / AI合规标识 / 购买CTA / BGM情绪 / 旁白闪避 等带货增强 | — |
 | `clipforge_list_voices` | 列出可用的免费 Edge TTS 多语言音色（中/英/日/韩/西，供 voice 参数选用） | — |
 | `clipforge_get_video` | 查询某项目最新合成结果（状态/可下载地址），不重合成；用于轮询异步产物或取回旧视频 | — |
+| `clipforge_master` | 默认只读分析真实切点连续性与 EBU R128 响度；显式 apply 后另存两遍响度或去闪烁母版，不覆盖原片 | — |
 | `clipforge_transcript_inspect` | 分页读取导入原片的逐词稿、稳定词 ID、当前版本和渲染状态 | — |
 | `clipforge_transcript_edit` | 预演或应用文字剪辑计划；默认只返回 diff，确认后才渲染新版本 | — |
 | `clipforge_timeline_export` | 把文字剪辑计划导出为 OTIO / EDL / CSV；不写库、不含本机绝对路径 | — |
@@ -31,8 +32,8 @@ Drive ClipForge's text-to-video pipeline from any MCP client (Claude Desktop / C
 
 > **专业交付 / NLE handoff**：把同一完整 plan 传给 `clipforge_timeline_export`；OTIO 保留可编辑 A/V 切片，EDL 用于传统剪辑软件，CSV 用于人工审阅。返回内容只按原文件名重链，不暴露本机绝对路径，也不会触发渲染。
 
-> **出片后工具**（同为 MCP 工具，交付前把关/变现增强）：发布门禁 `clipforge_gate`（脚本就绪+质检+授权一键体检，`fail` 别交付）、成片质检 `clipforge_qc`、成片速览 `clipforge_contact_sheet`（agent 看图自检）、素材授权 `clipforge_credits`、平台导出 `clipforge_export_platform`、原生感 `clipforge_native_feel`、封面/图文卡/二维码/片尾扫码/译制等——完整清单与交付检查单见 [`skills/clipforge-video/SKILL.md`](../skills/clipforge-video/SKILL.md)。
-> **Post-compose tools** (also MCP tools): release gate `clipforge_gate` (readiness + QC + licensing in one verdict — don't deliver on `fail`), `clipforge_qc`, `clipforge_contact_sheet` (visual self-check), `clipforge_credits`, `clipforge_export_platform`, `clipforge_native_feel`, plus cover/carousel/QR/end-card/dub — full list and the delivery checklist live in [`skills/clipforge-video/SKILL.md`](../skills/clipforge-video/SKILL.md).
+> **出片后工具**（同为 MCP 工具，交付前把关/变现增强）：连续性与母版 `clipforge_master`（默认只读分析）、发布门禁 `clipforge_gate`（脚本就绪+质检+授权一键体检，`fail` 别交付）、成片质检 `clipforge_qc`、成片速览 `clipforge_contact_sheet`（agent 看图自检）、素材授权 `clipforge_credits`、平台导出 `clipforge_export_platform`、原生感 `clipforge_native_feel`、封面/图文卡/二维码/片尾扫码/译制等——完整清单与交付检查单见 [`skills/clipforge-video/SKILL.md`](../skills/clipforge-video/SKILL.md)。
+> **Post-compose tools** (also MCP tools): read-only-first continuity/mastering via `clipforge_master`, release gate `clipforge_gate` (readiness + QC + licensing in one verdict — don't deliver on `fail`), `clipforge_qc`, `clipforge_contact_sheet` (visual self-check), `clipforge_credits`, `clipforge_export_platform`, `clipforge_native_feel`, plus cover/carousel/QR/end-card/dub — full list and the delivery checklist live in [`skills/clipforge-video/SKILL.md`](../skills/clipforge-video/SKILL.md).
 
 > **成片选项**：`create_video` / `compose` 支持 `voice`（多语言音色，见 `clipforge_list_voices`；`create_video` 不指定则按主题语言自动挑，英文主题→英文音色）、`aspectRatio`（`9:16` 竖屏默认 / `16:9` / `1:1`）、`quality`（`fast` / `standard` / `hd`）、`bgm`（`true` 自动加一段免费 CC 背景音乐，混在旁白下方自动压低；来源 Wikimedia Commons，CC 多需署名）。一个画面都没配到时 `create_video` 会直接返回可操作的提示而非空白片。
 > **Output options**: `create_video` / `compose` accept `voice` (multilingual — zh/en/ja/ko/es; `create_video` auto-picks one matching the topic's language when unset, e.g. an English topic gets an English voice), `aspectRatio` (`9:16` default / `16:9` / `1:1`), `quality` (`fast`/`standard`/`hd`) and `bgm` (`true` = add free CC background music, ducked under the voiceover).

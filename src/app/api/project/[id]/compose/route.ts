@@ -118,7 +118,7 @@ export async function POST(
       return NextResponse.json({ error: "尚未生成脚本，无法合成" }, { status: 400 });
     }
     let shots = selected.shots as Shot[];
-    // Variant-matrix voiceover overrides (Creatify-Batch-style hook A/B): applied IN MEMORY
+    // Variant-matrix voiceover overrides for hook A/B: applied in memory
     // for this render only — the stored script stays untouched, so each variant compose can
     // carry a different hook copy without mutating the project.
     const voiceoverOverrides = body.voiceoverOverrides as Array<{ shotId: number; voiceover: string }> | undefined;

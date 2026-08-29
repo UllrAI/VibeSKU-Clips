@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     const provider = createProvider({ name: providerName, apiKey, baseUrl });
 
     const firstFrameUrl = await toRemoteUsableImage(imageUrl);
-    // Keyframe chaining (Dreamina-style first/last frame): pin the clip's last frame to the next
+    // Keyframe chaining: pin the clip's last frame to the next
     // shot's keyframe so the transition is generated inside the clip (seamless on hard concat)
     const lastFrameUrl = lastImageUrl ? await toRemoteUsableImage(lastImageUrl) : undefined;
 

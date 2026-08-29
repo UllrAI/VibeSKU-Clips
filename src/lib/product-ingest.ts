@@ -2,8 +2,7 @@
  * One-click product URL ingest — paste a product page URL and automatically extract
  * title / price / description / product images.
  *
- * This is the standard entry point for the 2026 e-commerce workflow
- * (Creatify / JiChuang / Pippit all start with "paste a product URL" rather than "write a prompt").
+ * This is the standard link-first entry point for an e-commerce workflow.
  * Extraction priority: JSON-LD (schema.org Product) > OpenGraph > Twitter Card > <title>/<meta description>.
  * Pure functions (parsing decoupled from network), unit-testable;
  * downstream hands off to the existing analyzeProduct + script engine for selling-point extraction.

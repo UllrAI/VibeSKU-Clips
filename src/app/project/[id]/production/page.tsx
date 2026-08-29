@@ -22,6 +22,7 @@ import {
   LuScanSearch,
   LuScissors,
   LuShieldCheck,
+  LuSlidersHorizontal,
   LuSparkles,
   LuTags,
   LuThumbsDown,
@@ -29,6 +30,7 @@ import {
   LuWandSparkles,
 } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
+import { MasteringPanel } from "@/components/mastering-panel";
 import { VideoRepairPanel } from "@/components/video-repair-panel";
 import { useLocale, useT } from "@/lib/i18n";
 import { getVideoModelCapabilities } from "@/lib/model-capabilities";
@@ -533,6 +535,10 @@ export default function ProductionPage() {
             <Button className="h-10 w-full" disabled={overview.latestComposition?.status !== "done" || busy === "qc"} onClick={runQc}>{busy === "qc" ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuRefreshCw />}{busy === "qc" ? t("qcRunning") : t("runQc")}</Button>
             {!overview.latestComposition?.id && <p className="mt-2 text-xs text-muted-foreground">{t("noComposition")}</p>}
             {repairs.length > 0 && <div className="mt-3 space-y-2">{repairs.map((repair) => <div key={repair.checkId} className="rounded-lg border border-border/50 bg-background/30 p-3"><div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold">{t(`stage_${repair.stage}`)}</span><span className="text-[10px] text-muted-foreground">{repair.automatic ? t("freeAutoFix") : t("manualReview")}</span></div><p className="mt-1 text-xs leading-5 text-muted-foreground">{repair.message[locale]}</p></div>)}{repairs.every((repair) => repair.automatic) && <Button variant="outline" className="h-10 w-full" disabled={busy === "repair"} onClick={applyAutomaticRepairs}>{busy === "repair" ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuSparkles />}{busy === "repair" ? t("repairStarting") : t("applyFreeRepairs")}</Button>}</div>}
+          </Section>
+
+          <Section title={t("masterTitle")} hint={t("masterHint")} icon={<LuSlidersHorizontal className="h-4 w-4" />}>
+            <MasteringPanel key={overview.latestComposition?.id ?? "none"} projectId={id} composition={overview.latestComposition} onComplete={loadOverview} />
           </Section>
         </div>
       </div>

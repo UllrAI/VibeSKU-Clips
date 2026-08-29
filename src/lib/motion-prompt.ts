@@ -35,7 +35,7 @@ export interface MotionPromptInput {
   /** Apply product-fidelity constraints (product visible in frame — logo/text must not warp) */
   productShot?: boolean;
   /**
-   * Keyframe-chained generation (the Dreamina-style first/last-frame pattern): the clip's last
+   * Keyframe-chained generation: the clip's last
    * frame is pinned to the NEXT shot's keyframe, so the shot ends by flowing into the next scene —
    * the transition is generated inside the clip and the composer's hard concat becomes seamless.
    */

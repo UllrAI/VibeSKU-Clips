@@ -2,10 +2,9 @@
 name: clipforge-video
 description: Create short vertical videos (TikTok / Reels / Shorts / 抖音 / 快手 / 小红书) from a topic, a product link/image, or a script you already wrote. ClipForge runs the full pipeline — script → footage → voiceover → subtitles → BGM → compose — with a free, no-API-key path (free stock + Edge TTS + local FFmpeg). Use when the user wants to turn an idea, product, or written narration into a finished short video. Pipeline-correctness rules are hard; everything creative is your call.
 license: AGPL-3.0-only
-compatibility: Requires a running local ClipForge instance (Node 20+, FFmpeg). Designed for Claude Code and other local coding agents — web sandboxes cannot reach the local pipeline.
 metadata:
   {
-    "version": "0.9.0",
+    "version": "0.9.1",
     "homepage": "https://github.com/xixihhhh/clipforge",
     "keywords": "ai-video, faceless-video, text-to-video, tiktok, reels, shorts, 抖音, 快手, 小红书, product-video, tiktok-shop, ugc, ffmpeg, edge-tts",
     "openclaw":
@@ -37,6 +36,7 @@ These are pipeline-correctness facts — violating them produces broken output o
 8. **Write through the API only.** Upload materials via `POST /api/project/[id]/materials`; never write into ClipForge's data directory directly — the DB won't know about the files and compose won't see them.
 9. **Transcript edits are review-first.** Inspect the media, submit the full plan with `apply: false`, show the returned diff, and wait for explicit user confirmation. Only then reuse the same stable `operationId` with `apply: true`. Never bypass revision conflicts, silently apply a plan, or overwrite the source/older versions.
 10. **Generated takes are versions, not disposable retries.** `GET /api/project/[id]/quality` returns every candidate and its latest evidence. Accepting a reviewed take makes it the real compose input; rejecting it records evidence without deleting media. Never trigger a paid regeneration or model switch merely because the automated reviewer suggested one.
+11. **Mastering starts read-only.** Run `clipforge_master` with `apply: false` after compose to inspect cut continuity and loudness without changing files or calling a model. Only use `apply: true` when the user asked for mastering or approved the named operations. Never infer `deflicker` from a hard cut: it re-encodes video and can soften temporal texture. Applied masters are new composition versions; the source remains intact.
 
 ## Prerequisites
 
@@ -46,11 +46,11 @@ These are pipeline-correctness facts — violating them produces broken output o
 
 ## Three ways to create
 
-- **MCP tools** (in Claude Desktop / Cursor / Claude Code): `clipforge_create_video`, `clipforge_ingest_product`, `clipforge_product_script`, `clipforge_generate_script`, `clipforge_compose`, `clipforge_search_stock`, `clipforge_list_voices`, `clipforge_list_projects`, `clipforge_get_video`, `clipforge_update_shots`, `clipforge_trends`, `clipforge_import_script`, `clipforge_dub`, `clipforge_cover`, `clipforge_carousel`, `clipforge_shop_qr`, `clipforge_end_card`, `clipforge_qc`, `clipforge_gate`, `clipforge_credits`, `clipforge_native_feel`, `clipforge_preview_gif`, `clipforge_contact_sheet`, `clipforge_export_subtitle`, `clipforge_transcript_inspect`, `clipforge_transcript_edit`, `clipforge_timeline_export`, `clipforge_export_platform`.
-- **CLI**: `node bin/clipforge.mjs <create|product|import|compose|dub|cover|qr|endcard|export|qc|gate|credits|native|preview|sheet|carousel|transcript|transcript-edit|timeline|list|voices|get|trends> [flags]` (`--help` for all). `gate` exits with code 2 when blocked (fail, or warn under `--strict`) — pipe it straight into shell scripts and CI.
+- **MCP tools** (in Claude Desktop / Cursor / Claude Code): `clipforge_create_video`, `clipforge_ingest_product`, `clipforge_product_script`, `clipforge_generate_script`, `clipforge_compose`, `clipforge_search_stock`, `clipforge_list_voices`, `clipforge_list_projects`, `clipforge_get_video`, `clipforge_update_shots`, `clipforge_trends`, `clipforge_import_script`, `clipforge_dub`, `clipforge_cover`, `clipforge_carousel`, `clipforge_shop_qr`, `clipforge_end_card`, `clipforge_qc`, `clipforge_master`, `clipforge_gate`, `clipforge_credits`, `clipforge_native_feel`, `clipforge_preview_gif`, `clipforge_contact_sheet`, `clipforge_export_subtitle`, `clipforge_transcript_inspect`, `clipforge_transcript_edit`, `clipforge_timeline_export`, `clipforge_export_platform`.
+- **CLI**: `node bin/clipforge.mjs <create|product|import|compose|dub|cover|qr|endcard|export|qc|master|gate|credits|native|preview|sheet|carousel|transcript|transcript-edit|timeline|list|voices|get|trends> [flags]` (`--help` for all). `master` analyzes by default; add `--apply` with an explicit operation to create a new version. `gate` exits with code 2 when blocked (fail, or warn under `--strict`) — pipe it straight into shell scripts and CI.
 - **HTTP**: `POST /api/topic/script` → `POST /api/project/[id]/stock-fill` → `POST /api/project/[id]/compose` → poll `GET /api/project/[id]/compose`.
 
-**Delivery checklist (hard rules 2–4 in tool form):** compose done → `clipforge_gate` → `clipforge_contact_sheet` (look at it) → only then report the video URL, together with any `warn` items the gate raised.
+**Delivery checklist (hard rules 2–4 and 11 in tool form):** compose done → `clipforge_master { apply: false }` → `clipforge_gate` → `clipforge_contact_sheet` (look at it) → only then report the video URL, together with continuity evidence and any `warn` items the gate raised.
 
 ## Route first, then work
 

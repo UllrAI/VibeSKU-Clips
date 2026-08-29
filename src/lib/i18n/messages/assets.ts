@@ -151,7 +151,7 @@ export const assets: NamespaceMessages = {
     chainMode_tail: "续拍",
     chainMode_off: "关",
     chainModeTip: "镜头接缝模式：钉帧=本镜结尾运镜过渡到下一镜关键帧（默认，演示镜自动豁免）；续拍=下一镜直接从上一镜真实尾帧继续拍（像素级连续，需按顺序生成）；关=各镜独立",
-    // 每镜运镜预设选择器 + 内联编辑（Higgsfield 式命名运镜一键选）
+    // 每镜命名运镜预设选择器 + 内联编辑
     cameraUnset: "未设置运镜（点击编辑）",
     cameraEditTip: "点击编辑这一镜的运镜描述，回车保存（对下次生成的动态镜头生效）",
     cameraPresetPick: "运镜预设",
@@ -325,7 +325,7 @@ export const assets: NamespaceMessages = {
     chainMode_tail: "Continue",
     chainMode_off: "Off",
     chainModeTip: "Shot-seam mode: Pin = each clip ends by transitioning into the next shot's keyframe (default; demo shots exempt). Continue = the next shot starts from the previous clip's REAL last frame (pixel-continuous, generates in order). Off = independent shots",
-    // Per-shot camera preset picker + inline edit (Higgsfield-style named one-click moves)
+    // Per-shot named camera preset picker + inline edit
     cameraUnset: "No camera move (click to edit)",
     cameraEditTip: "Click to edit this shot's camera move, Enter to save (applies to the next motion generation)",
     cameraPresetPick: "Presets",

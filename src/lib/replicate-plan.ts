@@ -1,7 +1,6 @@
 /**
- * Viral-replication planning — the "爆款复刻" mechanism borrowed from LibTV's killer
- * Skill (parse a reference commerce video, keep its pacing/camera/framing, swap in
- * your own product) and Seedance 2.0's official template play (`视频1 风格 + 图1 商品`).
+ * Viral-replication planning: parse a reference commerce video, keep its pacing,
+ * camera, and framing, then substitute the user's product through ordinal media references.
  *
  * Two replication tiers share this module:
  *  - RHYTHM tier (free, any LLM): scene-cut times from the reference video become a

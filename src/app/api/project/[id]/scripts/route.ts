@@ -29,7 +29,7 @@ export async function GET(
 
 /**
  * Per-shot text patch: voiceover/description/camera may be edited (structure/timing stay intact).
- * `camera` joined the whitelist for the per-shot camera-preset picker (Higgsfield-style named
+ * `camera` joined the whitelist for the per-shot named camera-preset picker
  * moves) — the edited sentence feeds the i2v motion prompt on the next (re)generation.
  */
 interface ShotTextPatch {

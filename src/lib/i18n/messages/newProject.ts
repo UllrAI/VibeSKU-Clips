@@ -127,7 +127,7 @@ export const newProject: NamespaceMessages = {
     templateNone: "不使用模板",
     templateNoneDesc: "AI 自由生成",
     templateGeneric: "通用",
-    // 成片模板（Higgsfield Ads 式一键配方：风格+运镜+画面+合成全链路预填）
+    // 成片模板：风格 + 运镜 + 画面 + 合成全链路预填
     adTemplateTitle: "成片模板（可选）",
     adTemplateDesc: "一键套用完整成片配方：脚本风格 + 运镜编排 + 画面 Look + 字幕 BGM 合成配置，选完仍可逐项修改",
     adTemplateNone: "不用成片模板",
@@ -324,7 +324,7 @@ export const newProject: NamespaceMessages = {
     templateNone: "No template",
     templateNoneDesc: "Let AI generate freely",
     templateGeneric: "General",
-    // Ad templates (Higgsfield-Ads-style one-click end-to-end recipes)
+    // One-click end-to-end ad template recipes
     adTemplateTitle: "Ad template (optional)",
     adTemplateDesc: "One click applies a full recipe: script style + camera plan + visual look + caption/BGM compose config — everything stays editable",
     adTemplateNone: "No ad template",

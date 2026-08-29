@@ -1,8 +1,6 @@
 /**
- * Visual "look" presets — the structured lighting/palette panel borrowed from
- * Higgsfield Cinema Studio 3.5 (Style Settings: enumerated Color Palettes + Lighting
- * options instead of free text) and Liblib's relight/composite workflow family
- * (电商打光/重打光/融图 being a top workflow category).
+ * Visual "look" presets with structured lighting and palette options instead of
+ * free text, including relight and commerce-composite workflows.
  *
  * Why this exists: the project had NO global visual-style setting — keyframe image
  * prompts relied entirely on whatever style words the script LLM improvised, so shots

@@ -128,7 +128,7 @@ export function buildAssetRows(
 }
 
 /**
- * Keyframe chaining (Dreamina-style first/last frame): find the NEXT shot's static keyframe so an
+ * Keyframe chaining: find the next shot's static keyframe so an
  * image-to-video call can pin its last frame to it — the clip then ends by flowing into the next
  * scene, and the composer's hard concat becomes a seamless AI-generated transition.
  * A next shot that is ALREADY a video still chains via its recorded source keyframe (its first

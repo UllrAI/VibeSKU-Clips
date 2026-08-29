@@ -138,7 +138,7 @@ export default function NewProjectPage() {
   const { templates, incrementUseCount } = useTemplateStore();
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
 
-  // ad template (Higgsfield-Ads-style end-to-end recipe): pre-fills style/mode here,
+  // Ad template end-to-end recipe: pre-fills style/mode here,
   // injects the camera/look plan into script generation, and hands the compose recipe
   // to the video page via localStorage
   const [selectedAdTemplateId, setSelectedAdTemplateId] = useState<string>("");
@@ -1210,7 +1210,7 @@ export default function NewProjectPage() {
             </div>
           )}
 
-          {/* ad templates (Higgsfield-Ads-style one-click finished-video recipes):
+          {/* One-click finished-video ad template recipes:
               picking one pre-fills style/mode/look/camera-plan/compose across the pipeline */}
           <div>
               <div className="mb-3">

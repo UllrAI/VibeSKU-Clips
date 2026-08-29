@@ -261,7 +261,7 @@ export default function AssetsPage() {
     [assets, scriptId, id, t]
   );
 
-  // apply a named camera preset (Higgsfield-style one-click move) — sentence language follows the script
+  // Apply a named camera preset; sentence language follows the script.
   const applyCameraPreset = useCallback(
     (shotId: number, presetId: string) => {
       const preset = getCameraPreset(presetId);
@@ -272,7 +272,7 @@ export default function AssetsPage() {
     [assets, saveCamera]
   );
 
-  // Higgsfield-Mix-style overlay: combine the currently applied preset with a second one.
+  // Combine the currently applied preset with a second compatible move.
   // Only offered while the camera text exactly equals a preset sentence — after mixing it
   // no longer does, which naturally caps the stack at two moves.
   const applyCameraMix = useCallback(
@@ -557,7 +557,7 @@ export default function AssetsPage() {
   );
 
   // convert to motion shot: use the already-generated image for this shot as the first frame, call the image-to-video model, and save the result as the shot's asset (video).
-  // Keyframe chaining (Dreamina-style): when the next shot's static keyframe exists and the model
+  // Keyframe chaining: when the next shot's static keyframe exists and the model
   // supports a pinned last frame, the clip ends by flowing into the next scene — the transition is
   // generated inside the clip, and the composer's hard concat becomes seamless.
   const generateMotion = useCallback(
@@ -1125,7 +1125,7 @@ export default function AssetsPage() {
               </select>
             </div>
           )}
-          {/* Visual-look picker (Higgsfield Cinema Studio-style enumerated lighting/palette
+          {/* Visual-look picker with enumerated lighting/palette
               panel): applies to keyframe image prompts AND pins lighting through the i2v pass */}
           <div
             className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1.5 h-8"
@@ -1431,7 +1431,7 @@ export default function AssetsPage() {
                         <div className="flex-1 p-4">
                           <p className="text-sm leading-relaxed mb-2">{asset.description}</p>
                           {/* per-shot camera move: named-preset picker + inline free-text edit
-                              (Higgsfield "Click-to-Video": curated moves instead of prompt guessing).
+                              (curated moves instead of prompt guessing).
                               Edits persist into the script and apply on the next motion generation */}
                           {uiMode === "pro" && (
                           <div className="flex items-center gap-1.5 mb-2 text-xs min-w-0">
@@ -1490,7 +1490,7 @@ export default function AssetsPage() {
                                 ))}
                               </select>
                             )}
-                            {/* Mix overlay (Higgsfield Mix): only while the text IS a preset sentence */}
+                            {/* Mix overlay: only while the text is a preset sentence. */}
                             {savingCameraShot !== asset.shotId && editingCameraShot !== asset.shotId && (() => {
                               const base = findPresetByPrompt(asset.camera);
                               if (!base) return null;

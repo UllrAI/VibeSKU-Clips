@@ -1,8 +1,6 @@
 /**
- * Ad templates — named end-to-end "finished video" recipes, borrowed from
- * Higgsfield Ads (~30 product-image→ad templates like "Rotating product shot" /
- * "Lifestyle showcase") and Liblib's template-card syntax (selling-point title,
- * one-line pitch, pick-and-go).
+ * Ad templates — named end-to-end finished-video recipes with a selling-point title,
+ * one-line pitch, and pick-and-go configuration.
  *
  * ClipForge's three template systems were fragmented (style packs = compose only,
  * script templates = shot structure only, category templates = few-shot only).
@@ -27,9 +25,8 @@ import { isCaptionPreset } from "@/lib/caption-presets";
 import { checkAdCompliance } from "@/lib/ad-compliance";
 
 /**
- * Template groups — the browse taxonomy for a large library. Mirrors how
- * Higgsfield Ads and Liblib's template plaza organise dozens of cards:
- * by what the finished video LOOKS like, not by internal script style.
+ * Template groups — browse by what the finished video looks like, not by internal
+ * script style.
  */
 export const AD_TEMPLATE_GROUPS = [
   { id: "product_show", name: { zh: "商品展示", en: "Product showcase" } },
@@ -46,7 +43,7 @@ export type AdTemplateCategory = "beauty" | "food" | "home" | "fashion" | "digit
 
 export interface AdTemplate {
   id: string;
-  /** Card emoji — the OSS stand-in for Higgsfield's looping video preview */
+  /** Compact card marker used when no looping preview is available. */
   emoji: string;
   name: { zh: string; en: string };
   /** One-line selling-point pitch (Liblib card syntax: benefits in the title) */
@@ -177,7 +174,7 @@ export const AD_TEMPLATES: AdTemplate[] = [
     scriptHint: { zh: "受访者口吻真实多样，观点具体不夸大，像随机街采不像摆拍" },
   },
 
-  /* ---- product_show：商品展示（Higgsfield Ads/巨量千川「产品使用展示」系） ---- */
+  /* ---- product_show：商品展示 / 产品使用展示 ---- */
   {
     id: "bullet_time_white",
     emoji: "🧊",
@@ -261,7 +258,7 @@ export const AD_TEMPLATES: AdTemplate[] = [
     scriptHint: { zh: "画面以商品平铺与大字卖点为主，节奏跟音乐卡点，每镜信息量一句话说清" },
   },
 
-  /* ---- presenter：真人讲解（巨量千川口播系 + Creatify/Arcads UGC 系） ---- */
+  /* ---- presenter：真人讲解 / UGC 口播 ---- */
   {
     id: "expert_lab",
     emoji: "🥼",
@@ -399,7 +396,7 @@ export const AD_TEMPLATES: AdTemplate[] = [
     scriptHint: { zh: "按时间节点记录使用过程与变化，描述客观不承诺效果，避免绝对化用词" },
   },
 
-  /* ---- lifestyle：生活种草（小红书沉浸系 + Higgsfield UGC 生活流） ---- */
+  /* ---- lifestyle：生活种草 / 沉浸式 UGC 生活流 ---- */
   {
     id: "morning_routine",
     emoji: "☀️",
@@ -538,7 +535,7 @@ export const AD_TEMPLATES: AdTemplate[] = [
     scriptHint: { zh: "以「三个理由」清单结构展开，逐条编号讲透，把最强卖点放在最后压轴" },
   },
 
-  /* ---- creative：创意视觉（Higgsfield 奇观系：Giant/Splash/Graffiti 等） ---- */
+  /* ---- creative：创意视觉 / Giant / Splash / Graffiti 等 ---- */
   {
     id: "giant_product",
     emoji: "🗼",
@@ -1782,7 +1779,7 @@ export const AD_TEMPLATES: AdTemplate[] = [
     scriptHint: { zh: "把满减/赠品/券后价逐项算成一笔明白账，算账字卡同步上屏；每个数字必须真实可核，不虚构原价" },
   },
 
-  /* ---- AI 特效系（可灵/海螺/即梦官方特效 + Sora/Veo 社区套路；特效是创意表现不得伪造实际功效） ---- */
+  /* ---- AI 特效系（特效是创意表现，不得伪造实际功效） ---- */
   {
     id: "inflate_pop",
     emoji: "🎈",

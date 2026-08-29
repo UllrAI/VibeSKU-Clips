@@ -45,7 +45,9 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       semanticAssets: rows.assets.map(semanticAssetFromRecord),
       versionTree: buildVersionTree(rows),
       latestRun: rows.runs[0] ?? null,
-      latestComposition: rows.compositions[0] ?? null,
+      // Keep the latest successful video available while a newer local render is still running
+      // or has failed; specific jobs are polled by composition id.
+      latestComposition: rows.compositions.find((composition) => composition.status === "done") ?? rows.compositions[0] ?? null,
       latestFailure: [
         ...rows.tasks.filter((task) => task.status === "failed" || task.status === "unknown").map((task) => ({
           source: "task" as const,

@@ -40,7 +40,7 @@
     { "@type": "Question", "name": "Is ClipForge free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Open source (AGPL-3.0), no watermark, unlimited videos. Free stock assets + free Microsoft Edge TTS voiceover + free BGM + local FFmpeg compositing — a full video with zero AI keys. Bring your own key for premium visuals (30+ models: GPT Image 2, Seedance 2.0, Kling 3.0…)." } },
     { "@type": "Question", "name": "Will it distort my product photo?", "acceptedAnswer": { "@type": "Answer", "text": "No — this is ClipForge's core guarantee: image-to-image locks the original product, so backgrounds and lighting change but the product itself never does. What buyers see is what they get." } },
     { "@type": "Question", "name": "Will the video look like an AI slideshow?", "acceptedAnswer": { "@type": "Answer", "text": "No. With a video model configured, every shot becomes a real moving clip via image-to-video: a motion-prompt engine keeps the product locked, keyframe chaining generates transitions inside the clip so cuts are seamless, camera intensity is adjustable, and any single shot can be re-run without touching the rest." } },
-    { "@type": "Question", "name": "How is it different from MoneyPrinterTurbo, CapCut or commercial AI video tools?", "acceptedAnswer": { "@type": "Answer", "text": "Open-source peers mostly stitch keyword-matched stock stills where your product never appears; commercial SaaS charges per video, uploads assets to the cloud and watermarks free tiers; CapCut is manual-first editing. ClipForge is free and open source with no watermark, photo-faithful products, real moving shots, mini-drama multi-voice dialogue, and compliance built in — all local." } },
+    { "@type": "Question", "name": "How is it different from traditional OSS stitchers, commercial SaaS, or manual editors?", "acceptedAnswer": { "@type": "Answer", "text": "Traditional open-source tools mostly stitch keyword-matched stock stills where your product never appears; commercial SaaS charges per video, uploads assets to the cloud and watermarks free tiers; manual editors require shot-by-shot work. ClipForge is free and open source with no watermark, photo-faithful products, real moving shots, mini-drama multi-voice dialogue, and compliance built in — all local." } },
     { "@type": "Question", "name": "Do I need to appear on camera?", "acceptedAnswer": { "@type": "Answer", "text": "No. Videos are composed from your product photo, AI visuals, free voiceover and captions — fully faceless. One person can ship dozens of videos a day." } },
     { "@type": "Question", "name": "Which platforms does it export for?", "acceptedAnswer": { "@type": "Answer", "text": "TikTok Shop / Reels / Shorts 9:16, Xiaohongshu 3:4, Douyin, Kuaishou and WeChat Channels — one-click format switching, plus auto-generated hashtags, cover copy and engagement prompts." } },
     { "@type": "Question", "name": "How do I run it?", "acceptedAnswer": { "@type": "Answer", "text": "Two ways: download the Windows / macOS desktop app, or self-host the open-source Next.js web app (Docker supported). It also ships an MCP server, a CLI and an agent skill, so Claude or Cursor can produce a video from a product link in one sentence." } },
@@ -191,6 +191,11 @@
       <p>QC evidence becomes a precise repair window with optional timed identity or product anchors. Review billed duration, price, and fallbacks first; only the bad segment is generated and spliced back while source audio and earlier takes stay intact.</p>
     </div>
     <div class="b-card">
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 7h6M14 7h6M4 17h10M18 17h2"/><circle cx="12" cy="7" r="2"/><circle cx="16" cy="17" r="2"/><path d="M4 12h16"/></svg></div>
+      <h3>Evidence at every cut, versioned masters</h3>
+      <p>Inspect exposure, color, and saturation on both sides of real splice points, alongside whole-film loudness. Analysis is read-only; two-pass loudness or deflicker runs only when selected and saves a new version.</p>
+    </div>
+    <div class="b-card">
       <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"/><circle cx="18" cy="16" r="3"/><path d="M16 14l4 4M20 14l-4 4"/></svg></div>
       <h3>Edit your footage by text, locally</h3>
       <p>Transcribe up to two hours in bounded-memory chunks with cancel/resume checkpoints. Remove words to remove video, review the diff, then continue in an NLE with OTIO / EDL / CSV. Sources stay untouched.</p>
@@ -233,7 +238,7 @@
     <div class="stat"><b>391</b><span>ad templates · product-aware picks</span></div>
     <div class="stat"><b>30+</b><span>models · 7 platforms, one interface</span></div>
     <div class="stat"><b>0 Key</b><span>full video on the free path</span></div>
-    <div class="stat"><b>1179</b><span>unit tests · green CI releases</span></div>
+    <div class="stat"><b>1184</b><span>unit tests · green CI releases</span></div>
   </div>
 </section>
 
@@ -274,7 +279,7 @@
   </div>
   <div class="tablewrap">
     <table>
-      <thead><tr><th>What you care about</th><th>ClipForge</th><th>OSS peers<br>(MoneyPrinterTurbo etc.)</th><th>Commercial AI video SaaS</th><th>CapCut-style editors</th></tr></thead>
+      <thead><tr><th>What you care about</th><th>ClipForge</th><th>Traditional OSS stitchers</th><th>Commercial AI video SaaS</th><th>Manual-first editors</th></tr></thead>
       <tbody>
         <tr><td>Photo-faithful product</td><td class="win">✅ image lock</td><td class="na">❌ stock only, product absent</td><td class="dim">⚠️ partial</td><td class="dim">➖ manual</td></tr>
         <tr><td>Moving-shot quality</td><td class="win">✅ i2v + seamless transitions</td><td class="na">❌ stills stitched</td><td class="win">✅ mostly i2v</td><td class="dim">➖ your footage</td></tr>
@@ -293,7 +298,7 @@
     <details open><summary>Is ClipForge free?</summary><p>Yes. Open source (AGPL-3.0), no watermark, unlimited videos. Free stock assets + free Microsoft Edge TTS voiceover + free BGM + local FFmpeg compositing — a full video with zero AI keys. Bring your own key for premium visuals (30+ models: GPT Image 2, Seedance 2.0, Kling 3.0…).</p></details>
     <details><summary>Will it distort my product photo?</summary><p>No — this is the core guarantee: image-to-image locks the original product, so backgrounds and lighting change but the product itself never does. What buyers see is what they get.</p></details>
     <details><summary>Will the video look like an AI slideshow?</summary><p>No. With a video model configured, every shot becomes a real moving clip via image-to-video: a motion-prompt engine keeps the product locked, keyframe chaining generates transitions inside the clip so cuts are seamless, camera intensity is adjustable, and any single shot can be re-run without touching the rest. The demos at the top of this page are raw Seedance 2.0 output.</p></details>
-    <details><summary>How is it different from MoneyPrinterTurbo, CapCut or commercial AI tools?</summary><p>Open-source peers mostly stitch keyword-matched stock stills where your product never appears; commercial SaaS charges per video, uploads assets to the cloud and watermarks free tiers; CapCut is manual-first editing. ClipForge is free and open source with no watermark, photo-faithful products, real moving shots, mini-drama multi-voice dialogue, and compliance built in — all local. See the comparison table above.</p></details>
+    <details><summary>How is it different from traditional OSS stitchers, commercial SaaS, or manual editors?</summary><p>Traditional open-source tools mostly stitch keyword-matched stock stills where your product never appears; commercial SaaS charges per video, uploads assets to the cloud and watermarks free tiers; manual editors require shot-by-shot work. ClipForge is free and open source with no watermark, photo-faithful products, real moving shots, mini-drama multi-voice dialogue, and compliance built in — all local. See the comparison table above.</p></details>
     <details><summary>Do I need to appear on camera?</summary><p>No. Videos are composed from your product photo, AI visuals, free voiceover and captions — fully faceless. One person can ship dozens of videos a day.</p></details>
     <details><summary>Which platforms does it export for?</summary><p>TikTok Shop / Reels / Shorts 9:16, Xiaohongshu 3:4, Douyin, Kuaishou and WeChat Channels — one-click format switching, plus auto-generated hashtags, cover copy and engagement prompts.</p></details>
     <details><summary>How do I run it?</summary><p>Two ways: download the Windows / macOS desktop app, or self-host the open-source Next.js web app (Docker supported). It also ships an MCP server, a CLI and an agent skill, so Claude or Cursor can produce a video from a product link in one sentence. Step-by-step setup lives in the <a href="guide.en.html">User Guide</a>, with a fuller click-by-click walkthrough in the <a href="https://github.com/xixihhhh/clipforge/blob/main/TUTORIAL.en.md" rel="noopener">beginner tutorial</a>.</p></details>

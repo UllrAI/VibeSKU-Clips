@@ -48,7 +48,8 @@
     { "@type": "Question", "name": "怎么控制 AI 生成成本并保持跨镜头一致?", "acceptedAnswer": { "@type": "Answer", "text": "导演模式的生产控制台会在执行前展示真实价格区间、预计耗时与模型推荐;视觉记忆会作为角色、商品和风格约束进入实际生成请求。每个分镜保留多个候选,质量闸门按画面、动作、时序、连续性和文字给出可核对证据,人工采用后才进入合成。系统不会静默触发付费重做。" } },
     { "@type": "Question", "name": "一个镜头只有几秒有问题,需要整段重做吗?", "acceptedAnswer": { "@type": "Answer", "text": "不需要。精准修复会根据质检证据建议问题时间窗,也可手动调整并追加人物、商品、构图或连续性时间锚点。免费预演先展示实际区间、模型计费时长、费用与降级方式,确认后才提交;结果只替换对应片段,原声和旧候选都会保留。" } },
     { "@type": "Question", "name": "可以导入自己拍的视频按文字剪吗?", "acceptedAnswer": { "@type": "Answer", "text": "可以。最长 2 小时原片按固定 5 分钟分块本地转写,可取消并从检查点继续,旧稿在新稿完成前保持可用;删文字即删画面,渲染前先看修改摘要。还可导出 OTIO、EDL、CSV 继续专业精修,原片与旧版本都不覆盖。" } },
-    { "@type": "Question", "name": "怎么自动化批量出片?", "acceptedAnswer": { "@type": "Answer", "text": "三个入口:MCP Server(在 Claude / Cursor 等 agent 里一句话出片)、CLI(脚本化出片,配 cron 就是全自动日更机)、agent Skill。项目有 1179 个单元测试保障链路稳定。" } }
+    { "@type": "Question", "name": "怎么发现成片切点跳色或响度不统一?", "acceptedAnswer": { "@type": "Answer", "text": "生产控制台的成片连续性与母版会读取真实拼接点,比较切点前后亮度、色度和饱和度,并测量整片 EBU R128 响度。默认只分析、不调用模型;需要时可显式创建两遍响度标准化或去闪烁的新版本,原片不覆盖。" } },
+    { "@type": "Question", "name": "怎么自动化批量出片?", "acceptedAnswer": { "@type": "Answer", "text": "三个入口:MCP Server(在 Claude / Cursor 等 agent 里一句话出片)、CLI(脚本化出片,配 cron 就是全自动日更机)、agent Skill。项目有 1184 个单元测试保障链路稳定。" } }
   ]
 }
 </script>
@@ -143,7 +144,8 @@
   <details><summary>怎么控制 AI 生成成本并保持跨镜头一致?</summary><p>导演模式的<b>生产控制台</b>会在执行前展示真实价格区间、预计耗时与模型推荐;角色、商品和风格等<b>视觉记忆</b>会进入实际生成请求。每个分镜会保留多个候选,<b>镜头质量闸门</b>按画面、动作、时序、连续性和文字给出可核对证据,人工采用后才进入合成。系统<b>不会静默触发付费重做</b>。</p></details>
   <details><summary>一个镜头只有几秒有问题,需要整段重做吗?</summary><p>不需要。<b>精准修复</b>会根据质检证据建议问题时间窗,也可手动调整并追加人物、商品、构图或连续性时间锚点。免费预演先展示实际区间、模型计费时长、费用与降级方式,确认后才提交;结果<b>只替换对应片段</b>,原声和旧候选都会保留。</p></details>
   <details><summary>可以导入自己拍的视频按文字剪吗?</summary><p>可以。最长 2 小时原片按固定 5 分钟分块本地转写,<b>可取消并从检查点继续</b>,旧稿在新稿完成前保持可用;<b>删文字即删画面</b>,渲染前先看修改摘要。还可导出 OTIO / EDL / CSV 继续专业精修,<b>原片与旧版本都不覆盖</b>。</p></details>
-  <details><summary>怎么自动化批量出片?</summary><p>三个入口:<b>MCP Server</b>(在 Claude / Cursor 等 agent 里一句话出片)、<b>CLI</b>(脚本化出片,配 cron 就是全自动日更机)、<b>agent Skill</b>。项目有 <b>1179 个单元测试</b>保障链路稳定。</p></details>
+  <details><summary>怎么发现成片切点跳色或响度不统一?</summary><p>生产控制台的<b>成片连续性与母版</b>会读取真实拼接点,比较切点前后的亮度、色度与饱和度,并测量整片 EBU R128 响度。默认只分析、不调用模型;需要时可显式创建<b>两遍响度标准化</b>或去闪烁的新版本,<b>原片不覆盖</b>。</p></details>
+  <details><summary>怎么自动化批量出片?</summary><p>三个入口:<b>MCP Server</b>(在 Claude / Cursor 等 agent 里一句话出片)、<b>CLI</b>(脚本化出片,配 cron 就是全自动日更机)、<b>agent Skill</b>。项目有 <b>1184 个单元测试</b>保障链路稳定。</p></details>
 </div>
 
 <div class="tip" style="margin-top:28px"><p>没找到你的问题?去 <a href="https://github.com/xixihhhh/clipforge/issues" rel="noopener">GitHub Issues</a> 或 <a href="https://github.com/xixihhhh/clipforge/discussions" rel="noopener">Discussions</a> 提问,中英文都可以。</p></div>

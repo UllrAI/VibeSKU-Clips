@@ -491,6 +491,24 @@ const TOOLS = [
     },
   },
   {
+    name: "clipforge_master",
+    description:
+      "分析成片真实拼接点前后的亮度/色度/饱和度差异，并测量整片 EBU R128 响度。默认 apply=false，只返回证据与建议：不改文件、不调用模型、不会产生模型费用。apply=true 时必须显式选择 normalizeAudio 或 deflicker，并创建新的非破坏母版版本，不覆盖原片；normalizeAudio 使用两遍响度标准化，deflicker 会重编码画面且可能抹平纹理，只应在确认画面存在时间闪烁时启用。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        projectId: PROJECT_ID_PROP,
+        compositionId: { type: "string", description: "指定要分析或精修的成功合成 ID；不填则使用最新一次成功合成" },
+        apply: { type: "boolean", description: "默认 false，仅分析。true 时创建新的母版版本" },
+        normalizeAudio: { type: "boolean", description: "两遍 EBU R128 响度标准化到 -14 LUFS；仅 apply=true 时执行" },
+        deflicker: { type: "boolean", description: "时间去闪烁，会重编码画面；仅确认存在闪烁且 apply=true 时启用" },
+        label: { type: "string", description: "新母版版本名称，最长 60 字符" },
+        wait: { type: "boolean", description: "apply=true 时默认等待完成；false 立即返回 compositionId，之后用 clipforge_get_video 精确轮询" },
+      },
+      required: ["projectId"],
+    },
+  },
+  {
     name: "clipforge_gate",
     description:
       "发布门禁（交付/发布前必跑的一键聚合检查）：脚本发布就绪（广告法风险词/开场钩子/时长/CTA/前3秒亮品）+ 成片质检（黑屏/静音/响度/流完整性）+ 素材授权（商用风险/署名要求）三层一次跑完，返回单一 status: pass|warn|fail 与逐项双语说明（report.items[].problems 列具体问题）。语义：fail=有必须修复的问题，先修复再交付；warn=需人工确认的风险（许可复核/署名），交付时必须把这些风险明示给用户；pass=自动检查无拦截项。strict=true 时 warn 也使返回的 ok 为 false。不需要 LLM。",
@@ -1071,6 +1089,54 @@ async function handleQc(args) {
   return ok({ ok: res.status !== "fail", projectId, compositionId: res.compositionId ?? null, status: res.status, checks: res.checks ?? [] });
 }
 
+// Read-only continuity/loudness analysis by default; explicit apply options create
+// a new composition version and never overwrite the selected source composition.
+async function handleMaster(args) {
+  const projectId = String(args.projectId || "").trim();
+  if (!projectId) throw new Error("projectId 不能为空");
+  const apply = args.apply === true;
+  const normalizeAudio = args.normalizeAudio === true;
+  const deflicker = args.deflicker === true;
+  if (!apply && (normalizeAudio || deflicker)) {
+    throw new Error("normalizeAudio / deflicker 需要同时设置 apply=true；apply=false 时仅分析");
+  }
+  if (apply && !normalizeAudio && !deflicker) {
+    throw new Error("apply=true 时必须至少选择 normalizeAudio 或 deflicker");
+  }
+  const body = { action: apply ? "render" : "analyze" };
+  if (typeof args.compositionId === "string" && args.compositionId.trim()) body.compositionId = args.compositionId.trim();
+  if (apply) {
+    body.normalizeAudio = normalizeAudio;
+    body.deflicker = deflicker;
+    if (typeof args.label === "string" && args.label.trim()) body.label = args.label.trim();
+  }
+  const res = await api(`/api/project/${projectId}/mastering`, { method: "POST", body });
+  if (!apply) {
+    return ok({ ok: true, projectId, compositionId: res.compositionId ?? null, analysis: res.analysis ?? null });
+  }
+  if (args.wait === false) {
+    return ok({
+      ok: true,
+      projectId,
+      compositionId: res.compositionId,
+      status: res.status,
+      analysis: res.analysis ?? null,
+      options: res.options ?? null,
+      next: `母版正在后台生成。用 clipforge_get_video { projectId: "${projectId}", compositionId: "${res.compositionId}" } 轮询取片。`,
+    });
+  }
+  const composition = await pollCompose(projectId, { compositionId: res.compositionId });
+  return ok({
+    ok: true,
+    projectId,
+    compositionId: composition.id,
+    status: composition.status,
+    videoUrl: absVideoUrl(composition),
+    analysis: res.analysis ?? null,
+    options: res.options ?? null,
+  });
+}
+
 // Platform export with anti-recompression bitrate cap + measured-vs-line report
 async function handleExportPlatform(args) {
   const projectId = String(args.projectId || "").trim();
@@ -1266,6 +1332,7 @@ const HANDLERS = {
   clipforge_end_card: handleEndCard,
   clipforge_export_platform: handleExportPlatform,
   clipforge_qc: handleQc,
+  clipforge_master: handleMaster,
   clipforge_gate: handleGate,
   clipforge_credits: handleCredits,
   clipforge_native_feel: handleNativeFeel,
@@ -1280,7 +1347,7 @@ const HANDLERS = {
 
 // ---- Start MCP server ----
 const server = new Server(
-  { name: "clipforge", version: "0.1.3" },
+  { name: "clipforge", version: "0.9.1" },
   { capabilities: { tools: {} } },
 );
 
