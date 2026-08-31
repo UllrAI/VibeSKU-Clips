@@ -576,7 +576,7 @@ export default function VideoPage() {
           inline non-clickable stepper this page carried while owned by a parallel session */}
       <ProjectHeader projectName={projectName || t("defaultProjectName")} />
 
-      <main className="mx-auto max-w-7xl px-6 py-8">
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* page-level load feedback: these states existed but were never rendered,
             leaving an empty timeline with no explanation */}
         {loading && (

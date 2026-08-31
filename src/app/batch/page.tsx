@@ -11,6 +11,7 @@ import {
   LuLayoutGrid,
   LuEye,
   LuVideo,
+  LuPause,
 } from "react-icons/lu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -585,22 +586,25 @@ export default function BatchPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      <main className="mx-auto max-w-2xl px-6 py-10">
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* Page title */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">
+        <header className="mb-8 border-b border-border/60 pb-6">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             <span className="brand-gradient-text">{t("heroTitle")}</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1.5">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             {t("heroSubtitle")}
           </p>
-        </div>
+        </header>
 
-        <div className="space-y-6">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.85fr)]">
           {/* interrupted-job choice: continue where it left off (default) or discard and start clean */}
           {resumableJob && !isGenerating && (
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
-              <p className="text-sm font-medium text-amber-500">⏸ {t("resumeTitle")}</p>
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 lg:col-span-2">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-amber-500">
+                <LuPause className="size-3.5" />
+                {t("resumeTitle")}
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {t("resumeDesc", {
                   done: resumableJob.items.filter((i) => i.status === "done").length,
@@ -618,7 +622,7 @@ export default function BatchPage() {
             </div>
           )}
           {/* Step 1: Select products */}
-          <Card className="glass-card">
+          <Card className="glass-card h-full">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <Label className="text-sm font-medium">
@@ -698,7 +702,7 @@ export default function BatchPage() {
           </Card>
 
           {/* Step 2: Unified configuration */}
-          <Card className="glass-card">
+          <Card className="glass-card h-full">
             <CardContent className="p-5 space-y-5">
               <Label className="text-sm font-medium block">{t("step2Label")}</Label>
 
@@ -802,7 +806,7 @@ export default function BatchPage() {
 
           {/* Batch task list (shown during generation) */}
           {batchTasks.length > 0 && (
-            <Card className="glass-card">
+            <Card className="glass-card lg:col-span-2">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <Label className="text-sm font-medium">{t("progressLabel")}</Label>
@@ -897,7 +901,7 @@ export default function BatchPage() {
           )}
 
           {/* Bottom action bar */}
-          <div className="pt-2 pb-10">
+          <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-sm lg:col-span-2">
             {configError && (
               <p className="text-sm text-destructive text-center mb-3">
                 {configError}

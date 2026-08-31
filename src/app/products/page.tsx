@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback } from "react";
 import Link from "next/link";
-import { LuPlus, LuTrash2, LuPencil, LuPackage, LuImage, LuX, LuVideo, LuCircleAlert, LuLink, LuLoader } from "react-icons/lu";
+import { LuPlus, LuTrash2, LuPencil, LuPackage, LuImage, LuX, LuVideo, LuCircleAlert, LuLink, LuLoader, LuCheck } from "react-icons/lu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +23,7 @@ import {
 import { getExampleProducts } from "@/lib/examples";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useT, useLocale } from "@/lib/i18n";
+import { PageContainer, PageHeader } from "@/components/page-layout";
 
 // Category options (label uses an i18n key; resolved at runtime via t())
 const categoryOptions = [
@@ -313,18 +314,11 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      <main className="mx-auto max-w-6xl px-6 py-10">
-        {/* Page title + add button */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              <span className="brand-gradient-text">{t("pageTitleAccent")}</span>{t("pageTitleRest")}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {t("pageSubtitle")}
-            </p>
-          </div>
-          {!isFormOpen && (
+      <PageContainer width="wide">
+        <PageHeader
+          title={<><span className="brand-gradient-text">{t("pageTitleAccent")}</span>{t("pageTitleRest")}</>}
+          description={t("pageSubtitle")}
+          actions={!isFormOpen ? (
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
@@ -347,13 +341,16 @@ export default function ProductsPage() {
                 {t("addProduct")}
               </Button>
             </div>
-          )}
-        </div>
+          ) : undefined}
+        />
 
         {/* post-confirm shortcut: the freshly stocked library feeds straight into batch rendering */}
         {importedNotice && !isFormOpen && (
           <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-            <p className="text-sm text-emerald-400">✓ {t("importSaved")}</p>
+            <p className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+              <LuCheck className="size-4" />
+              {t("importSaved")}
+            </p>
             <div className="flex shrink-0 items-center gap-2">
               <Link href="/batch">
                 <Button size="sm" variant="outline" className="text-xs">{t("importGoBatch")}</Button>
@@ -768,7 +765,7 @@ export default function ProductsPage() {
             </div>
           )
         )}
-      </main>
+      </PageContainer>
     </div>
   );
 }

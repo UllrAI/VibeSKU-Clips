@@ -642,16 +642,16 @@ export default function NewProjectPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      <main className="mx-auto max-w-2xl px-6 py-10">
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* page title */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">
+        <header className="mb-8 border-b border-border/60 pb-6">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
             {t("pageTitlePrefix")}<span className="brand-gradient-text">{t("pageTitleAccent")}</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1.5">
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             {t("pageSubtitle")}
           </p>
-        </div>
+        </header>
 
         {/* LLM not configured warning */}
         {!isLLMConfigured && (
@@ -666,10 +666,11 @@ export default function NewProjectPage() {
           </Link>
         )}
 
-        <div className="space-y-6">
+        <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="min-w-0 space-y-6">
           {/* step 1 — product source: upload / paste a link / one-tap example, all in ONE card
               (was three stacked cards competing for the same "where do I start" decision) */}
-          <Card className="glass-card">
+          <Card id="product-source" className="glass-card scroll-mt-6">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -794,7 +795,7 @@ export default function NewProjectPage() {
           </Card>
 
           {/* product info form */}
-          <Card className="glass-card">
+          <Card id="product-info" className="glass-card scroll-mt-6">
             <CardContent className="p-5 space-y-5">
               <div className="flex items-center gap-2 mb-4">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
@@ -967,7 +968,7 @@ export default function NewProjectPage() {
           </Card>
 
           {/* video configuration (target duration + video mode) */}
-          <Card className="glass-card">
+          <Card id="video-config" className="glass-card scroll-mt-6">
             <CardContent className="p-5">
               <div className="flex items-center gap-2 mb-4">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">3</span>
@@ -1094,7 +1095,7 @@ export default function NewProjectPage() {
           </Card>
 
           {/* script style */}
-          <Card className="glass-card">
+          <Card id="script-style" className="glass-card scroll-mt-6">
             <CardContent className="p-5">
               <div className="flex items-center gap-2 mb-4">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">4</span>
@@ -1136,7 +1137,7 @@ export default function NewProjectPage() {
 
           {/* templates drawer: hit-structure templates + ad recipes, folded by default —
               powerful but optional, so they no longer dominate the create flow */}
-          <Card className="glass-card">
+          <Card id="templates" className="glass-card scroll-mt-6">
             <CardContent className="p-5">
               <details className="group">
                 <summary className="flex items-center justify-between gap-3 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
@@ -1723,6 +1724,42 @@ export default function NewProjectPage() {
               </p>
             )}
           </div>
+          </div>
+
+          <aside className="hidden xl:sticky xl:top-6 xl:block">
+            <div className="rounded-2xl border border-border/60 bg-card/80 p-4 shadow-sm backdrop-blur-sm">
+              <p className="text-sm font-semibold">{t("pageTitlePrefix")}{t("pageTitleAccent")}</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("pageSubtitle")}</p>
+              <nav className="mt-5 space-y-1" aria-label={t("pageTitlePrefix") + t("pageTitleAccent")}>
+                {[
+                  ["#product-source", "1", t("stepUploadTitle")],
+                  ["#product-info", "2", t("stepInfoTitle")],
+                  ["#video-config", "3", t("stepConfigTitle")],
+                  ["#script-style", "4", t("stepStyleTitle")],
+                  ["#templates", "5", t("templatesSummary")],
+                ].map(([href, step, label]) => (
+                  <a
+                    key={href}
+                    href={href}
+                    className="flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                  >
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">{step}</span>
+                    <span className="truncate">{label}</span>
+                  </a>
+                ))}
+              </nav>
+              <div className="mt-5 border-t border-border/60 pt-4 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between gap-3 py-1">
+                  <span>{t("durationLabel")}</span>
+                  <span className="font-medium text-foreground">{duration}s</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 py-1">
+                  <span>{t("imageCount", { n: images.length })}</span>
+                  <span className="font-medium text-foreground">{images.length}/5</span>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
       </main>
     </div>

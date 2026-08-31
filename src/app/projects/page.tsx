@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { LuPlus, LuFolderOpen, LuLoader, LuTrash2, LuDownload, LuImage, LuPlay } from "react-icons/lu";
 import { useT, useLocale } from "@/lib/i18n";
 import { formatRelativeTime } from "@/lib/relative-time";
+import { PageContainer, PageHeader } from "@/components/page-layout";
 
 interface ProjectRow {
   id: string;
@@ -132,23 +133,22 @@ export default function ProjectsPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        {/* Page header: title + primary action, same pattern as the other library pages */}
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">{t("pageSubtitle")}</p>
-          </div>
+      <PageContainer width="wide">
+        <PageHeader
+          title={t("pageTitle")}
+          description={t("pageSubtitle")}
+          actions={
           <Link href="/project/new">
-            <Button size="sm" className="brand-gradient text-white">
+            <Button className="brand-gradient text-white">
               <LuPlus className="h-4 w-4" />
               <span className="ml-1.5">{t("newProject")}</span>
             </Button>
           </Link>
-        </div>
+          }
+        />
 
         {/* projects / works view switch */}
-        <div className="mb-5 flex flex-wrap items-center gap-3">
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-border/60 bg-card/70 p-2.5 shadow-sm sm:flex-row sm:items-center">
           <div className="flex rounded-lg border border-border/50 p-0.5">
             {(["projects", "works"] as const).map((v) => (
               <button
@@ -169,7 +169,7 @@ export default function ProjectsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("searchPlaceholder")}
-              className="max-w-sm text-sm"
+              className="w-full text-sm sm:ml-auto sm:max-w-md"
             />
           )}
         </div>
@@ -198,7 +198,7 @@ export default function ProjectsPage() {
           ) : (
             <>
               <p className="mb-3 text-xs text-muted-foreground">{t("worksCount", { n: works.length })}</p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
                 {works.map((w) => {
                   const rel = formatRelativeTime(w.createdAt, locale);
                   return (
@@ -258,7 +258,7 @@ export default function ProjectsPage() {
         ) : filtered.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">{t("noMatch")}</p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {filtered.map((p) => {
               const rel = formatRelativeTime(p.updatedAt, locale);
               const poster = posterByProject.get(p.id) ?? (p.productImages?.[0] || null);
@@ -310,7 +310,7 @@ export default function ProjectsPage() {
             })}
           </div>
         )}
-      </main>
+      </PageContainer>
     </div>
   );
 }

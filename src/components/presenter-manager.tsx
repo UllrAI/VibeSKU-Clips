@@ -143,7 +143,7 @@ export function PresenterManager() {
       )}
 
       {characters.length > 0 && (
-        <div className="space-y-3">
+        <div className="grid gap-3 xl:grid-cols-2">
           {characters.map((char) => (
             <Card key={char.id} className={`glass-card ${char.isDefault ? "ring-1 ring-primary/50" : ""}`}>
               <CardContent className="p-4">

@@ -987,7 +987,7 @@ export default function AssetsPage() {
         onChange={onUploadFileChange}
       />
 
-      <main className="mx-auto max-w-4xl px-6 py-8">
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* Action bar: title + generation ACTIONS only. Creative settings live in the
             director panel below so this row stays a stable, scannable set of verbs. */}
         <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">

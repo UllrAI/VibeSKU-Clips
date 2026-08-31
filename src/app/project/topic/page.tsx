@@ -89,18 +89,18 @@ export default function TopicProjectPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      <main className="mx-auto max-w-2xl px-6 py-10">
+      <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* page title */}
-        <div className="mb-8">
+        <header className="mb-8 border-b border-border/60 pb-6">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             <LuSparkles className="w-3.5 h-3.5" />
             {t("heroBadge")}
           </div>
-          <h1 className="text-2xl font-bold tracking-tight mb-2">{t("heroTitle")}</h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
+          <h1 className="mb-2 text-2xl font-semibold tracking-tight sm:text-3xl">{t("heroTitle")}</h1>
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
             {t("heroSubtitle")}
           </p>
-        </div>
+        </header>
 
         {/* LLM not configured guidance */}
         {!isLLMConfigured && (

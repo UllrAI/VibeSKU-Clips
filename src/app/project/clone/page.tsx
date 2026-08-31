@@ -374,16 +374,16 @@ export default function ClonePage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      <main className="mx-auto max-w-4xl px-6 py-10">
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* page title */}
-        <div className="mb-10 text-center">
-          <h1 className="text-3xl font-bold tracking-tight mb-3">
+        <header className="mb-8 border-b border-border/60 pb-6">
+          <h1 className="mb-2 text-2xl font-semibold tracking-tight sm:text-3xl">
             <span className="brand-gradient-text">{t("heroTitle")}</span>
           </h1>
-          <p className="text-muted-foreground text-base max-w-lg mx-auto">
+          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
             {t("heroSubtitle")}
           </p>
-        </div>
+        </header>
 
         {/* trend handoff banner: guide the user from "saw a trend" to "found a reference to remix" */}
         {trendFrom && (

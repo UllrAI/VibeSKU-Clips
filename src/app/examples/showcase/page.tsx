@@ -28,7 +28,7 @@ export default function ShowcasePage() {
     <div className="min-h-screen grid-bg">
       {/* Top navigation */}
 
-      <main className="mx-auto max-w-5xl px-6 py-10">
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* Description */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight mb-2">{sc.title}</h1>

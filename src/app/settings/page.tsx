@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { LuUpload, LuPalette, LuZap, LuCheck, LuTriangleAlert } from "react-icons/lu";
+import { LuUpload, LuPalette, LuZap, LuCheck, LuTriangleAlert, LuX } from "react-icons/lu";
 import {
   Atom,
   Box,
@@ -414,18 +414,20 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen grid-bg">
-      <main className="mx-auto max-w-4xl px-6 py-10">
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* page title */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">{t("pageTitle")}</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+        <header className="mb-8 border-b border-border/60 pb-6">
+          <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("pageTitle")}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             {t("pageSubtitle")}
           </p>
-        </div>
+        </header>
+
+        <div className="mb-8 grid items-stretch gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
 
         {/* configuration status banner: surfaces missing setup right at the top (the footer summary is easy to miss) */}
         {(!llm.apiKey || !hasAnyProvider) && (
-          <div className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
+          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5">
             <div className="flex items-center gap-2 mb-1.5">
               <LuTriangleAlert className="w-4 h-4 shrink-0 text-amber-500" />
               <h2 className="font-semibold text-sm text-amber-600 dark:text-amber-400">{t("configBannerTitle")}</h2>
@@ -438,7 +440,7 @@ export default function SettingsPage() {
         )}
 
         {/* beginner one-click setup: a single Atlas Key auto-configures LLM/image-gen/video-gen/TTS, skipping manual item-by-item setup */}
-        <div className="mb-8 rounded-2xl border border-primary/30 bg-primary/5 p-5">
+        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 lg:[&:only-child]:col-span-2">
           <div className="flex items-center gap-2 mb-1">
             <LuZap className="w-4 h-4 text-primary" />
             <h2 className="font-semibold text-sm">{t("oneKeyTitle")}</h2>
@@ -468,11 +470,12 @@ export default function SettingsPage() {
             {t("oneKeyGetKey")}
           </a>
         </div>
+        </div>
 
         {/* tabs */}
-        <div className="md:flex md:items-start md:gap-8">
+        <div className="md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:items-start md:gap-6 lg:gap-8">
           {/* Section rail: vertical on desktop (native settings-window feel), horizontal scroll on mobile */}
-          <nav className="mb-6 flex gap-1 overflow-x-auto md:sticky md:top-6 md:mb-0 md:w-44 md:shrink-0 md:flex-col">
+          <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border/60 bg-card/60 p-2 shadow-sm md:sticky md:top-6 md:mb-0 md:flex-col">
             {SETTINGS_SECTIONS.map((sec) => (
               <button
                 key={sec.id}
@@ -492,7 +495,7 @@ export default function SettingsPage() {
           {/* Tab 1: AI provider configuration */}
           {tab === "providers" && (
           <section className="min-w-0 flex-1">
-            <div className="space-y-4">
+            <div className="grid gap-4 xl:grid-cols-2">
               {AI_PROVIDERS.map((platform) => {
                 const provider = providers[platform.key] ?? {
                   enabled: false,
@@ -500,7 +503,7 @@ export default function SettingsPage() {
                 };
 
                 return (
-                  <Card key={platform.key} className="glass-card">
+                  <Card key={platform.key} className="glass-card h-full">
                     <CardContent className="p-5">
                       <div className="flex items-start justify-between gap-4">
                         {/* provider info */}
@@ -540,8 +543,10 @@ export default function SettingsPage() {
                         />
                       </div>
 
+                      {provider.enabled ? (
+                      <>
                       {/* API Key input */}
-                      <div className="mt-4">
+                      <div className="mt-4 border-t border-border/50 pt-4">
                         <Label className="text-xs text-muted-foreground mb-1.5">
                           API Key
                         </Label>
@@ -570,8 +575,8 @@ export default function SettingsPage() {
                             const r = providerTest[platform.key];
                             if (!r || r.state === "idle" || r.state === "testing") return null;
                             const color = r.state === "ok" ? "text-emerald-500" : r.state === "invalid" ? "text-destructive" : "text-amber-500";
-                            const icon = r.state === "ok" ? "✓" : r.state === "invalid" ? "✗" : "⚠";
-                            return <span className={`text-xs ${color}`}>{icon} {r.msg}</span>;
+                            const StatusIcon = r.state === "ok" ? LuCheck : r.state === "invalid" ? LuX : LuTriangleAlert;
+                            return <span className={`inline-flex items-center gap-1 text-xs ${color}`}><StatusIcon className="size-3.5" />{r.msg}</span>;
                           })()}
                         </div>
                       </div>
@@ -595,6 +600,12 @@ export default function SettingsPage() {
                           />
                         </div>
                       </details>
+                      </>
+                      ) : (
+                        <p className="mt-4 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+                          {t("enableProviderFirst")}
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 );
