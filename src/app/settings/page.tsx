@@ -14,6 +14,24 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { LuUpload, LuPalette, LuZap, LuCheck, LuTriangleAlert } from "react-icons/lu";
+import {
+  Atom,
+  Box,
+  ChevronDown,
+  Cpu,
+  Eye,
+  EyeOff,
+  Flame,
+  Globe2,
+  ImageIcon,
+  MessageSquare,
+  Mic2,
+  ShieldCheck,
+  Store,
+  Terminal,
+  Video,
+  Zap,
+} from "lucide-react";
 import { ATLAS_KEYS_URL } from "@/lib/atlas-onekey";
 import { useT } from "@/lib/i18n";
 import { useSettingsStore } from "@/lib/stores/settings-store";
@@ -64,99 +82,56 @@ const AI_PROVIDERS = [
     name: "Atlas Cloud",
     descKey: "providerAtlasDesc",
     tipKey: "providerAtlasTip",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
-        <path d="M2 12h20" />
-      </svg>
-    ),
-    iconBg: "from-blue-500 to-cyan-500",
+    icon: <Globe2 className="size-5" />,
+    iconBg: "bg-primary",
   },
   {
     key: "fal-ai",
     name: "fal.ai",
     descKey: "providerFalDesc",
     tipKey: "providerFalTip",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-      </svg>
-    ),
-    iconBg: "from-purple-500 to-pink-500",
+    icon: <Zap className="size-5" />,
+    iconBg: "bg-rose-600",
   },
   {
     key: "replicate",
     name: "Replicate",
     descKey: "providerReplicateDesc",
     tipKey: "providerReplicateTip",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="4 17 10 11 4 5" />
-        <line x1="12" y1="19" x2="20" y2="19" />
-      </svg>
-    ),
-    iconBg: "from-slate-500 to-gray-700",
+    icon: <Terminal className="size-5" />,
+    iconBg: "bg-stone-700",
   },
   {
     key: "volcengine",
     name: "火山引擎",
     descKey: "providerVolcengineDesc",
     tipKey: "providerVolcengineTip",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-      </svg>
-    ),
-    iconBg: "from-orange-500 to-red-500",
+    icon: <Flame className="size-5" />,
+    iconBg: "bg-orange-600",
   },
   {
     key: "alibaba",
     name: "阿里百炼",
     descKey: "providerAlibabaDesc",
     tipKey: "providerAlibabaTip",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-        <line x1="12" y1="22.08" x2="12" y2="12" />
-      </svg>
-    ),
-    iconBg: "from-amber-500 to-orange-500",
+    icon: <Box className="size-5" />,
+    iconBg: "bg-amber-600",
   },
   {
     key: "siliconflow",
     name: "硅基流动",
     descKey: "providerSiliconflowDesc",
     tipKey: "providerSiliconflowTip",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="4" y="4" width="16" height="16" rx="2" />
-        <rect x="9" y="9" width="6" height="6" />
-        <path d="M15 2v2" />
-        <path d="M15 20v2" />
-        <path d="M2 15h2" />
-        <path d="M2 9h2" />
-        <path d="M20 15h2" />
-        <path d="M20 9h2" />
-        <path d="M9 2v2" />
-        <path d="M9 20v2" />
-      </svg>
-    ),
-    iconBg: "from-emerald-500 to-teal-500",
+    icon: <Cpu className="size-5" />,
+    iconBg: "bg-emerald-700",
   },
   {
     key: "openai",
     name: "OpenAI",
     descKey: "providerOpenaiDesc",
     tipKey: "providerOpenaiTip",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2a4.5 4.5 0 0 1 4.27 3.08A4.5 4.5 0 0 1 19.5 12a4.5 4.5 0 0 1-3.23 6.92A4.5 4.5 0 0 1 12 22a4.5 4.5 0 0 1-4.27-3.08A4.5 4.5 0 0 1 4.5 12a4.5 4.5 0 0 1 3.23-6.92A4.5 4.5 0 0 1 12 2z" />
-        <path d="M12 8.5v7M8.5 10.25l7 3.5M15.5 10.25l-7 3.5" />
-      </svg>
-    ),
-    iconBg: "from-teal-600 to-green-700",
+    icon: <Atom className="size-5" />,
+    iconBg: "bg-stone-800",
   },
 ];
 
@@ -197,21 +172,7 @@ function PasswordInput({
         onClick={() => setVisible(!visible)}
         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
       >
-        {visible ? (
-          // hide icon
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
-            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-            <line x1="1" y1="1" x2="23" y2="23" />
-            <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
-          </svg>
-        ) : (
-          // show icon
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-        )}
+        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>
     </div>
   );
@@ -545,7 +506,7 @@ export default function SettingsPage() {
                         {/* provider info */}
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                           <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${platform.iconBg} text-white shadow-lg`}
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${platform.iconBg} text-white shadow-sm`}
                           >
                             {platform.icon}
                           </div>
@@ -650,10 +611,8 @@ export default function SettingsPage() {
               <Card className="glass-card">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-2 mb-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                      <MessageSquare className="size-4" />
                     </div>
                     <h3 className="font-semibold text-sm">{t("llmProvider")}</h3>
                   </div>
@@ -813,12 +772,8 @@ export default function SettingsPage() {
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 text-white">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z" />
-                          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                          <line x1="12" y1="19" x2="12" y2="22" />
-                        </svg>
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white">
+                        <Mic2 className="size-4" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-sm">{t("ttsTitle")}</h3>
@@ -1121,7 +1076,7 @@ export default function SettingsPage() {
               <details className="group rounded-xl border border-border/50 bg-card/30">
                 <summary className="flex items-center justify-between cursor-pointer list-none select-none px-5 py-3.5 text-sm font-medium text-muted-foreground hover:text-foreground">
                   <span>{t("advancedSection")}</span>
-                  <svg className="size-4 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+                  <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="px-1 pb-1 space-y-4">
                   <GenerationSettings />
@@ -1136,7 +1091,7 @@ export default function SettingsPage() {
         <details className="group mt-4 rounded-lg border border-border/40">
           <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
             <span>{t("diagnosticsTitle")}</span>
-            <svg className="size-4 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
           </summary>
           <div className="px-4 pb-4">
             <div className="flex gap-2">
@@ -1182,11 +1137,8 @@ function BrandSettings() {
       <Card className="glass-card">
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 text-white">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <polyline points="9 22 9 12 15 12 15 22" />
-              </svg>
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Store className="size-4" />
             </div>
             <h3 className="font-semibold text-sm">{t("brandShopTitle")}</h3>
           </div>
@@ -1209,17 +1161,14 @@ function BrandSettings() {
               <div className="flex items-center gap-4">
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 overflow-hidden">
                   {brand.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- user-selected local preview
                     <img
                       src={brand.logoUrl}
                       alt={t("brandLogoAlt")}
                       className="h-full w-full object-contain"
                     />
                   ) : (
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground/50">
-                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                      <circle cx="8.5" cy="8.5" r="1.5" />
-                      <polyline points="21 15 16 10 5 21" />
-                    </svg>
+                    <ImageIcon className="size-6 text-muted-foreground/50" />
                   )}
                 </div>
                 <div className="flex flex-col gap-2">
@@ -1264,7 +1213,7 @@ function BrandSettings() {
       <Card className="glass-card">
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 to-rose-600 text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white">
               <LuPalette className="w-4 h-4" />
             </div>
             <h3 className="font-semibold text-sm">{t("brandColorTitle")}</h3>
@@ -1329,10 +1278,8 @@ function BrandSettings() {
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 text-white">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-white">
+                <ShieldCheck className="size-4" />
               </div>
               <h3 className="font-semibold text-sm">{t("brandWatermarkTitle")}</h3>
             </div>
@@ -1398,11 +1345,8 @@ function BrandSettings() {
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-white">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="23 7 16 12 23 17 23 7" />
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                </svg>
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-600 text-white">
+                <Video className="size-4" />
               </div>
               <h3 className="font-semibold text-sm">{t("brandOutroTitle")}</h3>
             </div>

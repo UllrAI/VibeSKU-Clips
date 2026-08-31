@@ -74,7 +74,7 @@ export const script: NamespaceMessages = {
     nextStepAssets: "下一步：生成素材",
     // 画面来源
     visualProductImage: "📷 商品原图",
-    visualAiGenerate: "✨ AI 生成",
+    visualAiGenerate: "AI 生成",
     visualUserUpload: "📁 用户上传",
     productImageShort: "商品图",
     // 文案编辑
@@ -209,7 +209,7 @@ export const script: NamespaceMessages = {
     nextStepAssets: "Next: generate assets",
     // 画面来源
     visualProductImage: "📷 Product photo",
-    visualAiGenerate: "✨ AI-generated",
+    visualAiGenerate: "AI-generated",
     visualUserUpload: "📁 User upload",
     productImageShort: "Product",
     // 文案编辑

@@ -32,8 +32,8 @@ export const useBrandStore = create<BrandState>()(
       brand: {
         id: crypto.randomUUID(),
         name: "我的店铺",
-        primaryColor: "#6366f1",
-        secondaryColor: "#8b5cf6",
+        primaryColor: "#e85d04",
+        secondaryColor: "#b86e00",
         fontFamily: "默认字体",
         watermark: {
           enabled: false,

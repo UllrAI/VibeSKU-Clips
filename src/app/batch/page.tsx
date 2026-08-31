@@ -111,7 +111,7 @@ const statusLabelKeys: Record<TaskStatus, string> = {
 const statusColors: Record<TaskStatus, string> = {
   pending: "bg-zinc-500/20 text-zinc-400 border-0",
   generating: "bg-amber-500/20 text-amber-400 border-0",
-  composing: "bg-violet-500/20 text-violet-300 border-0",
+  composing: "bg-primary/15 text-primary border-0",
   done: "bg-emerald-500/20 text-emerald-400 border-0",
   failed: "bg-red-500/20 text-red-400 border-0",
 };
@@ -660,7 +660,7 @@ export default function BatchPage() {
                         key={product.id}
                         onClick={() => !isGenerating && toggleProduct(product.id)}
                         disabled={isGenerating}
-                        className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-all ${
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                           isSelected
                             ? "border-primary bg-primary/10"
                             : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -668,7 +668,7 @@ export default function BatchPage() {
                       >
                         {/* Checkbox */}
                         <div
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all ${
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                             isSelected
                               ? "brand-gradient border-transparent"
                               : "border-border/80 bg-muted/30"
@@ -713,7 +713,7 @@ export default function BatchPage() {
                         key={opt.value}
                         onClick={() => !isGenerating && setVideoMode(opt.value)}
                         disabled={isGenerating}
-                        className={`relative flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-all ${
+                        className={`relative flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                           videoMode === opt.value
                             ? "border-primary bg-primary/10"
                             : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -755,7 +755,7 @@ export default function BatchPage() {
                       key={opt.value}
                       onClick={() => !isGenerating && setScriptStyle(opt.value)}
                       disabled={isGenerating}
-                      className={`relative flex items-center justify-center h-9 rounded-lg border text-xs font-medium transition-all ${
+                      className={`relative flex items-center justify-center h-9 rounded-lg border text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                         scriptStyle === opt.value
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-foreground"
@@ -781,7 +781,7 @@ export default function BatchPage() {
                       key={opt.value}
                       onClick={() => !isGenerating && setDuration(opt.value)}
                       disabled={isGenerating}
-                      className={`relative flex items-center justify-center h-9 rounded-lg border text-sm font-medium transition-all ${
+                      className={`relative flex items-center justify-center h-9 rounded-lg border text-sm font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                         duration === opt.value
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-foreground"
@@ -822,7 +822,7 @@ export default function BatchPage() {
                 {/* Progress bar */}
                 <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden mb-4">
                   <div
-                    className="h-full brand-gradient transition-all duration-500 rounded-full"
+                    className="h-full brand-gradient transition-[background-color,border-color,color,box-shadow,opacity,transform,width] duration-500 rounded-full"
                     style={{
                       width: `${batchTasks.length > 0 ? (doneCount / batchTasks.length) * 100 : 0}%`,
                     }}
@@ -913,7 +913,7 @@ export default function BatchPage() {
                 checked={autoCompose}
                 onChange={(e) => setAutoCompose(e.target.checked)}
                 disabled={isGenerating}
-                className="w-4 h-4 accent-violet-500"
+                className="w-4 h-4 accent-primary"
               />
               {t("autoComposeLabel")}
             </label>
@@ -924,7 +924,7 @@ export default function BatchPage() {
                   checked={productCard}
                   onChange={(e) => setProductCard(e.target.checked)}
                   disabled={isGenerating}
-                  className="w-4 h-4 accent-violet-500"
+                  className="w-4 h-4 accent-primary"
                 />
                 {t("productCardLabel")}
               </label>
@@ -936,7 +936,7 @@ export default function BatchPage() {
                 checked={antiHomogeneity}
                 onChange={(e) => setAntiHomogeneity(e.target.checked)}
                 disabled={isGenerating}
-                className="w-4 h-4 accent-violet-500"
+                className="w-4 h-4 accent-primary"
               />
               {t("variationLabel")}
             </label>

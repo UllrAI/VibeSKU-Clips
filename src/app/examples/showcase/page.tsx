@@ -13,9 +13,9 @@ import { useT, useLocale } from "@/lib/i18n";
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
   hook: { labelKey: "shotTypeHook", color: "bg-red-500/20 text-red-400" },
   pain_point: { labelKey: "shotTypePainPoint", color: "bg-orange-500/20 text-orange-400" },
-  product_reveal: { labelKey: "shotTypeProductReveal", color: "bg-blue-500/20 text-blue-400" },
+  product_reveal: { labelKey: "shotTypeProductReveal", color: "bg-primary/15 text-primary" },
   demo: { labelKey: "shotTypeDemo", color: "bg-green-500/20 text-green-400" },
-  social_proof: { labelKey: "shotTypeSocialProof", color: "bg-purple-500/20 text-purple-400" },
+  social_proof: { labelKey: "shotTypeSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
   cta: { labelKey: "shotTypeCta", color: "bg-amber-500/20 text-amber-400" },
 };
 

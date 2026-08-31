@@ -78,81 +78,80 @@
   30%, 60% {
     background-position: calc(100% + var(--shiny-width)) 0;}}}
 
-/* ==================== 亮色主题 ==================== */
+/* ClipForge tokens: warm studio light on neutral editing surfaces. */
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #f7f6f2;
+  --foreground: #1a1917;
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #1a1917;
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #6366f1;
+  --popover-foreground: #1a1917;
+  --primary: #e85d04;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #334155;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #eef2ff;
-  --accent-foreground: #3730a3;
-  --destructive: #ef4444;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #6366f1;
-  --chart-1: #6366f1;
-  --chart-2: #8b5cf6;
-  --chart-3: #06b6d4;
-  --chart-4: #f59e0b;
-  --chart-5: #10b981;
-  --radius: 0.75rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0f172a;
-  --sidebar-primary: #6366f1;
+  --secondary: #f0eee8;
+  --secondary-foreground: #3f3c36;
+  --muted: #efede7;
+  --muted-foreground: #6f6b63;
+  --accent: #fff0e2;
+  --accent-foreground: #8f3b05;
+  --destructive: #c92a2a;
+  --border: #dedad1;
+  --input: #d8d3c9;
+  --ring: #e85d04;
+  --chart-1: #e85d04;
+  --chart-2: #b86e00;
+  --chart-3: #087f5b;
+  --chart-4: #c92a2a;
+  --chart-5: #6f6b63;
+  --radius: 0.625rem;
+  --sidebar: #f0eee8;
+  --sidebar-foreground: #1a1917;
+  --sidebar-primary: #e85d04;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eef2ff;
-  --sidebar-accent-foreground: #3730a3;
-  --sidebar-border: #e2e8f0;
-  --sidebar-ring: #6366f1;
-  --brand: #6366f1;
+  --sidebar-accent: #fff0e2;
+  --sidebar-accent-foreground: #8f3b05;
+  --sidebar-border: #dedad1;
+  --sidebar-ring: #e85d04;
+  --brand: #e85d04;
   --brand-foreground: #ffffff;
-  --amber: #f59e0b;
+  --amber: #b86e00;
 }
 
-/* ==================== 暗色主题（暗色创作台·全站默认） ==================== */
-/* 近黑冷调底 + 单一电光青强调，气质偏 Linear/Runway 的「高级暗色」 */
+/* Dark studio counterpart; the first visit follows the system preference. */
 .dark {
-  --background: #0b0d12;
-  --foreground: #edeff4;
-  --card: #12151c;
-  --card-foreground: #edeff4;
-  --popover: #12151c;
-  --popover-foreground: #edeff4;
-  --primary: #8b5cf6;
-  --primary-foreground: #ffffff;
-  --secondary: #171b24;
-  --secondary-foreground: #c7cdd8;
-  --muted: #161a22;
-  --muted-foreground: #98a2b3;
-  --accent: #1b212b;
-  --accent-foreground: #edeff4;
-  --destructive: #f87171;
-  --border: #222834;
-  --input: #1a1f29;
-  --ring: #8b5cf6;
-  --chart-1: #8b5cf6;
-  --chart-2: #d946ef;
-  --chart-3: #a78bfa;
-  --chart-4: #fbbf24;
-  --chart-5: #34d399;
-  --sidebar: #0e1117;
-  --sidebar-foreground: #edeff4;
-  --sidebar-primary: #8b5cf6;
-  --sidebar-primary-foreground: #04221e;
-  --sidebar-accent: #1b212b;
-  --sidebar-accent-foreground: #edeff4;
-  --sidebar-border: #222834;
-  --sidebar-ring: #8b5cf6;
-  --brand: #8b5cf6;
-  --brand-foreground: #04221e;
+  --background: #0d0d0c;
+  --foreground: #f5f3ee;
+  --card: #151513;
+  --card-foreground: #f5f3ee;
+  --popover: #1d1c19;
+  --popover-foreground: #f5f3ee;
+  --primary: #f97316;
+  --primary-foreground: #1b0d03;
+  --secondary: #1d1c19;
+  --secondary-foreground: #d9d5cc;
+  --muted: #1d1c19;
+  --muted-foreground: #a7a39a;
+  --accent: #2b2118;
+  --accent-foreground: #fff2e6;
+  --destructive: #fb7185;
+  --border: #2a2925;
+  --input: #302e29;
+  --ring: #fb923c;
+  --chart-1: #f97316;
+  --chart-2: #f2b84b;
+  --chart-3: #34d399;
+  --chart-4: #fb7185;
+  --chart-5: #a7a39a;
+  --sidebar: #11110f;
+  --sidebar-foreground: #f5f3ee;
+  --sidebar-primary: #f97316;
+  --sidebar-primary-foreground: #1b0d03;
+  --sidebar-accent: #2b2118;
+  --sidebar-accent-foreground: #fff2e6;
+  --sidebar-border: #272621;
+  --sidebar-ring: #fb923c;
+  --brand: #f97316;
+  --brand-foreground: #1b0d03;
   --amber: #fbbf24;
 }
 
@@ -161,72 +160,85 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    min-width: 320px;
   }
   html {
     @apply font-sans;
+    color-scheme: light;
+    scroll-padding-top: 4rem;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  button,
+  [role="button"],
+  a,
+  input,
+  textarea,
+  select {
+    touch-action: manipulation;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 35%, transparent);
+    color: var(--foreground);
   }
 }
 
-/* ==================== 品牌渐变 ==================== */
+/* Legacy class names remain as solid warm brand fills while call sites migrate. */
 .brand-gradient {
-  background: linear-gradient(100deg, #6366f1, #8b5cf6 55%, #d946ef);
+  background: var(--primary);
 }
 
 .brand-gradient-text {
-  background: linear-gradient(100deg, #6366f1, #8b5cf6 55%, #d946ef);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--primary);
 }
 
 /* ==================== 卡片 ==================== */
 .glass-card {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 0.75rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .dark .glass-card {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
+  background: var(--card);
+  border-color: var(--border);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.025), 0 12px 36px rgba(0, 0, 0, 0.18);
 }
 
 /* ==================== 页面背景 ==================== */
 .grid-bg {
-  background-color: #f8fafc;
+  background-color: #f7f6f2;
   background-image:
-    radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.03) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.03) 0%, transparent 50%);
+    radial-gradient(circle at 20% 50%, rgba(232, 93, 4, 0.04) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(184, 110, 0, 0.03) 0%, transparent 50%);
 }
 
 .dark .grid-bg {
-  background-color: #0b0d12;
-  /* brand purple glow (the teal glow predates the purple rebrand) */
+  background-color: #0d0d0c;
   background-image:
-    radial-gradient(circle at 50% -8%, rgba(139, 92, 246, 0.08) 0%, transparent 55%),
-    radial-gradient(circle at 85% 0%, rgba(217, 70, 239, 0.05) 0%, transparent 50%);
+    radial-gradient(circle at 50% -8%, rgba(249, 115, 22, 0.09) 0%, transparent 55%),
+    radial-gradient(circle at 85% 0%, rgba(242, 184, 75, 0.04) 0%, transparent 50%);
 }
 
 /* ==================== 选中高亮 ==================== */
 .neon-glow {
   box-shadow:
-    0 0 0 2px rgba(99, 102, 241, 0.2),
-    0 4px 16px rgba(99, 102, 241, 0.08);
+    0 0 0 2px rgba(232, 93, 4, 0.2),
+    0 4px 16px rgba(232, 93, 4, 0.08);
 }
 
 .dark .neon-glow {
   box-shadow:
-    0 0 0 2px rgba(94, 234, 212, 0.35),
-    0 4px 20px rgba(94, 234, 212, 0.14);
+    0 0 0 2px rgba(249, 115, 22, 0.34),
+    0 4px 20px rgba(249, 115, 22, 0.14);
 }
 
 /* ==================== 卡片悬停 ==================== */
 .card-hover {
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .card-hover:hover {
@@ -234,14 +246,25 @@
   box-shadow:
     0 4px 6px rgba(0, 0, 0, 0.04),
     0 10px 24px rgba(0, 0, 0, 0.06),
-    0 0 0 1px rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
+    0 0 0 1px rgba(232, 93, 4, 0.1);
+  border-color: rgba(232, 93, 4, 0.3);
 }
 
 .dark .card-hover:hover {
   box-shadow:
     0 4px 6px rgba(0, 0, 0, 0.25),
     0 10px 24px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(94, 234, 212, 0.22);
-  border-color: rgba(94, 234, 212, 0.4);
+    0 0 0 1px rgba(249, 115, 22, 0.22);
+  border-color: rgba(249, 115, 22, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

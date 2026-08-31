@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 // self-hosted Geist via the official npm package (same --font-geist-* variables) — a build-time fetch
 // from Google Fonts is a network dependency that intermittently breaks CI release builds
 import { GeistSans } from "geist/font/sans";
@@ -11,6 +11,9 @@ const geistSans = GeistSans;
 const geistMono = GeistMono;
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://xixihhhh.github.io/clipforge/",
+  ),
   // Title/description are bilingual (Chinese first): prioritize domestic traffic while covering overseas search indexing
   title: "ClipForge — AI 短视频带货创作工具 | AI Short Video Creator",
   description:
@@ -29,17 +32,41 @@ export const metadata: Metadata = {
   ],
 };
 
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f6f2" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d0d0c" },
+  ],
+};
+
+const themeScript = `
+  try {
+    const saved = localStorage.getItem("clipforge_theme");
+    const theme = saved === "light" || saved === "dark"
+      ? saved
+      : matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.style.colorScheme = theme;
+  } catch (_) {
+    document.documentElement.classList.add("dark");
+    document.documentElement.style.colorScheme = "dark";
+  }
+`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Site-wide default dark studio theme: pin the dark class on <html>
   return (
     <html
       lang="zh-CN"
-      className={`dark ${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <LocaleInitializer />
         <AppShell>{children}</AppShell>

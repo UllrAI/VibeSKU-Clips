@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { LuUpload, LuX, LuCircleAlert, LuZap, LuUser, LuUserX, LuBox, LuLayoutGrid, LuEye, LuVideo, LuBookmark, LuLink2, LuLoader } from "react-icons/lu";
+import { ChevronDown, CircleCheckBig } from "lucide-react";
 import { useCharacterStore } from "@/lib/stores/project-store";
 import { useTemplateStore } from "@/lib/stores/template-store";
 import { useProductLibraryStore, type ProductItem } from "@/lib/stores/product-library-store";
@@ -686,7 +687,7 @@ export default function NewProjectPage() {
               {/* drag-and-drop upload zone */}
               {images.length < 5 && (
                 <div
-                  className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                  className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                     isDragging
                       ? "border-primary bg-primary/5"
                       : "border-border/60 hover:border-primary/50 hover:bg-muted/20"
@@ -783,7 +784,7 @@ export default function NewProjectPage() {
                     key={ex.id}
                     type="button"
                     onClick={() => fillExample(ex)}
-                    className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-all"
+                    className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                   >
                     {ex.name} ¥{ex.price}
                   </button>
@@ -837,9 +838,7 @@ export default function NewProjectPage() {
               <details className="group pt-1">
                 <summary className="flex items-center justify-between cursor-pointer list-none [&::-webkit-details-marker]:hidden text-sm text-muted-foreground hover:text-foreground transition-colors">
                   <span>{t("moreInfoSummary")}</span>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 transition-transform group-open:rotate-180">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
+                  <ChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="mt-4 space-y-5">
                   <p className="text-xs text-muted-foreground">{t("moreInfoHint")}</p>
@@ -880,7 +879,7 @@ export default function NewProjectPage() {
                     <button
                       key={opt.value}
                       onClick={() => setPriceRange(opt.value)}
-                      className={`relative flex items-center justify-center h-11 rounded-lg border text-sm font-medium transition-all ${
+                      className={`relative flex items-center justify-center h-11 rounded-lg border text-sm font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                         priceRange === opt.value
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -910,7 +909,7 @@ export default function NewProjectPage() {
                     <button
                       key={tag.value}
                       onClick={() => toggleAudience(tag.value)}
-                      className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-all ${
+                      className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                         targetAudience.includes(tag.value)
                           ? "bg-primary/15 text-primary border-primary/30"
                           : "bg-muted/20 text-muted-foreground border-border/50 hover:border-primary/30"
@@ -935,7 +934,7 @@ export default function NewProjectPage() {
                     <button
                       key={opt.value}
                       onClick={() => togglePlatform(opt.value)}
-                      className={`relative flex items-center justify-center h-11 rounded-lg border text-sm font-medium transition-all ${
+                      className={`relative flex items-center justify-center h-11 rounded-lg border text-sm font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                         platforms.includes(opt.value)
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -982,7 +981,7 @@ export default function NewProjectPage() {
                   <button
                     key={opt.value}
                     onClick={() => setDuration(opt.value)}
-                    className={`relative flex items-center justify-center h-11 rounded-lg border text-sm font-medium transition-all ${
+                    className={`relative flex items-center justify-center h-11 rounded-lg border text-sm font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                       duration === opt.value
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-foreground"
@@ -1017,7 +1016,7 @@ export default function NewProjectPage() {
                           setSelectedCharacterId(null);
                         }
                       }}
-                      className={`relative flex items-start gap-3 p-3.5 rounded-lg border text-left transition-all ${
+                      className={`relative flex items-start gap-3 p-3.5 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                         videoMode === opt.value
                           ? "border-primary bg-primary/10"
                           : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -1053,7 +1052,7 @@ export default function NewProjectPage() {
                     {/* no character */}
                     <button
                       onClick={() => setSelectedCharacterId(null)}
-                      className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
+                      className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                         selectedCharacterId === null
                           ? "border-primary bg-primary/10"
                           : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -1071,7 +1070,7 @@ export default function NewProjectPage() {
                       <button
                         key={char.id}
                         onClick={() => setSelectedCharacterId(char.id)}
-                        className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-all ${
+                        className={`flex items-center gap-2 p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                           selectedCharacterId === char.id
                             ? "border-primary bg-primary/10"
                             : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -1107,7 +1106,7 @@ export default function NewProjectPage() {
                   <button
                     key={opt.value}
                     onClick={() => setScriptStyle(opt.value)}
-                    className={`relative flex flex-col items-start p-3.5 rounded-lg border text-left transition-all ${
+                    className={`relative flex flex-col items-start p-3.5 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                       scriptStyle === opt.value
                         ? "border-primary bg-primary/10"
                         : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -1126,10 +1125,7 @@ export default function NewProjectPage() {
                     {/* selected indicator */}
                     {scriptStyle === opt.value && (
                       <div className="absolute top-2.5 right-2.5">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-primary">
-                          <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15" />
-                          <path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <CircleCheckBig className="size-4 text-primary" />
                       </div>
                     )}
                   </button>
@@ -1154,9 +1150,7 @@ export default function NewProjectPage() {
                     </span>
                     <p className="text-xs text-muted-foreground mt-1">{t("templatesSummaryDesc")}</p>
                   </div>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180">
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
+                  <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="mt-5 space-y-6">
 
@@ -1176,7 +1170,7 @@ export default function NewProjectPage() {
                   {/* no template */}
                   <button
                     onClick={() => setSelectedTemplateId(null)}
-                    className={`shrink-0 flex flex-col items-start p-3 rounded-lg border text-left transition-all min-w-[140px] ${
+                    className={`shrink-0 flex flex-col items-start p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] min-w-[140px] ${
                       selectedTemplateId === null
                         ? "border-primary bg-primary/10"
                         : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -1192,7 +1186,7 @@ export default function NewProjectPage() {
                     <button
                       key={tpl.id}
                       onClick={() => setSelectedTemplateId(tpl.id)}
-                      className={`shrink-0 flex flex-col items-start p-3 rounded-lg border text-left transition-all min-w-[140px] ${
+                      className={`shrink-0 flex flex-col items-start p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] min-w-[140px] ${
                         selectedTemplateId === tpl.id
                           ? "border-primary bg-primary/10"
                           : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -1231,7 +1225,7 @@ export default function NewProjectPage() {
                       <button
                         key={`rec-${tpl.id}`}
                         onClick={() => pickAdTemplate(tpl.id)}
-                        className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                        className={`px-2.5 py-1 rounded-full text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                           selectedAdTemplateId === tpl.id
                             ? "border-primary bg-primary/10 text-primary font-medium"
                             : "border-primary/30 bg-primary/5 text-foreground hover:border-primary/60"
@@ -1249,7 +1243,7 @@ export default function NewProjectPage() {
                   <button
                     key={g.id}
                     onClick={() => setAdTemplateGroup(g.id)}
-                    className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                    className={`px-2.5 py-1 rounded-full text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                       adTemplateGroup === g.id
                         ? "border-primary bg-primary/10 text-primary font-medium"
                         : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -1265,7 +1259,7 @@ export default function NewProjectPage() {
                 {myTemplates.length > 0 && (
                   <button
                     onClick={() => setAdTemplateGroup("mine")}
-                    className={`px-2.5 py-1 rounded-full text-xs border transition-all ${
+                    className={`px-2.5 py-1 rounded-full text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                       adTemplateGroup === "mine"
                         ? "border-primary bg-primary/10 text-primary font-medium"
                         : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -1287,14 +1281,14 @@ export default function NewProjectPage() {
                   onClick={generateAiTemplate}
                   disabled={aiTplLoading || !productName.trim() || !isLLMConfigured}
                   title={!productName.trim() ? t("adTemplateAiNeedName") : !isLLMConfigured ? t("adTemplateAiNeedLlm") : undefined}
-                  className="px-2.5 py-1 rounded-full text-xs border border-primary/40 bg-primary/5 text-primary hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  className="px-2.5 py-1 rounded-full text-xs border border-primary/40 bg-primary/5 text-primary hover:border-primary disabled:opacity-40 disabled:cursor-not-allowed transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                 >
                   {aiTplLoading ? t("adTemplateAiLoading") : t("adTemplateAiButton")}
                 </button>
                 {/* recipes travel: import a shared .json, export the current pick */}
                 <button
                   onClick={() => { setImportOpen((v) => !v); setMineNotice(""); }}
-                  className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                  className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                 >
                   {t("adTemplateImportButton")}
                 </button>
@@ -1302,14 +1296,14 @@ export default function NewProjectPage() {
                   <>
                     <button
                       onClick={exportSelectedTemplate}
-                      className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                      className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                     >
                       {t("adTemplateExportButton")}
                     </button>
                     {/* fork/edit the selected recipe — builtin & AI save as new mine rows, mine edits in place */}
                     <button
                       onClick={openTemplateEditor}
-                      className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                      className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                     >
                       {t("adTemplateEditButton")}
                     </button>
@@ -1319,7 +1313,7 @@ export default function NewProjectPage() {
                 {adTemplateGroup === "mine" && myTemplates.length > 0 && (
                   <button
                     onClick={exportMinePack}
-                    className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                    className="px-2.5 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                   >
                     {t("adTemplatePackExport")} ({myTemplates.length})
                   </button>
@@ -1338,13 +1332,13 @@ export default function NewProjectPage() {
                     <button
                       onClick={importAdTemplate}
                       disabled={importBusy || !importText.trim()}
-                      className="px-3 py-1 rounded-full text-xs border border-primary/40 bg-primary/5 text-primary hover:border-primary disabled:opacity-40 transition-all"
+                      className="px-3 py-1 rounded-full text-xs border border-primary/40 bg-primary/5 text-primary hover:border-primary disabled:opacity-40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                     >
                       {t("adTemplateImportConfirm")}
                     </button>
                     <button
                       onClick={() => { setImportOpen(false); setImportText(""); setMineNotice(""); }}
-                      className="px-3 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                      className="px-3 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                     >
                       {t("adTemplateImportCancel")}
                     </button>
@@ -1551,13 +1545,13 @@ export default function NewProjectPage() {
                     <button
                       onClick={saveEditorTemplate}
                       disabled={editorBusy}
-                      className="px-3 py-1 rounded-full text-xs border border-primary/40 bg-primary/5 text-primary hover:border-primary disabled:opacity-40 transition-all"
+                      className="px-3 py-1 rounded-full text-xs border border-primary/40 bg-primary/5 text-primary hover:border-primary disabled:opacity-40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                     >
                       {editorSourceId ? t("adTplEditorSaveEdit") : t("adTplEditorSaveFork")}
                     </button>
                     <button
                       onClick={() => { setEditorOpen(false); setEditorDraft(null); setMineNotice(""); }}
-                      className="px-3 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                      className="px-3 py-1 rounded-full text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                     >
                       {t("adTemplateImportCancel")}
                     </button>
@@ -1570,7 +1564,7 @@ export default function NewProjectPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-[30rem] overflow-y-auto pb-1 pr-1">
                 <button
                   onClick={() => setSelectedAdTemplateId("")}
-                  className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
+                  className={`flex flex-col items-start p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                     selectedAdTemplateId === ""
                       ? "border-primary bg-primary/10"
                       : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -1585,7 +1579,7 @@ export default function NewProjectPage() {
                 {customAdTemplate && adTemplateGroup !== "mine" && (
                   <button
                     onClick={() => pickAdTemplate(CUSTOM_AD_TEMPLATE_ID)}
-                    className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
+                    className={`flex flex-col items-start p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                       selectedAdTemplateId === CUSTOM_AD_TEMPLATE_ID
                         ? "border-primary bg-primary/10"
                         : "border-primary/40 bg-primary/5 hover:border-primary"
@@ -1621,7 +1615,7 @@ export default function NewProjectPage() {
                       <button
                         key={tpl.id}
                         onClick={() => pickAdTemplate(tpl.id)}
-                        className={`relative flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
+                        className={`relative flex flex-col items-start p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                           selectedAdTemplateId === tpl.id
                             ? "border-primary bg-primary/10"
                             : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -1649,7 +1643,7 @@ export default function NewProjectPage() {
                   <button
                     key={tpl.id}
                     onClick={() => pickAdTemplate(tpl.id)}
-                    className={`flex flex-col items-start p-3 rounded-lg border text-left transition-all ${
+                    className={`flex flex-col items-start p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                       selectedAdTemplateId === tpl.id
                         ? "border-primary bg-primary/10"
                         : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -1692,7 +1686,7 @@ export default function NewProjectPage() {
               <div className="mb-4">
                 <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
                   <div
-                    className="h-full brand-gradient transition-all duration-500 rounded-full"
+                    className="h-full brand-gradient transition-[background-color,border-color,color,box-shadow,opacity,transform,width] duration-500 rounded-full"
                     style={{ width: `${progress.percent}%` }}
                   />
                 </div>
@@ -1709,10 +1703,7 @@ export default function NewProjectPage() {
             >
               {isSubmitting ? (
                 <>
-                  <svg className="animate-spin mr-2 h-5 w-5" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
+                  <LuLoader className="mr-2 size-5 animate-spin" />
                   {progress?.message || t("submitProcessing")}
                 </>
               ) : (

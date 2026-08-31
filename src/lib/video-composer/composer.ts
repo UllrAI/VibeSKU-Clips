@@ -3,7 +3,7 @@ import { getDataDir } from "@/lib/paths";
 import { ffmpegBin } from "@/lib/ffmpeg-path";
 import { mkdir, writeFile, rm } from "fs/promises";
 import { existsSync } from "fs";
-import { TRANSITIONS, type TransitionMode } from "./transitions";
+import type { TransitionMode } from "./transitions";
 import { MOTIONS, DEFAULT_MOTION } from "./motions";
 import { safeEncodeParams } from "@/lib/compose-presets";
 import { createLimiter } from "@/lib/concurrency";

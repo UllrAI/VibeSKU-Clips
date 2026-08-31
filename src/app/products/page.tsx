@@ -38,9 +38,9 @@ const categoryOptions = [
 const categoryColorMap: Record<string, string> = {
   beauty: "bg-pink-500/20 text-pink-400",
   food: "bg-amber-500/20 text-amber-400",
-  home: "bg-blue-500/20 text-blue-400",
-  fashion: "bg-purple-500/20 text-purple-400",
-  tech: "bg-cyan-500/20 text-cyan-400",
+  home: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  fashion: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
+  tech: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   other: "bg-zinc-500/20 text-zinc-400",
 };
 
@@ -508,7 +508,7 @@ export default function ProductsPage() {
                 {/* Drag-and-drop upload area */}
                 {images.length < 5 && (
                   <div
-                    className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                    className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                       isDragging
                         ? "border-primary bg-primary/5"
                         : "border-border/60 hover:border-primary/50 hover:bg-muted/20"

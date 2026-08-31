@@ -16,7 +16,18 @@ const eslintConfig = defineConfig([
     "electron/**",
     "scripts/**",
     "release/**",
+    "integrations/**/dist/**",
   ]),
+  {
+    // The upgraded React hooks plugin enables compiler-readiness rules that require
+    // architectural rewrites of existing effect-driven workflows. Keep the runtime
+    // safety rules enabled and phase these advisory compiler rules in separately.
+    rules: {
+      "react-hooks/immutability": "off",
+      "react-hooks/refs": "off",
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -1,6 +1,6 @@
 "use client"
 
-import { motion, MotionStyle, Transition } from "motion/react"
+import { motion, type MotionStyle, type Transition } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -56,8 +56,8 @@ export const BorderBeam = ({
   size = 50,
   delay = 0,
   duration = 6,
-  colorFrom = "#ffaa40",
-  colorTo = "#9c40ff",
+  colorFrom = "#f97316",
+  colorTo = "#f2b84b",
   transition,
   style,
   reverse = false,

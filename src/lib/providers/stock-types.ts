@@ -255,7 +255,7 @@ export async function downloadStockFile(
     const st = await stat(srcPath);
     if (st.size > MAX_DOWNLOAD_BYTES) throw new Error(`素材体积 ${st.size} 超过上限 ${MAX_DOWNLOAD_BYTES}`);
     const localExt = inferExtension(srcPath, null, mediaType);
-    const destPath = join(destDir, `${safeBaseName}.${localExt}`);
+    const destPath = join(/* turbopackIgnore: true */ destDir, `${safeBaseName}.${localExt}`);
     await copyFile(srcPath, destPath);
     return { filePath: destPath, bytes: st.size };
   }
@@ -276,7 +276,7 @@ export async function downloadStockFile(
 
   const ext = inferExtension(url, contentType, mediaType);
   // safeBaseName is sanitized at the top of the function (path separators and special characters removed to prevent directory traversal)
-  const filePath = join(destDir, `${safeBaseName}.${ext}`);
+  const filePath = join(/* turbopackIgnore: true */ destDir, `${safeBaseName}.${ext}`);
   // Write-then-rename so a crash mid-write can never leave a half file under the final name —
   // directory scans and caches must only ever see fully-written media.
   const partPath = `${filePath}.part`;

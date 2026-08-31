@@ -94,9 +94,9 @@ const transitionLabels: Record<string, string> = {
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
   hook: { labelKey: "shotHook", color: "bg-red-500/20 text-red-400" },
   pain_point: { labelKey: "shotPainPoint", color: "bg-orange-500/20 text-orange-400" },
-  product_reveal: { labelKey: "shotProductReveal", color: "bg-blue-500/20 text-blue-400" },
+  product_reveal: { labelKey: "shotProductReveal", color: "bg-primary/15 text-primary" },
   demo: { labelKey: "shotDemo", color: "bg-green-500/20 text-green-400" },
-  social_proof: { labelKey: "shotSocialProof", color: "bg-purple-500/20 text-purple-400" },
+  social_proof: { labelKey: "shotSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
   cta: { labelKey: "shotCta", color: "bg-amber-500/20 text-amber-400" },
 };
 
@@ -259,7 +259,7 @@ export default function VideoPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   // 用设置里的默认分辨率/比例初始化一次
   useEffect(() => {
@@ -701,7 +701,7 @@ export default function VideoPage() {
                       key={p.name}
                       onClick={() => applyStylePack(p)}
                       title={p.description}
-                      className="h-9 rounded-md text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-primary transition-all px-1 truncate"
+                      className="h-9 rounded-md text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-primary transition-[background-color,border-color,color,box-shadow,opacity,transform,width] px-1 truncate"
                     >
                       {p.name.split(" / ")[0]}
                     </button>
@@ -710,13 +710,13 @@ export default function VideoPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => packFileRef.current?.click()}
-                    className="h-8 rounded-md text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                    className="h-8 rounded-md text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                   >
                     {t("stylePackImport")}
                   </button>
                   <button
                     onClick={exportStylePack}
-                    className="h-8 rounded-md text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-all"
+                    className="h-8 rounded-md text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
                   >
                     {t("stylePackExport")}
                   </button>
@@ -743,7 +743,7 @@ export default function VideoPage() {
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">{t("ttsLabel")}</Label>
                   {!paidTtsReady && (
-                    <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500">{t("ttsFreeBadge")}</span>
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{t("ttsFreeBadge")}</span>
                   )}
                 </div>
                 <div className="flex items-center justify-between">
@@ -846,7 +846,7 @@ export default function VideoPage() {
                     <button
                       key={pos}
                       onClick={() => setConfig((c) => ({ ...c, subtitlePosition: pos }))}
-                      className={`h-9 rounded-md text-xs border transition-all ${
+                      className={`h-9 rounded-md text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                         config.subtitlePosition === pos
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -864,7 +864,7 @@ export default function VideoPage() {
                       <button
                         key={preset}
                         onClick={() => setConfig((c) => ({ ...c, captionPreset: preset }))}
-                        className={`h-9 rounded-md text-xs border transition-all ${
+                        className={`h-9 rounded-md text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                           config.captionPreset === preset
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -932,7 +932,7 @@ export default function VideoPage() {
                         onClick={() =>
                           setConfig((c) => ({ ...c, renderPreset: preset, resolution: RENDER_PRESETS[preset].resolution }))
                         }
-                        className={`flex flex-col items-center gap-0.5 rounded-md py-1.5 text-xs border transition-all ${
+                        className={`flex flex-col items-center gap-0.5 rounded-md py-1.5 text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                           config.renderPreset === preset
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -953,7 +953,7 @@ export default function VideoPage() {
                       <button
                         key={ratio}
                         onClick={() => setConfig((c) => ({ ...c, aspectRatio: ratio }))}
-                        className={`h-9 rounded-md text-xs border transition-all ${
+                        className={`h-9 rounded-md text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                           config.aspectRatio === ratio
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -972,7 +972,7 @@ export default function VideoPage() {
                       <button
                         key={res}
                         onClick={() => setConfig((c) => ({ ...c, resolution: res }))}
-                        className={`h-9 rounded-md text-xs border transition-all ${
+                        className={`h-9 rounded-md text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                           config.resolution === res
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -1008,7 +1008,7 @@ export default function VideoPage() {
                 <div>
                   <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-200 ${composeDone ? "bg-emerald-500" : "brand-gradient"}`}
+                      className={`h-full rounded-full transition-[background-color,border-color,color,box-shadow,opacity,transform,width] duration-200 ${composeDone ? "bg-emerald-500" : "brand-gradient"}`}
                       style={{ width: `${composeProgress}%` }}
                     />
                   </div>
@@ -1028,7 +1028,6 @@ export default function VideoPage() {
               {/* 成片预览 */}
               {composeDone && outputUrl && (
                 <div className="rounded-lg overflow-hidden border border-border/50 bg-black">
-                  {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                   <video src={outputUrl} controls className="w-full max-h-[360px]" />
                 </div>
               )}
@@ -1090,7 +1089,7 @@ export default function VideoPage() {
                               key={h.key}
                               type="button"
                               onClick={() => toggleInSet(setMatrixHooks, h.key)}
-                              className={`rounded-full border px-2 py-0.5 transition-all ${
+                              className={`rounded-full border px-2 py-0.5 transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                                 matrixHooks.has(h.key)
                                   ? "border-primary bg-primary/10 text-primary"
                                   : "border-border/60 text-muted-foreground hover:border-primary/40"
@@ -1109,7 +1108,7 @@ export default function VideoPage() {
                               key={c}
                               type="button"
                               onClick={() => toggleInSet(setMatrixCaptions, c)}
-                              className={`rounded-full border px-2 py-0.5 transition-all ${
+                              className={`rounded-full border px-2 py-0.5 transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                                 matrixCaptions.has(c)
                                   ? "border-primary bg-primary/10 text-primary"
                                   : "border-border/60 text-muted-foreground hover:border-primary/40"
@@ -1128,7 +1127,7 @@ export default function VideoPage() {
                               key={b}
                               type="button"
                               onClick={() => toggleInSet(setMatrixBgms, b)}
-                              className={`rounded-full border px-2 py-0.5 transition-all ${
+                              className={`rounded-full border px-2 py-0.5 transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                                 matrixBgms.has(b)
                                   ? "border-primary bg-primary/10 text-primary"
                                   : "border-border/60 text-muted-foreground hover:border-primary/40"

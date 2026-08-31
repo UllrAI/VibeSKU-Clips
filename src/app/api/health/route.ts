@@ -59,7 +59,7 @@ export async function GET() {
     },
     ffmpeg: {
       path: ffmpeg,
-      exists: ffmpeg === "system" ? null : fs.existsSync(ffmpeg),
+      exists: ffmpeg === "system" ? null : fs.existsSync(/* turbopackIgnore: true */ ffmpeg),
     },
   });
 }

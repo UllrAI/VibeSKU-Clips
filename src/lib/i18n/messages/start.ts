@@ -31,9 +31,9 @@ export const start: NamespaceMessages = {
     // 一句话模式
     topicPlaceholder: "说个主题，如：3 个让租房变高级的小物 / 冬天必囤的护手霜",
     // 出片方式（免费/付费分水岭，费用与 Key 要求写在选项上）
-    genFree: "🆓 免费快剪",
+    genFree: "免费快剪",
     genFreeDesc: "真实素材混剪 + 免费配音 · 全程 ¥0 · 约 2 分钟",
-    genAi: "✨ AI 生成成片",
+    genAi: "AI 生成成片",
     genAiDesc: "AI 生成画面与口播大片 · 用你的模型 Key 按秒计费（约 ¥5~35/条，付给模型平台）",
     // 带货形式（仅 AI 档出现）
     formLabel: "带货形式",
@@ -114,7 +114,7 @@ export const start: NamespaceMessages = {
     // 示例
     examplesLabel: "没素材，先试试",
     // 热点雷达（今天发什么）
-    trendsLabel: "🔥 今天发什么",
+    trendsLabel: "今天发什么",
     trendsRefresh: "换一批",
     trendsSourceNote: "点一个热点直接写成视频 · 实时数据来自{source}，约 10 分钟更新",
     trendsSourceDouyin: "抖音热搜",
@@ -135,7 +135,7 @@ export const start: NamespaceMessages = {
     trendCloneLabel: "同款",
     trendCloneAria: "去爆款复刻做这个热点的同款",
     // 日更 · 按人设选题
-    dailyLabel: "📅 日更 · 按人设选题",
+    dailyLabel: "日更 · 按人设选题",
     dailyPersonaPlaceholder: "人设关键词，如：美妆 护肤 好物",
     dailyPick: "出今日一条",
     dailyPickedMatched: "已按人设选中「{topic}」，点「开始生成」直接出片",
@@ -191,9 +191,9 @@ export const start: NamespaceMessages = {
     // 一句话模式
     topicPlaceholder: "Type a topic, e.g. 3 small things that make a rental feel upscale / must-stock hand creams for winter",
     // 出片方式（免费/付费分水岭，费用与 Key 要求写在选项上）
-    genFree: "🆓 Free quick cut",
+    genFree: "Free quick cut",
     genFreeDesc: "Real stock footage + free voice-over · $0 end to end · ~2 min",
-    genAi: "✨ AI-generated film",
+    genAi: "AI-generated film",
     genAiDesc: "AI visuals & spoken lines · billed to your own model key by the second (~$1–5 per video, paid to the platform)",
     // 带货形式（仅 AI 档出现）
     formLabel: "Format",
@@ -274,7 +274,7 @@ export const start: NamespaceMessages = {
     // 示例
     examplesLabel: "No assets? Try one",
     // 热点雷达（今天发什么）
-    trendsLabel: "🔥 What to post today",
+    trendsLabel: "What to post today",
     trendsRefresh: "Shuffle",
     trendsSourceNote: "Tap a trend and turn it into a video · live data from {source}, refreshed ~10 min",
     trendsSourceDouyin: "Douyin trending",
@@ -295,7 +295,7 @@ export const start: NamespaceMessages = {
     trendCloneLabel: "Remix",
     trendCloneAria: "Clone a viral video for this trend",
     // 日更 · 按人设选题
-    dailyLabel: "📅 Daily · pick by persona",
+    dailyLabel: "Daily · pick by persona",
     dailyPersonaPlaceholder: "Persona keywords, e.g. beauty skincare finds",
     dailyPick: "Pick today's one",
     dailyPickedMatched: "Picked “{topic}” for your persona — hit “Start generating” to make it",

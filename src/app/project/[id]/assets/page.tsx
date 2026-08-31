@@ -51,9 +51,9 @@ import {
 const shotTypeLabels: Record<Shot["type"], { key: string; color: string }> = {
   hook: { key: "shotTypeHook", color: "bg-red-500/20 text-red-400" },
   pain_point: { key: "shotTypePainPoint", color: "bg-orange-500/20 text-orange-400" },
-  product_reveal: { key: "shotTypeProductReveal", color: "bg-blue-500/20 text-blue-400" },
+  product_reveal: { key: "shotTypeProductReveal", color: "bg-primary/15 text-primary" },
   demo: { key: "shotTypeDemo", color: "bg-green-500/20 text-green-400" },
-  social_proof: { key: "shotTypeSocialProof", color: "bg-purple-500/20 text-purple-400" },
+  social_proof: { key: "shotTypeSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
   cta: { key: "shotTypeCta", color: "bg-amber-500/20 text-amber-400" },
 };
 
@@ -206,7 +206,7 @@ export default function AssetsPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   // re-fetch project / scripts / assets and rebuild view rows (refresh thumbnails after filling visuals, reuses the same pure function)
   const reloadAssets = useCallback(async () => {
@@ -860,7 +860,7 @@ export default function AssetsPage() {
         return undefined;
       }
     },
-    [assets, modelTarget, productImages, productSafe, imageParams, autoMotion, videoModelTarget, projectCreativeIntent, projectVisualBible, visualLook, generateMotion, t]
+    [assets, modelTarget, productImages, productSafe, imageParams, autoMotion, videoModelTarget, projectCreativeIntent, projectVisualBible, visualLook, generateMotion, id, t]
   );
 
   // storyboard grid: ONE image generation renders every shot as a 3x3 grid cell (person /
@@ -1166,7 +1166,7 @@ export default function AssetsPage() {
                   key={v}
                   type="button"
                   onClick={() => setMotionIntensity(v)}
-                  className={`rounded-full px-2 h-6 text-xs font-medium transition-all ${
+                  className={`rounded-full px-2 h-6 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                     motionIntensity === v
                       ? "bg-primary/15 text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -1188,7 +1188,7 @@ export default function AssetsPage() {
                   key={v}
                   type="button"
                   onClick={() => setMotionRealism(v)}
-                  className={`rounded-full px-2 h-6 text-xs font-medium transition-all ${
+                  className={`rounded-full px-2 h-6 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                     motionRealism === v
                       ? "bg-primary/15 text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -1210,7 +1210,7 @@ export default function AssetsPage() {
                   key={v}
                   type="button"
                   onClick={() => setChainMode(v)}
-                  className={`rounded-full px-2 h-6 text-xs font-medium transition-all ${
+                  className={`rounded-full px-2 h-6 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                     chainMode === v
                       ? "bg-primary/15 text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -1226,7 +1226,7 @@ export default function AssetsPage() {
               type="button"
               onClick={() => setAutoMotion((v) => !v)}
               title={t("autoMotionTip")}
-              className={`flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                 autoMotion
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border/60 bg-muted/20 text-muted-foreground"
@@ -1241,7 +1241,7 @@ export default function AssetsPage() {
               type="button"
               onClick={() => setProductSafe((v) => !v)}
               title={t("productSafeTip")}
-              className={`flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-medium transition-all ${
+              className={`flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
                 productSafe
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border/60 bg-muted/20 text-muted-foreground"
@@ -1298,17 +1298,17 @@ export default function AssetsPage() {
         {/* cloud paid-task recovery (issue #16): submitted tasks whose results were never
             retrieved — offer resume instead of a duplicate (billed) resubmit */}
         {pendingTasks.length > 0 && (
-          <div className="mb-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+          <div className="mb-6 p-4 rounded-xl bg-primary/8 border border-primary/25">
             <div className="flex items-start gap-3">
-              <LuLoaderCircle className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+              <LuLoaderCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="text-sm font-medium text-blue-200">
+                <p className="text-sm font-medium text-foreground">
                   {t("pendingTasksTitle", { n: pendingTasks.length })}
                 </p>
-                <p className="text-xs text-blue-300/80 mt-0.5">{t("pendingTasksDesc")}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("pendingTasksDesc")}</p>
                 <div className="mt-2 space-y-1.5">
                   {pendingTasks.map((task) => (
-                    <div key={task.id} className="flex items-center gap-2 text-xs text-blue-200/90">
+                    <div key={task.id} className="flex items-center gap-2 text-xs text-foreground/90">
                       <span className="truncate">
                         {t("taskLabel", { shot: task.shotId ?? "-", model: task.model, taskId: task.taskId })}
                       </span>
@@ -1317,7 +1317,7 @@ export default function AssetsPage() {
                         disabled={resumingTasks.has(task.id)}
                         variant="outline"
                         size="sm"
-                        className="h-6 px-2 text-[11px] border-blue-500/40 text-blue-300 hover:bg-blue-500/15 shrink-0"
+                        className="h-6 px-2 text-[11px] border-primary/35 text-primary hover:bg-primary/10 shrink-0"
                       >
                         {resumingTasks.has(task.id) ? (
                           <>
@@ -1331,7 +1331,7 @@ export default function AssetsPage() {
                     </div>
                   ))}
                 </div>
-                {taskMsg && <p className="text-xs text-blue-300/80 mt-2">{taskMsg}</p>}
+                {taskMsg && <p className="text-xs text-muted-foreground mt-2">{taskMsg}</p>}
               </div>
             </div>
           </div>
@@ -1371,7 +1371,7 @@ export default function AssetsPage() {
             <div className="mb-6">
               <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
                 <div
-                  className="h-full brand-gradient transition-all duration-700 rounded-full"
+                  className="h-full brand-gradient transition-[background-color,border-color,color,box-shadow,opacity,transform,width] duration-700 rounded-full"
                   style={{ width: `${assets.length ? (doneCount / assets.length) * 100 : 0}%` }}
                 />
               </div>
@@ -1381,7 +1381,7 @@ export default function AssetsPage() {
                   <span className="shrink-0">{t("mixLabel")}</span>
                   <div className="h-1.5 w-32 rounded-full overflow-hidden bg-muted/30 flex shrink-0">
                     <div className="h-full bg-emerald-500/80" style={{ width: `${Math.round(mix.realRatio * 100)}%` }} />
-                    <div className="h-full bg-violet-500/60" style={{ width: `${100 - Math.round(mix.realRatio * 100)}%` }} />
+                    <div className="h-full bg-amber-500/70" style={{ width: `${100 - Math.round(mix.realRatio * 100)}%` }} />
                   </div>
                   <span className="shrink-0 tabular-nums">
                     {t("mixReal")} {Math.round(mix.realRatio * 100)}% · {t("mixAi")} {100 - Math.round(mix.realRatio * 100)}%
@@ -1419,7 +1419,7 @@ export default function AssetsPage() {
                               className={`text-[9px] mt-1 px-1 rounded ${
                                 reality === "real"
                                   ? "bg-emerald-500/15 text-emerald-600"
-                                  : "bg-violet-500/15 text-violet-600"
+                                  : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
                               }`}
                             >
                               {reality === "real" ? t("badgeReal") : t("badgeAi")}

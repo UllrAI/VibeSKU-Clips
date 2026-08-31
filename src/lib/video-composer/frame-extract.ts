@@ -60,7 +60,7 @@ export async function extractFirstFrame(videoPath: string, outPath?: string): Pr
       ["-nostdin", "-v", "error", "-y", "-i", videoPath, "-frames:v", "1", "-vf", "scale=480:-2", "-q:v", "3", target],
       { timeout: 60_000 }
     );
-    const st = await stat(target);
+    const st = await stat(/* turbopackIgnore: true */ target);
     return st.size > 0 ? target : undefined;
   } catch {
     return undefined;
@@ -81,7 +81,7 @@ export async function extractLastFrame(videoPath: string, outPath?: string): Pro
       ["-nostdin", "-v", "error", "-y", "-sseof", "-0.1", "-i", videoPath, "-frames:v", "1", "-q:v", "2", target],
       { timeout: 60_000 }
     );
-    const st = await stat(target);
+    const st = await stat(/* turbopackIgnore: true */ target);
     return st.size > 0 ? target : undefined;
   } catch {
     return undefined;

@@ -21,7 +21,7 @@ const platformConfigs = [
   { id: "xiaohongshu", nameKey: "platformXiaohongshu", ratio: "3:4", resolution: "1440p", subtitle: "手写字体", color: "from-red-500 to-rose-500" },
   { id: "shipinhao", nameKey: "platformShipinhao", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "from-green-500 to-emerald-600" },
   { id: "tiktok", nameKey: "platformTiktok", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "from-slate-700 to-slate-900" },
-  { id: "reels", nameKey: "platformReels", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "from-fuchsia-500 to-purple-600" },
+  { id: "reels", nameKey: "platformReels", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "from-rose-500 to-orange-500" },
   { id: "shorts", nameKey: "platformShorts", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "from-red-600 to-red-700" },
 ];
 

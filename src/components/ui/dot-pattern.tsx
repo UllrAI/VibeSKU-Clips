@@ -99,11 +99,9 @@ export function DotPattern({
     (_, i) => {
       const col = i % Math.ceil(dimensions.width / width)
       const row = Math.floor(i / Math.ceil(dimensions.width / width))
-      // Deterministic pseudo-random based on index: Math.random cannot be called during rendering (impure),
-      // so Math.sin hashes the index to produce a stable value; each dot's animation params stay consistent across re-renders
       const seeded = (n: number) => {
-        const v = Math.sin(n * 12.9898) * 43758.5453
-        return v - Math.floor(v)
+        const value = Math.sin(n * 12.9898) * 43758.5453
+        return value - Math.floor(value)
       }
       return {
         x: col * width + cx + x,

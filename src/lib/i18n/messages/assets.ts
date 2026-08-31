@@ -115,7 +115,7 @@ export const assets: NamespaceMessages = {
     // 素材项
     promptLabel: "Prompt: {prompt}",
     sourceProductImage: "📷 商品原图",
-    sourceAiGenerate: "✨ AI 生成",
+    sourceAiGenerate: "AI 生成",
     sourceUserUpload: "📁 用户上传",
     sourceStock: "🎞 免费素材",
     assetPreviewAlt: "素材预览",
@@ -280,7 +280,7 @@ export const assets: NamespaceMessages = {
     errorGenerateFailed: "Generation failed",
     promptLabel: "Prompt: {prompt}",
     sourceProductImage: "📷 Product photo",
-    sourceAiGenerate: "✨ AI generated",
+    sourceAiGenerate: "AI generated",
     sourceUserUpload: "📁 User upload",
     sourceStock: "🎞 Free stock",
     assetPreviewAlt: "Asset preview",

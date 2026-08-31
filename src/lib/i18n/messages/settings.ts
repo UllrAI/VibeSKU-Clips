@@ -145,7 +145,7 @@ export const settings: NamespaceMessages = {
     characterIntro:
       "添加出镜人物后，AI 生成脚本和素材时会自动注入人物外貌描述，确保不同分镜中人物形象保持一致。给主播生成「多视图定妆照」后，九宫格分镜与一键整片会把定妆照当人物参考——跨镜头、跨条视频都不换脸。",
     characterDefault: "默认",
-    characterSheetBtn: "✨ 多视图定妆",
+    characterSheetBtn: "多视图定妆",
     characterSheetRedo: "重新定妆",
     characterSheetRunning: "定妆中…",
     characterSheetDone: "「{name}」的四视图定妆照已生成——素材页选中该主播后，九宫格和一键整片会自动锁定这张脸",
@@ -339,7 +339,7 @@ export const settings: NamespaceMessages = {
     characterIntro:
       "Once you add a character, AI automatically injects their appearance into scripts and assets, keeping the character consistent across shots. Generate a multi-view reference sheet and the storyboard grid + one-tap film passes pin the presenter's identity to it — the same face across shots and across videos.",
     characterDefault: "Default",
-    characterSheetBtn: "✨ Multi-view sheet",
+    characterSheetBtn: "Multi-view sheet",
     characterSheetRedo: "Redo sheet",
     characterSheetRunning: "Generating…",
     characterSheetDone: "{name}'s four-view sheet is ready — pick this presenter on the assets page and the grid/film passes lock onto this face",

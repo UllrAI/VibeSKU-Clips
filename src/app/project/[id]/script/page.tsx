@@ -27,9 +27,9 @@ import { ProjectHeader } from "@/components/project-header";
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
   hook: { labelKey: "shotTypeHook", color: "bg-red-500/20 text-red-400" },
   pain_point: { labelKey: "shotTypePainPoint", color: "bg-orange-500/20 text-orange-400" },
-  product_reveal: { labelKey: "shotTypeProductReveal", color: "bg-blue-500/20 text-blue-400" },
+  product_reveal: { labelKey: "shotTypeProductReveal", color: "bg-primary/15 text-primary" },
   demo: { labelKey: "shotTypeDemo", color: "bg-green-500/20 text-green-400" },
-  social_proof: { labelKey: "shotTypeSocialProof", color: "bg-purple-500/20 text-purple-400" },
+  social_proof: { labelKey: "shotTypeSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
   cta: { labelKey: "shotTypeCta", color: "bg-amber-500/20 text-amber-400" },
 };
 
@@ -240,7 +240,7 @@ export default function ScriptPage() {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   const currentScript = scripts[selectedScript];
   // pre-render ad compliance scan: rule-check the current script's voiceover and text overlays; warn on risky terms (non-blocking)
@@ -867,7 +867,7 @@ export default function ScriptPage() {
               </details>
               <div className="flex flex-wrap items-center gap-2">
                 <Button className="brand-gradient text-white" disabled={overQuota} onClick={confirmAiFilm}>
-                  ✨ {t("aiFilmConfirm")}
+                  {t("aiFilmConfirm")}
                 </Button>
                 <Button variant="outline" onClick={() => { setFilmPreview(null); setAiFilmError(""); }}>
                   {t("aiFilmBackToEdit")}
@@ -984,7 +984,7 @@ export default function ScriptPage() {
                   disabled={autoFinishing || aiFilming || !currentScript}
                   onClick={runAiFilm}
                 >
-                  {`✨ ${t("aiFilmCta")}`}
+                  {t("aiFilmCta")}
                 </Button>
               </div>
               <p className="text-center text-xs text-muted-foreground">{t("autoFinishHint")}</p>
@@ -1030,7 +1030,7 @@ export default function ScriptPage() {
               {scripts.map((script, index) => (
                 <Card
                   key={script.id}
-                  className={`cursor-pointer transition-all ${selectedScript === index ? "ring-2 ring-primary neon-glow" : "glass-card card-hover"}`}
+                  className={`cursor-pointer transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${selectedScript === index ? "ring-2 ring-primary neon-glow" : "glass-card card-hover"}`}
                   onClick={() => persistSelection(index)}
                 >
                   <CardContent className="p-4">
@@ -1049,8 +1049,8 @@ export default function ScriptPage() {
                       {script.shots.map((shot) => {
                         const colors: Record<string, string> = {
                           hook: "bg-red-500", pain_point: "bg-orange-500",
-                          product_reveal: "bg-blue-500", demo: "bg-green-500",
-                          social_proof: "bg-purple-500", cta: "bg-amber-500",
+                          product_reveal: "bg-primary", demo: "bg-green-500",
+                          social_proof: "bg-rose-500", cta: "bg-amber-500",
                         };
                         return (
                           <div

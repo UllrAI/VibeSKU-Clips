@@ -180,7 +180,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       const sheet = await generateContactSheet({ videoPath: assetPath, outPath: visualPath, frames: 8, thumbWidth: 220, waveHeight: 0 });
       sampleContext = `duration ${metadata.duration.toFixed(2)}s; ${sheet.cuts.length + 1} detected scenes; frame cells in chronological order at ${sheet.frameTimes.map((time) => `${time}s`).join(", ")}`;
     }
-    const bytes = await readFile(visualPath);
+    const bytes = await readFile(/* turbopackIgnore: true */ visualPath);
     const ext = extname(visualPath).toLowerCase();
     const mime = ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
     const report = await evaluateGenerationQuality({

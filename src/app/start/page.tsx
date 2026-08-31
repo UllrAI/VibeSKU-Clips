@@ -20,6 +20,23 @@ import { ATLAS_KEYS_URL } from "@/lib/atlas-onekey";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { classifyTrendTitle, pickDailyTrend, TREND_CATEGORY_IDS } from "@/lib/trends";
 import type { TrendTopic, TrendCategoryId } from "@/lib/trends";
+import { BorderBeam } from "@/components/ui/border-beam";
+import { DotPattern } from "@/components/ui/dot-pattern";
+import {
+  ArrowRight,
+  CalendarDays,
+  Check,
+  ExternalLink,
+  Flame,
+  ImagePlus,
+  Link2,
+  Mic2,
+  RefreshCw,
+  Scissors,
+  Sparkles,
+  Upload,
+  X,
+} from "lucide-react";
 
 /** How many trend chips are shown at once; "shuffle" pages through the full board. */
 const TRENDS_PAGE_SIZE = 8;
@@ -521,24 +538,23 @@ export default function StartPage() {
   return (
     <div className="cf-root">
       <style>{`
-        .cf-root{--teal:#a78bfa;--ink:#ffffff;--text:#EDEFF4;--dim:#98A2B3;--muted:#5A6473;--surface:rgba(255,255,255,.035);--surface2:rgba(255,255,255,.06);--bd:rgba(255,255,255,.08);--bd2:rgba(255,255,255,.14);
-          min-height:100vh;background:#0B0D12;color:var(--text);position:relative;overflow-x:hidden;
+        .cf-root{--teal:var(--primary);--ink:var(--primary-foreground);--text:var(--foreground);--dim:var(--muted-foreground);--muted:color-mix(in srgb,var(--muted-foreground) 74%,transparent);--surface:color-mix(in srgb,var(--card) 92%,transparent);--surface2:var(--muted);--bd:var(--border);--bd2:color-mix(in srgb,var(--border) 72%,var(--foreground));
+          min-height:100vh;background:var(--background);color:var(--text);position:relative;overflow-x:hidden;
           font-family:ui-sans-serif,"PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;}
-        .cf-amb{position:absolute;inset:0;pointer-events:none;background:radial-gradient(900px 420px at 50% -8%,rgba(139,92,246,.10),transparent 70%),radial-gradient(700px 500px at 85% 0%,rgba(124,92,255,.07),transparent 65%);}
-        .cf-grid{position:absolute;inset:0;pointer-events:none;opacity:.5;background-image:linear-gradient(var(--bd) 1px,transparent 1px),linear-gradient(90deg,var(--bd) 1px,transparent 1px);background-size:64px 64px;-webkit-mask-image:radial-gradient(circle at 50% 22%,#000,transparent 72%);mask-image:radial-gradient(circle at 50% 22%,#000,transparent 72%);}
+        .cf-amb{position:absolute;inset:0;pointer-events:none;background:radial-gradient(900px 420px at 50% -8%,color-mix(in srgb,var(--primary) 13%,transparent),transparent 70%),radial-gradient(700px 500px at 85% 0%,color-mix(in srgb,var(--amber) 7%,transparent),transparent 65%);}
         .cf-wrap{position:relative;max-width:980px;margin:0 auto;padding:0 24px}
         .cf-hero{padding:52px 0 56px;text-align:center}
         .cf-eyebrow{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--teal);opacity:.85;margin-bottom:18px}
         .cf-h1{font-weight:700;font-size:clamp(34px,5.6vw,60px);line-height:1.04;letter-spacing:-.02em;margin-bottom:16px}
-        .cf-h1 .hl{color:var(--teal);text-shadow:0 0 34px rgba(139,92,246,.35)}
+        .cf-h1 .hl{color:var(--teal);text-shadow:0 0 34px color-mix(in srgb,var(--primary) 32%,transparent)}
         .cf-sub{color:var(--dim);font-size:16px;line-height:1.7;max-width:560px;margin:0 auto 34px}
-        .cf-card{max-width:620px;margin:0 auto;background:var(--surface);border:1px solid var(--bd);border-radius:20px;padding:14px;backdrop-filter:blur(14px);box-shadow:0 30px 80px -40px rgba(0,0,0,.8);text-align:left}
-        .cf-tabs{display:flex;gap:6px;background:rgba(0,0,0,.25);border-radius:13px;padding:5px;margin-bottom:14px}
-        .cf-tab{flex:1;height:40px;border:0;border-radius:9px;background:transparent;color:var(--dim);font:inherit;font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.18s}
+        .cf-card{max-width:620px;margin:0 auto;background:var(--surface);border:1px solid var(--bd);border-radius:20px;padding:14px;box-shadow:0 1px 0 rgba(255,255,255,.025),0 30px 80px -40px rgba(0,0,0,.55);text-align:left;position:relative;overflow:hidden}
+        .cf-tabs{display:flex;gap:6px;background:color-mix(in srgb,var(--background) 68%,var(--card));border-radius:13px;padding:5px;margin-bottom:14px}
+        .cf-tab{flex:1;height:40px;border:0;border-radius:9px;background:transparent;color:var(--dim);font:inherit;font-size:14px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background-color .18s,color .18s,box-shadow .18s}
         .cf-tab.on{background:var(--surface2);color:var(--text);box-shadow:inset 0 0 0 1px var(--bd2)}
-        .cf-drop{position:relative;border:1.5px dashed rgba(139,92,246,.40);border-radius:14px;background:radial-gradient(420px 160px at 50% 30%,rgba(139,92,246,.16),transparent 70%);padding:34px 24px 26px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;animation:cfBreathe 4.6s ease-in-out infinite;transition:border-color .18s}
+        .cf-drop{position:relative;border:1.5px dashed color-mix(in srgb,var(--primary) 45%,var(--border));border-radius:14px;background:radial-gradient(420px 160px at 50% 30%,color-mix(in srgb,var(--primary) 12%,transparent),transparent 70%);padding:34px 24px 26px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;animation:cfBreathe 4.6s ease-in-out infinite;transition:border-color .18s}
         .cf-drop.drag{border-color:var(--teal)}
-        @keyframes cfBreathe{0%,100%{box-shadow:0 0 46px -16px rgba(139,92,246,.30)}50%{box-shadow:0 0 78px -14px rgba(139,92,246,.5)}}
+        @keyframes cfBreathe{0%,100%{box-shadow:0 0 46px -16px color-mix(in srgb,var(--primary) 26%,transparent)}50%{box-shadow:0 0 78px -14px color-mix(in srgb,var(--primary) 38%,transparent)}}
         .cf-dic{width:50px;height:50px;border-radius:16px;background:var(--surface2);border:1px solid var(--bd2);display:grid;place-items:center;color:var(--teal);margin-bottom:6px}
         .cf-dt{font-size:16px;font-weight:500}
         .cf-ds{font-size:13px;color:var(--muted)}
@@ -547,52 +563,52 @@ export default function StartPage() {
         .cf-thumb img{width:100%;height:100%;object-fit:cover}
         .cf-thumb button{position:absolute;top:2px;right:2px;width:18px;height:18px;border:0;border-radius:6px;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:12px;line-height:1;display:grid;place-items:center}
         .cf-field{margin-top:12px}
-        .cf-input,.cf-area{width:100%;background:rgba(0,0,0,.25);border:1px solid var(--bd);border-radius:11px;color:var(--text);font:inherit;font-size:14px;padding:11px 13px;outline:none;transition:.18s}
-        .cf-input:focus,.cf-area:focus{border-color:rgba(139,92,246,.45)}
+        .cf-input,.cf-area{width:100%;background:color-mix(in srgb,var(--background) 74%,var(--card));border:1px solid var(--bd);border-radius:11px;color:var(--text);font:inherit;font-size:14px;padding:11px 13px;outline:none;transition:border-color .18s,box-shadow .18s,background-color .18s}
+        .cf-input:focus,.cf-area:focus{border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 20%,transparent)}
         .cf-area{resize:none;min-height:84px;line-height:1.6}
         .cf-cta-row{display:flex;align-items:center;gap:14px;margin-top:14px;padding:2px 2px 2px}
-        .cf-cta{height:48px;padding:0 24px;border:0;border-radius:12px;background:linear-gradient(100deg,#6366f1,#8b5cf6 55%,#d946ef);color:var(--ink);font:inherit;font-size:15px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 12px 30px -12px rgba(139,92,246,.4);transition:.18s}
+        .cf-cta{height:48px;padding:0 24px;border:0;border-radius:12px;background:var(--primary);color:var(--ink);font:inherit;font-size:15px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;box-shadow:0 12px 30px -12px color-mix(in srgb,var(--primary) 46%,transparent);transition:transform .18s,background-color .18s,opacity .18s}
         .cf-cta:hover:not(:disabled){transform:translateY(-1px)}
         .cf-cta:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
         .cf-reassure{font-size:12.5px;color:var(--muted);line-height:1.5}
         .cf-reassure b{color:var(--dim);font-weight:600}
         .cf-genrow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
-        .cf-gen{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:rgba(0,0,0,.2);font:inherit;text-align:left;cursor:pointer;transition:.18s}
-        .cf-gen b{font-size:13.5px;font-weight:600;color:var(--text)}
+        .cf-gen{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--bd);border-radius:12px;background:color-mix(in srgb,var(--background) 64%,var(--card));font:inherit;text-align:left;cursor:pointer;transition:border-color .18s,background-color .18s,color .18s}
+        .cf-gen b{font-size:13.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px}
         .cf-gen span{font-size:11.5px;line-height:1.5;color:var(--muted)}
         .cf-gen:hover{border-color:var(--bd2)}
-        .cf-gen.on{border-color:rgba(139,92,246,.55);background:rgba(139,92,246,.08)}
+        .cf-gen.on{border-color:color-mix(in srgb,var(--primary) 58%,var(--border));background:color-mix(in srgb,var(--primary) 9%,transparent)}
         .cf-gen.on b{color:var(--teal)}
         .cf-formrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
         .cf-form-lbl{font-size:12px;color:var(--muted);flex:none;margin-right:2px}
-        .cf-fchip{padding:5px 11px;border:1px solid var(--bd);border-radius:999px;background:transparent;color:var(--dim);font:inherit;font-size:12.5px;cursor:pointer;transition:.18s}
+        .cf-fchip{padding:5px 11px;border:1px solid var(--bd);border-radius:999px;background:transparent;color:var(--dim);font:inherit;font-size:12.5px;cursor:pointer;transition:border-color .18s,background-color .18s,color .18s}
         .cf-fchip:hover{border-color:var(--bd2);color:var(--text)}
-        .cf-fchip.on{border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.1);color:var(--text)}
-        .cf-form-select{background:rgba(0,0,0,.25);border:1px solid var(--bd);border-radius:9px;color:var(--text);font:inherit;font-size:12.5px;padding:5px 9px;outline:none}
-        .cf-keybox{margin-top:12px;border:1px solid rgba(139,92,246,.3);background:rgba(139,92,246,.07);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--dim);display:flex;align-items:center;justify-content:space-between;gap:12px}
-        .cf-keybox a{color:var(--ink);background:linear-gradient(100deg,#6366f1,#8b5cf6);padding:7px 13px;border-radius:9px;font-weight:600;text-decoration:none;white-space:nowrap}
-        .cf-keyform{margin-top:12px;border:1px solid rgba(139,92,246,.32);background:rgba(139,92,246,.06);border-radius:14px;padding:14px}
+        .cf-fchip.on{border-color:color-mix(in srgb,var(--primary) 52%,var(--border));background:color-mix(in srgb,var(--primary) 10%,transparent);color:var(--text)}
+        .cf-form-select{background:color-mix(in srgb,var(--background) 74%,var(--card));border:1px solid var(--bd);border-radius:9px;color:var(--text);font:inherit;font-size:12.5px;padding:5px 9px;outline:none}
+        .cf-keybox{margin-top:12px;border:1px solid color-mix(in srgb,var(--primary) 34%,var(--border));background:color-mix(in srgb,var(--primary) 7%,transparent);border-radius:12px;padding:12px 14px;font-size:13px;color:var(--dim);display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .cf-keybox a{color:var(--ink);background:var(--primary);padding:7px 13px;border-radius:9px;font-weight:600;text-decoration:none;white-space:nowrap}
+        .cf-keyform{margin-top:12px;border:1px solid color-mix(in srgb,var(--primary) 36%,var(--border));background:color-mix(in srgb,var(--primary) 6%,transparent);border-radius:14px;padding:14px}
         .cf-keyhead{font-size:14.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:9px;margin-bottom:5px}
-        .cf-keyhead .badge{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--ink);background:linear-gradient(100deg,#6366f1,#8b5cf6);border-radius:6px;padding:2px 8px}
-        .cf-keyclose{margin-left:auto;width:26px;height:26px;flex:none;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center;transition:.18s}
+        .cf-keyhead .badge{font-size:11px;font-weight:700;letter-spacing:.02em;color:var(--ink);background:var(--primary);border-radius:6px;padding:2px 8px}
+        .cf-keyclose{margin-left:auto;width:26px;height:26px;flex:none;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;display:grid;place-items:center;transition:border-color .18s,background-color .18s,color .18s}
         .cf-keyclose:hover{color:var(--text);border-color:var(--bd2);background:var(--surface2)}
         .cf-keydesc{font-size:12.5px;color:var(--dim);line-height:1.55;margin-bottom:11px}
         .cf-keydesc a{color:var(--teal);text-decoration:none;white-space:nowrap}
         .cf-keydesc a:hover{text-decoration:underline;text-underline-offset:2px}
         .cf-keyrow{display:flex;gap:8px}
-        .cf-keyinput{flex:1;min-width:0;background:rgba(0,0,0,.3);border:1px solid var(--bd);border-radius:10px;color:var(--text);font:inherit;font-size:14px;padding:11px 13px;outline:none;transition:.18s}
-        .cf-keyinput:focus{border-color:rgba(139,92,246,.5)}
-        .cf-keybtn{padding:0 18px;border:0;border-radius:10px;background:linear-gradient(100deg,#6366f1,#8b5cf6 55%,#d946ef);color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;transition:.18s}
+        .cf-keyinput{flex:1;min-width:0;background:color-mix(in srgb,var(--background) 78%,var(--card));border:1px solid var(--bd);border-radius:10px;color:var(--text);font:inherit;font-size:14px;padding:11px 13px;outline:none;transition:border-color .18s,box-shadow .18s,background-color .18s}
+        .cf-keyinput:focus{border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 20%,transparent)}
+        .cf-keybtn{padding:0 18px;border:0;border-radius:10px;background:var(--primary);color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:7px;transition:transform .18s,background-color .18s,opacity .18s}
         .cf-keybtn:hover:not(:disabled){transform:translateY(-1px)}
         .cf-keybtn:disabled{opacity:.5;cursor:not-allowed}
         .cf-keyalt{margin-top:10px;font-size:12px}
         .cf-keyalt a{color:var(--muted);text-decoration:none;border-bottom:1px dashed var(--bd2);padding-bottom:1px}
         .cf-keyalt a:hover{color:var(--dim)}
-        .cf-keyerr{margin-top:9px;color:#FCA5A5;font-size:12.5px}
-        .cf-err{margin-top:12px;color:#FCA5A5;font-size:13px}
+        .cf-keyerr{margin-top:9px;color:var(--destructive);font-size:12.5px}
+        .cf-err{margin-top:12px;color:var(--destructive);font-size:13px}
         .cf-prog{padding:30px 18px 22px;display:flex;flex-direction:column;align-items:center;gap:18px}
         .cf-prog-title{font-size:16px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px}
-        .cf-spin{width:18px;height:18px;flex:none;border-radius:999px;border:2px solid rgba(139,92,246,.25);border-top-color:var(--teal);animation:cfSpin .8s linear infinite}
+        .cf-spin{width:18px;height:18px;flex:none;border-radius:999px;border:2px solid color-mix(in srgb,var(--primary) 25%,transparent);border-top-color:var(--teal);animation:cfSpin .8s linear infinite}
         .cf-spin.sm{width:10px;height:10px;border-width:1.5px}
         @keyframes cfSpin{to{transform:rotate(360deg)}}
         .cf-prog-steps{display:flex;flex-direction:column;gap:10px;width:min(320px,100%)}
@@ -600,53 +616,53 @@ export default function StartPage() {
         .cf-prog-step.on{color:var(--text)}
         .cf-prog-step.done{color:var(--dim)}
         .cf-prog-step .ic{width:20px;height:20px;flex:none;display:grid;place-items:center;border-radius:999px;border:1px solid var(--bd2);font-size:11px;font-style:normal}
-        .cf-prog-step.on .ic{border-color:rgba(139,92,246,.6)}
-        .cf-prog-step.done .ic{border-color:rgba(139,92,246,.5);color:var(--teal)}
+        .cf-prog-step.on .ic{border-color:color-mix(in srgb,var(--primary) 62%,var(--border))}
+        .cf-prog-step.done .ic{border-color:color-mix(in srgb,var(--primary) 52%,var(--border));color:var(--teal)}
         .cf-prog-hint{font-size:12px;color:var(--muted);text-align:center;line-height:1.6}
-        .cf-guide{max-width:620px;margin:14px auto 0;text-align:left;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.25);border-radius:16px;padding:14px 16px;position:relative}
+        .cf-guide{max-width:620px;margin:14px auto 0;text-align:left;background:color-mix(in srgb,var(--primary) 6%,var(--card));border:1px solid color-mix(in srgb,var(--primary) 26%,var(--border));border-radius:16px;padding:14px 16px;position:relative}
         .cf-guide-title{font-size:13.5px;font-weight:600;color:var(--text);margin-bottom:10px}
-        .cf-guide-close{position:absolute;top:10px;right:10px;width:24px;height:24px;border:0;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;transition:.15s}
+        .cf-guide-close{position:absolute;top:10px;right:10px;width:24px;height:24px;border:0;border-radius:999px;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;transition:background-color .15s,color .15s}
         .cf-guide-close:hover{color:var(--text);background:var(--surface2)}
         .cf-guide-steps{display:flex;flex-direction:column;gap:7px}
         .cf-guide-step{display:flex;align-items:baseline;gap:9px;font-size:13px;color:var(--dim);line-height:1.55}
-        .cf-guide-step b{flex:none;width:18px;height:18px;border-radius:999px;background:rgba(139,92,246,.18);color:var(--teal);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;transform:translateY(2px)}
+        .cf-guide-step b{flex:none;width:18px;height:18px;border-radius:999px;background:color-mix(in srgb,var(--primary) 18%,transparent);color:var(--teal);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;transform:translateY(2px)}
         .cf-guide-foot{margin-top:10px;font-size:12px;color:var(--muted)}
         .cf-trends{max-width:620px;margin:26px auto 0;text-align:left;background:var(--surface);border:1px solid var(--bd);border-radius:16px;padding:14px 16px}
         .cf-trends-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-        .cf-trends-lbl{font-size:13px;font-weight:600;color:var(--dim);letter-spacing:.02em}
-        .cf-trends-more{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--bd);border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;transition:.18s}
+        .cf-trends-lbl{font-size:13px;font-weight:600;color:var(--dim);letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px}
+        .cf-trends-more{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border:1px solid var(--bd);border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;transition:border-color .18s,color .18s}
         .cf-trends-more:hover{color:var(--dim);border-color:var(--bd2)}
         .cf-trend-list{display:flex;flex-direction:column;margin:0 -8px}
-        .cf-trow{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;transition:.15s}
+        .cf-trow{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;transition:background-color .15s}
         .cf-trow:hover{background:var(--surface2)}
         .cf-trow .trk{flex:none;width:18px;text-align:center;font-size:12px;font-style:normal;font-weight:700;color:var(--muted)}
-        .cf-trow .trk.hot{color:#FDA4AF}
+        .cf-trow .trk.hot{color:var(--destructive)}
         .cf-trow .ttl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left;background:none;border:0;color:var(--text);font:inherit;font-size:13.5px;cursor:pointer;padding:0}
         .cf-trow .ttl:hover{color:var(--teal)}
         .cf-trow .tv{flex:none;font-size:11px;color:var(--muted)}
-        .cf-trow .tclone{flex:none;font-size:11.5px;color:var(--muted);text-decoration:none;padding:3px 9px;border:1px solid var(--bd);border-radius:999px;transition:.15s}
-        .cf-trow .tclone:hover{color:var(--teal);border-color:rgba(139,92,246,.4)}
+        .cf-trow .tclone{flex:none;font-size:11.5px;color:var(--muted);text-decoration:none;padding:3px 9px;border:1px solid var(--bd);border-radius:999px;transition:border-color .15s,color .15s;display:inline-flex;align-items:center;gap:4px}
+        .cf-trow .tclone:hover{color:var(--teal);border-color:color-mix(in srgb,var(--primary) 42%,var(--border))}
         .cf-trends-src{margin-top:9px;font-size:11.5px;color:var(--muted)}
         .cf-trends-cats{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px}
-        .cf-cat{padding:4px 10px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;transition:.18s}
+        .cf-cat{padding:4px 10px;border:1px solid transparent;border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;transition:border-color .18s,background-color .18s,color .18s}
         .cf-cat:hover{color:var(--dim)}
-        .cf-cat.on{border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.08);color:var(--text)}
+        .cf-cat.on{border-color:color-mix(in srgb,var(--primary) 42%,var(--border));background:color-mix(in srgb,var(--primary) 8%,transparent);color:var(--text)}
         .cf-daily{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)}
-        .cf-daily-lbl{font-size:12.5px;font-weight:600;color:var(--dim);flex:none}
-        .cf-daily-input{flex:1;min-width:0;background:rgba(0,0,0,.25);border:1px solid var(--bd);border-radius:9px;color:var(--text);font:inherit;font-size:13px;padding:7px 11px;outline:none;transition:.18s}
-        .cf-daily-input:focus{border-color:rgba(139,92,246,.45)}
-        .cf-daily-btn{padding:7px 14px;border:0;border-radius:9px;background:var(--surface2);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;box-shadow:inset 0 0 0 1px var(--bd2);transition:.18s;flex:none}
-        .cf-daily-btn:hover{box-shadow:inset 0 0 0 1px rgba(139,92,246,.45)}
+        .cf-daily-lbl{font-size:12.5px;font-weight:600;color:var(--dim);flex:none;display:inline-flex;align-items:center;gap:5px}
+        .cf-daily-input{flex:1;min-width:0;background:color-mix(in srgb,var(--background) 74%,var(--card));border:1px solid var(--bd);border-radius:9px;color:var(--text);font:inherit;font-size:13px;padding:7px 11px;outline:none;transition:border-color .18s,box-shadow .18s,background-color .18s}
+        .cf-daily-input:focus{border-color:var(--ring);box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 20%,transparent)}
+        .cf-daily-btn{padding:7px 14px;border:0;border-radius:9px;background:var(--surface2);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;box-shadow:inset 0 0 0 1px var(--bd2);transition:background-color .18s,color .18s,box-shadow .18s;flex:none}
+        .cf-daily-btn:hover{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 48%,var(--border))}
         .cf-daily-msg{margin-top:8px;font-size:12px;color:var(--dim)}
         .cf-examples{margin-top:24px;font-size:13px;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap}
-        .cf-chip{padding:6px 12px;border:1px solid var(--bd);border-radius:999px;background:var(--surface);color:var(--dim);font:inherit;cursor:pointer;transition:.18s}
-        .cf-chip:hover{border-color:rgba(139,92,246,.4);color:var(--text)}
+        .cf-chip{padding:6px 12px;border:1px solid var(--bd);border-radius:999px;background:var(--surface);color:var(--dim);font:inherit;cursor:pointer;transition:border-color .18s,color .18s,background-color .18s}
+        .cf-chip:hover{border-color:color-mix(in srgb,var(--primary) 42%,var(--border));color:var(--text)}
         .cf-recent{max-width:620px;margin:22px auto 0;text-align:left}
         .cf-recent .lbl{font-size:12px;color:var(--muted);margin-bottom:8px;letter-spacing:.02em;display:flex;align-items:center;justify-content:space-between}
-        .cf-recent .lbl-all{color:var(--muted);text-decoration:none;transition:.18s}
+        .cf-recent .lbl-all{color:var(--muted);text-decoration:none;transition:color .18s;display:inline-flex;align-items:center;gap:4px}
         .cf-recent .lbl-all:hover{color:var(--dim)}
         .cf-recent .row{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-        .cf-pj{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1px solid var(--bd);border-radius:12px;background:var(--surface);text-decoration:none;transition:.18s}
+        .cf-pj{display:flex;align-items:center;gap:10px;padding:11px 13px;border:1px solid var(--bd);border-radius:12px;background:var(--surface);text-decoration:none;transition:border-color .18s,background-color .18s}
         .cf-pj:hover{border-color:var(--bd2);background:var(--surface2)}
         .cf-pj .dot{width:7px;height:7px;border-radius:999px;background:var(--teal);flex:none;box-shadow:0 0 8px var(--teal)}
         .cf-pj .col{min-width:0;display:flex;flex-direction:column;gap:2px}
@@ -656,7 +672,7 @@ export default function StartPage() {
       `}</style>
 
       <div className="cf-amb" />
-      <div className="cf-grid" />
+      <DotPattern className="text-primary/15 [mask-image:radial-gradient(circle_at_50%_22%,black,transparent_72%)]" width={34} height={34} cr={0.7} />
       <div className="cf-wrap">
         <section className="cf-hero">
           <div className="cf-eyebrow">{t("eyebrow")}</div>
@@ -664,6 +680,7 @@ export default function StartPage() {
           <p className="cf-sub">{t("sub")}</p>
 
           <div className="cf-card" ref={cardRef}>
+            <BorderBeam size={92} duration={11} colorFrom="#f97316" colorTo="#f2b84b" />
             {busy ? (
               /* busy takeover: the whole card becomes a live checklist so the 20–60s
                  creation wait reads as progress, not a frozen button */
@@ -677,7 +694,7 @@ export default function StartPage() {
                     <div key={label} className={`cf-prog-step${i < stageIdx ? " done" : i === stageIdx ? " on" : ""}`}>
                       <span className="ic">
                         {i < stageIdx ? (
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l5 5L20 6" /></svg>
+                          <Check aria-hidden="true" size={11} strokeWidth={3} />
                         ) : i === stageIdx ? (
                           <span className="cf-spin sm" />
                         ) : (
@@ -694,15 +711,15 @@ export default function StartPage() {
               <>
             <div className="cf-tabs">
               <button className={`cf-tab${mode === "upload" ? " on" : ""}`} onClick={() => setMode("upload")}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="9" cy="9" r="2" /><path d="m21 15-3.6-3.6a2 2 0 0 0-2.8 0L6 20" /></svg>
+                <ImagePlus aria-hidden="true" size={16} />
                 {t("tabUpload")}
               </button>
               <button className={`cf-tab${mode === "link" ? " on" : ""}`} onClick={() => setMode("link")}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></svg>
+                <Link2 aria-hidden="true" size={16} />
                 {t("tabLink")}
               </button>
               <button className={`cf-tab${mode === "topic" ? " on" : ""}`} onClick={() => setMode("topic")}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 19v3" /><path d="M8 22h8" /><rect x="9" y="2" width="6" height="13" rx="3" /><path d="M5 10a7 7 0 0 0 14 0" /></svg>
+                <Mic2 aria-hidden="true" size={16} />
                 {t("tabTopic")}
               </button>
             </div>
@@ -716,7 +733,7 @@ export default function StartPage() {
                   onDragLeave={(e) => { e.preventDefault(); setIsDragging(false); }}
                   onDrop={(e) => { e.preventDefault(); setIsDragging(false); addFiles(e.dataTransfer.files); }}
                 >
-                  <div className="cf-dic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M17 8l-5-5-5 5" /><path d="M12 3v12" /></svg></div>
+                  <div className="cf-dic"><Upload aria-hidden="true" size={22} /></div>
                   <div className="cf-dt">{t("dropTitle")}</div>
                   <div className="cf-ds">{t("dropSub")}</div>
                   <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => addFiles(e.target.files)} />
@@ -761,7 +778,7 @@ export default function StartPage() {
             <div className="cf-genrow">
               {(["free", "ai"] as const).map((g) => (
                 <button key={g} type="button" className={`cf-gen${genMode === g ? " on" : ""}`} onClick={() => setGenMode(g)}>
-                  <b>{t(g === "free" ? "genFree" : "genAi")}</b>
+                  <b>{g === "free" ? <Scissors aria-hidden="true" size={14} /> : <Sparkles aria-hidden="true" size={14} />}{t(g === "free" ? "genFree" : "genAi")}</b>
                   <span>{t(g === "free" ? "genFreeDesc" : "genAiDesc")}</span>
                 </button>
               ))}
@@ -804,7 +821,7 @@ export default function StartPage() {
                   <span className="badge">{t("atlasBadge")}</span>
                   {t("atlasTitle")}
                   <button type="button" className="cf-keyclose" aria-label={t("atlasDismiss")} title={t("atlasDismiss")} onClick={() => setNeedKey(false)}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                    <X aria-hidden="true" size={13} />
                   </button>
                 </div>
                 <div className="cf-keydesc">
@@ -823,7 +840,7 @@ export default function StartPage() {
                   />
                   <button className="cf-keybtn" onClick={connectAtlasAndStart} disabled={atlasKey.trim().length === 0 || connecting || busy}>
                     {connecting ? t("atlasConnecting") : busy ? (stage || t("busyDefault")) : t("atlasConnectStart")}
-                    {!connecting && !busy && <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+                    {!connecting && !busy && <ArrowRight aria-hidden="true" size={15} />}
                   </button>
                 </div>
                 {connectError && <div className="cf-keyerr">{connectError}</div>}
@@ -835,7 +852,7 @@ export default function StartPage() {
             <div className="cf-cta-row">
               <button className="cf-cta" onClick={onStart} disabled={!canStart || busy}>
                 {busy ? (stage || t("busyDefault")) : t("ctaStart")}
-                {!busy && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M5 12h14M13 6l6 6-6 6" /></svg>}
+                {!busy && <ArrowRight aria-hidden="true" size={16} />}
               </button>
               <div className="cf-reassure">{t("reassureLead")}<b>Atlas Cloud</b>{t("reassureTail")}</div>
             </div>
@@ -846,7 +863,7 @@ export default function StartPage() {
 
           {showGuide && (
             <div className="cf-guide">
-              <button type="button" className="cf-guide-close" onClick={dismissGuide} aria-label={t("guideClose")}>✕</button>
+              <button type="button" className="cf-guide-close" onClick={dismissGuide} aria-label={t("guideClose")}><X aria-hidden="true" size={14} /></button>
               <div className="cf-guide-title">{t("guideTitle")}</div>
               <div className="cf-guide-steps">
                 <div className="cf-guide-step"><b>1</b>{t("guideStep1")}</div>
@@ -861,7 +878,7 @@ export default function StartPage() {
             <div className="cf-recent">
               <div className="lbl">
                 {t("recentLabel")}
-                <Link href="/projects" className="lbl-all">{t("recentAll")} →</Link>
+                <Link href="/projects" className="lbl-all">{t("recentAll")}<ArrowRight aria-hidden="true" size={12} /></Link>
               </div>
               <div className="row">
                 {recent.map((p) => {
@@ -883,10 +900,10 @@ export default function StartPage() {
           {trends.length > 0 && (
             <div className="cf-trends">
               <div className="cf-trends-head">
-                <span className="cf-trends-lbl">{t("trendsLabel")}</span>
+                <span className="cf-trends-lbl"><Flame aria-hidden="true" size={14} />{t("trendsLabel")}</span>
                 <button type="button" className="cf-trends-more" onClick={() => setTrendsPage((p) => p + 1)}>
                   {t("trendsRefresh")}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" /></svg>
+                  <RefreshCw aria-hidden="true" size={12} />
                 </button>
               </div>
               {trendsCats.length > 1 && (
@@ -925,7 +942,7 @@ export default function StartPage() {
                       title={t("trendCloneAria")}
                       aria-label={t("trendCloneAria")}
                     >
-                      {t("trendCloneLabel")}
+                      {t("trendCloneLabel")}<ExternalLink aria-hidden="true" size={10} />
                     </Link>
                   </div>
                 ))}
@@ -933,7 +950,7 @@ export default function StartPage() {
               <div className="cf-trends-src">{t("trendsSourceNote", { source: trendsSourceLabel })}</div>
 
               <div className="cf-daily">
-                <span className="cf-daily-lbl">{t("dailyLabel")}</span>
+                <span className="cf-daily-lbl"><CalendarDays aria-hidden="true" size={13} />{t("dailyLabel")}</span>
                 <input
                   className="cf-daily-input"
                   value={dailyPersona}

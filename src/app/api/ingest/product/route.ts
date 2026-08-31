@@ -23,7 +23,7 @@ async function safeDownloadImage(url: string, destDir: string, base: string): Pr
   if (declared && declared > MAX_DOWNLOAD_BYTES) throw new Error("图片体积超限");
   const buf = Buffer.from(await res.arrayBuffer());
   if (buf.byteLength > MAX_DOWNLOAD_BYTES) throw new Error("图片体积超限");
-  const filePath = join(destDir, `${base}.${inferExtension(url, ct, "image")}`);
+  const filePath = join(/* turbopackIgnore: true */ destDir, `${base}.${inferExtension(url, ct, "image")}`);
   await writeFile(filePath, buf);
   return filePath;
 }

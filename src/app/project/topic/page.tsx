@@ -92,7 +92,7 @@ export default function TopicProjectPage() {
       <main className="mx-auto max-w-2xl px-6 py-10">
         {/* page title */}
         <div className="mb-8">
-          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-500">
+          <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             <LuSparkles className="w-3.5 h-3.5" />
             {t("heroBadge")}
           </div>

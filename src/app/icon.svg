@@ -1,9 +1,9 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="cfg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="512" y2="512">
-      <stop offset="0" stop-color="#6366f1"/>
-      <stop offset="0.55" stop-color="#8b5cf6"/>
-      <stop offset="1" stop-color="#a78bfa"/>
+      <stop offset="0" stop-color="#c2410c"/>
+      <stop offset="0.55" stop-color="#f97316"/>
+      <stop offset="1" stop-color="#f2b84b"/>
     </linearGradient>
   </defs>
   <!-- App tile -->

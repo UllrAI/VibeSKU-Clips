@@ -3,6 +3,22 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import {
+  Box,
+  ChevronLeft,
+  CirclePlus,
+  Flame,
+  Folder,
+  House,
+  Layers3,
+  Menu,
+  Moon,
+  ScanLine,
+  Settings,
+  Sun,
+  UserRound,
+  type LucideIcon,
+} from "lucide-react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { TaskCenter } from "@/components/task-center";
 import { useT } from "@/lib/i18n";
@@ -14,121 +30,105 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-/* eslint-disable @next/next/no-img-element -- the logo is a small local svg; next/image adds nothing here */
+/* eslint-disable @next/next/no-img-element -- the logo is a small local SVG */
 
 interface NavItem {
   key: string;
   href: string;
-  icon: string;
-  /** Director-mode-only entrance: hidden in beginner mode so creation stays a single path (工作台) */
+  icon: LucideIcon;
   proOnly?: boolean;
 }
 
-// Sidebar navigation model: two labeled sections + settings pinned at the bottom.
-// `href` doubles as the active-state match target (longest matching prefix wins).
 const NAV_SECTIONS: { labelKey: string; items: NavItem[] }[] = [
   {
     labelKey: "navSectionCreate",
     items: [
-      { key: "navHome", href: "/start", icon: "home" },
-      { key: "navNew", href: "/project/new", icon: "plus", proOnly: true },
-      { key: "navClone", href: "/project/clone", icon: "flame" },
-      { key: "navMediaLab", href: "/media-lab", icon: "scan", proOnly: true },
-      { key: "navBatch", href: "/batch", icon: "layers", proOnly: true },
+      { key: "navHome", href: "/start", icon: House },
+      { key: "navNew", href: "/project/new", icon: CirclePlus, proOnly: true },
+      { key: "navClone", href: "/project/clone", icon: Flame },
+      { key: "navMediaLab", href: "/media-lab", icon: ScanLine, proOnly: true },
+      { key: "navBatch", href: "/batch", icon: Layers3, proOnly: true },
     ],
   },
   {
     labelKey: "navSectionLibrary",
     items: [
-      { key: "navProjects", href: "/projects", icon: "folder" },
-      { key: "navProducts", href: "/products", icon: "box" },
-      { key: "navPresenters", href: "/presenters", icon: "user" },
+      { key: "navProjects", href: "/projects", icon: Folder },
+      { key: "navProducts", href: "/products", icon: Box },
+      { key: "navPresenters", href: "/presenters", icon: UserRound },
     ],
   },
 ];
 
-// localStorage key for the collapsed-sidebar preference
 const NAV_COLLAPSED_KEY = "clipforge_nav_collapsed";
+const THEME_KEY = "clipforge_theme";
 
-// Minimal inline icon set (16px stroke icons) so the sidebar has zero icon-lib deps
-function NavIcon({ name }: { name: string }) {
-  const paths: Record<string, React.ReactNode> = {
-    home: <path d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5" />,
-    plus: (
-      <>
-        <circle cx="12" cy="12" r="9" />
-        <path d="M12 8v8M8 12h8" />
-      </>
-    ),
-    flame: <path d="M12 3c1 3-3 4.5-3 8a3 3 0 0 0 6 0c0-1-.5-2-.5-2s3 1.5 3 5a5.5 5.5 0 0 1-11 0c0-5 5.5-6.5 5.5-11Z" />,
-    scan: <path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M8 12h8" />,
-    layers: <path d="m12 3 9 5-9 5-9-5 9-5ZM3 13l9 5 9-5" />,
-    folder: <path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6Z" />,
-    box: <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m8-4.5L12 12 4 7.5" />,
-    user: (
-      <>
-        <circle cx="12" cy="8" r="4" />
-        <path d="M4 21c0-4 3.5-6 8-6s8 2 8 6" />
-      </>
-    ),
-    gear: (
-      <>
-        <circle cx="12" cy="12" r="3" />
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-      </>
-    ),
-    chevron: <path d="m15 6-6 6 6 6" />,
-  };
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-      {paths[name]}
-    </svg>
-  );
+function applyTheme(theme: "light" | "dark") {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  document.documentElement.style.colorScheme = theme;
+  document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+    meta.setAttribute("content", theme === "dark" ? "#0d0d0c" : "#f7f6f2");
+  });
 }
 
-/**
- * Global application shell: a persistent desktop sidebar (md+) plus a slim
- * mobile top bar. Mounted once in the root layout so every page shares ONE
- * logo, ONE language toggle and ONE set of module entrances.
- *
- * The sidebar carries two global switches:
- * - UI mode 小白/导演 — beginner mode keeps pages on the happy path, director
- *   mode reveals the pro tooling (director panel, per-shot camera etc.);
- * - collapse — icon-only rail, persisted per device.
- */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const t = useT("common");
   const pathname = usePathname();
   const router = useRouter();
-  const uiMode = useSettingsStore((s) => s.uiMode);
-  const setUiMode = useSettingsStore((s) => s.setUiMode);
-
-  // collapsed preference (loaded post-mount so SSR markup stays stable)
+  const uiMode = useSettingsStore((state) => state.uiMode);
+  const setUiMode = useSettingsStore((state) => state.setUiMode);
   const [collapsed, setCollapsed] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
+
   useEffect(() => {
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
       try {
-        if (localStorage.getItem(NAV_COLLAPSED_KEY) === "1") setCollapsed(true);
-      } catch { /* storage unavailable → stay expanded */ }
+        setCollapsed(localStorage.getItem(NAV_COLLAPSED_KEY) === "1");
+        const savedTheme = localStorage.getItem(THEME_KEY);
+        const nextTheme = savedTheme === "light" || savedTheme === "dark"
+          ? savedTheme
+          : window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        setTheme(nextTheme);
+        applyTheme(nextTheme);
+      } catch {
+        applyTheme("dark");
+      }
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    applyTheme(nextTheme);
+    try {
+      localStorage.setItem(THEME_KEY, nextTheme);
+    } catch {
+      // Theme still applies for the current session.
+    }
+  };
+
   const toggleCollapsed = () => {
-    setCollapsed((v) => {
-      const next = !v;
-      try { localStorage.setItem(NAV_COLLAPSED_KEY, next ? "1" : "0"); } catch { /* ignore */ }
+    setCollapsed((current) => {
+      const next = !current;
+      try {
+        localStorage.setItem(NAV_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        // The visual state still works for the current session.
+      }
       return next;
     });
   };
 
-  // beginner mode keeps ONE creation entrance (工作台); pro-only entrances stay in director mode
-  const sections = NAV_SECTIONS.map((s) => ({
-    ...s,
-    items: s.items.filter((i) => uiMode === "pro" || !i.proOnly),
-  })).filter((s) => s.items.length > 0);
-  const visibleItems = sections.flatMap((s) => s.items);
+  const sections = NAV_SECTIONS.map((section) => ({
+    ...section,
+    items: section.items.filter((item) => uiMode === "pro" || !item.proOnly),
+  })).filter((section) => section.items.length > 0);
+  const visibleItems = sections.flatMap((section) => section.items);
 
   const active = visibleItems.reduce<string | null>((best, item) => {
     if (!pathname?.startsWith(item.href)) return best;
@@ -136,35 +136,64 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, null);
   const settingsActive = pathname?.startsWith("/settings") ?? false;
 
-  const navLink = (item: NavItem) => (
-    <Link
-      key={item.key}
-      href={item.href}
-      title={collapsed ? t(item.key) : undefined}
-      className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${collapsed ? "justify-center px-0" : ""} ${
-        active === item.href
-          ? "bg-primary/15 font-medium text-primary"
-          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-      }`}
+  const navLink = (item: NavItem) => {
+    const Icon = item.icon;
+    const isActive = active === item.href;
+    return (
+      <Link
+        key={item.key}
+        href={item.href}
+        aria-current={isActive ? "page" : undefined}
+        title={collapsed ? t(item.key) : undefined}
+        className={`flex min-h-9 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60 ${collapsed ? "justify-center px-0" : ""} ${
+          isActive
+            ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+        }`}
+      >
+        <Icon className="size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
+        {!collapsed && t(item.key)}
+      </Link>
+    );
+  };
+
+  const themeToggle = (
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label={theme === "dark" ? "切换到亮色模式" : "切换到暗色模式"}
+      title={theme === "dark" ? "亮色模式" : "暗色模式"}
+      className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60"
     >
-      <NavIcon name={item.icon} />
-      {!collapsed && t(item.key)}
-    </Link>
+      {theme === "dark" ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
+    </button>
   );
 
   return (
     <div className="flex min-h-screen">
-      {/* Desktop sidebar */}
-      <aside className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-border/50 bg-background/60 transition-[width] md:flex ${collapsed ? "w-14" : "w-56"}`}>
-        <Link href="/start" className={`flex items-center gap-2.5 pb-4 pt-5 ${collapsed ? "justify-center px-0" : "px-4"}`}>
-          <img src="/icon.svg" alt="" width={30} height={30} className="rounded-[9px]" />
-          {!collapsed && <span className="text-base font-bold tracking-tight">ClipForge</span>}
+      <a
+        href="#main-content"
+        className="sr-only z-[100] rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus:fixed focus:left-3 focus:top-3 focus:not-sr-only"
+      >
+        跳到主要内容 / Skip to content
+      </a>
+
+      <aside
+        className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] md:flex ${collapsed ? "w-16" : "w-60"}`}
+      >
+        <Link
+          href="/start"
+          className={`flex min-h-16 items-center gap-2.5 border-b border-sidebar-border ${collapsed ? "justify-center px-0" : "px-4"}`}
+        >
+          <img src="/icon.svg" alt="" width={30} height={30} className="rounded-lg" />
+          {!collapsed && <span className="text-base font-semibold tracking-tight">ClipForge</span>}
         </Link>
-        <nav className={`flex-1 space-y-5 overflow-y-auto py-2 ${collapsed ? "px-2" : "px-3"}`}>
+
+        <nav aria-label={t("navMenu")} className={`flex-1 space-y-5 overflow-y-auto py-4 ${collapsed ? "px-2" : "px-3"}`}>
           {sections.map((section) => (
-            <div key={section.labelKey} className="space-y-0.5">
+            <div key={section.labelKey} className="space-y-1">
               {!collapsed && (
-                <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/60">
+                <div className="px-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground/70">
                   {t(section.labelKey)}
                 </div>
               )}
@@ -172,80 +201,80 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           ))}
         </nav>
-        <div className={`space-y-1 border-t border-border/50 py-3 ${collapsed ? "px-2" : "px-3"}`}>
-          {/* UI mode: beginner ⇄ director (hidden when collapsed — expand to switch) */}
+
+        <div className={`space-y-1 border-t border-sidebar-border py-3 ${collapsed ? "px-2" : "px-3"}`}>
           {!collapsed && (
-            <div className="mb-1 flex rounded-lg border border-border/50 p-0.5" title={t("uiModeTip")}>
-              {(["simple", "pro"] as const).map((m) => (
+            <div className="mb-2 flex rounded-lg border border-sidebar-border bg-background/30 p-0.5" title={t("uiModeTip")}>
+              {(["simple", "pro"] as const).map((mode) => (
                 <button
-                  key={m}
+                  key={mode}
                   type="button"
-                  onClick={() => setUiMode(m)}
-                  className={`flex-1 rounded-md py-1.5 text-xs transition-colors ${
-                    uiMode === m
-                      ? "bg-primary/15 font-medium text-primary"
+                  aria-pressed={uiMode === mode}
+                  onClick={() => setUiMode(mode)}
+                  className={`min-h-8 flex-1 rounded-md px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60 ${
+                    uiMode === mode
+                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {t(m === "simple" ? "uiModeSimple" : "uiModePro")}
+                  {t(mode === "simple" ? "uiModeSimple" : "uiModePro")}
                 </button>
               ))}
             </div>
           )}
-          {/* task center: cross-project running/attention feed (the "global" word would make eslint parse this comment as a globals directive) */}
+
           <div className={collapsed ? "flex justify-center" : ""}>
             <TaskCenter collapsed={collapsed} />
           </div>
           <Link
             href="/settings"
+            aria-current={settingsActive ? "page" : undefined}
             title={collapsed ? t("settings") : undefined}
-            className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors ${collapsed ? "justify-center px-0" : ""} ${
+            className={`flex min-h-9 items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60 ${collapsed ? "justify-center px-0" : ""} ${
               settingsActive
-                ? "bg-primary/15 font-medium text-primary"
-                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
-            <NavIcon name="gear" />
+            <Settings className="size-4 shrink-0" strokeWidth={1.8} aria-hidden="true" />
             {!collapsed && t("settings")}
           </Link>
-          <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between px-1.5"}`}>
+          <div className={`flex min-h-9 items-center ${collapsed ? "flex-col justify-center gap-1" : "justify-between px-1.5"}`}>
             {!collapsed && <LanguageToggle />}
-            <button
-              type="button"
-              onClick={toggleCollapsed}
-              aria-label={t(collapsed ? "navExpand" : "navCollapse")}
-              title={t(collapsed ? "navExpand" : "navCollapse")}
-              className={`flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground transition-all hover:bg-muted/50 hover:text-foreground ${collapsed ? "rotate-180" : ""}`}
-            >
-              <NavIcon name="chevron" />
-            </button>
+            <div className="flex items-center gap-1">
+              {themeToggle}
+              <button
+                type="button"
+                onClick={toggleCollapsed}
+                aria-label={t(collapsed ? "navExpand" : "navCollapse")}
+                title={t(collapsed ? "navExpand" : "navCollapse")}
+                className={`flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-[color,background-color,transform] hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60 ${collapsed ? "rotate-180" : ""}`}
+              >
+                <ChevronLeft className="size-4" aria-hidden="true" />
+              </button>
+            </div>
           </div>
         </div>
       </aside>
 
-      {/* Content column; mobile gets a slim top bar with a menu */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-border/50 bg-background/80 px-4 backdrop-blur-xl md:hidden">
+        <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-xl md:hidden">
           <Link href="/start" className="flex items-center gap-2">
-            <img src="/icon.svg" alt="" width={24} height={24} className="rounded-[7px]" />
-            <span className="text-sm font-bold tracking-tight">ClipForge</span>
+            <img src="/icon.svg" alt="" width={24} height={24} className="rounded-md" />
+            <span className="text-sm font-semibold tracking-tight">ClipForge</span>
           </Link>
           <div className="flex items-center gap-1">
             <TaskCenter collapsed />
+            {themeToggle}
             <LanguageToggle />
             <DropdownMenu>
               <DropdownMenuTrigger
                 aria-label={t("navMenu")}
-                className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <line x1="4" y1="7" x2="20" y2="7" />
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <line x1="4" y1="17" x2="20" y2="17" />
-                </svg>
+                <Menu className="size-4" aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {/* Base UI menu items don't take asChild — navigate via router */}
                 {visibleItems.map((item) => (
                   <DropdownMenuItem key={item.key} onClick={() => router.push(item.href)}>
                     {t(item.key)}
@@ -258,7 +287,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </DropdownMenu>
           </div>
         </header>
-        <div className="min-w-0 flex-1">{children}</div>
+        <div id="main-content" className="min-w-0 flex-1">
+          {children}
+        </div>
       </div>
     </div>
   );

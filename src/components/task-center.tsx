@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Bell, LoaderCircle, TriangleAlert } from "lucide-react";
 import { useT, useLocale } from "@/lib/i18n";
 import { formatRelativeTime } from "@/lib/relative-time";
 import {
@@ -122,13 +123,8 @@ export function TaskCenter({ collapsed = false }: { collapsed?: boolean }) {
       }`}
     >
       <span className={`flex items-center gap-1.5 text-xs font-medium ${tone === "attention" ? "text-amber-500" : ""}`}>
-        {tone === "active" && (
-          <svg className="h-3 w-3 animate-spin text-primary" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
-          </svg>
-        )}
-        {tone === "attention" && <span aria-hidden>⚠️</span>}
+        {tone === "active" && <LoaderCircle className="size-3 animate-spin text-primary" />}
+        {tone === "attention" && <TriangleAlert className="size-3" />}
         <span className="min-w-0 truncate">{rowTitle(row)}</span>
       </span>
       <span className="truncate text-[11px] text-muted-foreground">
@@ -147,10 +143,7 @@ export function TaskCenter({ collapsed = false }: { collapsed?: boolean }) {
         }`}
       >
         <span className="relative shrink-0">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-            <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-          </svg>
+          <Bell className="size-4" strokeWidth={1.8} />
           {badgeCount > 0 && (
             <span
               className={`absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[9px] font-bold text-white ${
