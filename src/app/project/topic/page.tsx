@@ -105,11 +105,11 @@ export default function TopicProjectPage() {
         {/* LLM not configured guidance */}
         {!isLLMConfigured && (
           <Link href="/settings?tab=llm">
-            <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 cursor-pointer hover:bg-amber-500/15 transition-colors">
-              <LuCircleAlert className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
+            <div className="mb-6 flex cursor-pointer items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 transition-colors hover:bg-warning/15">
+              <LuCircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
               <div>
-                <h3 className="font-semibold text-amber-200 text-sm">{t("llmBannerTitle")}</h3>
-                <p className="text-xs text-amber-300/80 mt-0.5">
+                <h3 className="text-sm font-semibold text-warning">{t("llmBannerTitle")}</h3>
+                <p className="mt-0.5 text-xs text-warning/85">
                   {t("llmBannerDesc")}
                   <span className="underline ml-1">{t("llmBannerCta")}</span>
                 </p>

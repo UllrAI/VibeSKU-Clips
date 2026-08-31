@@ -106,7 +106,7 @@ export function ProductionProfilePicker() {
       </div>
 
       {incomplete && (
-        <p className="mt-2.5 text-[11px] text-amber-300/90">
+        <p className="mt-2.5 text-[11px] text-warning/90">
           {t("profileModelWarning")} <Link href="/settings?tab=providers" className="inline-flex min-h-6 items-center font-medium underline underline-offset-2">{t("profileConfigure")}</Link>
         </p>
       )}

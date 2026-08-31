@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useT } from "@/lib/i18n";
+import { LuCheck } from "react-icons/lu";
 
 // Pipeline steps in order; `path` is the route suffix under /project/[id]/
 const STEPS = [
@@ -66,7 +67,7 @@ export function ProjectStepper() {
                   i === current ? "bg-white/20" : i < current ? "bg-primary/20" : "bg-muted"
                 }`}
               >
-                {i < current ? "✓" : i + 1}
+                {i < current ? <LuCheck className="size-3" aria-hidden="true" /> : i + 1}
               </span>
               {t(step.key)}
             </Link>

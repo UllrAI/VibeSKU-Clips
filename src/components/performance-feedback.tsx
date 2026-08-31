@@ -5,7 +5,7 @@ import { useLocale } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { LuChartNoAxesColumn, LuCheck } from "react-icons/lu";
+import { LuChartNoAxesColumn, LuCheck, LuTrophy } from "react-icons/lu";
 import type { StyleInsight, HookInsight } from "@/lib/performance-insights";
 
 // style key → display name (aggregation returns the styleType key)
@@ -164,12 +164,12 @@ export function PerformanceFeedback({ projectId }: { projectId: string }) {
             <div className="space-y-1.5">
               {insights.map((it, i) => (
                 <div key={it.style} className="flex items-center gap-3 text-xs">
-                  <span className={`w-16 shrink-0 ${i === 0 ? "text-emerald-500 font-medium" : ""}`}>
-                    {i === 0 ? "🏆 " : ""}
+                  <span className={`flex w-16 shrink-0 items-center gap-1 ${i === 0 ? "font-medium text-success" : ""}`}>
+                    {i === 0 ? <LuTrophy className="size-3.5 shrink-0" aria-hidden="true" /> : null}
                     {styleName(it.style)}
                   </span>
                   <span className="text-muted-foreground">
-                    {en ? "conv." : "转化"} <b className={i === 0 ? "text-emerald-500" : ""}>{fmtPct(it.conversionRate)}</b>
+                    {en ? "conv." : "转化"} <b className={i === 0 ? "text-success" : ""}>{fmtPct(it.conversionRate)}</b>
                   </span>
                   <span className="text-muted-foreground">
                     {en ? "eng." : "互动"} {fmtPct(it.engagementRate)}
@@ -192,12 +192,12 @@ export function PerformanceFeedback({ projectId }: { projectId: string }) {
             <div className="space-y-1.5">
               {hookInsights.map((it, i) => (
                 <div key={it.hookId} className="flex items-center gap-3 text-xs">
-                  <span className={`w-16 shrink-0 ${i === 0 ? "text-emerald-500 font-medium" : ""}`}>
-                    {i === 0 ? "🏆 " : ""}
+                  <span className={`flex w-16 shrink-0 items-center gap-1 ${i === 0 ? "font-medium text-success" : ""}`}>
+                    {i === 0 ? <LuTrophy className="size-3.5 shrink-0" aria-hidden="true" /> : null}
                     {hookName(it.hookId)}
                   </span>
                   <span className="text-muted-foreground">
-                    {en ? "conv." : "转化"} <b className={i === 0 ? "text-emerald-500" : ""}>{fmtPct(it.conversionRate)}</b>
+                    {en ? "conv." : "转化"} <b className={i === 0 ? "text-success" : ""}>{fmtPct(it.conversionRate)}</b>
                   </span>
                   <span className="text-muted-foreground">
                     {en ? "eng." : "互动"} {fmtPct(it.engagementRate)}

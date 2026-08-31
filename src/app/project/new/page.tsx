@@ -656,11 +656,11 @@ export default function NewProjectPage() {
         {/* LLM not configured warning */}
         {!isLLMConfigured && (
           <Link href="/settings?tab=llm">
-            <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 cursor-pointer hover:bg-amber-500/15 transition-colors">
-              <LuCircleAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="mb-6 flex cursor-pointer items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4 transition-colors hover:bg-warning/15">
+              <LuCircleAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
               <div>
-                <p className="text-sm font-medium text-amber-200">{t("llmWarnTitle")}</p>
-                <p className="text-xs text-amber-300/80 mt-0.5">{t("llmWarnDesc")}<span className="underline">{t("llmWarnCta")}</span></p>
+                <p className="text-sm font-medium text-warning">{t("llmWarnTitle")}</p>
+                <p className="mt-0.5 text-xs text-warning/85">{t("llmWarnDesc")}<span className="underline underline-offset-2">{t("llmWarnCta")}</span></p>
               </div>
             </div>
           </Link>
@@ -701,6 +701,7 @@ export default function NewProjectPage() {
                   <input
                     ref={fileInputRef}
                     type="file"
+                    aria-label={t("imageLabel")}
                     accept="image/*"
                     multiple
                     className="hidden"
@@ -742,8 +743,10 @@ export default function NewProjectPage() {
                       />
                       {/* delete button */}
                       <button
+                        type="button"
                         onClick={() => removeImage(img.id)}
-                        className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                        aria-label={locale === "zh" ? "移除商品图片" : "Remove product image"}
+                        className="absolute right-1 top-1 flex size-8 items-center justify-center rounded-full bg-black/65 text-white opacity-100 transition-opacity hover:bg-destructive md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
                       >
                         <LuX className="w-3 h-3" />
                       </button>
@@ -1232,7 +1235,7 @@ export default function NewProjectPage() {
                             : "border-primary/30 bg-primary/5 text-foreground hover:border-primary/60"
                         }`}
                       >
-                        {tpl.emoji} {locale === "zh" ? tpl.name.zh : tpl.name.en}
+                        {locale === "zh" ? tpl.name.zh : tpl.name.en}
                       </button>
                     ))}
                   </div>
@@ -1272,6 +1275,7 @@ export default function NewProjectPage() {
                 )}
                 {/* keyword search — at 100+ templates, browsing alone stops scaling */}
                 <input
+                  aria-label={t("adTemplateSearch")}
                   value={adTemplateQuery}
                   onChange={(e) => setAdTemplateQuery(e.target.value)}
                   placeholder={t("adTemplateSearch")}
@@ -1352,13 +1356,7 @@ export default function NewProjectPage() {
                   <p className="text-xs font-medium text-primary">
                     {editorSourceId ? t("adTplEditorTitleEdit") : t("adTplEditorTitleFork")}
                   </p>
-                  <div className="grid grid-cols-[3.5rem_1fr_1fr] gap-2">
-                    <input
-                      value={editorDraft.emoji}
-                      onChange={(e) => setEditorDraft((d) => (d ? { ...d, emoji: e.target.value } : d))}
-                      placeholder={t("adTplFieldEmoji")}
-                      className={EDITOR_INPUT_CLS}
-                    />
+                  <div className="grid grid-cols-2 gap-2">
                     <input
                       value={editorDraft.name.zh}
                       onChange={(e) => setEditorDraft((d) => (d ? { ...d, name: { ...d.name, zh: e.target.value } } : d))}
@@ -1587,7 +1585,7 @@ export default function NewProjectPage() {
                     }`}
                   >
                     <span className={`text-sm font-medium ${selectedAdTemplateId === CUSTOM_AD_TEMPLATE_ID ? "text-primary" : "text-foreground"}`}>
-                      {customAdTemplate.emoji} {locale === "zh" ? customAdTemplate.name.zh : customAdTemplate.name.en}
+                      {locale === "zh" ? customAdTemplate.name.zh : customAdTemplate.name.en}
                       <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-primary/15 text-primary align-middle">AI</span>
                       {/* save-for-reuse chip (span, not button — cards are buttons already) */}
                       {!aiTplSaved && (
@@ -1613,32 +1611,36 @@ export default function NewProjectPage() {
                       return `${tpl.name.zh} ${tpl.name.en} ${tpl.tagline.zh} ${tpl.tagline.en}`.toLowerCase().includes(q);
                     })
                     .map((tpl) => (
-                      <button
-                        key={tpl.id}
-                        onClick={() => pickAdTemplate(tpl.id)}
-                        className={`relative flex flex-col items-start p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
-                          selectedAdTemplateId === tpl.id
-                            ? "border-primary bg-primary/10"
-                            : "border-border/50 bg-muted/20 hover:border-primary/40"
-                        }`}
-                      >
-                        <span className={`text-sm font-medium ${selectedAdTemplateId === tpl.id ? "text-primary" : "text-foreground"}`}>
-                          {tpl.emoji} {locale === "zh" ? tpl.name.zh : tpl.name.en}
-                          <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-primary/15 text-primary align-middle">
-                            {t("adTemplateMine")}
-                          </span>
-                        </span>
-                        <span className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">
-                          {locale === "zh" ? tpl.tagline.zh : tpl.tagline.en}
-                        </span>
-                        <span
-                          onClick={(e) => { e.stopPropagation(); deleteMyTemplate(tpl.id); }}
-                          title={t("adTemplateDeleteTitle")}
-                          className="absolute top-1.5 right-1.5 text-[11px] leading-none px-1 py-0.5 rounded text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                      <div key={tpl.id} className="relative">
+                        <button
+                          type="button"
+                          onClick={() => pickAdTemplate(tpl.id)}
+                          className={`flex h-full w-full flex-col items-start rounded-lg border p-3 pr-9 text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                            selectedAdTemplateId === tpl.id
+                              ? "border-primary bg-primary/10"
+                              : "border-border/50 bg-muted/20 hover:border-primary/40"
+                          }`}
                         >
-                          ✕
-                        </span>
-                      </button>
+                          <span className={`text-sm font-medium ${selectedAdTemplateId === tpl.id ? "text-primary" : "text-foreground"}`}>
+                            {locale === "zh" ? tpl.name.zh : tpl.name.en}
+                            <span className="ml-1 rounded bg-primary/15 px-1 py-0.5 align-middle text-[10px] text-primary">
+                              {t("adTemplateMine")}
+                            </span>
+                          </span>
+                          <span className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">
+                            {locale === "zh" ? tpl.tagline.zh : tpl.tagline.en}
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => deleteMyTemplate(tpl.id)}
+                          title={t("adTemplateDeleteTitle")}
+                          aria-label={t("adTemplateDeleteTitle")}
+                          className="absolute right-1.5 top-1.5 flex size-7 items-center justify-center rounded text-muted-foreground/60 hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <LuX className="size-3.5" aria-hidden="true" />
+                        </button>
+                      </div>
                     ))}
                 {adTemplateGroup !== "mine" && listAdTemplates({ group: adTemplateGroup, category, query: adTemplateQuery }).map((tpl) => (
                   <button
@@ -1651,7 +1653,7 @@ export default function NewProjectPage() {
                     }`}
                   >
                     <span className={`text-sm font-medium ${selectedAdTemplateId === tpl.id ? "text-primary" : "text-foreground"}`}>
-                      {tpl.emoji} {locale === "zh" ? tpl.name.zh : tpl.name.en}
+                      {locale === "zh" ? tpl.name.zh : tpl.name.en}
                       {category && tpl.goodFor?.includes(category as AdTemplateCategory) && (
                         <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-primary/15 text-primary align-middle">
                           {t("adTemplateGoodMatch")}

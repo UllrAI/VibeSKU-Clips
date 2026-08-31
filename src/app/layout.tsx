@@ -15,7 +15,10 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_APP_URL ?? "https://xixihhhh.github.io/clipforge/",
   ),
   // Title/description are bilingual (Chinese first): prioritize domestic traffic while covering overseas search indexing
-  title: "ClipForge — AI 短视频带货创作工具 | AI Short Video Creator",
+  title: {
+    default: "ClipForge — AI 短视频带货创作工具 | AI Short Video Creator",
+    template: "%s · ClipForge",
+  },
   description:
     "一句话主题或一张商品图，一键产出抖音 / 快手 / 小红书 / TikTok 竖屏带货短视频：AI 写脚本、自动配画面、免费配音、烧字幕。Turn one sentence or a product photo into a vertical short video — AI script, free stock footage, voiceover & subtitles in one click.",
   keywords: [

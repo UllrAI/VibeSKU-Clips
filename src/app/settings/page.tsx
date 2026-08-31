@@ -156,6 +156,7 @@ function PasswordInput({
   placeholder?: string;
   className?: string;
 }) {
+  const t = useT("settings");
   const [visible, setVisible] = useState(false);
 
   return (
@@ -170,7 +171,9 @@ function PasswordInput({
       <button
         type="button"
         onClick={() => setVisible(!visible)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+        aria-label={t(visible ? "hideSecret" : "showSecret")}
+        title={t(visible ? "hideSecret" : "showSecret")}
+        className="absolute right-1.5 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
       </button>
@@ -182,23 +185,26 @@ function PasswordInput({
 function Toggle({
   checked,
   onChange,
+  label,
 }: {
   checked: boolean;
   onChange: (checked: boolean) => void;
+  label: string;
 }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         checked ? "bg-primary" : "bg-muted"
       }`}
     >
       <span
-        className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-lg transition-transform duration-200 ${
-          checked ? "translate-x-4" : "translate-x-0"
+        className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+          checked ? "translate-x-5" : "translate-x-0"
         }`}
       />
     </button>
@@ -447,7 +453,7 @@ export default function SettingsPage() {
           </div>
           <p className="text-xs text-muted-foreground mb-3">{t("oneKeyDesc")}</p>
           {atlasApplied ? (
-            <div className="flex items-center gap-2 text-sm text-emerald-400">
+            <div className="flex items-center gap-2 text-sm text-success">
               <LuCheck className="w-4 h-4 shrink-0" />
               <span>{t("oneKeyDone")}</span>
             </div>
@@ -458,6 +464,7 @@ export default function SettingsPage() {
                 value={atlasOneKey}
                 onChange={(e) => setAtlasOneKey(e.target.value)}
                 placeholder={t("oneKeyPlaceholder")}
+                aria-label={t("oneKeyPlaceholder")}
                 className="flex-1"
               />
               <Button onClick={applyOneKey} disabled={!atlasOneKey.trim()} className="brand-gradient text-white border-0 shrink-0">
@@ -519,7 +526,7 @@ export default function SettingsPage() {
                                 {PROVIDER_NAME_KEYS[platform.key] ? t(PROVIDER_NAME_KEYS[platform.key]) : platform.name}
                               </h3>
                               {provider.enabled && (
-                                <span className="inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-400">
+                                <span className="inline-flex items-center rounded-full bg-success/15 px-2 py-0.5 text-xs text-success">
                                   {t("providerEnabled")}
                                 </span>
                               )}
@@ -534,6 +541,7 @@ export default function SettingsPage() {
                         {/* enable toggle */}
                         <Toggle
                           checked={provider.enabled}
+                          label={t("toggleProvider", { name: PROVIDER_NAME_KEYS[platform.key] ? t(PROVIDER_NAME_KEYS[platform.key]) : platform.name })}
                           onChange={(enabled) =>
                             setProvider(platform.key, {
                               ...provider,
@@ -560,7 +568,7 @@ export default function SettingsPage() {
                           }
                           placeholder={t("apiKeyPlaceholder", { name: platform.name })}
                         />
-                        {/* Key connectivity test: real auth probe ✓/✗/⚠ */}
+                        {/* Key connectivity test uses a real auth probe. */}
                         <div className="mt-2 flex items-center gap-2">
                           <Button
                             variant="outline"
@@ -791,7 +799,7 @@ export default function SettingsPage() {
                         <p className="text-xs text-muted-foreground">{t("ttsSubtitle")}</p>
                       </div>
                     </div>
-                    <Toggle checked={tts.enabled} onChange={(v) => setTTS({ ...tts, enabled: v })} />
+                    <Toggle label={t("toggleTts")} checked={tts.enabled} onChange={(v) => setTTS({ ...tts, enabled: v })} />
                   </div>
 
                   {tts.enabled && (
@@ -800,7 +808,7 @@ export default function SettingsPage() {
                       <div className="space-y-1.5">
                         <Label className="text-xs text-muted-foreground">{t("ttsProviderLabel")}</Label>
                         <Select value={tts.provider ?? "openai"} onValueChange={(v) => onChangeTTSProvider((v ?? "openai") as TTSProvider)}>
-                          <SelectTrigger className="w-full">
+                          <SelectTrigger className="w-full" aria-label={t("ttsProviderLabel")}>
                             <SelectValue>
                               {(value: string) => TTS_PROVIDERS.find((p) => p.value === value)?.label ?? t("ttsProviderFallback")}
                             </SelectValue>
@@ -884,7 +892,7 @@ export default function SettingsPage() {
                               <div className="space-y-1.5">
                                 <Label className="text-xs text-muted-foreground">{t("ttsModelLabel")}</Label>
                                 <Select value={tts.model || ttsMeta.defaultModel} onValueChange={(v) => setTTS({ ...tts, model: v ?? ttsMeta.defaultModel })}>
-                                  <SelectTrigger className="w-full">
+                                  <SelectTrigger className="w-full" aria-label={t("ttsModelLabel")}>
                                     <SelectValue>{(value: string) => ttsMeta.models.find((o) => o.value === value)?.label ?? value}</SelectValue>
                                   </SelectTrigger>
                                   <SelectContent>
@@ -896,7 +904,7 @@ export default function SettingsPage() {
                             <div className="space-y-1.5">
                               <Label className="text-xs text-muted-foreground">{t("ttsVoiceLabel")}</Label>
                               <Select value={tts.voice || ttsMeta.defaultVoice} onValueChange={(v) => setTTS({ ...tts, voice: v ?? ttsMeta.defaultVoice })}>
-                                <SelectTrigger className="w-full">
+                                <SelectTrigger className="w-full" aria-label={t("ttsVoiceLabel")}>
                                   <SelectValue>{(value: string) => ttsMeta.voices.find((o) => o.value === value)?.label ?? value}</SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
@@ -941,7 +949,7 @@ export default function SettingsPage() {
                         onValueChange={(val) => setDefaultImageModel(val ?? "")}
                         disabled={imageModelOptions.length === 0}
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full" aria-label={t("defaultImageModel")}>
                           {/* Base UI Select.Value shows the raw value by default; use a function child to map it to the model name */}
                           <SelectValue>
                             {(value: string) =>
@@ -985,7 +993,7 @@ export default function SettingsPage() {
                         onValueChange={(val) => setDefaultVideoModel(val ?? "")}
                         disabled={videoModelOptions.length === 0}
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full" aria-label={t("defaultVideoModel")}>
                           {/* Base UI Select.Value shows the raw value by default; use a function child to map it to the model name */}
                           <SelectValue>
                             {(value: string) =>
@@ -1014,7 +1022,7 @@ export default function SettingsPage() {
                           setDefaultResolution(val as "720p" | "1080p")
                         }
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full" aria-label={t("defaultResolution")}>
                           {/* Base UI Select.Value shows the raw value by default; use a function child to map it to a label */}
                           <SelectValue>
                             {(value: string) => resolutionOptions.find((o) => o.value === value)?.label ?? value}
@@ -1042,7 +1050,7 @@ export default function SettingsPage() {
                           )
                         }
                       >
-                        <SelectTrigger className="w-full">
+                        <SelectTrigger className="w-full" aria-label={t("defaultAspectRatio")}>
                           {/* Base UI Select.Value shows the raw value by default; use a function child to map it to a language-specific label */}
                           <SelectValue>
                             {(value: string) => {
@@ -1186,6 +1194,7 @@ function BrandSettings() {
                   <label className="cursor-pointer">
                     <input
                       type="file"
+                      aria-label={t("brandUploadLogo")}
                       accept="image/*"
                       className="hidden"
                       onChange={(e) => {
@@ -1238,6 +1247,7 @@ function BrandSettings() {
                 <div className="relative">
                   <input
                     type="color"
+                    aria-label={t("brandPrimaryColor")}
                     value={brand.primaryColor}
                     onChange={(e) => updateBrand({ primaryColor: e.target.value })}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -1248,6 +1258,7 @@ function BrandSettings() {
                   />
                 </div>
                 <Input
+                  aria-label={t("brandPrimaryColor")}
                   value={brand.primaryColor}
                   onChange={(e) => updateBrand({ primaryColor: e.target.value })}
                   className="font-mono text-xs uppercase flex-1"
@@ -1263,6 +1274,7 @@ function BrandSettings() {
                 <div className="relative">
                   <input
                     type="color"
+                    aria-label={t("brandSecondaryColor")}
                     value={brand.secondaryColor}
                     onChange={(e) => updateBrand({ secondaryColor: e.target.value })}
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
@@ -1273,6 +1285,7 @@ function BrandSettings() {
                   />
                 </div>
                 <Input
+                  aria-label={t("brandSecondaryColor")}
                   value={brand.secondaryColor}
                   onChange={(e) => updateBrand({ secondaryColor: e.target.value })}
                   className="font-mono text-xs uppercase flex-1"
@@ -1295,6 +1308,7 @@ function BrandSettings() {
               <h3 className="font-semibold text-sm">{t("brandWatermarkTitle")}</h3>
             </div>
             <Toggle
+              label={t("toggleWatermark")}
               checked={brand.watermark.enabled}
               onChange={(enabled) => updateWatermark({ enabled })}
             />
@@ -1332,6 +1346,7 @@ function BrandSettings() {
                 </div>
                 <input
                   type="range"
+                  aria-label={t("brandWatermarkOpacity")}
                   min="10"
                   max="100"
                   step="5"
@@ -1362,6 +1377,7 @@ function BrandSettings() {
               <h3 className="font-semibold text-sm">{t("brandOutroTitle")}</h3>
             </div>
             <Toggle
+              label={t("toggleOutro")}
               checked={brand.outroEnabled}
               onChange={(enabled) => updateBrand({ outroEnabled: enabled })}
             />

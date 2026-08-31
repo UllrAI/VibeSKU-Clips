@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
-import { LuCheck, LuCircleCheck, LuFilm, LuDownload, LuLink2, LuFileText, LuPlus, LuHouse, LuSmartphone, LuShuffle, LuLoaderCircle, LuSparkles, LuImage, LuLayoutGrid, LuQrCode, LuScanLine, LuLanguages, LuShieldCheck, LuTriangleAlert, LuCircleX, LuClipboardCheck } from "react-icons/lu";
+import { LuCheck, LuChevronDown, LuCircleCheck, LuFilm, LuDownload, LuLink2, LuFileText, LuPlus, LuHouse, LuSmartphone, LuShuffle, LuLoaderCircle, LuSparkles, LuImage, LuLayoutGrid, LuQrCode, LuScanLine, LuLanguages, LuShieldCheck, LuTriangleAlert, LuCircleX, LuClipboardCheck } from "react-icons/lu";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -427,7 +427,7 @@ export default function ExportPage() {
     : "";
 
   // slim context strip (shared by loading, empty and normal states); global chrome lives in AppShell
-  const headerBar = <ProjectHeader projectName={projectName || t("projectFallback")} />;
+  const headerBar = <ProjectHeader projectName={projectName || t("projectFallback")} pageTitle={t("stepExport")} />;
 
   if (loading) {
     return (
@@ -487,9 +487,9 @@ export default function ExportPage() {
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 mb-4">
             <LuCircleCheck className="w-8 h-8 text-emerald-500" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight mb-1">
+          <h2 className="text-2xl font-bold tracking-tight mb-1">
             {t("doneTitleRest")}<span className="brand-gradient-text">{t("doneTitleAccent")}</span>
-          </h1>
+          </h2>
           <p className="text-sm text-muted-foreground">
             {t("doneSubtitle")}
           </p>
@@ -552,7 +552,7 @@ export default function ExportPage() {
         {history.length > 1 && (
           <Card className="glass-card mb-6">
             <CardContent className="p-5">
-              <h3 className="text-sm font-semibold mb-3">🎞 {t("historyTitle", { n: history.length })}</h3>
+              <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><LuFilm className="size-4 text-primary" aria-hidden="true" />{t("historyTitle", { n: history.length })}</h3>
               <div className="space-y-1.5">
                 {history.map((h, i) => (
                   <div key={h.id} className="flex items-center gap-2 text-xs">
@@ -704,9 +704,9 @@ export default function ExportPage() {
                           </Button>
                         </a>
                         {ex.report && (
-                          <p className={`mt-1.5 text-[11px] leading-snug ${ex.report.withinCap ? "text-emerald-600" : "text-amber-600"}`}>
-                            {ex.report.withinCap ? "✓ " : "⚠ "}
-                            {locale === "en" ? ex.report.message.en : ex.report.message.zh}
+                          <p className={`mt-1.5 flex items-start gap-1 text-[11px] leading-snug ${ex.report.withinCap ? "text-success" : "text-warning"}`}>
+                            {ex.report.withinCap ? <LuCircleCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" /> : <LuTriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />}
+                            <span>{locale === "en" ? ex.report.message.en : ex.report.message.zh}</span>
                           </p>
                         )}
                       </>
@@ -735,7 +735,7 @@ export default function ExportPage() {
               <span className="block text-sm font-medium text-foreground">{t("advancedTitle")}</span>
               <span className="block text-xs text-muted-foreground mt-0.5">{t("advancedHint")}</span>
             </div>
-            <svg className="size-4 shrink-0 transition-transform group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m6 9 6 6 6-6" /></svg>
+            <LuChevronDown className="size-4 shrink-0 transition-transform group-open:rotate-180" aria-hidden="true" />
           </summary>
           <div className="px-4 pb-4 space-y-3">
             {/* performance feedback: backfill data after publishing → learn which style sells better */}
@@ -1018,7 +1018,7 @@ export default function ExportPage() {
                 </div>
                 {!hasShopUrl && <p className="text-[11px] text-muted-foreground">{t("moreNeedShopUrl")}</p>}
                 {more.qr?.error && <p className="text-[11px] text-destructive">{more.qr.error}</p>}
-                {more.qr?.warning && <p className="text-[11px] text-amber-600 dark:text-amber-400">⚠️ {more.qr.warning}</p>}
+                {more.qr?.warning && <p className="flex items-start gap-1 text-[11px] text-warning"><LuTriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />{more.qr.warning}</p>}
                 {more.qr?.images?.[0] && (
                   <a href={`${more.qr.images[0]}?download=1`} download className="mt-1 block">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1036,7 +1036,7 @@ export default function ExportPage() {
                 </div>
                 {!hasShopUrl && <p className="text-[11px] text-muted-foreground">{t("moreNeedShopUrl")}</p>}
                 {more.endcard?.error && <p className="text-[11px] text-destructive">{more.endcard.error}</p>}
-                {more.endcard?.warning && <p className="text-[11px] text-amber-600 dark:text-amber-400">⚠️ {more.endcard.warning}</p>}
+                {more.endcard?.warning && <p className="flex items-start gap-1 text-[11px] text-warning"><LuTriangleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />{more.endcard.warning}</p>}
                 {more.endcard?.video && (
                   <a href={`${more.endcard.video}?download=1`} download>
                     <Button size="sm" variant="outline" className="text-xs h-7 mt-1"><LuDownload className="w-3 h-3 mr-1" />{t("moreEndCardDownload")}</Button>

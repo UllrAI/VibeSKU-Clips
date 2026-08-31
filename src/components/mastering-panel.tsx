@@ -107,7 +107,7 @@ export function MasteringPanel({ projectId, composition, onComplete }: Mastering
             </div>
             <div className="rounded-xl border border-amber-500/20 bg-amber-500/8 p-3">
               <p className="text-[11px] text-muted-foreground">{t("masterAttention")}</p>
-              <p className="mt-1 text-lg font-bold tabular-nums text-amber-300">{analysis.summary.review + analysis.summary.strong}</p>
+              <p className="mt-1 text-lg font-bold tabular-nums text-warning">{analysis.summary.review + analysis.summary.strong}</p>
             </div>
             <div className="col-span-2 rounded-xl border border-border/50 bg-background/30 p-3 sm:col-span-1">
               <p className="text-[11px] text-muted-foreground">{t("masterLoudness")}</p>
@@ -126,7 +126,7 @@ export function MasteringPanel({ projectId, composition, onComplete }: Mastering
                   <div key={item.at} className="rounded-lg border border-border/50 bg-card/35 p-2.5">
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs font-semibold tabular-nums">{item.at.toFixed(2)}s</span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${item.level === "strong" ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-amber-500/30 bg-amber-500/10 text-amber-300"}`}>
+                      <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${item.level === "strong" ? "border-destructive/30 bg-destructive/10 text-destructive" : "border-warning/30 bg-warning/10 text-warning"}`}>
                         {t(item.level === "strong" ? "masterStrong" : "masterReview")} · {item.score}
                       </span>
                     </div>
@@ -139,7 +139,7 @@ export function MasteringPanel({ projectId, composition, onComplete }: Mastering
               </div>
             </details>
           ) : (
-            <p className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/8 p-3 text-xs leading-5 text-emerald-300"><LuCheck className="h-4 w-4 shrink-0" aria-hidden="true" />{t("masterBoundariesClean")}</p>
+            <p className="flex items-center gap-2 rounded-xl border border-success/20 bg-success/8 p-3 text-xs leading-5 text-success"><LuCheck className="h-4 w-4 shrink-0" aria-hidden="true" />{t("masterBoundariesClean")}</p>
           )}
 
           <div className="space-y-2">

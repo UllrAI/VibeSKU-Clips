@@ -299,7 +299,7 @@ export default function ProjectsPage() {
                         type="button"
                         onClick={() => handleDelete(p)}
                         title={t("deleteProject")}
-                        className="flex h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 opacity-100 transition-colors hover:bg-red-500/15 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100"
+                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 opacity-100 transition-colors hover:bg-destructive/15 hover:text-destructive md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
                       >
                         <LuTrash2 className="h-3.5 w-3.5" />
                       </button>

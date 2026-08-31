@@ -54,6 +54,7 @@ function NumberField({
     <div className="space-y-1.5">
       <Label className="text-xs text-muted-foreground">{label}</Label>
       <Input
+        aria-label={label}
         type="number"
         step={step}
         value={value ?? ""}
@@ -132,7 +133,7 @@ export function GenerationSettings() {
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t("fieldProvider")}</Label>
               <Select value={form.provider} onValueChange={(v) => setForm((f) => ({ ...f, provider: v ?? f.provider }))}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger aria-label={t("fieldProvider")} className="w-full">
                   <SelectValue>{(value: string) => labelOf(PROVIDER_OPTIONS, value)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -143,7 +144,7 @@ export function GenerationSettings() {
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t("fieldType")}</Label>
               <Select value={form.mediaType} onValueChange={(v) => setForm((f) => ({ ...f, mediaType: (v ?? "image") as GenMediaType }))}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger aria-label={t("fieldType")} className="w-full">
                   <SelectValue>{(value: string) => labelOf(MEDIA_OPTIONS, value)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent>
@@ -153,11 +154,11 @@ export function GenerationSettings() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t("fieldModelId")}</Label>
-              <Input value={form.modelId} onChange={(e) => setForm((f) => ({ ...f, modelId: e.target.value }))} placeholder={t("modelIdPlaceholder")} className="font-mono text-xs" />
+              <Input aria-label={t("fieldModelId")} value={form.modelId} onChange={(e) => setForm((f) => ({ ...f, modelId: e.target.value }))} placeholder={t("modelIdPlaceholder")} className="font-mono text-xs" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t("fieldName")}</Label>
-              <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("namePlaceholder")} className="text-xs" />
+              <Input aria-label={t("fieldName")} value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t("namePlaceholder")} className="text-xs" />
             </div>
           </div>
           <div className="flex items-center justify-between">
@@ -184,7 +185,7 @@ export function GenerationSettings() {
                       {m.supportsAudio ? t("audioSuffix") : ""}
                     </p>
                   </div>
-                  <button onClick={() => removeCustomModel(m.id)} className="shrink-0 text-muted-foreground hover:text-destructive transition-colors" title={t("delete")}>
+                  <button type="button" onClick={() => removeCustomModel(m.id)} aria-label={`${t("delete")} ${m.name}`} className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive" title={t("delete")}>
                     <LuTrash2 className="size-4" />
                   </button>
                 </div>
@@ -209,7 +210,7 @@ export function GenerationSettings() {
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("aspectRatio")}</Label>
                 <Select value={imageParams.aspectRatio} onValueChange={(v) => setImageParams({ ...imageParams, aspectRatio: (v ?? "9:16") as typeof imageParams.aspectRatio })}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger aria-label={t("aspectRatio")} className="w-full">
                     <SelectValue>{(value: string) => labelOf(ASPECT_OPTIONS, value)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -224,7 +225,7 @@ export function GenerationSettings() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t("negativePrompt")}</Label>
-              <Textarea value={imageParams.negativePrompt ?? ""} onChange={(e) => setImageParams({ ...imageParams, negativePrompt: e.target.value || undefined })} rows={2} placeholder={t("imageNegativePlaceholder")} className="text-xs resize-none" />
+              <Textarea aria-label={t("negativePrompt")} value={imageParams.negativePrompt ?? ""} onChange={(e) => setImageParams({ ...imageParams, negativePrompt: e.target.value || undefined })} rows={2} placeholder={t("imageNegativePlaceholder")} className="text-xs resize-none" />
             </div>
           </div>
 
@@ -235,7 +236,7 @@ export function GenerationSettings() {
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("aspectRatio")}</Label>
                 <Select value={videoParams.aspectRatio} onValueChange={(v) => setVideoParams({ ...videoParams, aspectRatio: (v ?? "9:16") as typeof videoParams.aspectRatio })}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger aria-label={t("aspectRatio")} className="w-full">
                     <SelectValue>{(value: string) => labelOf(ASPECT_OPTIONS, value)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -246,7 +247,7 @@ export function GenerationSettings() {
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">{t("resolution")}</Label>
                 <Select value={videoParams.resolution} onValueChange={(v) => setVideoParams({ ...videoParams, resolution: (v ?? "1080p") as typeof videoParams.resolution })}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger aria-label={t("resolution")} className="w-full">
                     <SelectValue>{(value: string) => labelOf(RESOLUTION_OPTIONS, value)}</SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -261,7 +262,7 @@ export function GenerationSettings() {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">{t("negativePrompt")}</Label>
-              <Textarea value={videoParams.negativePrompt ?? ""} onChange={(e) => setVideoParams({ ...videoParams, negativePrompt: e.target.value || undefined })} rows={2} placeholder={t("videoNegativePlaceholder")} className="text-xs resize-none" />
+              <Textarea aria-label={t("negativePrompt")} value={videoParams.negativePrompt ?? ""} onChange={(e) => setVideoParams({ ...videoParams, negativePrompt: e.target.value || undefined })} rows={2} placeholder={t("videoNegativePlaceholder")} className="text-xs resize-none" />
             </div>
           </div>
         </CardContent>

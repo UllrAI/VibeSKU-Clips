@@ -161,9 +161,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <button
       type="button"
       onClick={toggleTheme}
-      aria-label={theme === "dark" ? "切换到亮色模式" : "切换到暗色模式"}
-      title={theme === "dark" ? "亮色模式" : "暗色模式"}
-      className="flex size-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60"
+      aria-label={t(theme === "dark" ? "themeToLight" : "themeToDark")}
+      title={t(theme === "dark" ? "themeLight" : "themeDark")}
+      className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60"
     >
       {theme === "dark" ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
     </button>
@@ -175,7 +175,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         href="#main-content"
         className="sr-only z-[100] rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus:fixed focus:left-3 focus:top-3 focus:not-sr-only"
       >
-        跳到主要内容 / Skip to content
+        {t("skipToContent")}
       </a>
 
       <aside

@@ -62,6 +62,7 @@ export function ModelPicker({
         <div className="rounded-md border border-border/50 bg-muted/30 p-2 space-y-1.5">
           {models.length > 12 && (
             <input
+              aria-label={t("modelListFilter")}
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder={t("modelListFilter")}

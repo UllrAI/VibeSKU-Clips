@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { LuWand, LuClock, LuImage, LuArrowRight, LuBookmarkPlus, LuLoaderCircle, LuTriangleAlert, LuCircleCheck, LuCircleX, LuPencil } from "react-icons/lu";
+import { LuWand, LuClock, LuImage, LuArrowRight, LuBookmarkPlus, LuLoaderCircle, LuTriangleAlert, LuCircleCheck, LuCircleX, LuPencil, LuFilm, LuZap, LuScale, LuMic, LuPause } from "react-icons/lu";
 import { checkScriptCompliance } from "@/lib/ad-compliance";
 import { checkPublishReadiness } from "@/lib/publish-readiness";
 import Link from "next/link";
@@ -25,12 +25,12 @@ import { ProjectHeader } from "@/components/project-header";
 
 // shot type labels (label changed to i18n key, resolved per locale at render time)
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
-  hook: { labelKey: "shotTypeHook", color: "bg-red-500/20 text-red-400" },
-  pain_point: { labelKey: "shotTypePainPoint", color: "bg-orange-500/20 text-orange-400" },
+  hook: { labelKey: "shotTypeHook", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
+  pain_point: { labelKey: "shotTypePainPoint", color: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
   product_reveal: { labelKey: "shotTypeProductReveal", color: "bg-primary/15 text-primary" },
   demo: { labelKey: "shotTypeDemo", color: "bg-green-500/20 text-green-400" },
   social_proof: { labelKey: "shotTypeSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
-  cta: { labelKey: "shotTypeCta", color: "bg-amber-500/20 text-amber-400" },
+  cta: { labelKey: "shotTypeCta", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
 };
 
 // script style → i18n key (resolved per locale at render time)
@@ -759,7 +759,7 @@ export default function ScriptPage() {
   };
 
   // slim context strip (shared by loading, empty and normal states); global chrome lives in AppShell
-  const headerBar = <ProjectHeader projectName={projectName || t("defaultProjectName")} />;
+  const headerBar = <ProjectHeader projectName={projectName || t("defaultProjectName")} pageTitle={t("stepScript")} />;
 
   // loading: skeleton screen (mimics the script card layout; feels faster than a spinner and reduces perceived wait)
   if (loading) {
@@ -844,7 +844,7 @@ export default function ScriptPage() {
         <main className="mx-auto max-w-2xl px-6 py-12">
           <Card className="glass-card">
             <CardContent className="space-y-4 p-6">
-              <h2 className="text-lg font-bold">🎬 {t("aiFilmPreviewTitle")}</h2>
+              <h2 className="flex items-center gap-2 text-lg font-bold"><LuFilm className="size-5 text-primary" aria-hidden="true" />{t("aiFilmPreviewTitle")}</h2>
               <p className="text-sm text-muted-foreground">
                 {t("aiFilmPreviewMeta", { shots: filmPreview.shotCount, seconds: filmPreview.seconds, refs: filmPreview.referenceImages })}
               </p>
@@ -854,7 +854,7 @@ export default function ScriptPage() {
                 </div>
               )}
               {filmPreview.dialogueWarnings.length > 0 && (
-                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-xs text-amber-600 dark:text-amber-500">
+                <div className="rounded-lg border border-warning/40 bg-warning/10 px-4 py-2.5 text-xs text-warning">
                   {t("aiFilmDensityWarn", { shots: filmPreview.dialogueWarnings.map((w) => `#${w.index + 1}`).join("、") })}
                 </div>
               )}
@@ -887,10 +887,7 @@ export default function ScriptPage() {
         {headerBar}
         <main className="mx-auto flex max-w-lg flex-col items-center px-6 py-24 text-center">
           <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl brand-gradient">
-            <svg className="h-6 w-6 animate-spin text-white" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.4 0 0 5.4 0 12h4z" />
-            </svg>
+            <LuLoaderCircle className="size-6 animate-spin text-white motion-reduce:animate-none" aria-hidden="true" />
           </div>
           <h2 className="text-xl font-bold">{t("autoModeTitle")}</h2>
           <p className="mt-2 text-sm text-primary">
@@ -919,8 +916,8 @@ export default function ScriptPage() {
             clean restart — the beginner never loses a half-finished chain to a closed tab again */}
         {resumableRun && !autoFinishing && !aiFilming && (
           <div className="mx-auto mb-5 max-w-2xl rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
-            <p className="text-sm font-medium text-amber-500">
-              ⏸ {resumableRun.interrupted ? t("pipelineInterruptedTitle") : t("pipelineFailedTitle")}
+            <p className="flex items-center gap-1.5 text-sm font-medium text-warning">
+              <LuPause className="size-4" aria-hidden="true" />{resumableRun.interrupted ? t("pipelineInterruptedTitle") : t("pipelineFailedTitle")}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               {t("pipelineResumeDesc", {
@@ -975,7 +972,7 @@ export default function ScriptPage() {
                   disabled={autoFinishing || aiFilming || !currentScript}
                   onClick={autoFinish}
                 >
-                  {autoFinishing ? (autoFinishStage || t("autoFinish")) : `⚡ ${t("autoFinish")}`}
+                  {autoFinishing ? (autoFinishStage || t("autoFinish")) : <><LuZap className="size-4" aria-hidden="true" />{t("autoFinish")}</>}
                 </Button>
                 <Button
                   size="lg"
@@ -991,7 +988,7 @@ export default function ScriptPage() {
               <p className="text-center text-xs text-muted-foreground/80">{t("aiFilmCostNote")}</p>
               {/* quality reassurance: both paths run the judge panel automatically — Easy mode
                   hides the operation, never the quality features */}
-              <p className="text-center text-xs text-muted-foreground/80">⚖️ {t("autoJudgeNote")}</p>
+              <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground/80"><LuScale className="size-3.5" aria-hidden="true" />{t("autoJudgeNote")}</p>
               <div className="flex items-center gap-3">
                 <Button variant="outline" size="sm" className="text-xs" disabled={isGenerating} onClick={() => setRegenConfirmOpen(true)}>
                   {t("regenerate")}
@@ -1089,7 +1086,7 @@ export default function ScriptPage() {
                         {t("judging")}
                       </>
                     ) : (
-                      <>⚖️ {t("judgeButton")}</>
+                      <><LuScale className="size-4" aria-hidden="true" />{t("judgeButton")}</>
                     )}
                   </Button>
                   <Button
@@ -1122,13 +1119,13 @@ export default function ScriptPage() {
 
               {/* judge-panel report: per-judge issues + before/after rewrites + one-click apply */}
               {judgeError && (
-                <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/5 px-4 py-2.5 text-xs text-red-400">{judgeError}</div>
+                <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-xs text-destructive">{judgeError}</div>
               )}
               {judgeReport && (
                 <Card className="glass-card mb-4">
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold">⚖️ {t("judgeReportTitle")}</span>
+                      <span className="flex items-center gap-1.5 text-sm font-semibold"><LuScale className="size-4 text-primary" aria-hidden="true" />{t("judgeReportTitle")}</span>
                       <div className="flex items-center gap-2">
                         {judgeApplied ? (
                           <span className="text-xs text-green-400">{t("judgeAppliedTip")}</span>
@@ -1148,14 +1145,14 @@ export default function ScriptPage() {
                         <div key={v.judge} className="rounded-lg border border-border/60 p-2.5">
                           <div className="text-xs font-medium mb-1">
                             {locale === "zh" ? JUDGE_META[v.judge].zh : JUDGE_META[v.judge].en}
-                            {v.issues.length === 0 && <span className="ml-2 text-green-400">✓</span>}
+                            {v.issues.length === 0 && <LuCircleCheck className="ml-2 inline size-3.5 text-success" aria-label={t("judgeAllPass")} />}
                           </div>
                           {v.issues.length > 0 && (
                             <ul className="space-y-1 text-xs text-muted-foreground">
                               {v.issues.map((iss, i) => (
                                 <li key={i}>
                                   {typeof iss.shotId === "number" && <span className="text-primary mr-1">#{iss.shotId}</span>}
-                                  <span className={`mr-1 rounded px-1 text-[10px] ${iss.tier === "invariant" ? "bg-red-500/15 text-red-400" : iss.tier === "default" ? "bg-amber-500/15 text-amber-500" : "bg-muted text-muted-foreground"}`}>
+                                  <span className={`mr-1 rounded px-1 text-[10px] ${iss.tier === "invariant" ? "bg-destructive/15 text-destructive" : iss.tier === "default" ? "bg-warning/15 text-warning" : "bg-muted text-muted-foreground"}`}>
                                     {t(`judgeTier_${iss.tier}`)}
                                   </span>
                                   {iss.issue}
@@ -1201,14 +1198,14 @@ export default function ScriptPage() {
               )}
 
               {autoFinishError && (
-                <div className="mb-4 rounded-lg border border-red-500/40 bg-red-500/5 px-4 py-2.5 text-xs text-red-400">
+                <div className="mb-4 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
                   {autoFinishError}
                 </div>
               )}
               {/* regenerate errors (e.g. missing LLM key) used to fail silently in this view —
                   render them here with a direct jump to Settings */}
               {genError && (
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-red-500/40 bg-red-500/5 px-4 py-2.5 text-xs text-red-400">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
                   <span>{genError}</span>
                   <Link href="/settings?tab=llm" className="shrink-0 text-primary underline underline-offset-2 hover:text-primary/80">
                     {t("goToSettings")}
@@ -1263,8 +1260,8 @@ export default function ScriptPage() {
                                   it.status === "pass"
                                     ? "text-muted-foreground"
                                     : it.status === "fail"
-                                    ? "text-red-400"
-                                    : "text-amber-400"
+                                    ? "text-destructive"
+                                    : "text-warning"
                                 }
                               >
                                 {it.message}
@@ -1370,7 +1367,7 @@ export default function ScriptPage() {
                                     />
                                   </div>
                                   <div className="flex items-center justify-end gap-2">
-                                    {editStatus === "failed" && <span className="text-[10px] text-red-400 mr-auto">{t("editSaveFailed")}</span>}
+                                    {editStatus === "failed" && <span className="text-[10px] text-destructive mr-auto">{t("editSaveFailed")}</span>}
                                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={cancelEditShot}>{tc("cancel")}</Button>
                                     <Button size="sm" className="h-7 text-xs brand-gradient text-white" disabled={editStatus === "saving"} onClick={() => saveEditShot(shot.shotId)}>{tc("save")}</Button>
                                   </div>
@@ -1378,8 +1375,8 @@ export default function ScriptPage() {
                               ) : (
                                 shot.voiceover && (
                                   <div className="mt-3 p-2.5 bg-muted/30 rounded-md">
-                                    <p className="text-xs text-muted-foreground leading-relaxed">
-                                      🎙 {shot.voiceover}
+                                    <p className="flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+                                      <LuMic className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />{shot.voiceover}
                                     </p>
                                   </div>
                                 )
@@ -1446,7 +1443,7 @@ export default function ScriptPage() {
           <Card className="glass-card w-full max-w-md mx-4">
             <CardContent className="p-6 space-y-4">
               <h3 className="text-base font-semibold flex items-center gap-2">
-                <LuTriangleAlert className="w-4 h-4 text-amber-400 shrink-0" />
+                <LuTriangleAlert className="w-4 h-4 text-warning shrink-0" />
                 {t("regenConfirmTitle")}
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">{t("regenConfirmDesc")}</p>

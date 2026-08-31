@@ -73,9 +73,9 @@ export const script: NamespaceMessages = {
     tabText: "文案编辑",
     nextStepAssets: "下一步：生成素材",
     // 画面来源
-    visualProductImage: "📷 商品原图",
+    visualProductImage: "商品原图",
     visualAiGenerate: "AI 生成",
-    visualUserUpload: "📁 用户上传",
+    visualUserUpload: "用户上传",
     productImageShort: "商品图",
     // 文案编辑
     fullVoiceover: "完整配音文案",
@@ -208,9 +208,9 @@ export const script: NamespaceMessages = {
     tabText: "Edit copy",
     nextStepAssets: "Next: generate assets",
     // 画面来源
-    visualProductImage: "📷 Product photo",
+    visualProductImage: "Product photo",
     visualAiGenerate: "AI-generated",
-    visualUserUpload: "📁 User upload",
+    visualUserUpload: "User upload",
     productImageShort: "Product",
     // 文案编辑
     fullVoiceover: "Full voiceover script",

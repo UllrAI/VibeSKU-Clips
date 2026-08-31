@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LuPlus } from "react-icons/lu";
+import { LuMic, LuPlus } from "react-icons/lu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,12 @@ import { useT, useLocale } from "@/lib/i18n";
 
 // Shot type labels (label uses a showcase-namespace i18n key, resolved per language)
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
-  hook: { labelKey: "shotTypeHook", color: "bg-red-500/20 text-red-400" },
-  pain_point: { labelKey: "shotTypePainPoint", color: "bg-orange-500/20 text-orange-400" },
+  hook: { labelKey: "shotTypeHook", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
+  pain_point: { labelKey: "shotTypePainPoint", color: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
   product_reveal: { labelKey: "shotTypeProductReveal", color: "bg-primary/15 text-primary" },
   demo: { labelKey: "shotTypeDemo", color: "bg-green-500/20 text-green-400" },
   social_proof: { labelKey: "shotTypeSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
-  cta: { labelKey: "shotTypeCta", color: "bg-amber-500/20 text-amber-400" },
+  cta: { labelKey: "shotTypeCta", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
 };
 
 export default function ShowcasePage() {
@@ -84,7 +84,7 @@ export default function ShowcasePage() {
                     </div>
                     <p className="text-sm mb-1">{shot.description}</p>
                     {shot.voiceover && (
-                      <p className="text-xs text-muted-foreground">🎙 {shot.voiceover}</p>
+                      <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><LuMic className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />{shot.voiceover}</p>
                     )}
                   </div>
                 );

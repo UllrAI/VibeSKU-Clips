@@ -111,10 +111,10 @@ const statusLabelKeys: Record<TaskStatus, string> = {
 // Task status badge colors
 const statusColors: Record<TaskStatus, string> = {
   pending: "bg-zinc-500/20 text-zinc-400 border-0",
-  generating: "bg-amber-500/20 text-amber-400 border-0",
+  generating: "bg-warning/12 text-warning border-0",
   composing: "bg-primary/15 text-primary border-0",
-  done: "bg-emerald-500/20 text-emerald-400 border-0",
-  failed: "bg-red-500/20 text-red-400 border-0",
+  done: "bg-success/12 text-success border-0",
+  failed: "bg-destructive/12 text-destructive border-0",
 };
 
 export default function BatchPage() {
@@ -746,7 +746,7 @@ export default function BatchPage() {
                 </div>
                 {/* Honest expectation for "live presenter": this tool does not render digital humans — relies on user-provided footage or AI mid/long-shot figures */}
                 {videoMode === "live_presenter" && (
-                  <p className="mt-2 text-[11px] leading-relaxed text-amber-400/90">{t("livePresenterHint")}</p>
+                  <p className="mt-2 text-[11px] leading-relaxed text-warning">{t("livePresenterHint")}</p>
                 )}
               </div>
 
@@ -850,7 +850,7 @@ export default function BatchPage() {
                             <span className="text-[11px] text-muted-foreground block truncate">{task.variation}</span>
                           )}
                           {task.status === "failed" && task.error && (
-                            <span className="text-xs text-red-400">{task.error}</span>
+                            <span className="text-xs text-destructive">{task.error}</span>
                           )}
                         </div>
                       </div>
@@ -877,7 +877,7 @@ export default function BatchPage() {
                 {/* Completion notice */}
                 {isComplete && (
                   <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center">
-                    <p className="text-sm text-emerald-400 font-medium">
+                    <p className="text-sm text-success font-medium">
                       {t("completeMsg", { count: doneCount })}
                     </p>
                   </div>
@@ -887,10 +887,10 @@ export default function BatchPage() {
                   <div
                     className={`mt-2 p-3 rounded-lg border text-center text-sm ${
                       homogeneity.verdict === "ok"
-                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                        ? "bg-success/10 border-success/20 text-success"
                         : homogeneity.verdict === "warn"
-                          ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
-                          : "bg-red-500/10 border-red-500/20 text-red-400"
+                          ? "bg-warning/10 border-warning/20 text-warning"
+                          : "bg-destructive/10 border-destructive/20 text-destructive"
                     }`}
                   >
                     {locale === "en" ? homogeneity.message.en : homogeneity.message.zh}

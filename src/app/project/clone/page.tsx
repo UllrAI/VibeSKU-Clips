@@ -13,6 +13,7 @@ import { useSettingsStore } from "@/lib/stores/settings-store";
 import { mergeCustomModels, buildVideoOptions } from "@/lib/gen-params";
 import { referenceModelFor, buildReplicatePrompt, REPLICATE_MAX_REF_SEC, type ReplicateShot } from "@/lib/replicate-plan";
 import { useT } from "@/lib/i18n";
+import { LuCheck, LuImage, LuLoaderCircle, LuPlus, LuX, LuZap } from "react-icons/lu";
 
 /** storyboard card data */
 interface StoryboardCard {
@@ -470,26 +471,7 @@ export default function ClonePage() {
                   >
                     {isAnalyzing ? (
                       <span className="flex items-center gap-2">
-                        {/* loading spinner */}
-                        <svg
-                          className="animate-spin h-4 w-4"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                          />
-                        </svg>
+                        <LuLoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                         {t("analyzing")}
                       </span>
                     ) : (
@@ -586,7 +568,7 @@ export default function ClonePage() {
                   </span>
                 </Label>
                 <div
-                  className={`relative rounded-lg border-2 border-dashed transition-colors cursor-pointer ${
+                  className={`relative rounded-lg border-2 border-dashed transition-colors ${
                     isDragging
                       ? "border-primary bg-primary/5"
                       : "border-border/60 hover:border-primary/50"
@@ -594,11 +576,11 @@ export default function ClonePage() {
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
                 >
                   <input
                     ref={fileInputRef}
                     type="file"
+                    aria-label={t("productImageLabel")}
                     accept="image/*"
                     multiple
                     className="hidden"
@@ -607,30 +589,9 @@ export default function ClonePage() {
 
                   {productImages.length === 0 ? (
                     // empty state - upload prompt
-                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex w-full flex-col items-center justify-center py-10 text-center">
                       <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-                        <svg
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.5"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="text-muted-foreground"
-                        >
-                          <rect
-                            x="3"
-                            y="3"
-                            width="18"
-                            height="18"
-                            rx="2"
-                            ry="2"
-                          />
-                          <circle cx="8.5" cy="8.5" r="1.5" />
-                          <polyline points="21 15 16 10 5 21" />
-                        </svg>
+                        <LuImage className="size-6 text-muted-foreground" aria-hidden="true" />
                       </div>
                       <p className="text-sm text-muted-foreground mb-1">
                         {t("uploadHint")}
@@ -638,7 +599,7 @@ export default function ClonePage() {
                       <p className="text-xs text-muted-foreground/70">
                         {t("uploadFormatHint")}
                       </p>
-                    </div>
+                    </button>
                   ) : (
                     // uploaded image preview
                     <div className="p-4">
@@ -657,46 +618,19 @@ export default function ClonePage() {
                             {/* delete button */}
                             <button
                               type="button"
-                              className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                removeImage(img.id);
-                              }}
+                              aria-label={t("removeProductImage")}
+                              className="absolute right-1 top-1 flex size-8 items-center justify-center rounded-full bg-black/70 text-white opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+                              onClick={() => removeImage(img.id)}
                             >
-                              <svg
-                                width="12"
-                                height="12"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="white"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              >
-                                <line x1="18" y1="6" x2="6" y2="18" />
-                                <line x1="6" y1="6" x2="18" y2="18" />
-                              </svg>
+                              <LuX className="size-4" aria-hidden="true" />
                             </button>
                           </div>
                         ))}
                         {/* add more button */}
                         {productImages.length < 5 && (
-                          <div className="aspect-square rounded-lg border border-dashed border-border/60 flex items-center justify-center hover:border-primary/50 transition-colors">
-                            <svg
-                              width="20"
-                              height="20"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              className="text-muted-foreground"
-                            >
-                              <line x1="12" y1="5" x2="12" y2="19" />
-                              <line x1="5" y1="12" x2="19" y2="12" />
-                            </svg>
-                          </div>
+                          <button type="button" aria-label={t("uploadHint")} onClick={() => fileInputRef.current?.click()} className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-border/60 text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary">
+                            <LuPlus className="size-5" aria-hidden="true" />
+                          </button>
                         )}
                       </div>
                     </div>
@@ -736,24 +670,24 @@ export default function ClonePage() {
             <Card className="glass-card">
               <CardContent className="p-6 space-y-3">
                 <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold">⚡ {t("modelTierTitle")}</h3>
+                  <h3 className="flex items-center gap-1.5 text-sm font-semibold"><LuZap className="size-4 text-primary" aria-hidden="true" />{t("modelTierTitle")}</h3>
                   {!refAnalysis.modelTierEligible && (
-                    <Badge variant="outline" className="text-xs text-amber-600">
+                    <Badge variant="outline" className="text-xs text-warning">
                       {t("modelTierTooLong", { max: REPLICATE_MAX_REF_SEC })}
                     </Badge>
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed">{t("modelTierDesc")}</p>
                 {videoModelTarget && !referenceModelFor(videoModelTarget.model) && (
-                  <p className="text-xs text-amber-600/90">{t("modelTierNeedSeedance")}</p>
+                  <p className="text-xs text-warning/90">{t("modelTierNeedSeedance")}</p>
                 )}
-                {!videoModelTarget && <p className="text-xs text-amber-600/90">{t("modelTierNeedModel")}</p>}
+                {!videoModelTarget && <p className="text-xs text-warning/90">{t("modelTierNeedModel")}</p>}
                 {replicateError && <p className="text-xs text-destructive">{replicateError}</p>}
                 {replicateResult ? (
                   <div className="space-y-2">
                     <video src={replicateResult.url} controls className="w-full max-w-xs rounded-lg border border-border/50" />
                     <div className="flex items-center gap-3 text-xs">
-                      <span className="text-emerald-600">✓ {t("modelTierDone")}</span>
+                      <span className="flex items-center gap-1 text-success"><LuCheck className="size-3.5" aria-hidden="true" />{t("modelTierDone")}</span>
                       <Link href={`/project/${replicateResult.projectId}/export`} className="text-primary underline">
                         {t("modelTierViewExport")}
                       </Link>
@@ -800,27 +734,12 @@ export default function ClonePage() {
           >
             {isGenerating ? (
               <>
-                <svg className="animate-spin h-5 w-5 mr-2" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
+                <LuLoaderCircle className="mr-2 size-5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
                 {t("cloning")}
               </>
             ) : (
               <>
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="mr-2"
-                >
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                </svg>
+                <LuZap className="mr-2 size-5" aria-hidden="true" />
                 {t("startClone")}
               </>
             )}

@@ -21,6 +21,7 @@ export function LanguageToggle({ className = "" }: { className?: string }) {
     <button
       type="button"
       onClick={toggle}
+      aria-label={locale === "zh" ? "Switch to English" : "切换到中文"}
       title={locale === "zh" ? "Switch to English" : "切换到中文"}
       className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors ${className}`}
     >

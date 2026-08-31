@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { LuArrowLeft, LuPlay, LuChevronDown, LuArrowRight, LuLoaderCircle } from "react-icons/lu";
+import { LuArrowLeft, LuPlay, LuChevronDown, LuArrowRight, LuLoaderCircle, LuMic, LuCircleAlert, LuFlaskConical, LuCheck, LuX } from "react-icons/lu";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { resolveTTSConfig, isPaidTTSReady, getTTSProviderMeta } from "@/lib/tts-presets";
 import Link from "next/link";
@@ -92,12 +92,12 @@ const transitionLabels: Record<string, string> = {
 
 // 镜头类型标签（labelKey 为 i18n key）
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
-  hook: { labelKey: "shotHook", color: "bg-red-500/20 text-red-400" },
-  pain_point: { labelKey: "shotPainPoint", color: "bg-orange-500/20 text-orange-400" },
+  hook: { labelKey: "shotHook", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
+  pain_point: { labelKey: "shotPainPoint", color: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
   product_reveal: { labelKey: "shotProductReveal", color: "bg-primary/15 text-primary" },
   demo: { labelKey: "shotDemo", color: "bg-green-500/20 text-green-400" },
   social_proof: { labelKey: "shotSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
-  cta: { labelKey: "shotCta", color: "bg-amber-500/20 text-amber-400" },
+  cta: { labelKey: "shotCta", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
 };
 
 interface DbShot {
@@ -574,7 +574,7 @@ export default function VideoPage() {
     <div className="min-h-screen grid-bg">
       {/* project context strip: name + CLICKABLE step navigation — replaces the legacy
           inline non-clickable stepper this page carried while owned by a parallel session */}
-      <ProjectHeader projectName={projectName || t("defaultProjectName")} />
+      <ProjectHeader projectName={projectName || t("defaultProjectName")} pageTitle={t("timelineTitle")} />
 
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* page-level load feedback: these states existed but were never rendered,
@@ -650,8 +650,8 @@ export default function VideoPage() {
                               </Badge>
                               <span className="text-xs text-muted-foreground">{clip.duration}s</span>
                             </div>
-                            <p className="text-xs text-muted-foreground truncate">
-                              🎙 {clip.voiceover}
+                            <p className="flex min-w-0 items-center gap-1.5 truncate text-xs text-muted-foreground">
+                              <LuMic className="size-3.5 shrink-0" aria-hidden="true" />{clip.voiceover}
                             </p>
                           </div>
 
@@ -1021,7 +1021,7 @@ export default function VideoPage() {
               {/* 合成失败提示 */}
               {composeError && (
                 <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                  <p className="text-xs text-destructive">⚠ {composeError}</p>
+                  <p className="flex items-start gap-1.5 text-xs text-destructive"><LuCircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />{composeError}</p>
                 </div>
               )}
 
@@ -1075,7 +1075,7 @@ export default function VideoPage() {
                     onClick={toggleMatrixOpen}
                     className="w-full flex items-center justify-between text-sm font-medium"
                   >
-                    <span>🧪 {t("matrixTitle")}</span>
+                    <span className="flex items-center gap-1.5"><LuFlaskConical className="size-4 text-primary" aria-hidden="true" />{t("matrixTitle")}</span>
                     <span className="text-xs text-muted-foreground">{matrixOpen ? "−" : "+"}</span>
                   </button>
                   {matrixOpen && (
@@ -1166,9 +1166,9 @@ export default function VideoPage() {
                               {r.status === "composing" ? (
                                 <LuLoaderCircle className="animate-spin h-3 w-3 shrink-0 text-muted-foreground" />
                               ) : r.status === "done" ? (
-                                <span className="text-emerald-500 shrink-0">✓</span>
+                                <LuCheck className="size-3.5 shrink-0 text-success" aria-label={t("composeDoneMsg")} />
                               ) : (
-                                <span className="text-destructive shrink-0">✗</span>
+                                <LuX className="size-3.5 shrink-0 text-destructive" aria-label={t("errorComposeFailed")} />
                               )}
                               <span className="truncate text-muted-foreground">{r.label}</span>
                               {r.url && (

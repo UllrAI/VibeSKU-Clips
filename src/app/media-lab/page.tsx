@@ -161,6 +161,7 @@ export default function MediaLabPage() {
             <input
               ref={inputRef}
               type="file"
+              aria-label={t("choose")}
               accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"
               onChange={(event) => chooseFile(event.target.files?.[0] ?? null)}
               className="sr-only"
@@ -202,7 +203,7 @@ export default function MediaLabPage() {
           </div>
 
           {!configured && (
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+            <div className="rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning">
               <p>{t("needVision")}</p>
               <Link href="/settings" className="mt-2 inline-flex min-h-8 items-center font-medium underline underline-offset-4">{t("configure")}</Link>
             </div>

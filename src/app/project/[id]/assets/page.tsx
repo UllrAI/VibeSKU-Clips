@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
-import { LuZap, LuCheck, LuCircleX, LuImage, LuArrowRight, LuLoaderCircle, LuTriangleAlert, LuUpload, LuScissors } from "react-icons/lu";
+import { LuZap, LuCheck, LuCircleAlert, LuCircleX, LuImage, LuArrowRight, LuLoaderCircle, LuTriangleAlert, LuUpload, LuScissors, LuVideo } from "react-icons/lu";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,12 +49,12 @@ import {
 
 // shot type labels (label changed to i18n key in the assets namespace, resolved per locale)
 const shotTypeLabels: Record<Shot["type"], { key: string; color: string }> = {
-  hook: { key: "shotTypeHook", color: "bg-red-500/20 text-red-400" },
-  pain_point: { key: "shotTypePainPoint", color: "bg-orange-500/20 text-orange-400" },
+  hook: { key: "shotTypeHook", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
+  pain_point: { key: "shotTypePainPoint", color: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
   product_reveal: { key: "shotTypeProductReveal", color: "bg-primary/15 text-primary" },
   demo: { key: "shotTypeDemo", color: "bg-green-500/20 text-green-400" },
   social_proof: { key: "shotTypeSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
-  cta: { key: "shotTypeCta", color: "bg-amber-500/20 text-amber-400" },
+  cta: { key: "shotTypeCta", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
 };
 
 // platform info for the default image model (used when initiating generation requests)
@@ -976,7 +976,7 @@ export default function AssetsPage() {
   return (
     <div className="min-h-screen grid-bg">
       {/* project context strip: name + step navigation (global chrome lives in AppShell) */}
-      <ProjectHeader projectName={projectName || t("untitledProject")} />
+      <ProjectHeader projectName={projectName || t("untitledProject")} pageTitle={t("title")} />
 
       {/* single hidden input reused for every per-shot upload; target shot tracked in pendingUploadShot */}
       <input
@@ -1339,11 +1339,11 @@ export default function AssetsPage() {
 
         {/* no image model configured warning (only shown when there are still AI shots pending generation) */}
         {showModelWarning && (
-          <div className="mb-6 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3">
-            <LuTriangleAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+          <div className="mb-6 flex items-start gap-3 rounded-xl border border-warning/30 bg-warning/10 p-4">
+            <LuTriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-warning" />
             <div>
-              <p className="text-sm font-medium text-amber-200">{t("noModelTitle")}</p>
-              <p className="text-xs text-amber-300/80 mt-0.5">
+              <p className="text-sm font-medium text-warning">{t("noModelTitle")}</p>
+              <p className="mt-0.5 text-xs text-warning/85">
                 {t("noModelDesc")}
                 <Link href="/settings?tab=image" className="underline ml-1">{t("goToSettings")}</Link>
               </p>
@@ -1386,7 +1386,7 @@ export default function AssetsPage() {
                   <span className="shrink-0 tabular-nums">
                     {t("mixReal")} {Math.round(mix.realRatio * 100)}% · {t("mixAi")} {100 - Math.round(mix.realRatio * 100)}%
                   </span>
-                  {mix.tiltEligible && <span className="text-emerald-500 truncate">✓ {t("mixTiltOk")}</span>}
+                  {mix.tiltEligible && <span className="flex truncate items-center gap-1 text-success"><LuCheck className="size-3 shrink-0" aria-hidden="true" />{t("mixTiltOk")}</span>}
                 </div>
               )}
             </div>
@@ -1435,7 +1435,7 @@ export default function AssetsPage() {
                               Edits persist into the script and apply on the next motion generation */}
                           {uiMode === "pro" && (
                           <div className="flex items-center gap-1.5 mb-2 text-xs min-w-0">
-                            <span className="shrink-0 text-muted-foreground/70">🎥</span>
+                            <LuVideo className="size-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
                             {editingCameraShot === asset.shotId ? (
                               <input
                                 autoFocus
@@ -1534,12 +1534,12 @@ export default function AssetsPage() {
                           {/* single error slot for the whole card: generation failures AND
                               non-fatal errors (camera save / i2v) that keep status "done" */}
                           {!asset.isVideo && keyframeStaticWarnings(asset.prompt || asset.description).length > 0 && (
-                            <p className="text-xs text-amber-600 dark:text-amber-500 mt-2">
+                            <p className="mt-2 text-xs text-warning">
                               {t("keyframeStaticWarn", { words: keyframeStaticWarnings(asset.prompt || asset.description).join("、") })}
                             </p>
                           )}
                           {asset.error && (
-                            <p className="text-xs text-destructive mt-2">⚠ {asset.error}</p>
+                            <p className="mt-2 flex items-start gap-1.5 text-xs text-destructive"><LuCircleAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />{asset.error}</p>
                           )}
                         </div>
 

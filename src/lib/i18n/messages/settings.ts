@@ -9,11 +9,11 @@ export const settings: NamespaceMessages = {
       "配置 AI 服务后即可开始生成带货视频。需要配置 LLM（生成脚本）+ 至少一个 AI 平台（生成图片/视频）。",
 
     // 新手一键接入 Atlas
-    oneKeyTitle: "新手推荐 · 一个 Key 全搞定",
+    oneKeyTitle: "推荐接入 · 一个 Key 配好全流程",
     oneKeyDesc: "填 Atlas Cloud 的 API Key，自动配好脚本 + 图 + 视频 + 配音，无需在下面逐项设置。",
     oneKeyPlaceholder: "粘贴 Atlas Cloud API Key",
     oneKeyCta: "一键接入",
-    oneKeyDone: "已接入 Atlas Cloud — 下方 LLM / 生图 / 生视频 / 配音 已自动配好，可直接开始出片",
+    oneKeyDone: "Atlas Cloud 已接入，脚本、生图、视频和配音均已配置，可直接开始出片",
     oneKeyGetKey: "没有 Key？前往 Atlas Cloud 获取 →",
 
     // 标签页
@@ -24,11 +24,11 @@ export const settings: NamespaceMessages = {
 
     // AI 平台描述/提示
     providerAtlasDesc: "高质量图像和视频生成平台，支持多种 AI 模型",
-    providerAtlasTip: "推荐首选，模型最全最便宜",
+    providerAtlasTip: "覆盖常用模型，适合快速接入",
     providerFalDesc: "快速推理平台，支持 Flux、SDXL 等主流图像生成模型",
-    providerFalTip: "支持 Kling 3.0、Veo 3 等最新模型",
+    providerFalTip: "可接入 Kling、Veo 等视频模型",
     providerReplicateDesc: "海量模型聚合平台，FLUX、Imagen、Kling、Seedance、Veo 等一站接入",
-    providerReplicateTip: "模型库最全，predictions API 统一调用",
+    providerReplicateTip: "模型选择丰富，通过 predictions API 统一调用",
     providerVolcengineName: "火山引擎",
     providerAlibabaName: "阿里百炼",
     providerSiliconflowName: "硅基流动",
@@ -44,9 +44,12 @@ export const settings: NamespaceMessages = {
     // AI 平台卡片
     providerEnabled: "已启用",
     apiKeyPlaceholder: "输入 {name} 的 API Key",
+    toggleProvider: "启用或停用 {name}",
+    showSecret: "显示密钥",
+    hideSecret: "隐藏密钥",
 
     // LLM 配置
-    llmProvider: "LLM Provider",
+    llmProvider: "脚本模型服务",
     llmPresetHint: "快捷预设（点击自动填入 baseUrl 和模型，还需填写 API Key）：",
     presetAtlasTip: "推荐！LLM+生图生视频共用一个 Key",
     presetOpenrouterTip: "一个 Key 聚合 400+ 模型，OpenAI 协议直连",
@@ -66,14 +69,14 @@ export const settings: NamespaceMessages = {
     llmTextModel: "文本模型",
     llmVisionModel: "视觉模型",
     modelListButton: "读取可用模型",
-    modelListLoading: "读取中...",
+    modelListLoading: "读取中…",
     modelListFilter: "筛选模型…",
     modelListNoMatch: "没有匹配的模型",
     modelListFailed: "读取模型列表失败",
     ollamaModelHint: "Ollama 的模型名要写全（含 :tag），例如 qwen2.5:7b-instruct；点上面的「读取可用模型」可直接看本机装了哪些。",
-    llmTestTesting: "测试中...",
-    llmTestSuccess: "连接成功 ✓",
-    llmTestError: "连接失败 ✗",
+    llmTestTesting: "测试中…",
+    llmTestSuccess: "连接成功",
+    llmTestError: "连接失败",
     llmTestButton: "测试连接",
     customModelSuffix: " ·自定义",
     advancedSection: "高级 · 自定义模型接入点 / 生成参数",
@@ -95,14 +98,15 @@ export const settings: NamespaceMessages = {
     ttsModelLabel: "模型",
     ttsVoiceLabel: "音色 voice",
     ttsApiKeyPlaceholderShort: "输入 API Key",
-    ttsKeyReused: "✓ 已复用「AI 平台」里该平台的 API Key",
-    ttsKeyMissing: "⚠ 请先到上方「AI 平台」标签页填好该平台的 API Key",
+    ttsKeyReused: "已复用「平台 Key」中的 API Key",
+    ttsKeyMissing: "请先在「平台 Key」中填写该平台的 API Key",
     ttsGroupIdLabel: "GroupId（海螺国内端点必填，国际版可空）",
     ttsGroupIdPlaceholder: "海螺控制台的 GroupId",
-    ttsTesting: "合成中...",
-    ttsTestError: "试听失败 ✗",
-    ttsTestButton: "🔊 试听音色",
+    ttsTesting: "合成中…",
+    ttsTestError: "试听失败",
+    ttsTestButton: "试听音色",
     ttsFillKeyFirst: "填好 Key 后可试听",
+    toggleTts: "启用或停用配音",
 
     // 默认设置
     defaultsTitle: "默认设置",
@@ -116,16 +120,16 @@ export const settings: NamespaceMessages = {
     selectImageModel: "选择生图模型",
     selectVideoModel: "选择生视频模型",
     enableProviderFirst: "请先启用 AI 平台",
-    modelsLoading: "加载中...",
+    modelsLoading: "加载中…",
 
     // 顶部配置状态横幅
     configBannerTitle: "配置未完成，部分功能暂不可用",
 
     // 底部保存
-    llmConfigured: "✓ LLM 已配置",
-    llmNotConfigured: "⚠ LLM 未配置（脚本生成需要）",
-    providerCount: "✓ {n} 个 AI 平台已启用",
-    noProvider: "⚠ 无 AI 平台启用（素材生成需要）",
+    llmConfigured: "脚本模型已配置",
+    llmNotConfigured: "脚本模型未配置（生成脚本时需要）",
+    providerCount: "已启用 {n} 个 AI 平台",
+    noProvider: "尚未启用 AI 平台（生成素材时需要）",
     settingsSaved: "设置已保存",
     autoSaveHint: "所有设置修改即存，无需手动保存。",
     tabTts: "配音",
@@ -143,7 +147,7 @@ export const settings: NamespaceMessages = {
 
     // 出镜人物
     characterIntro:
-      "添加出镜人物后，AI 生成脚本和素材时会自动注入人物外貌描述，确保不同分镜中人物形象保持一致。给主播生成「多视图定妆照」后，九宫格分镜与一键整片会把定妆照当人物参考——跨镜头、跨条视频都不换脸。",
+      "把常用主播保存为可复用人物资产。填写外观与声音特征，并生成多视图定妆照后，脚本、分镜和成片会优先保持人物一致。",
     characterDefault: "默认",
     characterSheetBtn: "多视图定妆",
     characterSheetRedo: "重新定妆",
@@ -191,10 +195,12 @@ export const settings: NamespaceMessages = {
     brandWatermarkTitle: "水印设置",
     brandWatermarkPosition: "水印位置",
     brandWatermarkOpacity: "透明度",
+    toggleWatermark: "启用或停用水印",
     brandOutroTitle: "片尾设置",
     brandOutroTextLabel: "片尾文字",
     brandOutroTextPlaceholder: "如：关注我们获取更多好物推荐",
     brandOutroTip: "片尾文字会叠加在品牌色背景上展示",
+    toggleOutro: "启用或停用片尾",
   },
   en: {
     backHome: "Back to home",
@@ -203,11 +209,11 @@ export const settings: NamespaceMessages = {
       "Configure your AI services to start generating commerce videos. You'll need an LLM (for scripts) plus at least one AI platform (for images/video).",
 
     // One-key Atlas setup for newcomers
-    oneKeyTitle: "Recommended · One key does it all",
+    oneKeyTitle: "Recommended setup · One key for the full workflow",
     oneKeyDesc: "Paste your Atlas Cloud API key and we'll wire up scripts + images + video + voiceover automatically — no need to configure each section below.",
     oneKeyPlaceholder: "Paste your Atlas Cloud API key",
     oneKeyCta: "Connect",
-    oneKeyDone: "Atlas Cloud connected — LLM / image / video / voiceover below are all set up. You're ready to create.",
+    oneKeyDone: "Atlas Cloud is connected. Scripts, images, video, and voiceover are ready to use.",
     oneKeyGetKey: "No key? Get one from Atlas Cloud →",
 
     // Tabs
@@ -218,11 +224,11 @@ export const settings: NamespaceMessages = {
 
     // AI platform descriptions/tips
     providerAtlasDesc: "High-quality image and video generation platform supporting many AI models",
-    providerAtlasTip: "Top pick — widest model lineup at the lowest price",
+    providerAtlasTip: "Covers common models and offers the quickest setup",
     providerFalDesc: "Fast inference platform supporting Flux, SDXL and other leading image models",
-    providerFalTip: "Supports the latest models like Kling 3.0 and Veo 3",
+    providerFalTip: "Connects to video models such as Kling and Veo",
     providerReplicateDesc: "Massive model aggregator — FLUX, Imagen, Kling, Seedance, Veo and more in one place",
-    providerReplicateTip: "Largest model library, unified via the predictions API",
+    providerReplicateTip: "Broad model selection through one predictions API",
     providerVolcengineName: "Volcengine",
     providerAlibabaName: "Alibaba Bailian",
     providerSiliconflowName: "SiliconFlow",
@@ -238,6 +244,9 @@ export const settings: NamespaceMessages = {
     // AI platform card
     providerEnabled: "Enabled",
     apiKeyPlaceholder: "Enter your {name} API key",
+    toggleProvider: "Enable or disable {name}",
+    showSecret: "Show secret",
+    hideSecret: "Hide secret",
 
     // LLM config
     llmProvider: "LLM provider",
@@ -266,8 +275,8 @@ export const settings: NamespaceMessages = {
     modelListFailed: "Could not read the model list",
     ollamaModelHint: "Ollama model names must be written in full, tag included — e.g. qwen2.5:7b-instruct. Use \"Read available models\" above to see what is installed locally.",
     llmTestTesting: "Testing...",
-    llmTestSuccess: "Connected ✓",
-    llmTestError: "Connection failed ✗",
+    llmTestSuccess: "Connected",
+    llmTestError: "Connection failed",
     llmTestButton: "Test connection",
     customModelSuffix: " ·Custom",
     advancedSection: "Advanced · Custom model endpoint / generation params",
@@ -289,14 +298,15 @@ export const settings: NamespaceMessages = {
     ttsModelLabel: "Model",
     ttsVoiceLabel: "Voice",
     ttsApiKeyPlaceholderShort: "Enter API key",
-    ttsKeyReused: "✓ Reusing this platform's API key from \"AI platforms\"",
-    ttsKeyMissing: "⚠ Set this platform's API key in the \"AI platforms\" tab above first",
+    ttsKeyReused: "Reusing this platform's API key from Platform keys",
+    ttsKeyMissing: "Set this platform's API key under Platform keys first",
     ttsGroupIdLabel: "GroupId (required for the Hailuo China endpoint, optional for international)",
     ttsGroupIdPlaceholder: "GroupId from the Hailuo console",
     ttsTesting: "Synthesizing...",
-    ttsTestError: "Preview failed ✗",
-    ttsTestButton: "🔊 Preview voice",
+    ttsTestError: "Preview failed",
+    ttsTestButton: "Preview voice",
     ttsFillKeyFirst: "Preview available once a key is set",
+    toggleTts: "Enable or disable voiceover",
 
     // Defaults
     defaultsTitle: "Defaults",
@@ -316,10 +326,10 @@ export const settings: NamespaceMessages = {
     configBannerTitle: "Setup incomplete — some features are unavailable",
 
     // Save footer
-    llmConfigured: "✓ LLM configured",
-    llmNotConfigured: "⚠ LLM not configured (required for script generation)",
-    providerCount: "✓ {n} AI platforms enabled",
-    noProvider: "⚠ No AI platform enabled (required for asset generation)",
+    llmConfigured: "Script model configured",
+    llmNotConfigured: "Script model not configured (required for script generation)",
+    providerCount: "{n} AI platforms enabled",
+    noProvider: "No AI platform enabled (required for asset generation)",
     settingsSaved: "Settings saved",
     autoSaveHint: "Every change is saved instantly — no save button needed.",
     tabTts: "Voice-over",
@@ -337,7 +347,7 @@ export const settings: NamespaceMessages = {
 
     // Characters
     characterIntro:
-      "Once you add a character, AI automatically injects their appearance into scripts and assets, keeping the character consistent across shots. Generate a multi-view reference sheet and the storyboard grid + one-tap film passes pin the presenter's identity to it — the same face across shots and across videos.",
+      "Save recurring presenters as reusable character assets. Add appearance and voice details, then generate a multi-view sheet to keep scripts, shots, and finished videos consistent.",
     characterDefault: "Default",
     characterSheetBtn: "Multi-view sheet",
     characterSheetRedo: "Redo sheet",
@@ -385,9 +395,11 @@ export const settings: NamespaceMessages = {
     brandWatermarkTitle: "Watermark",
     brandWatermarkPosition: "Watermark position",
     brandWatermarkOpacity: "Opacity",
+    toggleWatermark: "Enable or disable watermark",
     brandOutroTitle: "Outro",
     brandOutroTextLabel: "Outro text",
     brandOutroTextPlaceholder: "e.g. Follow us for more great finds",
     brandOutroTip: "The outro text is overlaid on a brand-color background",
+    toggleOutro: "Enable or disable outro",
   },
 };
