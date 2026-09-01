@@ -49,12 +49,12 @@ import {
 
 // shot type labels (label changed to i18n key in the assets namespace, resolved per locale)
 const shotTypeLabels: Record<Shot["type"], { key: string; color: string }> = {
-  hook: { key: "shotTypeHook", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
-  pain_point: { key: "shotTypePainPoint", color: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
+  hook: { key: "shotTypeHook", color: "bg-destructive/15 text-destructive dark:text-destructive" },
+  pain_point: { key: "shotTypePainPoint", color: "bg-primary/15 text-primary dark:text-primary" },
   product_reveal: { key: "shotTypeProductReveal", color: "bg-primary/15 text-primary" },
-  demo: { key: "shotTypeDemo", color: "bg-green-500/20 text-green-400" },
-  social_proof: { key: "shotTypeSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
-  cta: { key: "shotTypeCta", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+  demo: { key: "shotTypeDemo", color: "bg-success/20 text-success" },
+  social_proof: { key: "shotTypeSocialProof", color: "bg-chart-5/15 text-chart-5" },
+  cta: { key: "shotTypeCta", color: "bg-warning/15 text-warning dark:text-warning" },
 };
 
 // platform info for the default image model (used when initiating generation requests)
@@ -1387,8 +1387,8 @@ export default function AssetsPage() {
                 <div className="mt-2 flex items-center gap-3 text-[11px] text-muted-foreground" title={t("mixTiltTip")}>
                   <span className="shrink-0">{t("mixLabel")}</span>
                   <div className="h-1.5 w-32 rounded-full overflow-hidden bg-muted/30 flex shrink-0">
-                    <div className="h-full bg-emerald-500/80" style={{ width: `${Math.round(mix.realRatio * 100)}%` }} />
-                    <div className="h-full bg-amber-500/70" style={{ width: `${100 - Math.round(mix.realRatio * 100)}%` }} />
+                    <div className="h-full bg-success/80" style={{ width: `${Math.round(mix.realRatio * 100)}%` }} />
+                    <div className="h-full bg-warning/70" style={{ width: `${100 - Math.round(mix.realRatio * 100)}%` }} />
                   </div>
                   <span className="shrink-0 tabular-nums">
                     {t("mixReal")} {Math.round(mix.realRatio * 100)}% · {t("mixAi")} {100 - Math.round(mix.realRatio * 100)}%
@@ -1425,8 +1425,8 @@ export default function AssetsPage() {
                             <span
                               className={`text-[9px] mt-1 px-1 rounded ${
                                 reality === "real"
-                                  ? "bg-emerald-500/15 text-emerald-600"
-                                  : "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                                  ? "bg-success/15 text-success"
+                                  : "bg-warning/15 text-warning dark:text-warning"
                               }`}
                             >
                               {reality === "real" ? t("badgeReal") : t("badgeAi")}

@@ -107,7 +107,7 @@ const AI_PROVIDERS = [
     descKey: "providerVolcengineDesc",
     tipKey: "providerVolcengineTip",
     icon: <Flame className="size-5" />,
-    iconBg: "bg-orange-600",
+    iconBg: "bg-primary",
   },
   {
     key: "alibaba",
@@ -115,7 +115,7 @@ const AI_PROVIDERS = [
     descKey: "providerAlibabaDesc",
     tipKey: "providerAlibabaTip",
     icon: <Box className="size-5" />,
-    iconBg: "bg-amber-600",
+    iconBg: "bg-warning",
   },
   {
     key: "siliconflow",
@@ -123,7 +123,7 @@ const AI_PROVIDERS = [
     descKey: "providerSiliconflowDesc",
     tipKey: "providerSiliconflowTip",
     icon: <Cpu className="size-5" />,
-    iconBg: "bg-emerald-700",
+    iconBg: "bg-success",
   },
   {
     key: "openai",
@@ -433,12 +433,12 @@ export default function SettingsPage() {
 
         {/* configuration status banner: surfaces missing setup right at the top (the footer summary is easy to miss) */}
         {(!llm.apiKey || !hasAnyProvider) && (
-          <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5">
+          <div className="rounded-2xl border border-warning/40 bg-warning/10 p-5">
             <div className="flex items-center gap-2 mb-1.5">
-              <LuTriangleAlert className="w-4 h-4 shrink-0 text-amber-500" />
-              <h2 className="font-semibold text-sm text-amber-600 dark:text-amber-400">{t("configBannerTitle")}</h2>
+              <LuTriangleAlert className="w-4 h-4 shrink-0 text-warning" />
+              <h2 className="font-semibold text-sm text-warning dark:text-warning">{t("configBannerTitle")}</h2>
             </div>
-            <ul className="space-y-1 text-xs text-amber-600 dark:text-amber-400/90">
+            <ul className="space-y-1 text-xs text-warning dark:text-warning/90">
               {!llm.apiKey && <li>{t("llmNotConfigured")}</li>}
               {!hasAnyProvider && <li>{t("noProvider")}</li>}
             </ul>
@@ -583,7 +583,7 @@ export default function SettingsPage() {
                           {(() => {
                             const r = providerTest[platform.key];
                             if (!r || r.state === "idle" || r.state === "testing") return null;
-                            const color = r.state === "ok" ? "text-emerald-500" : r.state === "invalid" ? "text-destructive" : "text-amber-500";
+                            const color = r.state === "ok" ? "text-success" : r.state === "invalid" ? "text-destructive" : "text-warning";
                             const StatusIcon = r.state === "ok" ? LuCheck : r.state === "invalid" ? LuX : LuTriangleAlert;
                             return <span className={`inline-flex items-center gap-1 text-xs ${color}`}><StatusIcon className="size-3.5" />{r.msg}</span>;
                           })()}
@@ -751,7 +751,7 @@ export default function SettingsPage() {
                         disabled={!llm.apiKey || !llm.baseUrl || llmTestStatus === "testing"}
                         className={`text-xs ${
                           llmTestStatus === "success"
-                            ? "text-emerald-600"
+                            ? "text-success"
                             : llmTestStatus === "error"
                             ? "text-destructive"
                             : ""
@@ -769,7 +769,7 @@ export default function SettingsPage() {
                         <p className="mt-2 text-xs text-destructive break-all">{llmTestError}</p>
                       )}
                       {llmTestWarning && (
-                        <p className="mt-2 text-xs text-amber-600 break-all">{llmTestWarning}</p>
+                        <p className="mt-2 text-xs text-warning break-all">{llmTestWarning}</p>
                       )}
                       <p className="mt-2 text-[11px] text-muted-foreground">{t("llmTestTip")}</p>
                     </div>
@@ -868,9 +868,9 @@ export default function SettingsPage() {
                           ) : (
                             <div className="text-xs rounded-md border border-border/60 bg-muted/20 px-3 py-2">
                               {providers[ttsMeta.keySource]?.apiKey ? (
-                                <span className="text-emerald-500">{t("ttsKeyReused")}</span>
+                                <span className="text-success">{t("ttsKeyReused")}</span>
                               ) : (
-                                <span className="text-amber-500">{t("ttsKeyMissing")}</span>
+                                <span className="text-warning">{t("ttsKeyMissing")}</span>
                               )}
                             </div>
                           )}
@@ -1305,7 +1305,7 @@ function BrandSettings() {
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-600 text-white">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning text-primary-foreground">
                 <ShieldCheck className="size-4" />
               </div>
               <h3 className="font-semibold text-sm">{t("brandWatermarkTitle")}</h3>
@@ -1374,7 +1374,7 @@ function BrandSettings() {
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-600 text-white">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white">
                 <Video className="size-4" />
               </div>
               <h3 className="font-semibold text-sm">{t("brandOutroTitle")}</h3>

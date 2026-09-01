@@ -25,12 +25,12 @@ import { ProjectHeader } from "@/components/project-header";
 
 // shot type labels (label changed to i18n key, resolved per locale at render time)
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
-  hook: { labelKey: "shotTypeHook", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
-  pain_point: { labelKey: "shotTypePainPoint", color: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
+  hook: { labelKey: "shotTypeHook", color: "bg-destructive/15 text-destructive dark:text-destructive" },
+  pain_point: { labelKey: "shotTypePainPoint", color: "bg-primary/15 text-primary dark:text-primary" },
   product_reveal: { labelKey: "shotTypeProductReveal", color: "bg-primary/15 text-primary" },
-  demo: { labelKey: "shotTypeDemo", color: "bg-green-500/20 text-green-400" },
-  social_proof: { labelKey: "shotTypeSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
-  cta: { labelKey: "shotTypeCta", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+  demo: { labelKey: "shotTypeDemo", color: "bg-success/20 text-success" },
+  social_proof: { labelKey: "shotTypeSocialProof", color: "bg-chart-5/15 text-chart-5" },
+  cta: { labelKey: "shotTypeCta", color: "bg-warning/15 text-warning dark:text-warning" },
 };
 
 // script style → i18n key (resolved per locale at render time)
@@ -849,7 +849,7 @@ export default function ScriptPage() {
                 {t("aiFilmPreviewMeta", { shots: filmPreview.shotCount, seconds: filmPreview.seconds, refs: filmPreview.referenceImages })}
               </p>
               {overQuota && (
-                <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-xs text-destructive">
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-xs text-destructive">
                   {t("aiFilmQuotaWarn", { count: filmPreview.referenceQuota!.count, limit: filmPreview.referenceQuota!.limit ?? 0 })}
                 </div>
               )}
@@ -859,7 +859,7 @@ export default function ScriptPage() {
                 </div>
               )}
               {aiFilmError && (
-                <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-xs text-destructive">{aiFilmError}</div>
+                <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-xs text-destructive">{aiFilmError}</div>
               )}
               <details className="rounded-lg border border-border/60 p-3 text-xs">
                 <summary className="cursor-pointer font-medium">{t("aiFilmPromptToggle")}</summary>
@@ -915,7 +915,7 @@ export default function ScriptPage() {
         {/* breakpoint choice: a failed/interrupted server-side run offers resume (default) or a
             clean restart — the beginner never loses a half-finished chain to a closed tab again */}
         {resumableRun && !autoFinishing && !aiFilming && (
-          <div className="mx-auto mb-5 max-w-2xl rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3">
+          <div className="mx-auto mb-5 max-w-2xl rounded-xl border border-warning/40 bg-warning/10 px-4 py-3">
             <p className="flex items-center gap-1.5 text-sm font-medium text-warning">
               <LuPause className="size-4" aria-hidden="true" />{resumableRun.interrupted ? t("pipelineInterruptedTitle") : t("pipelineFailedTitle")}
             </p>
@@ -957,7 +957,7 @@ export default function ScriptPage() {
               </CardContent>
             </Card>
             {(autoFinishError || aiFilmError) && (
-              <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-2.5 text-xs text-destructive">
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-xs text-destructive">
                 {autoFinishError || aiFilmError}
               </div>
             )}
@@ -1007,10 +1007,10 @@ export default function ScriptPage() {
               <h2 className="text-base font-semibold">{t("scriptOptions")}</h2>
               <div className="flex items-center gap-2">
                 {selectionTip && (
-                  <span className="text-xs text-green-400 animate-in fade-in">{t("selectionSaved")}</span>
+                  <span className="text-xs text-success animate-in fade-in">{t("selectionSaved")}</span>
                 )}
                 {savedTip && (
-                  <span className="text-xs text-green-400 animate-in fade-in">{t("savedAsTemplate")}</span>
+                  <span className="text-xs text-success animate-in fade-in">{t("savedAsTemplate")}</span>
                 )}
                 <Button variant="outline" size="sm" className="text-xs" onClick={handleSaveAsTemplate}>
                   <LuBookmarkPlus className="w-3.5 h-3.5 mr-1" />
@@ -1054,9 +1054,9 @@ export default function ScriptPage() {
                     <div className="mt-3 flex gap-0.5 h-1.5 rounded-full overflow-hidden">
                       {script.shots.map((shot) => {
                         const colors: Record<string, string> = {
-                          hook: "bg-red-500", pain_point: "bg-orange-500",
-                          product_reveal: "bg-primary", demo: "bg-green-500",
-                          social_proof: "bg-rose-500", cta: "bg-amber-500",
+                          hook: "bg-destructive", pain_point: "bg-primary",
+                          product_reveal: "bg-primary", demo: "bg-success",
+                          social_proof: "bg-chart-5", cta: "bg-warning",
                         };
                         return (
                           <div
@@ -1137,13 +1137,13 @@ export default function ScriptPage() {
                       <span className="flex items-center gap-1.5 text-sm font-semibold"><LuScale className="size-4 text-primary" aria-hidden="true" />{t("judgeReportTitle")}</span>
                       <div className="flex items-center gap-2">
                         {judgeApplied ? (
-                          <span className="text-xs text-green-400">{t("judgeAppliedTip")}</span>
+                          <span className="text-xs text-success">{t("judgeAppliedTip")}</span>
                         ) : autoApplicableRewrites(judgeReport).length + autoApplicableDescriptionRewrites(judgeReport).length > 0 ? (
                           <Button size="sm" className="h-7 text-xs brand-fill text-white" disabled={judgeApplying} onClick={applyJudgeRewrites}>
                             {judgeApplying ? t("judgeApplying") : t("judgeApply", { n: autoApplicableRewrites(judgeReport).length + autoApplicableDescriptionRewrites(judgeReport).length })}
                           </Button>
                         ) : (
-                          <span className="text-xs text-green-400">{t("judgeAllPass")}</span>
+                          <span className="text-xs text-success">{t("judgeAllPass")}</span>
                         )}
                         <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setJudgeReport(null)}>{tc("cancel")}</Button>
                       </div>
@@ -1179,7 +1179,7 @@ export default function ScriptPage() {
                           const orig = currentScript?.shots.find((s) => s.shotId === rw.shotId)?.voiceover ?? "";
                           return (
                             <div key={rw.shotId} className="rounded-lg border border-border/60 p-2.5 text-xs space-y-1">
-                              <div className="text-muted-foreground line-through decoration-red-400/60">#{rw.shotId} {orig}</div>
+                              <div className="text-muted-foreground line-through decoration-destructive/60">#{rw.shotId} {orig}</div>
                               <div>
                                 #{rw.shotId} {rw.voiceover}
                                 {rw.tier === "taste" && <span className="ml-1 rounded bg-muted px-1 text-[10px] text-muted-foreground">{t("judgeTasteOnly")}</span>}
@@ -1192,7 +1192,7 @@ export default function ScriptPage() {
                           return (
                             <div key={`d${rw.shotId}`} className="rounded-lg border border-border/60 p-2.5 text-xs space-y-1">
                               <div className="text-[10px] text-muted-foreground">{t("judgeDescRewrite")}</div>
-                              <div className="text-muted-foreground line-through decoration-red-400/60">#{rw.shotId} {orig}</div>
+                              <div className="text-muted-foreground line-through decoration-destructive/60">#{rw.shotId} {orig}</div>
                               <div>
                                 #{rw.shotId} {rw.description}
                                 {rw.tier === "taste" && <span className="ml-1 rounded bg-muted px-1 text-[10px] text-muted-foreground">{t("judgeTasteOnly")}</span>}
@@ -1227,10 +1227,10 @@ export default function ScriptPage() {
                     <Card
                       className={
                         readiness.overall === "ready"
-                          ? "border-emerald-500/40 bg-emerald-500/5"
+                          ? "border-success/40 bg-success/5"
                           : readiness.overall === "needsWork"
-                          ? "border-red-500/40 bg-red-500/5"
-                          : "border-amber-500/40 bg-amber-500/5"
+                          ? "border-destructive/40 bg-destructive/5"
+                          : "border-warning/40 bg-warning/5"
                       }
                     >
                       <CardContent className="p-4">
@@ -1239,10 +1239,10 @@ export default function ScriptPage() {
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                               readiness.overall === "ready"
-                                ? "bg-emerald-500/15 text-emerald-500"
+                                ? "bg-success/15 text-success"
                                 : readiness.overall === "needsWork"
-                                ? "bg-red-500/15 text-red-500"
-                                : "bg-amber-500/15 text-amber-500"
+                                ? "bg-destructive/15 text-destructive"
+                                : "bg-warning/15 text-warning"
                             }`}
                           >
                             {t(
@@ -1258,11 +1258,11 @@ export default function ScriptPage() {
                           {readiness.items.map((it) => (
                             <li key={it.key} className="flex items-start gap-2 text-xs">
                               {it.status === "pass" ? (
-                                <LuCircleCheck className="w-3.5 h-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                                <LuCircleCheck className="w-3.5 h-3.5 text-success mt-0.5 shrink-0" />
                               ) : it.status === "fail" ? (
-                                <LuCircleX className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                                <LuCircleX className="w-3.5 h-3.5 text-destructive mt-0.5 shrink-0" />
                               ) : (
-                                <LuTriangleAlert className="w-3.5 h-3.5 text-amber-500 mt-0.5 shrink-0" />
+                                <LuTriangleAlert className="w-3.5 h-3.5 text-warning mt-0.5 shrink-0" />
                               )}
                               <span
                                 className={
@@ -1282,10 +1282,10 @@ export default function ScriptPage() {
                     </Card>
                   )}
                   {adViolations.length > 0 && (
-                    <Card className="border-amber-500/40 bg-amber-500/5">
+                    <Card className="border-warning/40 bg-warning/5">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-2 mb-1">
-                          <LuTriangleAlert className="w-4 h-4 text-amber-500" />
+                          <LuTriangleAlert className="w-4 h-4 text-warning" />
                           <span className="text-sm font-semibold">{t("adComplianceTitle", { n: adViolations.length })}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mb-2.5">{t("adComplianceHint")}</p>
@@ -1294,7 +1294,7 @@ export default function ScriptPage() {
                             <span
                               key={v.term}
                               title={v.suggestion}
-                              className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-xs cursor-help"
+                              className="rounded-md border border-warning/30 bg-warning/10 px-2 py-0.5 text-xs cursor-help"
                             >
                               「{v.term}」· {v.category}
                             </span>

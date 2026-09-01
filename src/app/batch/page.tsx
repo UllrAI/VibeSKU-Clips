@@ -601,8 +601,8 @@ export default function BatchPage() {
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
           {/* interrupted-job choice: continue where it left off (default) or discard and start clean */}
           {resumableJob && !isGenerating && (
-            <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 lg:col-span-2">
-              <p className="flex items-center gap-1.5 text-sm font-medium text-amber-500">
+            <div className="rounded-xl border border-warning/40 bg-warning/10 px-4 py-3 lg:col-span-2">
+              <p className="flex items-center gap-1.5 text-sm font-medium text-warning">
                 <LuPause className="size-3.5" />
                 {t("resumeTitle")}
               </p>
@@ -948,7 +948,7 @@ export default function BatchPage() {
 
                 {/* Completion notice */}
                 {isComplete && (
-                  <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-center">
+                  <div className="mt-4 p-3 rounded-lg bg-success/10 border border-success/20 text-center">
                     <p className="text-sm text-success font-medium">
                       {t("completeMsg", { count: doneCount })}
                     </p>

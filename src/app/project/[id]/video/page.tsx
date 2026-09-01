@@ -92,12 +92,12 @@ const transitionLabels: Record<string, string> = {
 
 // 镜头类型标签（labelKey 为 i18n key）
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
-  hook: { labelKey: "shotHook", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
-  pain_point: { labelKey: "shotPainPoint", color: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
+  hook: { labelKey: "shotHook", color: "bg-destructive/15 text-destructive dark:text-destructive" },
+  pain_point: { labelKey: "shotPainPoint", color: "bg-primary/15 text-primary dark:text-primary" },
   product_reveal: { labelKey: "shotProductReveal", color: "bg-primary/15 text-primary" },
-  demo: { labelKey: "shotDemo", color: "bg-green-500/20 text-green-400" },
-  social_proof: { labelKey: "shotSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
-  cta: { labelKey: "shotCta", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+  demo: { labelKey: "shotDemo", color: "bg-success/20 text-success" },
+  social_proof: { labelKey: "shotSocialProof", color: "bg-chart-5/15 text-chart-5" },
+  cta: { labelKey: "shotCta", color: "bg-warning/15 text-warning dark:text-warning" },
 };
 
 interface DbShot {
@@ -1039,7 +1039,7 @@ export default function VideoPage() {
                 <div>
                   <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-[width] duration-200 ${composeDone ? "bg-emerald-500" : "brand-fill"}`}
+                      className={`h-full rounded-full transition-[width] duration-200 ${composeDone ? "bg-success" : "brand-fill"}`}
                       style={{ width: `${composeProgress}%` }}
                     />
                   </div>
@@ -1089,7 +1089,7 @@ export default function VideoPage() {
                     <Button variant="outline" className="w-full">{t("downloadVideo")}</Button>
                   </a>
                   <Link href={`/project/${id}/export`}>
-                    <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                    <Button className="w-full bg-success text-primary-foreground hover:bg-success/90">
                       {t("nextExport")}
                       <LuArrowRight className="w-4 h-4 ml-1" />
                     </Button>

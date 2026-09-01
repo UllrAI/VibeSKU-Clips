@@ -72,7 +72,7 @@ function EditTimelineComponent({
           <span
             key={`silence-${index}-${range.start}`}
             title={silenceLabel}
-            className="absolute inset-y-2 rounded bg-amber-400/20"
+            className="absolute inset-y-2 rounded bg-warning/20"
             style={{
               left: `${percentage(range.start, duration)}%`,
               width: `${Math.max(0.2, percentage(range.end - range.start, duration))}%`,

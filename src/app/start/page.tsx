@@ -701,7 +701,7 @@ export default function StartPage() {
           <p className="cf-sub">{t("sub")}</p>
 
           <div className="cf-card" ref={cardRef}>
-            <BorderBeam size={92} duration={11} colorFrom="#f97316" colorTo="#f2b84b" />
+            <BorderBeam size={92} duration={11} colorFrom="oklch(0.55 0.15 45)" colorTo="oklch(0.7 0.12 60)" />
             {busy ? (
               /* busy takeover: the whole card becomes a live checklist so the 20–60s
                  creation wait reads as progress, not a frozen button */

@@ -17,12 +17,12 @@ import { PerformanceFeedback } from "@/components/performance-feedback";
 // platform export config (planned feature, for display). name uses an i18n key (nameKey) resolved to the translated text at render time
 const platformConfigs = [
   { id: "douyin", nameKey: "platformDouyin", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-rose-600" },
-  { id: "kuaishou", nameKey: "platformKuaishou", ratio: "9:16", resolution: "1080p", subtitle: "贴边框", color: "bg-orange-600" },
-  { id: "xiaohongshu", nameKey: "platformXiaohongshu", ratio: "3:4", resolution: "1440p", subtitle: "手写字体", color: "bg-red-600" },
-  { id: "shipinhao", nameKey: "platformShipinhao", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-emerald-700" },
+  { id: "kuaishou", nameKey: "platformKuaishou", ratio: "9:16", resolution: "1080p", subtitle: "贴边框", color: "bg-primary" },
+  { id: "xiaohongshu", nameKey: "platformXiaohongshu", ratio: "3:4", resolution: "1440p", subtitle: "手写字体", color: "bg-destructive" },
+  { id: "shipinhao", nameKey: "platformShipinhao", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-success" },
   { id: "tiktok", nameKey: "platformTiktok", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-slate-800" },
   { id: "reels", nameKey: "platformReels", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-rose-600" },
-  { id: "shorts", nameKey: "platformShorts", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-red-700" },
+  { id: "shorts", nameKey: "platformShorts", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-destructive" },
 ];
 
 // A/B variant presets: re-render one video per preset using existing params (subtitle style + BGM mood) to compare which converts better in ads (no key required throughout)
@@ -472,7 +472,7 @@ export default function ExportPage() {
       {/* toast notification */}
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-700/25 bg-emerald-600 px-4 py-2.5 text-sm text-white">
+          <div className="flex items-center gap-2 rounded-lg border border-success/25 bg-success px-4 py-2.5 text-sm text-primary-foreground">
             <LuCheck className="w-4 h-4" />
             {toast}
           </div>
@@ -484,8 +484,8 @@ export default function ExportPage() {
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* completion banner */}
         <div className="text-center mb-8">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 mb-4">
-            <LuCircleCheck className="w-8 h-8 text-emerald-500" />
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-success/10 mb-4">
+            <LuCircleCheck className="w-8 h-8 text-success" />
           </div>
           <h2 className="text-2xl font-bold tracking-tight mb-1">
             {t("doneTitleRest")}<span className="brand-text">{t("doneTitleAccent")}</span>
@@ -655,13 +655,13 @@ export default function ExportPage() {
                         </button>
                       ))}
                     </div>
-                    <p className="text-[11px] text-amber-500/90 mt-1.5">{publish.commentKit.notice}</p>
+                    <p className="text-[11px] text-warning/90 mt-1.5">{publish.commentKit.notice}</p>
                   </div>
                 )}
                 {/* platform AI-disclosure kit: toggle reminder + paste-ready caption line (undeclared AI content gets auto-flagged and throttled) */}
                 <div>
                   <p className="text-xs text-muted-foreground mb-1.5">{t("publishAiDeclLabel")}</p>
-                  <p className="text-[11px] text-amber-500/90 mb-1.5">{aiDecl.notice}</p>
+                  <p className="text-[11px] text-warning/90 mb-1.5">{aiDecl.notice}</p>
                   <button onClick={() => copyText(aiDecl.line)} className="text-left text-xs px-3 py-2 rounded-lg border border-border/50 bg-muted/10 hover:border-primary/50 transition-colors">
                     {aiDecl.line}
                   </button>
@@ -698,7 +698,7 @@ export default function ExportPage() {
                     {ex.status === "done" && ex.url ? (
                       <>
                         <a href={`${ex.url}?download=1`} download>
-                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs text-emerald-600">
+                          <Button variant="outline" size="sm" className="w-full mt-2 text-xs text-success">
                             <LuDownload className="w-3 h-3 mr-1" />
                             {t("downloadPlatform", { platform: platformName })}
                           </Button>
@@ -784,7 +784,7 @@ export default function ExportPage() {
               <p className="text-[11px] text-muted-foreground">{t("gateHint")}</p>
               {gate.error && <p className="text-[11px] text-destructive mt-1">{gate.error}</p>}
               {gate.status && gate.verdict && (
-                <p className={`text-[11px] mt-2 font-medium ${gate.status === "pass" ? "text-emerald-500" : gate.status === "warn" ? "text-amber-500" : "text-destructive"}`}>
+                <p className={`text-[11px] mt-2 font-medium ${gate.status === "pass" ? "text-success" : gate.status === "warn" ? "text-warning" : "text-destructive"}`}>
                   {locale === "en" ? gate.verdict.en : gate.verdict.zh}
                 </p>
               )}
@@ -793,7 +793,7 @@ export default function ExportPage() {
                   {gate.items.map((item) => (
                     <li key={item.id} className="text-[11px] text-muted-foreground">
                       <div className="flex items-start gap-1.5">
-                        {item.status === "pass" ? <LuCircleCheck className="w-3 h-3 mt-0.5 shrink-0 text-emerald-500" /> : item.status === "warn" ? <LuTriangleAlert className="w-3 h-3 mt-0.5 shrink-0 text-amber-500" /> : <LuCircleX className="w-3 h-3 mt-0.5 shrink-0 text-destructive" />}
+                        {item.status === "pass" ? <LuCircleCheck className="w-3 h-3 mt-0.5 shrink-0 text-success" /> : item.status === "warn" ? <LuTriangleAlert className="w-3 h-3 mt-0.5 shrink-0 text-warning" /> : <LuCircleX className="w-3 h-3 mt-0.5 shrink-0 text-destructive" />}
                         <span>{locale === "en" ? item.message.en : item.message.zh}</span>
                       </div>
                       {item.problems.length > 0 && (
@@ -819,7 +819,7 @@ export default function ExportPage() {
               <p className="text-[11px] text-muted-foreground">{t("qcHint")}</p>
               {qc.error && <p className="text-[11px] text-destructive mt-1">{qc.error}</p>}
               {qc.status && (
-                <p className={`text-[11px] mt-2 font-medium ${qc.status === "ok" ? "text-emerald-500" : qc.status === "warn" ? "text-amber-500" : "text-destructive"}`}>
+                <p className={`text-[11px] mt-2 font-medium ${qc.status === "ok" ? "text-success" : qc.status === "warn" ? "text-warning" : "text-destructive"}`}>
                   {qc.status === "ok" ? t("qcPass") : qc.status === "warn" ? t("qcWarn") : t("qcFail")}
                 </p>
               )}
@@ -827,7 +827,7 @@ export default function ExportPage() {
                 <ul className="mt-1.5 space-y-1">
                   {qc.checks.map((c) => (
                     <li key={c.id} className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-                      {c.level === "ok" ? <LuCircleCheck className="w-3 h-3 mt-0.5 shrink-0 text-emerald-500" /> : c.level === "warn" ? <LuTriangleAlert className="w-3 h-3 mt-0.5 shrink-0 text-amber-500" /> : <LuCircleX className="w-3 h-3 mt-0.5 shrink-0 text-destructive" />}
+                      {c.level === "ok" ? <LuCircleCheck className="w-3 h-3 mt-0.5 shrink-0 text-success" /> : c.level === "warn" ? <LuTriangleAlert className="w-3 h-3 mt-0.5 shrink-0 text-warning" /> : <LuCircleX className="w-3 h-3 mt-0.5 shrink-0 text-destructive" />}
                       <span>{locale === "en" ? c.message.en : c.message.zh}</span>
                     </li>
                   ))}
@@ -875,7 +875,7 @@ export default function ExportPage() {
               {credits.error && <p className="text-[11px] text-destructive mt-1">{credits.error}</p>}
               {credits.summary && (
                 <>
-                  <p className={`text-[11px] mt-2 font-medium ${credits.summary.commercialSafe ? "text-emerald-500" : "text-amber-500"}`}>
+                  <p className={`text-[11px] mt-2 font-medium ${credits.summary.commercialSafe ? "text-success" : "text-warning"}`}>
                     {credits.summary.commercialSafe ? t("creditsSafe") : t("creditsUnsafe", { n: credits.summary.needsReview })}
                     {" · "}
                     <span className="text-muted-foreground font-normal">{t("creditsSummary", { total: credits.summary.total, attr: credits.summary.needsAttribution })}</span>
@@ -890,7 +890,7 @@ export default function ExportPage() {
                               className="text-left text-[11px] text-foreground/80 hover:text-primary break-all"
                               onClick={() => copyAttribution(line, i)}
                             >
-                              {line}{credits.copiedIdx === i && <span className="ml-1.5 text-emerald-500">{t("creditsCopied")}</span>}
+                              {line}{credits.copiedIdx === i && <span className="ml-1.5 text-success">{t("creditsCopied")}</span>}
                             </button>
                           </li>
                         ))}
@@ -952,7 +952,7 @@ export default function ExportPage() {
               </div>
               <p className="text-[11px] text-muted-foreground">{t("moreDubHint")}</p>
               {more.dub?.error && <p className="text-[11px] text-destructive mt-1">{more.dub.error}</p>}
-              {more.dub?.note && <p className="text-[11px] text-emerald-500 mt-1">{more.dub.note}</p>}
+              {more.dub?.note && <p className="text-[11px] text-success mt-1">{more.dub.note}</p>}
             </div>
           </div>
         </details>

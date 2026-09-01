@@ -105,7 +105,7 @@ export function MasteringPanel({ projectId, composition, onComplete }: Mastering
               <p className="text-[11px] text-muted-foreground">{t("masterCuts")}</p>
               <p className="mt-1 text-lg font-bold tabular-nums">{analysis.summary.total}</p>
             </div>
-            <div className="rounded-xl border border-amber-500/20 bg-amber-500/8 p-3">
+            <div className="rounded-xl border border-warning/20 bg-warning/8 p-3">
               <p className="text-[11px] text-muted-foreground">{t("masterAttention")}</p>
               <p className="mt-1 text-lg font-bold tabular-nums text-warning">{analysis.summary.review + analysis.summary.strong}</p>
             </div>

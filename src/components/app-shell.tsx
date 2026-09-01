@@ -67,7 +67,7 @@ function applyTheme(theme: "light" | "dark") {
   document.documentElement.classList.toggle("dark", theme === "dark");
   document.documentElement.style.colorScheme = theme;
   document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
-    meta.setAttribute("content", theme === "dark" ? "#0d0d0c" : "#f7f6f2");
+    meta.setAttribute("content", theme === "dark" ? "oklch(0.15 0.02 50)" : "oklch(0.99 0.01 85)");
   });
 }
 

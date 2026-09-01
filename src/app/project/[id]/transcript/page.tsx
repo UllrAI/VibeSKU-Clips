@@ -646,13 +646,13 @@ export default function TranscriptPage() {
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("title")}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
         </div>
-        <div className="flex max-w-md items-start gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-3 py-2.5 text-xs leading-5 text-emerald-700 dark:text-emerald-300">
+        <div className="flex max-w-md items-start gap-2 rounded-xl border border-success/20 bg-success/8 px-3 py-2.5 text-xs leading-5 text-success dark:text-success">
           <LuShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />{t("localPrivacy")}
         </div>
       </header>
 
       {error && <div role="alert" className="mb-5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">{error}</div>}
-      {notice && <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-emerald-500/25 bg-emerald-500/8 p-3 text-sm text-emerald-700 dark:text-emerald-300">{notice}</div>}
+      {notice && <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-success/25 bg-success/8 p-3 text-sm text-success dark:text-success">{notice}</div>}
 
       <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
         <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
@@ -673,7 +673,7 @@ export default function TranscriptPage() {
                 <span className="block truncate text-sm font-medium">{source.originalName}</span>
                 <span className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
                   <span>{t("sourceMeta", { duration: formatDuration(source.duration / 1000), size: formatBytes(source.sizeBytes) })}</span>
-                  <span className={source.status === "ready" ? "text-emerald-500" : source.status === "failed" ? "text-destructive" : ""}>{t(`status_${source.status}`)}</span>
+                  <span className={source.status === "ready" ? "text-success" : source.status === "failed" ? "text-destructive" : ""}>{t(`status_${source.status}`)}</span>
                 </span>
               </button>)}
             </div>
@@ -721,7 +721,7 @@ export default function TranscriptPage() {
               <span>{!selected.hasAudio ? t("noAudio") : selected.checkpoint?.resumable ? t("resumeAvailable", { time: formatDuration(selected.checkpoint.processedSeconds) }) : t("transcribeHint")}</span>
               {(device || selected.device) && <span className="rounded-full border border-border px-2 py-0.5 text-[10px] text-foreground">{(device || selected.device) === "webgpu" ? t("deviceWebgpu") : t("deviceWasm")}</span>}
             </div>
-            {(busy === "decode" || busy === "transcribe") && <div className="mt-4" role="status" aria-live="polite"><div className="mb-1.5 flex items-center justify-between text-xs"><span>{progressLabel}</span><span className="tabular-nums text-muted-foreground">{progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${Math.max(3, progress)}%` }} /></div>{fallback && <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">{t("fallbackWasm")}</p>}</div>}
+            {(busy === "decode" || busy === "transcribe") && <div className="mt-4" role="status" aria-live="polite"><div className="mb-1.5 flex items-center justify-between text-xs"><span>{progressLabel}</span><span className="tabular-nums text-muted-foreground">{progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${Math.max(3, progress)}%` }} /></div>{fallback && <p className="mt-2 text-xs text-warning dark:text-warning">{t("fallbackWasm")}</p>}</div>}
             {selected.error && selected.status === "failed" && <p className="mt-3 text-xs text-destructive">{selected.error}</p>}
           </> : <div className="flex min-h-56 flex-col items-center justify-center text-center"><span className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground"><LuFileVideo className="h-5 w-5" /></span><p className="text-sm font-medium">{t("noSource")}</p><p className="mt-1 text-xs text-muted-foreground">{t("noSourceHint")}</p></div>}
         </div>
@@ -804,7 +804,7 @@ export default function TranscriptPage() {
           <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
             <h2 className="mb-3 font-semibold">{t("versions")}</h2>
             {selected?.edits.length ? <div className="space-y-2">{selected.edits.map((edit) => <div key={edit.id} className="rounded-xl border border-border/50 bg-background/30 p-3">
-              <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-sm font-medium">{edit.status === "done" ? <LuCircleCheckBig className="text-emerald-500" /> : edit.status === "failed" ? <span className="h-2 w-2 rounded-full bg-destructive" /> : <LuLoaderCircle className="animate-spin text-primary motion-reduce:animate-none" />}{t("revision", { n: edit.revision })}</span><span className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground"><span className="rounded-full border border-border px-1.5 py-0.5 normal-case">{t(`actor_${edit.actor ?? "human"}`)}</span>{edit.status === "done" ? t("done") : edit.status === "failed" ? t("failed") : t("rendering")}</span></div>
+              <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-sm font-medium">{edit.status === "done" ? <LuCircleCheckBig className="text-success" /> : edit.status === "failed" ? <span className="h-2 w-2 rounded-full bg-destructive" /> : <LuLoaderCircle className="animate-spin text-primary motion-reduce:animate-none" />}{t("revision", { n: edit.revision })}</span><span className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground"><span className="rounded-full border border-border px-1.5 py-0.5 normal-case">{t(`actor_${edit.actor ?? "human"}`)}</span>{edit.status === "done" ? t("done") : edit.status === "failed" ? t("failed") : t("rendering")}</span></div>
               {edit.summary && <p className="mt-2 text-xs text-muted-foreground">{t("reviewSummary", { words: edit.summary.removedWordCount, ranges: edit.summary.removedRangeCount, duration: formatDuration(edit.summary.removedDuration) })}</p>}
               {edit.error && <p className="mt-2 text-xs text-destructive">{edit.error}</p>}
               {edit.composition?.status === "done" && edit.composition.outputUrl && <><video controls preload="metadata" src={edit.composition.outputUrl} className="mt-3 aspect-video w-full rounded-lg bg-black object-contain" /><div className="mt-2 flex flex-wrap gap-2"><a href={edit.composition.downloadUrl || edit.composition.outputUrl} className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-border bg-background px-2.5 text-xs font-medium hover:bg-muted"><LuDownload />{t("download")}</a><Link href={`/project/${id}/export`} className="inline-flex min-h-9 items-center rounded-lg px-2.5 text-xs font-medium text-primary hover:bg-primary/10">{t("openExport")}</Link></div></>}

@@ -119,10 +119,10 @@ export function TaskCenter({ collapsed = false }: { collapsed?: boolean }) {
       type="button"
       onClick={() => router.push(hrefFor(row))}
       className={`flex w-full flex-col gap-0.5 rounded-lg px-2.5 py-2 text-left transition-colors hover:bg-muted/50 ${
-        tone === "attention" ? "border border-amber-500/40 bg-amber-500/10" : ""
+        tone === "attention" ? "border border-warning/40 bg-warning/10" : ""
       }`}
     >
-      <span className={`flex items-center gap-1.5 text-xs font-medium ${tone === "attention" ? "text-amber-500" : ""}`}>
+      <span className={`flex items-center gap-1.5 text-xs font-medium ${tone === "attention" ? "text-warning" : ""}`}>
         {tone === "active" && <LoaderCircle className="size-3 animate-spin text-primary" />}
         {tone === "attention" && <TriangleAlert className="size-3" />}
         <span className="min-w-0 truncate">{rowTitle(row)}</span>
@@ -147,7 +147,7 @@ export function TaskCenter({ collapsed = false }: { collapsed?: boolean }) {
           {badgeCount > 0 && (
             <span
               className={`absolute -right-1.5 -top-1.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[9px] font-bold text-white ${
-                feed.attention.length > 0 ? "bg-amber-500" : "bg-primary"
+                feed.attention.length > 0 ? "bg-warning" : "bg-primary"
               }`}
             >
               {badgeCount}
@@ -160,7 +160,7 @@ export function TaskCenter({ collapsed = false }: { collapsed?: boolean }) {
         <div onClick={() => void refresh()} className="max-h-96 space-y-2 overflow-y-auto">
           {feed.attention.length > 0 && (
             <div className="space-y-1">
-              <p className="px-1 text-[11px] font-medium uppercase tracking-wider text-amber-500/80">{t("taskAttention")}</p>
+              <p className="px-1 text-[11px] font-medium uppercase tracking-wider text-warning/80">{t("taskAttention")}</p>
               {feed.attention.map((r) => renderRow(r, "attention"))}
             </div>
           )}

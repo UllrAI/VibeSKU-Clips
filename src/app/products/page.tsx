@@ -38,10 +38,10 @@ const categoryOptions = [
 // Category color mapping
 const categoryColorMap: Record<string, string> = {
   beauty: "bg-pink-500/20 text-pink-400",
-  food: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  home: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  fashion: "bg-rose-500/15 text-rose-700 dark:text-rose-300",
-  tech: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+  food: "bg-warning/15 text-warning dark:text-warning",
+  home: "bg-warning/15 text-warning dark:text-warning",
+  fashion: "bg-chart-5/15 text-chart-5",
+  tech: "bg-success/15 text-success dark:text-success",
   other: "bg-zinc-500/20 text-zinc-400",
 };
 
@@ -347,8 +347,8 @@ export default function ProductsPage() {
 
         {/* post-confirm shortcut: the freshly stocked library feeds straight into batch rendering */}
         {importedNotice && !isFormOpen && (
-          <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-            <p className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+          <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-success/30 bg-success/10 px-4 py-3">
+            <p className="flex items-center gap-1.5 text-sm text-success dark:text-success">
               <LuCheck className="size-4" />
               {t("importSaved")}
             </p>
@@ -575,7 +575,7 @@ export default function ProductsPage() {
                         <button
                           type="button"
                           onClick={() => removeImage(img.id)}
-                          className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                          className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-destructive"
                           aria-label={t("removeImage")}
                         >
                           <LuX className="w-3 h-3" />

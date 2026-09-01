@@ -12,12 +12,12 @@ import { PageContainer, PageHeader } from "@/components/page-layout";
 
 // Shot type labels (label uses a showcase-namespace i18n key, resolved per language)
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
-  hook: { labelKey: "shotTypeHook", color: "bg-red-500/15 text-red-700 dark:text-red-300" },
-  pain_point: { labelKey: "shotTypePainPoint", color: "bg-orange-500/15 text-orange-700 dark:text-orange-300" },
+  hook: { labelKey: "shotTypeHook", color: "bg-destructive/15 text-destructive dark:text-destructive" },
+  pain_point: { labelKey: "shotTypePainPoint", color: "bg-primary/15 text-primary dark:text-primary" },
   product_reveal: { labelKey: "shotTypeProductReveal", color: "bg-primary/15 text-primary" },
-  demo: { labelKey: "shotTypeDemo", color: "bg-green-500/20 text-green-400" },
-  social_proof: { labelKey: "shotTypeSocialProof", color: "bg-rose-500/15 text-rose-600 dark:text-rose-300" },
-  cta: { labelKey: "shotTypeCta", color: "bg-amber-500/15 text-amber-700 dark:text-amber-300" },
+  demo: { labelKey: "shotTypeDemo", color: "bg-success/20 text-success" },
+  social_proof: { labelKey: "shotTypeSocialProof", color: "bg-chart-5/15 text-chart-5" },
+  cta: { labelKey: "shotTypeCta", color: "bg-warning/15 text-warning dark:text-warning" },
 };
 
 export default function ShowcasePage() {

@@ -453,7 +453,7 @@ export default function ClonePage() {
                     {refVideoFile ? t("refVideoSelected", { name: refVideoFile.name }) : t("refVideoHint")}
                   </span>
                 </div>
-                <p className="text-xs text-amber-600/90">{t("copyrightNote")}</p>
+                <p className="text-xs text-warning/90">{t("copyrightNote")}</p>
               </div>
 
               {/* video URL input (record-only fallback; platform pages can't be downloaded) */}
