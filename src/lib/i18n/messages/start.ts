@@ -13,6 +13,10 @@ export const start: NamespaceMessages = {
     h1Lead: "丢张商品图，",
     h1Highlight: "直接出片",
     sub: "上传商品图，或输入一句话主题。ClipForge 会生成脚本、匹配画面并完成配音；需要调用外部模型时，再连接你的 API Key。",
+    sourceStepTitle: "先给一个创作起点",
+    sourceStepHint: "选择一种输入方式，更多信息可以稍后补充",
+    outputStepTitle: "选择出片方式",
+    outputStepHint: "费用和模型要求在开始前确认",
     // 模式切换
     tabUpload: "上传商品图",
     tabLink: "商品链接",
@@ -47,6 +51,7 @@ export const start: NamespaceMessages = {
     form_montage_tip: "节奏卡点的图文快剪",
     presenterLabel: "出镜主播",
     presenterAuto: "智能素人（默认）",
+    advancedProduction: "高级生成设置",
     // 生产方案：把底层模型参数包装成创作目标
     profileTitle: "智能生产方案",
     profileSmartBadge: "全链路",
@@ -173,6 +178,10 @@ export const start: NamespaceMessages = {
     h1Lead: "Drop a product photo, ",
     h1Highlight: "ship the video",
     sub: "Upload a product photo or enter a topic. ClipForge drafts the script, matches visuals, and adds voiceover; connect your API key only when an external model is needed.",
+    sourceStepTitle: "Give the project a starting point",
+    sourceStepHint: "Choose one input method; add more detail later",
+    outputStepTitle: "Choose how to make it",
+    outputStepHint: "Confirm cost and model requirements before starting",
     // 模式切换
     tabUpload: "Upload product photo",
     tabLink: "Product link",
@@ -207,6 +216,7 @@ export const start: NamespaceMessages = {
     form_montage_tip: "Beat-synced image-and-text quick cut",
     presenterLabel: "Presenter",
     presenterAuto: "Smart casting (default)",
+    advancedProduction: "Advanced generation settings",
     // Production strategy: creator goals mapped to underlying model controls
     profileTitle: "Smart production strategy",
     profileSmartBadge: "Full pipeline",
