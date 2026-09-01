@@ -4,12 +4,12 @@ import type { NamespaceMessages } from "../config";
 export const projectsPage: NamespaceMessages = {
   zh: {
     pageTitle: "我的项目",
-    pageSubtitle: "按最近编辑排序，点开直接回到上次的步骤",
+    pageSubtitle: "按最近编辑排序，打开项目即可回到上次的制作步骤",
     newProject: "新建项目",
     searchPlaceholder: "搜索项目名或商品…",
     untitled: "未命名项目",
     empty: "还没有项目",
-    emptyDesc: "从工作台丢一张商品图开始，或用完整表单精细配置",
+    emptyDesc: "从工作台上传商品图快速开始，或使用完整表单配置项目",
     goStart: "去工作台",
     goNew: "用完整表单新建",
     noMatch: "没有匹配的项目",
@@ -18,7 +18,7 @@ export const projectsPage: NamespaceMessages = {
     tabProjects: "项目",
     tabWorks: "作品",
     worksEmpty: "还没有成片",
-    worksEmptyDesc: "出的每条片都会带封面出现在这里，凭画面一眼找回",
+    worksEmptyDesc: "完成导出的成片会显示在这里，并保留封面方便查找",
     worksCount: "共 {n} 条成片",
     download: "下载",
     deleteProject: "删除项目",

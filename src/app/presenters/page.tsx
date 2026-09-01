@@ -13,7 +13,7 @@ export default function PresentersPage() {
   const t = useT("presenters");
 
   return (
-    <div className="min-h-screen grid-bg">
+    <div className="min-h-screen page-canvas">
       <PageContainer width="standard">
         <PageHeader title={t("pageTitle")} description={t("pageSubtitle")} />
         <PresenterManager />

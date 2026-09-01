@@ -141,9 +141,9 @@ function formatDate(value: Date | string | null | undefined, locale: "zh" | "en"
 
 function Section({ title, hint, icon, children }: { title: string; hint?: string; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="min-w-0 rounded-2xl border border-border/60 bg-card/55 p-4 shadow-sm sm:p-5">
+    <section className="min-w-0 rounded-xl border border-border bg-card p-4 sm:p-5">
       <div className="mb-4 flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary" aria-hidden="true">{icon}</span>
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary" aria-hidden="true">{icon}</span>
         <div className="min-w-0"><h2 className="font-semibold tracking-tight">{title}</h2>{hint && <p className="mt-1 text-xs leading-5 text-muted-foreground">{hint}</p>}</div>
       </div>
       {children}
@@ -392,11 +392,11 @@ export default function ProductionPage() {
   if (!overview) return <main className="mx-auto max-w-xl px-4 py-16"><div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-5 text-sm text-destructive">{status || t("loadFailed")}</div></main>;
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <Link href={`/project/${id}/assets`} className="mb-3 inline-flex min-h-8 items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><LuArrowLeft className="h-4 w-4" />{t("back")}</Link>
-          <p className="mb-1 truncate text-xs font-medium uppercase tracking-[0.18em] text-primary">{overview.project.name}</p>
+          <p className="mb-1 truncate text-xs font-medium tracking-wide text-primary">{overview.project.name}</p>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("title")}</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
         </div>
@@ -408,12 +408,12 @@ export default function ProductionPage() {
         </div>
       </header>
 
-      <div role="status" aria-live="polite" className="mb-4 min-h-5 text-sm text-primary">{status}</div>
+      <div role="status" aria-live="polite" className={`text-sm text-primary ${status ? "mb-4 min-h-5" : "sr-only"}`}>{status}</div>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-primary/25 bg-primary/8 p-4"><div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><LuBadgeDollarSign className="h-4 w-4 text-primary" />{t("cost")}</div><div className="text-xl font-bold tabular-nums">{t("usdRange", { min: estimate.rangeUsd.min.toFixed(2), max: estimate.rangeUsd.max.toFixed(2) })}</div><p className="mt-1 text-[11px] text-muted-foreground">{estimate.unknownCalls ? t("unknownCalls", { n: estimate.unknownCalls }) : t("priceKnown")}</p></div>
-        <div className="rounded-2xl border border-border/60 bg-card/55 p-4"><div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><LuClock3 className="h-4 w-4 text-primary" />{t("time")}</div><div className="text-xl font-bold tabular-nums">{t("minuteRange", { min: Math.max(1, Math.ceil(estimate.estimatedSeconds.min / 60)), max: Math.max(1, Math.ceil(estimate.estimatedSeconds.max / 60)) })}</div><p className="mt-1 text-[11px] text-muted-foreground">{t("shots", { n: overview.selectedScript?.shotCount || overview.counts.assets })}</p></div>
-        <div className="rounded-2xl border border-border/60 bg-card/55 p-4"><div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><LuActivity className="h-4 w-4 text-primary" />{t("projectState")}</div><div className="text-xl font-bold">{overview.latestRun?.status ? t(`run_${overview.latestRun.status}`) : t("ready")}</div><p className="mt-1 text-[11px] text-muted-foreground">{t("outputCounts", { assets: overview.counts.assets, videos: overview.counts.compositions })}</p></div>
+      <div className="mb-6 grid overflow-hidden rounded-xl border border-border bg-card sm:grid-cols-3 sm:divide-x sm:divide-border">
+        <div className="border-b border-border p-4 sm:border-b-0"><div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><LuBadgeDollarSign className="h-4 w-4 text-primary" />{t("cost")}</div><div className="text-xl font-bold tabular-nums">{t("usdRange", { min: estimate.rangeUsd.min.toFixed(2), max: estimate.rangeUsd.max.toFixed(2) })}</div><p className="mt-1 text-xs text-muted-foreground">{estimate.unknownCalls ? t("unknownCalls", { n: estimate.unknownCalls }) : t("priceKnown")}</p></div>
+        <div className="border-b border-border p-4 sm:border-b-0"><div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><LuClock3 className="h-4 w-4 text-primary" />{t("time")}</div><div className="text-xl font-bold tabular-nums">{t("minuteRange", { min: Math.max(1, Math.ceil(estimate.estimatedSeconds.min / 60)), max: Math.max(1, Math.ceil(estimate.estimatedSeconds.max / 60)) })}</div><p className="mt-1 text-xs text-muted-foreground">{t("shots", { n: overview.selectedScript?.shotCount || overview.counts.assets })}</p></div>
+        <div className="p-4"><div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground"><LuActivity className="h-4 w-4 text-primary" />{t("projectState")}</div><div className="text-xl font-bold">{overview.latestRun?.status ? t(`run_${overview.latestRun.status}`) : t("ready")}</div><p className="mt-1 text-xs text-muted-foreground">{t("outputCounts", { assets: overview.counts.assets, videos: overview.counts.compositions })}</p></div>
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
@@ -424,7 +424,7 @@ export default function ProductionPage() {
                 const optional = OPTIONAL_STAGES.has(stage.id);
                 return <button key={stage.id} type="button" disabled={!optional} aria-pressed={stage.enabled} onClick={() => toggleWorkflowStage(stage.id)} className={`min-h-20 rounded-xl border p-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-default ${stage.enabled ? "border-primary/30 bg-primary/8" : "border-border/50 bg-background/25 opacity-60"}`}>
                   <span className="flex items-center justify-between gap-2"><span className="text-sm font-medium">{t(`stage_${stage.id}`)}</span><span className={`h-2 w-2 rounded-full ${stage.enabled ? "bg-emerald-400" : "bg-muted-foreground/40"}`} /></span>
-                  <span className="mt-2 flex flex-wrap gap-1 text-[10px] text-muted-foreground"><span className="rounded bg-muted/40 px-1.5 py-0.5">{t(`execution_${stage.execution}`)}</span><span className="rounded bg-muted/40 px-1.5 py-0.5">{t(`billing_${stage.billing}`)}</span></span>
+                  <span className="mt-2 flex flex-wrap gap-1 text-xs text-muted-foreground"><span className="rounded bg-muted/40 px-1.5 py-0.5">{t(`execution_${stage.execution}`)}</span><span className="rounded bg-muted/40 px-1.5 py-0.5">{t(`billing_${stage.billing}`)}</span></span>
                 </button>;
               })}
             </div>
@@ -441,10 +441,10 @@ export default function ProductionPage() {
           </Section>
 
           <Section title={t("qualityGate")} hint={t("qualityGateHint")} icon={<LuScanSearch className="h-4 w-4" />}>
-            <div className="mb-4 grid grid-cols-3 gap-2">
-              <div className="rounded-xl border border-border/50 bg-background/30 p-3"><p className="text-[11px] text-muted-foreground">{t("qualityReviewed")}</p><p className="mt-1 text-lg font-bold tabular-nums">{qualitySummary.reviewed}/{qualitySummary.total}</p></div>
-              <div className="rounded-xl border border-success/20 bg-success/8 p-3"><p className="text-[11px] text-muted-foreground">{t("qualityAcceptedCount")}</p><p className="mt-1 text-lg font-bold tabular-nums text-success">{qualitySummary.accepted}</p></div>
-              <div className="rounded-xl border border-warning/20 bg-warning/8 p-3"><p className="text-[11px] text-muted-foreground">{t("qualityAttention")}</p><p className="mt-1 text-lg font-bold tabular-nums text-warning">{qualitySummary.needsAttention}</p></div>
+            <div className="mb-4 grid grid-cols-3 overflow-hidden rounded-lg bg-muted/30">
+              <div className="p-3"><p className="text-xs text-muted-foreground">{t("qualityReviewed")}</p><p className="mt-1 text-lg font-bold tabular-nums">{qualitySummary.reviewed}/{qualitySummary.total}</p></div>
+              <div className="border-x border-border/70 p-3"><p className="text-xs text-muted-foreground">{t("qualityAcceptedCount")}</p><p className="mt-1 text-lg font-bold tabular-nums text-success">{qualitySummary.accepted}</p></div>
+              <div className="p-3"><p className="text-xs text-muted-foreground">{t("qualityAttention")}</p><p className="mt-1 text-lg font-bold tabular-nums text-warning">{qualitySummary.needsAttention}</p></div>
             </div>
             {!llm.baseUrl || !llm.apiKey || !(llm.visionModel || llm.model) ? <p className="mb-3 rounded-xl border border-warning/25 bg-warning/8 p-3 text-xs leading-5 text-warning">{t("qualityNeedsVision")}</p> : null}
             <div className="space-y-2" aria-busy={qualityBusy !== null}>

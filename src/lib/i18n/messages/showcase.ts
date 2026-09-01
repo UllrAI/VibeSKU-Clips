@@ -6,11 +6,11 @@ export const showcase: NamespaceMessages = {
     // 顶部导航
     navTitle: "示例作品",
     navBadge: "示例",
-    makeSimilar: "做一个同款",
+    makeSimilar: "按这个结构创建",
     // 说明区
-    introLead: "这是一个用「ClipForge」完整生成的示例：",
-    introMeta: "{style} · {shots} 个镜头 · {duration}s · {resolution} {aspectRatio}。",
-    introTail: "下方是成片预览和分镜脚本，你可以照着做一个自己的。",
+    introLead: "这个示例由 ClipForge 完成：",
+    introMeta: "{style} · {shots} 个镜头 · {duration} 秒 · {resolution} {aspectRatio}。",
+    introTail: "查看成片和分镜脚本，确认这套结构是否适合你的内容。",
     // 分镜脚本
     scriptTitle: "分镜脚本",
     // 镜头类型标签
@@ -21,17 +21,17 @@ export const showcase: NamespaceMessages = {
     shotTypeSocialProof: "背书",
     shotTypeCta: "转化",
     // 模板参考区
-    templatesTitle: "更多爆款结构参考",
+    templatesTitle: "其他常用结构",
     templatesBadge: "模板",
-    templatesDesc: "这些是高转化带货视频的常见结构，做项目时可以照着选风格。",
-    templateShotsMeta: "{shots} 镜头 · {duration}s",
+    templatesDesc: "比较镜头数量、节奏和叙事方式，再选择适合商品的结构。",
+    templateShotsMeta: "{shots} 个镜头 · {duration} 秒",
     // 底部 CTA
-    bottomCta: "试着做一个自己的",
+    bottomCta: "按这个结构创建",
   },
   en: {
     navTitle: "Example works",
     navBadge: "Demo",
-    makeSimilar: "Make one like this",
+    makeSimilar: "Use this structure",
     introLead: "A complete example built with ClipForge: ",
     introMeta: "{style} · {shots} shots · {duration}s · {resolution} {aspectRatio}.",
     introTail: " Below are the final preview and shot-by-shot script — follow along to make your own.",

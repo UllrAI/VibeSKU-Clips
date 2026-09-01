@@ -179,7 +179,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </a>
 
       <aside
-        className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] md:flex ${collapsed ? "w-16" : "w-60"}`}
+        className={`sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar transition-[width] md:flex ${collapsed ? "w-16" : "w-56"}`}
       >
         <Link
           href="/start"
@@ -258,7 +258,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-border bg-background/90 px-4 backdrop-blur-xl md:hidden">
+        <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-border bg-background px-4 md:hidden">
           <Link href="/start" className="flex items-center gap-2">
             <img src="/icon.svg" alt="" width={24} height={24} className="rounded-md" />
             <span className="text-sm font-semibold tracking-tight">ClipForge</span>

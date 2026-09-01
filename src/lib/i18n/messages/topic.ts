@@ -4,14 +4,14 @@ import type { NamespaceMessages } from "../config";
 export const topic: NamespaceMessages = {
   zh: {
     // 页面标题区
-    heroBadge: "无需商品 · 一句话成片",
+    heroBadge: "无需商品素材",
     heroTitle: "一句话主题成片",
     heroSubtitle:
-      "输入一句话主题，AI 自动写旁白脚本，并从免费素材库自动配齐画面，下一步「素材」「合成」即可一键产出竖屏短视频。任何主题都能做，不局限于带货。",
+      "输入一个主题，生成旁白脚本并匹配免费素材；确认素材后即可合成竖屏视频。",
     // 未配置 LLM 引导
     llmBannerTitle: "先配置 LLM 才能生成脚本",
-    llmBannerDesc: "需要在「设置」里填写用于写脚本的 LLM（baseUrl / API Key / 模型）。",
-    llmBannerCta: "点击前往设置 →",
+    llmBannerDesc: "需要在「设置」里填写用于写脚本的 LLM（API 地址、API Key 和模型）。",
+    llmBannerCta: "配置脚本模型",
     // 主题输入
     topicLabel: "一句话主题",
     topicPlaceholder: "例如：在家如何泡一杯手冲咖啡",
@@ -35,6 +35,11 @@ export const topic: NamespaceMessages = {
     narration_travel_desc: "目的地 + 风景，想出发",
     // 时长
     durationLabel: "目标时长",
+    planTitle: "生成前确认",
+    planScript: "先生成可编辑的旁白脚本",
+    planFootage: "确认脚本后自动匹配免费素材",
+    planCost: "脚本使用你配置的 LLM；素材匹配与本地合成不消耗视频模型额度",
+    planRequired: "输入至少 2 个字即可生成",
     // 生成按钮
     generatingScript: "AI 正在写脚本…",
     ctaGenerate: "生成脚本",
@@ -49,14 +54,14 @@ export const topic: NamespaceMessages = {
   },
   en: {
     // 页面标题区
-    heroBadge: "No product needed · One sentence to video",
+    heroBadge: "No product assets required",
     heroTitle: "One-sentence to video",
     heroSubtitle:
-      "Type one topic and AI writes a voiceover script, then auto-fills footage from free stock libraries — just hit Assets and Compose next to render a vertical short in one click. Works for any topic, not just commerce.",
+      "Enter a topic to draft a voiceover script and match free stock footage; review the assets, then render a vertical video.",
     // 未配置 LLM 引导
     llmBannerTitle: "Set up an LLM to generate scripts",
     llmBannerDesc: "Add the script-writing LLM (base URL / API key / model) in Settings.",
-    llmBannerCta: "Go to Settings →",
+    llmBannerCta: "Configure script model",
     // 主题输入
     topicLabel: "Your topic in one sentence",
     topicPlaceholder: "e.g. How to brew a pour-over coffee at home",
@@ -80,6 +85,11 @@ export const topic: NamespaceMessages = {
     narration_travel_desc: "Destinations and views that make you want to go",
     // 时长
     durationLabel: "Target length",
+    planTitle: "Before you generate",
+    planScript: "Start with an editable voiceover script",
+    planFootage: "Match free stock footage after you approve the script",
+    planCost: "Script writing uses your configured LLM; footage matching and local rendering use no video-model credits",
+    planRequired: "Enter at least 2 characters to generate",
     // 生成按钮
     generatingScript: "AI is writing the script…",
     ctaGenerate: "Generate script",

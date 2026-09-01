@@ -12,6 +12,7 @@ import {
   LuEye,
   LuVideo,
   LuPause,
+  LuChevronDown,
 } from "react-icons/lu";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -585,19 +586,19 @@ export default function BatchPage() {
   const doneCount = batchTasks.filter((t) => t.status === "done").length;
 
   return (
-    <div className="min-h-screen grid-bg">
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+    <div className="min-h-screen page-canvas">
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* Page title */}
         <header className="mb-8 border-b border-border/60 pb-6">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            <span className="brand-gradient-text">{t("heroTitle")}</span>
+            <span className="brand-text">{t("heroTitle")}</span>
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
             {t("heroSubtitle")}
           </p>
         </header>
 
-        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(22rem,0.85fr)]">
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
           {/* interrupted-job choice: continue where it left off (default) or discard and start clean */}
           {resumableJob && !isGenerating && (
             <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 lg:col-span-2">
@@ -612,7 +613,7 @@ export default function BatchPage() {
                 })}
               </p>
               <div className="mt-2.5 flex gap-2">
-                <Button size="sm" className="brand-gradient text-white" onClick={handleResumeBatch}>
+                <Button size="sm" className="brand-fill text-white" onClick={handleResumeBatch}>
                   {t("resumeContinue")}
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleDiscardResumable}>
@@ -622,13 +623,13 @@ export default function BatchPage() {
             </div>
           )}
           {/* Step 1: Select products */}
-          <Card className="glass-card h-full">
+          <Card className="surface-panel">
             <CardContent className="p-5">
               <div className="flex items-center justify-between mb-4">
-                <Label className="text-sm font-medium">
+                <h2 className="text-base font-semibold">
                   {t("step1Label")}
                   <span className="text-destructive ml-0.5">*</span>
-                </Label>
+                </h2>
                 <span className="text-xs text-muted-foreground">
                   {t("step1Selected", { selected: selectedProducts.size, total: products.length })}
                 </span>
@@ -644,7 +645,7 @@ export default function BatchPage() {
                     {t("emptyHint")}
                   </p>
                   <div className="flex items-center gap-2">
-                    <Button size="sm" className="brand-gradient text-white" onClick={importExamples}>
+                    <Button size="sm" className="brand-fill text-white" onClick={importExamples}>
                       {t("importExamples")}
                     </Button>
                     <Link href="/products">
@@ -656,15 +657,16 @@ export default function BatchPage() {
                 </div>
               ) : (
                 /* Product list (multi-select) */
-                <div className="space-y-2">
+                <div className="max-h-[34rem] space-y-2 overflow-y-auto pr-1">
                   {products.map((product) => {
                     const isSelected = selectedProducts.has(product.id);
                     return (
                       <button
                         key={product.id}
+                        aria-pressed={isSelected}
                         onClick={() => !isGenerating && toggleProduct(product.id)}
                         disabled={isGenerating}
-                        className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                        className={`w-full flex items-center gap-3 p-3 rounded-lg border text-left transition-[background-color,border-color,color,opacity,width] ${
                           isSelected
                             ? "border-primary bg-primary/10"
                             : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -672,9 +674,9 @@ export default function BatchPage() {
                       >
                         {/* Checkbox */}
                         <div
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-[background-color,border-color,color,opacity,width] ${
                             isSelected
-                              ? "brand-gradient border-transparent"
+                              ? "brand-fill border-transparent"
                               : "border-border/80 bg-muted/30"
                           }`}
                         >
@@ -702,22 +704,26 @@ export default function BatchPage() {
           </Card>
 
           {/* Step 2: Unified configuration */}
-          <Card className="glass-card h-full">
+          <Card className="surface-panel lg:sticky lg:top-6">
             <CardContent className="p-5 space-y-5">
-              <Label className="text-sm font-medium block">{t("step2Label")}</Label>
+              <div>
+                <h2 className="text-base font-semibold">{t("step2Label")}</h2>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("step2Desc")}</p>
+              </div>
 
               {/* Video mode */}
               <div>
                 <Label className="text-xs text-muted-foreground mb-2.5 block">{t("videoModeLabel")}</Label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {videoModeOptions.map((opt) => {
                     const Icon = opt.icon;
                     return (
                       <button
                         key={opt.value}
+                        aria-pressed={videoMode === opt.value}
                         onClick={() => !isGenerating && setVideoMode(opt.value)}
                         disabled={isGenerating}
-                        className={`relative flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                        className={`relative flex flex-col items-center gap-1.5 p-3 rounded-lg border text-center transition-[background-color,border-color,color,opacity,width] ${
                           videoMode === opt.value
                             ? "border-primary bg-primary/10"
                             : "border-border/50 bg-muted/20 hover:border-primary/40"
@@ -735,11 +741,7 @@ export default function BatchPage() {
                         >
                           {t(opt.labelKey)}
                         </span>
-                        {videoMode === opt.value && (
-                          <div className="absolute top-1.5 right-1.5">
-                            <div className="h-1.5 w-1.5 rounded-full brand-gradient" />
-                          </div>
-                        )}
+                        {videoMode === opt.value && <LuCheck className="absolute right-2 top-2 size-3.5 text-primary" aria-hidden="true" />}
                       </button>
                     );
                   })}
@@ -753,24 +755,21 @@ export default function BatchPage() {
               {/* Script style */}
               <div>
                 <Label className="text-xs text-muted-foreground mb-2.5 block">{t("scriptStyleLabel")}</Label>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {scriptStyleOptions.map((opt) => (
                     <button
                       key={opt.value}
+                      aria-pressed={scriptStyle === opt.value}
                       onClick={() => !isGenerating && setScriptStyle(opt.value)}
                       disabled={isGenerating}
-                      className={`relative flex items-center justify-center h-9 rounded-lg border text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                      className={`relative flex items-center justify-center h-9 rounded-lg border text-xs font-medium transition-[background-color,border-color,color,opacity,width] ${
                         scriptStyle === opt.value
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-foreground"
                       } ${isGenerating ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                     >
                       {t(opt.labelKey)}
-                      {scriptStyle === opt.value && (
-                        <div className="absolute -top-px -right-px h-3 w-3 flex items-center justify-center">
-                          <div className="h-1.5 w-1.5 rounded-full brand-gradient" />
-                        </div>
-                      )}
+                      {scriptStyle === opt.value && <LuCheck className="absolute right-2 size-3.5" aria-hidden="true" />}
                     </button>
                   ))}
                 </div>
@@ -783,30 +782,103 @@ export default function BatchPage() {
                   {durationOptions.map((opt) => (
                     <button
                       key={opt.value}
+                      aria-pressed={duration === opt.value}
                       onClick={() => !isGenerating && setDuration(opt.value)}
                       disabled={isGenerating}
-                      className={`relative flex items-center justify-center h-9 rounded-lg border text-sm font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                      className={`relative flex items-center justify-center h-9 rounded-lg border text-sm font-medium transition-[background-color,border-color,color,opacity,width] ${
                         duration === opt.value
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-foreground"
                       } ${isGenerating ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                     >
                       {opt.label}
-                      {duration === opt.value && (
-                        <div className="absolute -top-px -right-px h-3 w-3 flex items-center justify-center">
-                          <div className="h-1.5 w-1.5 rounded-full brand-gradient" />
-                        </div>
-                      )}
+                      {duration === opt.value && <LuCheck className="absolute right-2 size-3.5" aria-hidden="true" />}
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <details className="group border-t border-border pt-4">
+                <summary className="flex cursor-pointer list-none items-start justify-between gap-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+                  <span>
+                    {t("advancedLabel")}
+                    <span className="mt-1 block text-xs font-normal leading-5 text-muted-foreground">{t("advancedDesc")}</span>
+                  </span>
+                  <LuChevronDown className="mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <div className="mt-4 space-y-3">
+                  <label className="flex cursor-pointer items-start gap-2 text-sm text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={autoCompose}
+                      onChange={(e) => setAutoCompose(e.target.checked)}
+                      disabled={isGenerating}
+                      className="mt-0.5 size-4 accent-primary"
+                    />
+                    <span>{t("autoComposeLabel")}</span>
+                  </label>
+                  {autoCompose && (
+                    <label className="flex cursor-pointer items-start gap-2 text-sm text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={productCard}
+                        onChange={(e) => setProductCard(e.target.checked)}
+                        disabled={isGenerating}
+                        className="mt-0.5 size-4 accent-primary"
+                      />
+                      <span>{t("productCardLabel")}</span>
+                    </label>
+                  )}
+                  <label className="flex cursor-pointer items-start gap-2 text-sm text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={antiHomogeneity}
+                      onChange={(e) => setAntiHomogeneity(e.target.checked)}
+                      disabled={isGenerating}
+                      className="mt-0.5 size-4 accent-primary"
+                    />
+                    <span>{t("variationLabel")}</span>
+                  </label>
+                </div>
+              </details>
+
+              <div className="border-t border-border pt-4">
+                <h3 className="text-sm font-semibold">{t("actionTitle")}</h3>
+                {configError && (
+                  <p className="mt-2 text-xs leading-5 text-destructive" aria-live="polite">
+                    {configError}
+                    <Link href="/settings?tab=llm" className="ml-1 underline underline-offset-2 hover:text-foreground">
+                      {t("errorNoLlmCta")}
+                    </Link>
+                  </p>
+                )}
+                <Button
+                  onClick={handleStartBatch}
+                  disabled={selectedProducts.size === 0 || isGenerating}
+                  className="brand-fill mt-3 h-11 w-full font-semibold text-white transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {isGenerating ? (
+                    <><LuLoader className="mr-2 size-4 animate-spin" />{t("ctaGenerating")}</>
+                  ) : isComplete ? (
+                    <><LuCheck className="mr-2 size-4" />{t("ctaAgain")}</>
+                  ) : (
+                    <><LuZap className="mr-2 size-4" />{t("ctaStart")}</>
+                  )}
+                </Button>
+                {!isGenerating && !isComplete && (
+                  <p className="mt-2 text-center text-xs text-muted-foreground">
+                    {selectedProducts.size > 0
+                      ? t("hintWillGenerate", { count: selectedProducts.size })
+                      : t("hintSelectAtLeastOne")}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Batch task list (shown during generation) */}
           {batchTasks.length > 0 && (
-            <Card className="glass-card lg:col-span-2">
+            <Card className="surface-panel lg:col-span-2">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <Label className="text-sm font-medium">{t("progressLabel")}</Label>
@@ -826,7 +898,7 @@ export default function BatchPage() {
                 {/* Progress bar */}
                 <div className="h-1.5 bg-muted/30 rounded-full overflow-hidden mb-4">
                   <div
-                    className="h-full brand-gradient transition-[background-color,border-color,color,box-shadow,opacity,transform,width] duration-500 rounded-full"
+                    className="h-full brand-fill transition-[background-color,border-color,color,opacity,width] duration-500 rounded-full"
                     style={{
                       width: `${batchTasks.length > 0 ? (doneCount / batchTasks.length) * 100 : 0}%`,
                     }}
@@ -900,80 +972,6 @@ export default function BatchPage() {
             </Card>
           )}
 
-          {/* Bottom action bar */}
-          <div className="rounded-xl border border-border/60 bg-card/70 p-4 shadow-sm lg:col-span-2">
-            {configError && (
-              <p className="text-sm text-destructive text-center mb-3">
-                {configError}
-                <Link href="/settings?tab=llm" className="underline underline-offset-2 ml-1.5 hover:text-foreground">
-                  {t("errorNoLlmCta")}
-                </Link>
-              </p>
-            )}
-            {/* Auto-render toggle: upgrades batch from "script only" to "one-click full video" (free path) */}
-            <label className="flex items-center justify-center gap-2 mb-3 text-sm text-muted-foreground cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={autoCompose}
-                onChange={(e) => setAutoCompose(e.target.checked)}
-                disabled={isGenerating}
-                className="w-4 h-4 accent-primary"
-              />
-              {t("autoComposeLabel")}
-            </label>
-            {autoCompose && (
-              <label className="flex items-center justify-center gap-2 mb-3 text-sm text-muted-foreground cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={productCard}
-                  onChange={(e) => setProductCard(e.target.checked)}
-                  disabled={isGenerating}
-                  className="w-4 h-4 accent-primary"
-                />
-                {t("productCardLabel")}
-              </label>
-            )}
-            {/* anti-homogenization rotation: each item gets a different hook/style/voice/BGM/caption mix */}
-            <label className="flex items-center justify-center gap-2 mb-3 text-sm text-muted-foreground cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={antiHomogeneity}
-                onChange={(e) => setAntiHomogeneity(e.target.checked)}
-                disabled={isGenerating}
-                className="w-4 h-4 accent-primary"
-              />
-              {t("variationLabel")}
-            </label>
-            <Button
-              onClick={handleStartBatch}
-              disabled={selectedProducts.size === 0 || isGenerating}
-              className="w-full h-12 brand-gradient text-white font-semibold text-base shadow-lg hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {isGenerating ? (
-                <>
-                  <LuLoader className="w-5 h-5 mr-2 animate-spin" />
-                  {t("ctaGenerating")}
-                </>
-              ) : isComplete ? (
-                <>
-                  <LuCheck className="w-5 h-5 mr-2" />
-                  {t("ctaAgain")}
-                </>
-              ) : (
-                <>
-                  <LuZap className="w-5 h-5 mr-2" />
-                  {t("ctaStart")}
-                </>
-              )}
-            </Button>
-            {!isGenerating && !isComplete && (
-              <p className="text-xs text-muted-foreground text-center mt-3">
-                {selectedProducts.size > 0
-                  ? t("hintWillGenerate", { count: selectedProducts.size })
-                  : t("hintSelectAtLeastOne")}
-              </p>
-            )}
-          </div>
         </div>
       </main>
     </div>

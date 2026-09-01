@@ -15,6 +15,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "design:check": "node scripts/check-design-system.mjs",
     "test": "vitest run",
     "mcp": "node mcp/clipforge-mcp.mjs",
     "cli": "node bin/clipforge.mjs",

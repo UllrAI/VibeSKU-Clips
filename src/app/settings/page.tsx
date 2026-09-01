@@ -203,7 +203,7 @@ function Toggle({
       }`}
     >
       <span
-        className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200 ${
+        className={`pointer-events-none inline-block h-5 w-5 rounded-full border border-black/10 bg-white transition-transform duration-200 ${
           checked ? "translate-x-5" : "translate-x-0"
         }`}
       />
@@ -419,7 +419,7 @@ export default function SettingsPage() {
 
 
   return (
-    <div className="min-h-screen grid-bg">
+    <div className="min-h-screen page-canvas">
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* page title */}
         <header className="mb-8 border-b border-border/60 pb-6">
@@ -467,7 +467,7 @@ export default function SettingsPage() {
                 aria-label={t("oneKeyPlaceholder")}
                 className="flex-1"
               />
-              <Button onClick={applyOneKey} disabled={!atlasOneKey.trim()} className="brand-gradient text-white border-0 shrink-0">
+              <Button onClick={applyOneKey} disabled={!atlasOneKey.trim()} className="brand-fill text-white border-0 shrink-0">
                 <LuZap className="w-4 h-4 mr-1.5" />
                 {t("oneKeyCta")}
               </Button>
@@ -482,7 +482,7 @@ export default function SettingsPage() {
         {/* tabs */}
         <div className="md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:items-start md:gap-6 lg:gap-8">
           {/* Section rail: vertical on desktop (native settings-window feel), horizontal scroll on mobile */}
-          <nav className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border/60 bg-card/60 p-2 shadow-sm md:sticky md:top-6 md:mb-0 md:flex-col">
+          <nav aria-label={t("pageTitle")} className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-2 md:sticky md:top-6 md:mb-0 md:flex-col">
             {SETTINGS_SECTIONS.map((sec) => (
               <button
                 key={sec.id}
@@ -502,7 +502,8 @@ export default function SettingsPage() {
           {/* Tab 1: AI provider configuration */}
           {tab === "providers" && (
           <section className="min-w-0 flex-1">
-            <div className="grid gap-4 xl:grid-cols-2">
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabProviders")}</h2>
+            <div className="grid gap-4 2xl:grid-cols-2">
               {AI_PROVIDERS.map((platform) => {
                 const provider = providers[platform.key] ?? {
                   enabled: false,
@@ -510,13 +511,13 @@ export default function SettingsPage() {
                 };
 
                 return (
-                  <Card key={platform.key} className="glass-card h-full">
-                    <CardContent className="p-5">
+                  <Card key={platform.key} className="surface-panel h-full">
+                    <CardContent className="p-4">
                       <div className="flex items-start justify-between gap-4">
                         {/* provider info */}
                         <div className="flex items-start gap-3 flex-1 min-w-0">
                           <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${platform.iconBg} text-white shadow-sm`}
+                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${platform.iconBg} text-white`}
                           >
                             {platform.icon}
                           </div>
@@ -551,7 +552,7 @@ export default function SettingsPage() {
                         />
                       </div>
 
-                      {provider.enabled ? (
+                      {provider.enabled && (
                       <>
                       {/* API Key input */}
                       <div className="mt-4 border-t border-border/50 pt-4">
@@ -609,10 +610,6 @@ export default function SettingsPage() {
                         </div>
                       </details>
                       </>
-                      ) : (
-                        <p className="mt-4 border-t border-border/50 pt-3 text-xs text-muted-foreground">
-                          {t("enableProviderFirst")}
-                        </p>
                       )}
                     </CardContent>
                   </Card>
@@ -625,9 +622,10 @@ export default function SettingsPage() {
           {/* Tab 2: LLM configuration */}
           {tab === "llm" && (
           <section className="min-w-0 flex-1">
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabLlm")}</h2>
             <div className="space-y-6">
               {/* LLM Provider configuration */}
-              <Card className="glass-card">
+              <Card className="surface-panel">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -785,9 +783,10 @@ export default function SettingsPage() {
           {/* Tab: TTS voice-over */}
           {tab === "tts" && (
           <section className="min-w-0 flex-1">
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabTts")}</h2>
             <div className="space-y-6">
               {/* TTS voiceover */}
-              <Card className="glass-card">
+              <Card className="surface-panel">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
@@ -934,8 +933,9 @@ export default function SettingsPage() {
           {/* Tab: image generation — pick the default model (keys live under Platform keys) */}
           {tab === "image" && (
           <section className="min-w-0 flex-1">
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabImage")}</h2>
             <div className="space-y-6">
-              <Card className="glass-card">
+              <Card className="surface-panel">
                 <CardContent className="p-5">
                   <h3 className="font-semibold text-sm mb-4">{t("imageCardTitle")}</h3>
                   <div className="grid grid-cols-1 gap-4">
@@ -978,8 +978,9 @@ export default function SettingsPage() {
           {/* Tab: video generation — default model + output format */}
           {tab === "video" && (
           <section className="min-w-0 flex-1">
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabVideo")}</h2>
             <div className="space-y-6">
-              <Card className="glass-card">
+              <Card className="surface-panel">
                 <CardContent className="p-5">
                   <h3 className="font-semibold text-sm mb-4">{t("videoCardTitle")}</h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1078,12 +1079,14 @@ export default function SettingsPage() {
           {/* Tab 3: character management */}
           {tab === "characters" && (
           <section className="min-w-0 flex-1">
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabCharacters")}</h2>
             <PresenterManager />
           </section>
           )}
           {/* Tab 4: brand settings */}
           {tab === "brand" && (
           <section className="min-w-0 flex-1">
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabBrand")}</h2>
             <BrandSettings />
           </section>
           )}
@@ -1153,7 +1156,7 @@ function BrandSettings() {
   return (
     <div className="space-y-6">
       {/* shop basic info */}
-      <Card className="glass-card">
+      <Card className="surface-panel">
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-4">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -1230,7 +1233,7 @@ function BrandSettings() {
       </Card>
 
       {/* brand color settings */}
-      <Card className="glass-card">
+      <Card className="surface-panel">
         <CardContent className="p-5">
           <div className="flex items-center gap-2 mb-4">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white">
@@ -1253,7 +1256,7 @@ function BrandSettings() {
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <div
-                    className="h-9 w-9 rounded-lg border border-border shadow-sm"
+                    className="h-9 w-9 rounded-lg border border-border"
                     style={{ backgroundColor: brand.primaryColor }}
                   />
                 </div>
@@ -1280,7 +1283,7 @@ function BrandSettings() {
                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                   <div
-                    className="h-9 w-9 rounded-lg border border-border shadow-sm"
+                    className="h-9 w-9 rounded-lg border border-border"
                     style={{ backgroundColor: brand.secondaryColor }}
                   />
                 </div>
@@ -1298,7 +1301,7 @@ function BrandSettings() {
       </Card>
 
       {/* watermark settings */}
-      <Card className="glass-card">
+      <Card className="surface-panel">
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -1367,7 +1370,7 @@ function BrandSettings() {
       </Card>
 
       {/* outro settings */}
-      <Card className="glass-card">
+      <Card className="surface-panel">
         <CardContent className="p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">

@@ -32,12 +32,12 @@ export const newProject: NamespaceMessages = {
     styleTalkingHeadLabel: "达人口播",
     styleTalkingHeadDesc: "人设化怼脸直给，证据快节奏堆叠",
     styleAutoLabel: "智能推荐",
-    styleAutoDesc: "AI 根据商品特性自动推荐",
+    styleAutoDesc: "根据商品信息选择合适结构",
     // 进度提示
-    progressCreating: "正在创建项目...",
-    progressUploading: "正在上传商品图片...",
-    progressGenerating: "AI 正在分析商品并生成脚本...",
-    progressDone: "脚本生成完成！正在跳转...",
+    progressCreating: "正在创建项目…",
+    progressUploading: "正在上传商品图片…",
+    progressGenerating: "正在分析商品并生成脚本…",
+    progressDone: "脚本已生成，正在打开…",
     // 错误提示
     errorCreateFailed: "项目创建失败，请重试",
     errorUploadFailed: "图片上传失败，请检查网络后重试",
@@ -46,33 +46,34 @@ export const newProject: NamespaceMessages = {
     // 页面标题
     pageTitlePrefix: "新建",
     pageTitleAccent: "带货项目",
-    pageSubtitle: "上传商品图片并填写信息，AI 将为你生成专业的带货脚本",
+    pageSubtitle: "添加商品素材和卖点，生成一版可继续编辑的带货脚本",
     // LLM 未配置警告
     llmWarnTitle: "请先配置 LLM 服务",
-    llmWarnDesc: "脚本生成需要 LLM（如 GPT-4o），请先在设置中配置 API Key。",
-    llmWarnCta: "前往设置 →",
+    llmWarnDesc: "脚本生成需要 LLM，请先在设置中配置 API Key。",
+    llmWarnCta: "配置 API Key",
     // 快速开始
     // 第 1 步「商品来源」合卡后的引导词
     sourceIngestLead: "或粘贴商品链接自动导入（自动抓标题 / 价格 / 商品图）",
     sourceExampleLead: "没素材？点个示例直接试：",
     // 商品信息折叠区
     moreInfoSummary: "更多商品信息（选填）：品类 / 价格带 / 人群 / 平台 / 使用场景",
-    moreInfoHint: "填得越全，脚本卖点越准——都不填也能出片。",
+    moreInfoHint: "这些信息会帮助脚本更贴近商品；不填写也可以继续。",
     // 模板抽屉
     templatesSummary: "用模板出片（选填）",
-    templatesSummaryDesc: "一键套用爆款结构或完整成片配方（风格 + 运镜 + Look + 合成配置），不选也能出片",
+    templatesSummaryDesc: "套用已保存的脚本结构或成片配置；不选择时使用默认方案",
     quickStartTitle: "快速开始",
     exampleBadge: "示例",
     quickStartDesc: "没有素材？点一个示例商品，自动填好商品信息和示例图，直接体验生成流程。",
-    ingestTitle: "粘贴商品链接一键导入",
+    ingestTitle: "从商品链接导入",
     ingestBadge: "最快",
     ingestDesc: "贴一个商品页链接，自动抓取标题 / 价格 / 商品图并新建带货项目，省去手动填写（Shopify、独立站等带标准标签的页面支持最好；淘宝/拼多多等有反爬，识别不出请手动填）。",
-    ingestPlaceholder: "https:// 商品页链接",
-    ingestBtn: "一键导入",
+    ingestPlaceholder: "粘贴商品页链接…",
+    ingestBtn: "导入商品信息",
     ingestErrorUrl: "请填写合法的商品链接（http/https）",
     ingestErrorFail: "导入失败，请检查链接或手动填写",
     // 上传区
     stepUploadTitle: "上传商品图片",
+    stepUploadDesc: "上传 1–5 张清晰商品图，或从商品链接导入。",
     imageLabel: "商品图片",
     imageCount: "{n}/5 张",
     dropHintPrefix: "拖拽图片到这里，或 ",
@@ -81,13 +82,14 @@ export const newProject: NamespaceMessages = {
     imageAlt: "商品图片",
     // 商品信息表单
     stepInfoTitle: "填写商品信息",
+    stepInfoDesc: "商品名称必填；卖点只写可验证的信息。",
     productNameLabel: "商品名称",
     productNamePlaceholder: "例如：小米手环8 NFC版",
     categoryLabel: "商品品类",
     categoryPlaceholder: "选择商品品类",
     sellingPointsLabel: "商品卖点",
     optional: "选填",
-    sellingPointsPlaceholder: "描述商品的核心卖点、独特优势，AI 将据此生成更精准的脚本...",
+    sellingPointsPlaceholder: "例如：材质、规格、使用效果与适用场景…",
     priceLabel: "价格定位",
     priceUnder50: "50元以下",
     price50to200: "50-200元",
@@ -108,9 +110,10 @@ export const newProject: NamespaceMessages = {
     platformXiaohongshu: "小红书",
     platformTiktok: "TikTok Shop",
     usageLabel: "用法与优势",
-    usagePlaceholder: "描述产品的使用方法、独特优势、和竞品的差异化等...",
+    usagePlaceholder: "例如：使用步骤、注意事项，以及与同类商品的差异…",
     // 视频配置
     stepConfigTitle: "选择视频配置",
+    stepConfigDesc: "先确定时长和画面形式，人物与高级配置按需选择。",
     durationLabel: "目标时长",
     videoModeLabel: "视频模式",
     modeCloseupLabel: "产品特写",
@@ -186,6 +189,7 @@ export const newProject: NamespaceMessages = {
     templateUsedCount: "已用 {n} 次",
     // 脚本风格
     stepStyleTitle: "选择脚本风格",
+    stepStyleDesc: "不确定时保留智能推荐，生成后仍可修改。",
     scriptStyleLabel: "脚本风格",
     // 出镜人物
     characterTitle: "出镜人物",
@@ -195,9 +199,12 @@ export const newProject: NamespaceMessages = {
     // 提交
     submitProcessing: "处理中...",
     submitGenerate: "开始生成脚本",
+    sidebarTitle: "创建进度",
+    sidebarRequired: "必填项",
+    sidebarOutput: "下一步将生成可编辑脚本",
     hintNeedLlm: "请先在设置中配置 LLM API Key",
     hintNeedInput: "请上传至少一张商品图并填写商品名称",
-    hintReady: "AI 将分析商品图片和卖点，生成多套专业带货脚本供你选择",
+    hintReady: "将根据商品图片和卖点生成多套可编辑脚本",
   },
   en: {
     // 品类选项
@@ -231,10 +238,10 @@ export const newProject: NamespaceMessages = {
     styleAutoLabel: "Smart pick",
     styleAutoDesc: "AI recommends based on the product",
     // 进度提示
-    progressCreating: "Creating project...",
-    progressUploading: "Uploading product images...",
-    progressGenerating: "AI is analyzing the product and writing the script...",
-    progressDone: "Script ready! Redirecting...",
+    progressCreating: "Creating project…",
+    progressUploading: "Uploading product images…",
+    progressGenerating: "Analyzing the product and writing the script…",
+    progressDone: "Script ready. Opening it…",
     // 错误提示
     errorCreateFailed: "Failed to create project. Please try again.",
     errorUploadFailed: "Image upload failed. Check your connection and retry.",
@@ -243,11 +250,11 @@ export const newProject: NamespaceMessages = {
     // 页面标题
     pageTitlePrefix: "New ",
     pageTitleAccent: "commerce project",
-    pageSubtitle: "Upload product images and fill in the details — AI will write a professional sales script for you",
+    pageSubtitle: "Add product assets and selling points, then generate an editable commerce script",
     // LLM 未配置警告
     llmWarnTitle: "Set up your LLM service first",
     llmWarnDesc: "Script generation needs an LLM (such as GPT-4o). Add your API key in Settings first.",
-    llmWarnCta: "Go to Settings →",
+    llmWarnCta: "Configure API key",
     // 快速开始
     // 第 1 步「商品来源」合卡后的引导词
     sourceIngestLead: "Or paste a product URL to auto-import (title / price / images)",
@@ -257,19 +264,20 @@ export const newProject: NamespaceMessages = {
     moreInfoHint: "The more you fill in, the sharper the script — everything works empty too.",
     // 模板抽屉
     templatesSummary: "Use a template (optional)",
-    templatesSummaryDesc: "One tap applies a hit structure or a full recipe (style + camera + look + compose) — optional either way",
+    templatesSummaryDesc: "Apply a saved script structure or production recipe; the default workflow works without one",
     quickStartTitle: "Quick start",
     exampleBadge: "Demo",
     quickStartDesc: "No assets yet? Pick a sample product to auto-fill its info and image, and try the full flow right away.",
     ingestTitle: "Import from a product URL",
     ingestBadge: "Fastest",
     ingestDesc: "Paste a product page link — we auto-extract the title / price / images and create a project (works best on pages with standard OG / JSON-LD tags like Shopify and independent stores; some marketplaces block scraping — fill in manually if it can't parse).",
-    ingestPlaceholder: "https:// product page URL",
-    ingestBtn: "Import",
+    ingestPlaceholder: "Paste a product page URL…",
+    ingestBtn: "Import product details",
     ingestErrorUrl: "Please enter a valid product URL (http/https)",
     ingestErrorFail: "Import failed — check the link or fill in manually",
     // 上传区
     stepUploadTitle: "Upload product images",
+    stepUploadDesc: "Upload 1–5 clear product images, or import them from a product URL.",
     imageLabel: "Product images",
     imageCount: "{n}/5",
     dropHintPrefix: "Drag images here, or ",
@@ -278,13 +286,14 @@ export const newProject: NamespaceMessages = {
     imageAlt: "Product image",
     // 商品信息表单
     stepInfoTitle: "Enter product details",
+    stepInfoDesc: "Product name is required. Keep selling points factual and verifiable.",
     productNameLabel: "Product name",
     productNamePlaceholder: "e.g. Mi Band 8 NFC Edition",
     categoryLabel: "Category",
     categoryPlaceholder: "Select a category",
     sellingPointsLabel: "Selling points",
     optional: "Optional",
-    sellingPointsPlaceholder: "Describe the key selling points and unique advantages — AI uses this to write a sharper script...",
+    sellingPointsPlaceholder: "For example: material, specifications, results, and use cases…",
     priceLabel: "Price tier",
     priceUnder50: "Under ¥50",
     price50to200: "¥50–200",
@@ -305,9 +314,10 @@ export const newProject: NamespaceMessages = {
     platformXiaohongshu: "Xiaohongshu",
     platformTiktok: "TikTok Shop",
     usageLabel: "Usage & advantages",
-    usagePlaceholder: "Describe how to use the product, its unique advantages, how it differs from competitors...",
+    usagePlaceholder: "For example: steps, cautions, and differences from similar products…",
     // 视频配置
     stepConfigTitle: "Choose video settings",
+    stepConfigDesc: "Set the duration and visual format first; choose a character and advanced settings only when needed.",
     durationLabel: "Target length",
     videoModeLabel: "Video mode",
     modeCloseupLabel: "Product close-up",
@@ -383,6 +393,7 @@ export const newProject: NamespaceMessages = {
     templateUsedCount: "Used {n} times",
     // 脚本风格
     stepStyleTitle: "Choose a script style",
+    stepStyleDesc: "Keep Smart pick if you are unsure. You can edit the result after generation.",
     scriptStyleLabel: "Script style",
     // 出镜人物
     characterTitle: "On-camera character",
@@ -392,8 +403,11 @@ export const newProject: NamespaceMessages = {
     // 提交
     submitProcessing: "Processing...",
     submitGenerate: "Generate script",
+    sidebarTitle: "Creation progress",
+    sidebarRequired: "Required fields",
+    sidebarOutput: "Next: generate an editable script",
     hintNeedLlm: "Add your LLM API key in Settings first",
     hintNeedInput: "Upload at least one product image and enter a product name",
-    hintReady: "AI will analyze your product images and selling points to generate several professional sales scripts to choose from",
+    hintReady: "Product images and selling points will be used to generate several editable scripts",
   },
 };

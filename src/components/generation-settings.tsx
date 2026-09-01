@@ -119,7 +119,7 @@ export function GenerationSettings() {
   return (
     <>
       {/* custom models */}
-      <Card className="glass-card">
+      <Card className="surface-panel">
         <CardContent className="p-5 space-y-4">
           <div>
             <h3 className="font-semibold text-sm">{t("customModelTitle")}</h3>
@@ -196,7 +196,7 @@ export function GenerationSettings() {
       </Card>
 
       {/* generation params */}
-      <Card className="glass-card">
+      <Card className="surface-panel">
         <CardContent className="p-5 space-y-5">
           <div>
             <h3 className="font-semibold text-sm">{t("genParamsTitle")}</h3>

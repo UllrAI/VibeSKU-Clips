@@ -636,13 +636,13 @@ export default function TranscriptPage() {
         : t("transcribing");
 
   return (
-    <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+    <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           <Link href={`/project/${id}/assets`} className="mb-3 inline-flex min-h-8 items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
             <LuArrowLeft className="h-4 w-4" />{t("back")}
           </Link>
-          {projectName && <p className="mb-1 truncate text-xs font-medium uppercase tracking-[0.18em] text-primary">{projectName}</p>}
+          {projectName && <p className="mb-1 truncate text-xs font-medium tracking-wide text-primary">{projectName}</p>}
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t("title")}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
         </div>
@@ -655,7 +655,7 @@ export default function TranscriptPage() {
       {notice && <div role="status" aria-live="polite" className="mb-5 rounded-xl border border-emerald-500/25 bg-emerald-500/8 p-3 text-sm text-emerald-700 dark:text-emerald-300">{notice}</div>}
 
       <section className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
-        <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div><h2 className="font-semibold">{t("uploadTitle")}</h2><p className="mt-1 text-xs text-muted-foreground">{t("uploadHint")}</p></div>
             <span className="rounded-lg bg-primary/10 p-2 text-primary"><LuUpload /></span>
@@ -680,7 +680,7 @@ export default function TranscriptPage() {
           ) : <div className="rounded-xl border border-dashed border-border p-5 text-center"><p className="text-sm font-medium">{t("noSource")}</p><p className="mt-1 text-xs text-muted-foreground">{t("noSourceHint")}</p></div>}
         </div>
 
-        <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
           {selected ? <>
             <div className="overflow-hidden rounded-xl bg-black"><video ref={videoRef} key={selected.id} src={selected.url} controls preload="metadata" onTimeUpdate={handleVideoTimeUpdate} onSeeked={handleVideoTimeUpdate} onPlay={handleVideoTimeUpdate} className="aspect-video max-h-[460px] w-full object-contain" /></div>
             {transcript && <div className="mt-4 rounded-xl border border-border/60 bg-background/30 p-3">
@@ -723,12 +723,12 @@ export default function TranscriptPage() {
             </div>
             {(busy === "decode" || busy === "transcribe") && <div className="mt-4" role="status" aria-live="polite"><div className="mb-1.5 flex items-center justify-between text-xs"><span>{progressLabel}</span><span className="tabular-nums text-muted-foreground">{progress}%</span></div><div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary transition-[width] duration-300" style={{ width: `${Math.max(3, progress)}%` }} /></div>{fallback && <p className="mt-2 text-xs text-amber-600 dark:text-amber-300">{t("fallbackWasm")}</p>}</div>}
             {selected.error && selected.status === "failed" && <p className="mt-3 text-xs text-destructive">{selected.error}</p>}
-          </> : <div className="flex min-h-80 flex-col items-center justify-center text-center"><LuFileVideo className="mb-3 h-8 w-8 text-muted-foreground" /><p className="text-sm font-medium">{t("noSource")}</p><p className="mt-1 text-xs text-muted-foreground">{t("noSourceHint")}</p></div>}
+          </> : <div className="flex min-h-56 flex-col items-center justify-center text-center"><span className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground"><LuFileVideo className="h-5 w-5" /></span><p className="text-sm font-medium">{t("noSource")}</p><p className="mt-1 text-xs text-muted-foreground">{t("noSourceHint")}</p></div>}
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]">
-        <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
+      {selected && <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div><h2 className="flex items-center gap-2 font-semibold"><LuScissors className="text-primary" />{t("editorTitle")}</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{transcript ? t("editorHint") : t("needTranscript")}</p></div>
             {transcript && <div className="flex flex-wrap items-center justify-end gap-2">
@@ -750,7 +750,7 @@ export default function TranscriptPage() {
         </div>
 
         <aside className="space-y-5">
-          <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
             <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-border/50 bg-background/30 p-3">
               <input type="checkbox" className="mt-1 h-4 w-4 accent-primary" checked={removeSilence} disabled={!transcript} onChange={(event) => commitPlan({ ...plan, removeSilence: event.target.checked })} />
               <span><span className="flex items-center gap-2 text-sm font-medium"><LuVolume2 className="text-primary" />{t("silence")}</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">{t("silenceHint", { n: transcript?.silenceRanges.length ?? 0 })}</span></span>
@@ -761,9 +761,9 @@ export default function TranscriptPage() {
             </label>
 
             <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-lg bg-muted/30 p-2"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("original")}</p><p className="mt-1 text-sm font-semibold tabular-nums">{formatDuration(originalSeconds)}</p></div>
-              <div className="rounded-lg bg-primary/8 p-2"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("output")}</p><p className="mt-1 text-sm font-semibold tabular-nums text-primary">{formatDuration(editedSeconds)}</p></div>
-              <div className="rounded-lg bg-destructive/8 p-2"><p className="text-[10px] uppercase tracking-wide text-muted-foreground">{t("removed")}</p><p className="mt-1 text-sm font-semibold tabular-nums text-destructive">-{formatDuration(removedSeconds)}</p></div>
+              <div className="rounded-lg bg-muted/30 p-2"><p className="text-xs text-muted-foreground">{t("original")}</p><p className="mt-1 text-sm font-semibold tabular-nums">{formatDuration(originalSeconds)}</p></div>
+              <div className="rounded-lg bg-primary/8 p-2"><p className="text-xs text-muted-foreground">{t("output")}</p><p className="mt-1 text-sm font-semibold tabular-nums text-primary">{formatDuration(editedSeconds)}</p></div>
+              <div className="rounded-lg bg-destructive/8 p-2"><p className="text-xs text-muted-foreground">{t("removed")}</p><p className="mt-1 text-sm font-semibold tabular-nums text-destructive">-{formatDuration(removedSeconds)}</p></div>
             </div>
             <Button className="mt-4 h-11 w-full" disabled={!transcript || editedSeconds < 0.5 || busy === "preview" || busy === "render" || activeRender} onClick={() => void previewEdit()}>
               {busy === "preview" ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuScissors />}
@@ -801,7 +801,7 @@ export default function TranscriptPage() {
             </div>}
           </div>
 
-          <div className="rounded-2xl border border-border/60 bg-card/55 p-4 sm:p-5">
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
             <h2 className="mb-3 font-semibold">{t("versions")}</h2>
             {selected?.edits.length ? <div className="space-y-2">{selected.edits.map((edit) => <div key={edit.id} className="rounded-xl border border-border/50 bg-background/30 p-3">
               <div className="flex items-center justify-between gap-2"><span className="flex items-center gap-2 text-sm font-medium">{edit.status === "done" ? <LuCircleCheckBig className="text-emerald-500" /> : edit.status === "failed" ? <span className="h-2 w-2 rounded-full bg-destructive" /> : <LuLoaderCircle className="animate-spin text-primary motion-reduce:animate-none" />}{t("revision", { n: edit.revision })}</span><span className="flex items-center gap-1.5 text-[10px] uppercase text-muted-foreground"><span className="rounded-full border border-border px-1.5 py-0.5 normal-case">{t(`actor_${edit.actor ?? "human"}`)}</span>{edit.status === "done" ? t("done") : edit.status === "failed" ? t("failed") : t("rendering")}</span></div>
@@ -812,7 +812,7 @@ export default function TranscriptPage() {
             </div>)}</div> : <p className="text-sm text-muted-foreground">{t("noVersions")}</p>}
           </div>
         </aside>
-      </section>
+      </section>}
     </main>
   );
 }

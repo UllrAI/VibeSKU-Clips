@@ -764,11 +764,11 @@ export default function ScriptPage() {
   // loading: skeleton screen (mimics the script card layout; feels faster than a spinner and reduces perceived wait)
   if (loading) {
     return (
-      <div className="min-h-screen grid-bg">
+      <div className="min-h-screen page-canvas">
         {headerBar}
         <div className="max-w-4xl mx-auto px-6 py-8 space-y-4" aria-busy="true" aria-label={t("loadingScripts")}>
           {[0, 1, 2].map((i) => (
-            <Card key={i} className="glass-card animate-pulse">
+            <Card key={i} className="surface-panel animate-pulse">
               <CardContent className="p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="h-4 w-40 rounded bg-muted/60" />
@@ -791,7 +791,7 @@ export default function ScriptPage() {
   // empty state: this project has no real scripts yet (fixes #3: no longer shows the Debao demo; provides a recoverable "generate script" entry point)
   if (scripts.length === 0) {
     return (
-      <div className="min-h-screen grid-bg">
+      <div className="min-h-screen page-canvas">
         {headerBar}
         <div className="mx-auto max-w-md flex flex-col items-center justify-center py-28 px-6 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/40 mb-5">
@@ -811,7 +811,7 @@ export default function ScriptPage() {
             </div>
           )}
           <div className="flex items-center gap-3">
-            <Button onClick={handleGenerate} disabled={isGenerating} className="brand-gradient text-white">
+            <Button onClick={handleGenerate} disabled={isGenerating} className="brand-fill text-white">
               {isGenerating ? (
                 <>
                   <LuLoaderCircle className="w-4 h-4 mr-2 animate-spin" />
@@ -839,10 +839,10 @@ export default function ScriptPage() {
   if (filmPreview && !aiFilming) {
     const overQuota = filmPreview.referenceQuota && !filmPreview.referenceQuota.ok;
     return (
-      <div className="min-h-screen grid-bg">
+      <div className="min-h-screen page-canvas">
         {headerBar}
         <main className="mx-auto max-w-2xl px-6 py-12">
-          <Card className="glass-card">
+          <Card className="surface-panel">
             <CardContent className="space-y-4 p-6">
               <h2 className="flex items-center gap-2 text-lg font-bold"><LuFilm className="size-5 text-primary" aria-hidden="true" />{t("aiFilmPreviewTitle")}</h2>
               <p className="text-sm text-muted-foreground">
@@ -866,7 +866,7 @@ export default function ScriptPage() {
                 <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap text-muted-foreground">{filmPreview.prompt}</pre>
               </details>
               <div className="flex flex-wrap items-center gap-2">
-                <Button className="brand-gradient text-white" disabled={overQuota} onClick={confirmAiFilm}>
+                <Button className="brand-fill text-white" disabled={overQuota} onClick={confirmAiFilm}>
                   {t("aiFilmConfirm")}
                 </Button>
                 <Button variant="outline" onClick={() => { setFilmPreview(null); setAiFilmError(""); }}>
@@ -883,10 +883,10 @@ export default function ScriptPage() {
 
   if ((autoMode && !autoFinishError && (autoFinishing || !autoModeTriggered)) || aiFilming) {
     return (
-      <div className="min-h-screen grid-bg">
+      <div className="min-h-screen page-canvas">
         {headerBar}
         <main className="mx-auto flex max-w-lg flex-col items-center px-6 py-24 text-center">
-          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl brand-gradient">
+          <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl brand-fill">
             <LuLoaderCircle className="size-6 animate-spin text-white motion-reduce:animate-none" aria-hidden="true" />
           </div>
           <h2 className="text-xl font-bold">{t("autoModeTitle")}</h2>
@@ -908,10 +908,10 @@ export default function ScriptPage() {
   }
 
   return (
-    <div className="min-h-screen grid-bg">
+    <div className="min-h-screen page-canvas">
       {headerBar}
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* breakpoint choice: a failed/interrupted server-side run offers resume (default) or a
             clean restart — the beginner never loses a half-finished chain to a closed tab again */}
         {resumableRun && !autoFinishing && !aiFilming && (
@@ -927,7 +927,7 @@ export default function ScriptPage() {
               })}
             </p>
             <div className="mt-2.5 flex gap-2">
-              <Button size="sm" className="brand-gradient text-white" onClick={() => startPipeline(true)}>
+              <Button size="sm" className="brand-fill text-white" onClick={() => startPipeline(true)}>
                 {t("pipelineResume")}
               </Button>
               <Button size="sm" variant="outline" disabled={!currentScript} onClick={() => startPipeline(false)}>
@@ -943,7 +943,7 @@ export default function ScriptPage() {
               <h2 className="text-xl font-bold">{t("simpleTitle")}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{t("simpleSubtitle")}</p>
             </div>
-            <Card className="glass-card">
+            <Card className="surface-panel">
               <CardContent className="p-5">
                 <div className="mb-3 flex items-center justify-between gap-2">
                   <h3 className="min-w-0 truncate text-sm font-semibold">{currentScript?.title}</h3>
@@ -968,7 +968,7 @@ export default function ScriptPage() {
                 <Button
                   size="lg"
                   variant={genPref === "ai" ? "outline" : "default"}
-                  className={`w-full ${genPref === "ai" ? "" : "brand-gradient text-white"}`}
+                  className={`w-full ${genPref === "ai" ? "" : "brand-fill text-white"}`}
                   disabled={autoFinishing || aiFilming || !currentScript}
                   onClick={autoFinish}
                 >
@@ -977,7 +977,7 @@ export default function ScriptPage() {
                 <Button
                   size="lg"
                   variant={genPref === "ai" ? "default" : "outline"}
-                  className={`w-full ${genPref === "ai" ? "brand-gradient text-white -order-1" : ""}`}
+                  className={`w-full ${genPref === "ai" ? "brand-fill text-white -order-1" : ""}`}
                   disabled={autoFinishing || aiFilming || !currentScript}
                   onClick={runAiFilm}
                 >
@@ -1000,7 +1000,7 @@ export default function ScriptPage() {
             </div>
           </div>
         ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,0.8fr)_minmax(0,2.2fr)]">
           {/* left panel: script option selection */}
           <div className="lg:col-span-1">
             <div className="flex items-center justify-between mb-4">
@@ -1027,8 +1027,17 @@ export default function ScriptPage() {
               {scripts.map((script, index) => (
                 <Card
                   key={script.id}
-                  className={`cursor-pointer transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${selectedScript === index ? "ring-2 ring-primary neon-glow" : "glass-card card-hover"}`}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={selectedScript === index}
+                  className={`cursor-pointer transition-[background-color,border-color,color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${selectedScript === index ? "border-primary bg-primary/5" : "surface-panel interactive-surface"}`}
                   onClick={() => persistSelection(index)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      persistSelection(index);
+                    }
+                  }}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-2">
@@ -1109,7 +1118,7 @@ export default function ScriptPage() {
                     )}
                   </Button>
                   <Link href={`/project/${id}/assets`}>
-                    <Button className="brand-gradient text-white text-sm" disabled={autoFinishing}>
+                    <Button className="brand-fill text-white text-sm" disabled={autoFinishing}>
                       {t("nextStepAssets")}
                       <LuArrowRight className="w-4 h-4 ml-1" />
                     </Button>
@@ -1122,7 +1131,7 @@ export default function ScriptPage() {
                 <div className="mb-4 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2.5 text-xs text-destructive">{judgeError}</div>
               )}
               {judgeReport && (
-                <Card className="glass-card mb-4">
+                <Card className="surface-panel mb-4">
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5 text-sm font-semibold"><LuScale className="size-4 text-primary" aria-hidden="true" />{t("judgeReportTitle")}</span>
@@ -1130,7 +1139,7 @@ export default function ScriptPage() {
                         {judgeApplied ? (
                           <span className="text-xs text-green-400">{t("judgeAppliedTip")}</span>
                         ) : autoApplicableRewrites(judgeReport).length + autoApplicableDescriptionRewrites(judgeReport).length > 0 ? (
-                          <Button size="sm" className="h-7 text-xs brand-gradient text-white" disabled={judgeApplying} onClick={applyJudgeRewrites}>
+                          <Button size="sm" className="h-7 text-xs brand-fill text-white" disabled={judgeApplying} onClick={applyJudgeRewrites}>
                             {judgeApplying ? t("judgeApplying") : t("judgeApply", { n: autoApplicableRewrites(judgeReport).length + autoApplicableDescriptionRewrites(judgeReport).length })}
                           </Button>
                         ) : (
@@ -1297,7 +1306,7 @@ export default function ScriptPage() {
                   {currentScript?.shots.map((shot, index) => {
                     const typeInfo = shotTypeLabels[shot.type];
                     return (
-                      <Card key={shot.shotId} className="glass-card overflow-hidden">
+                      <Card key={shot.shotId} className="surface-panel overflow-hidden">
                         <CardContent className="p-0">
                           <div className="flex">
                             {/* left-side index and type */}
@@ -1369,7 +1378,7 @@ export default function ScriptPage() {
                                   <div className="flex items-center justify-end gap-2">
                                     {editStatus === "failed" && <span className="text-[10px] text-destructive mr-auto">{t("editSaveFailed")}</span>}
                                     <Button variant="outline" size="sm" className="h-7 text-xs" onClick={cancelEditShot}>{tc("cancel")}</Button>
-                                    <Button size="sm" className="h-7 text-xs brand-gradient text-white" disabled={editStatus === "saving"} onClick={() => saveEditShot(shot.shotId)}>{tc("save")}</Button>
+                                    <Button size="sm" className="h-7 text-xs brand-fill text-white" disabled={editStatus === "saving"} onClick={() => saveEditShot(shot.shotId)}>{tc("save")}</Button>
                                   </div>
                                 </div>
                               ) : (
@@ -1391,7 +1400,7 @@ export default function ScriptPage() {
               </TabsContent>
 
               <TabsContent value="text" className="mt-0">
-                <Card className="glass-card">
+                <Card className="surface-panel">
                   <CardContent className="p-6 space-y-4">
                     <h3 className="font-medium text-sm mb-2">{t("fullVoiceover")}</h3>
                     {/* read-only preview: per-shot editing happens in the timeline tab (avoids the old
@@ -1418,8 +1427,8 @@ export default function ScriptPage() {
 
       {/* save template dialog */}
       {showSaveDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <Card className="glass-card w-full max-w-md mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <Card className="surface-panel w-full max-w-md mx-4">
             <CardContent className="p-6 space-y-4">
               <h3 className="text-base font-semibold">{t("saveTemplateTitle")}</h3>
               <p className="text-xs text-muted-foreground">{t("saveTemplateDesc")}</p>
@@ -1430,7 +1439,7 @@ export default function ScriptPage() {
               />
               <div className="flex justify-end gap-2">
                 <Button variant="outline" size="sm" onClick={() => setShowSaveDialog(false)}>{tc("cancel")}</Button>
-                <Button size="sm" className="brand-gradient text-white" onClick={doSaveTemplate} disabled={!templateName.trim()}>{tc("save")}</Button>
+                <Button size="sm" className="brand-fill text-white" onClick={doSaveTemplate} disabled={!templateName.trim()}>{tc("save")}</Button>
               </div>
             </CardContent>
           </Card>
@@ -1439,8 +1448,8 @@ export default function ScriptPage() {
 
       {/* regeneration confirmation dialog: deleting old scripts is irreversible, guard against accidental clicks */}
       {regenConfirmOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <Card className="glass-card w-full max-w-md mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <Card className="surface-panel w-full max-w-md mx-4">
             <CardContent className="p-6 space-y-4">
               <h3 className="text-base font-semibold flex items-center gap-2">
                 <LuTriangleAlert className="w-4 h-4 text-warning shrink-0" />
@@ -1451,7 +1460,7 @@ export default function ScriptPage() {
                 <Button variant="outline" size="sm" onClick={() => setRegenConfirmOpen(false)}>{t("regenConfirmCancel")}</Button>
                 <Button
                   size="sm"
-                  className="brand-gradient text-white"
+                  className="brand-fill text-white"
                   onClick={() => {
                     setRegenConfirmOpen(false);
                     handleGenerate();

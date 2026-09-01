@@ -16,13 +16,13 @@ import { PerformanceFeedback } from "@/components/performance-feedback";
 
 // platform export config (planned feature, for display). name uses an i18n key (nameKey) resolved to the translated text at render time
 const platformConfigs = [
-  { id: "douyin", nameKey: "platformDouyin", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "from-pink-500 to-red-500" },
-  { id: "kuaishou", nameKey: "platformKuaishou", ratio: "9:16", resolution: "1080p", subtitle: "贴边框", color: "from-orange-500 to-amber-500" },
-  { id: "xiaohongshu", nameKey: "platformXiaohongshu", ratio: "3:4", resolution: "1440p", subtitle: "手写字体", color: "from-red-500 to-rose-500" },
-  { id: "shipinhao", nameKey: "platformShipinhao", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "from-green-500 to-emerald-600" },
-  { id: "tiktok", nameKey: "platformTiktok", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "from-slate-700 to-slate-900" },
-  { id: "reels", nameKey: "platformReels", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "from-rose-500 to-orange-500" },
-  { id: "shorts", nameKey: "platformShorts", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "from-red-600 to-red-700" },
+  { id: "douyin", nameKey: "platformDouyin", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-rose-600" },
+  { id: "kuaishou", nameKey: "platformKuaishou", ratio: "9:16", resolution: "1080p", subtitle: "贴边框", color: "bg-orange-600" },
+  { id: "xiaohongshu", nameKey: "platformXiaohongshu", ratio: "3:4", resolution: "1440p", subtitle: "手写字体", color: "bg-red-600" },
+  { id: "shipinhao", nameKey: "platformShipinhao", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-emerald-700" },
+  { id: "tiktok", nameKey: "platformTiktok", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-slate-800" },
+  { id: "reels", nameKey: "platformReels", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-rose-600" },
+  { id: "shorts", nameKey: "platformShorts", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-red-700" },
 ];
 
 // A/B variant presets: re-render one video per preset using existing params (subtitle style + BGM mood) to compare which converts better in ads (no key required throughout)
@@ -431,7 +431,7 @@ export default function ExportPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen grid-bg">
+      <div className="min-h-screen page-canvas">
         {headerBar}
         <div className="flex flex-col items-center justify-center py-32 text-muted-foreground">
           <LuLoaderCircle className="w-8 h-8 animate-spin mb-3" />
@@ -444,7 +444,7 @@ export default function ExportPage() {
   // empty state: no composed video yet
   if (!composition || !composition.url) {
     return (
-      <div className="min-h-screen grid-bg">
+      <div className="min-h-screen page-canvas">
         {headerBar}
         <div className="mx-auto max-w-md flex flex-col items-center justify-center py-28 px-6 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted/40 mb-5">
@@ -456,7 +456,7 @@ export default function ExportPage() {
           </p>
           <div className="flex items-center gap-3">
             <Link href={`/project/${id}/video`}>
-              <Button className="brand-gradient text-white">{t("goCompose")}</Button>
+              <Button className="brand-fill text-white">{t("goCompose")}</Button>
             </Link>
             <Link href="/projects">
               <Button variant="outline">{t("backToProjects")}</Button>
@@ -468,11 +468,11 @@ export default function ExportPage() {
   }
 
   return (
-    <div className="min-h-screen grid-bg">
+    <div className="min-h-screen page-canvas">
       {/* toast notification */}
       {toast && (
         <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm shadow-xl">
+          <div className="flex items-center gap-2 rounded-lg border border-emerald-700/25 bg-emerald-600 px-4 py-2.5 text-sm text-white">
             <LuCheck className="w-4 h-4" />
             {toast}
           </div>
@@ -481,14 +481,14 @@ export default function ExportPage() {
 
       {headerBar}
 
-      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* completion banner */}
         <div className="text-center mb-8">
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 mb-4">
             <LuCircleCheck className="w-8 h-8 text-emerald-500" />
           </div>
           <h2 className="text-2xl font-bold tracking-tight mb-1">
-            {t("doneTitleRest")}<span className="brand-gradient-text">{t("doneTitleAccent")}</span>
+            {t("doneTitleRest")}<span className="brand-text">{t("doneTitleAccent")}</span>
           </h2>
           <p className="text-sm text-muted-foreground">
             {t("doneSubtitle")}
@@ -496,7 +496,7 @@ export default function ExportPage() {
         </div>
 
         {/* video preview (real composed output) */}
-        <Card className="glass-card neon-glow mb-6 overflow-hidden">
+        <Card className="surface-panel mx-auto mb-6 max-w-md overflow-hidden">
           <CardContent className="p-0">
             <div className="mx-auto max-w-xs">
               <div className="relative aspect-[9/16] bg-black flex items-center justify-center">
@@ -532,7 +532,7 @@ export default function ExportPage() {
         {/* action buttons */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mb-8">
           <a href={`${composition.url}?download=1`} download={composition.fileName}>
-            <Button className="brand-gradient text-white h-12 px-8 text-base font-semibold w-full">
+            <Button className="brand-fill text-white h-12 px-8 text-base font-semibold w-full">
               <LuDownload className="w-[18px] h-[18px] mr-2" />
               {t("downloadVideo")}
             </Button>
@@ -550,7 +550,7 @@ export default function ExportPage() {
         {/* output history: every successful render, newest first — variant-matrix outputs
             show their combo label so A/B takes stay reachable after leaving the video page */}
         {history.length > 1 && (
-          <Card className="glass-card mb-6">
+          <Card className="surface-panel mb-6">
             <CardContent className="p-5">
               <h3 className="mb-3 flex items-center gap-1.5 text-sm font-semibold"><LuFilm className="size-4 text-primary" aria-hidden="true" />{t("historyTitle", { n: history.length })}</h3>
               <div className="space-y-1.5">
@@ -578,7 +578,7 @@ export default function ExportPage() {
         )}
 
         {/* publish copy (AI-generated title / hashtags / promotional caption) */}
-        <Card className="glass-card mb-6">
+        <Card className="surface-panel mb-6">
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
@@ -672,7 +672,7 @@ export default function ExportPage() {
         </Card>
 
         {/* multi-platform export (real re-encoding) */}
-        <Card className="glass-card mb-6">
+        <Card className="surface-panel mb-6">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-4">
               <LuSmartphone className="w-4 h-4 text-primary" />
@@ -686,7 +686,7 @@ export default function ExportPage() {
                 return (
                   <div key={platform.id} className="p-3 rounded-lg border border-border/50 bg-muted/10">
                     <div className="flex items-center gap-2 mb-2">
-                      <div className={`w-6 h-6 rounded bg-gradient-to-br ${platform.color} flex items-center justify-center`}>
+                      <div className={`flex h-6 w-6 items-center justify-center rounded ${platform.color}`}>
                         <span className="text-[10px] text-white font-bold">{platformName[0]}</span>
                       </div>
                       <span className="text-sm font-medium">{platformName}</span>
@@ -742,7 +742,7 @@ export default function ExportPage() {
             <PerformanceFeedback projectId={id} />
 
             {/* A/B variants: re-render one video per subtitle style + BGM combo to compare conversion rates in ads */}
-            <Card className="glass-card">
+            <Card className="surface-panel">
               <CardContent className="p-5">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -958,7 +958,7 @@ export default function ExportPage() {
         </details>
 
         {/* more outputs: monetization + localization tools (cover / carousel / shop QR / end-card / dub) */}
-        <Card className="glass-card mb-6">
+        <Card className="surface-panel mb-6">
           <CardContent className="p-5">
             <div className="flex items-center gap-2 mb-1">
               <LuSparkles className="w-4 h-4 text-primary" />
@@ -1048,7 +1048,7 @@ export default function ExportPage() {
         </Card>
 
         {/* video details (real script data) */}
-        <Card className="glass-card">
+        <Card className="surface-panel">
           <CardContent className="p-5">
             <h3 className="text-sm font-semibold mb-4">{t("detailTitle")}</h3>
             <div className="grid grid-cols-2 gap-4">
@@ -1079,7 +1079,7 @@ export default function ExportPage() {
         {/* bottom navigation */}
         <div className="mt-8 flex items-center justify-center gap-4">
           <Link href="/project/new">
-            <Button className="brand-gradient text-white">
+            <Button className="brand-fill text-white">
               <LuPlus className="w-4 h-4 mr-1.5" />
               {t("makeAnother")}
             </Button>

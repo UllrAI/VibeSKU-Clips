@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { getExampleShowcase, getExampleTemplates } from "@/lib/examples";
 import type { Shot } from "@/lib/db/schema";
 import { useT, useLocale } from "@/lib/i18n";
+import { PageContainer, PageHeader } from "@/components/page-layout";
 
 // Shot type labels (label uses a showcase-namespace i18n key, resolved per language)
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
@@ -25,23 +26,21 @@ export default function ShowcasePage() {
   const sc = getExampleShowcase(locale);
 
   return (
-    <div className="min-h-screen grid-bg">
-      {/* Top navigation */}
-
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-        {/* Description */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight mb-2">{sc.title}</h1>
-          <p className="text-sm text-muted-foreground">
+    <div className="min-h-screen page-canvas">
+      <PageContainer width="standard">
+        <PageHeader
+          title={sc.title}
+          description={<>
             {t("introLead")}{t("introMeta", { style: sc.styleLabel, shots: sc.shots.length, duration: sc.totalDuration, resolution: sc.resolution, aspectRatio: sc.aspectRatio })}
             {t("introTail")}
-          </p>
-        </div>
+          </>}
+          actions={<Button render={<Link href="/project/new" />}><LuPlus className="h-4 w-4" />{t("makeSimilar")}</Button>}
+        />
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-10">
           {/* Left: finished video preview */}
           <div className="lg:col-span-2">
-            <Card className="glass-card neon-glow overflow-hidden">
+            <Card className="surface-panel overflow-hidden lg:sticky lg:top-8">
               <CardContent className="p-0">
                 <div className="relative aspect-[9/16] bg-black flex items-center justify-center">
                   <video
@@ -68,14 +67,14 @@ export default function ShowcasePage() {
           {/* Right: shot-by-shot script */}
           <div className="lg:col-span-3">
             <h2 className="text-base font-semibold mb-4">{t("scriptTitle")}</h2>
-            <div className="space-y-3">
+            <ol className="divide-y divide-border border-y border-border">
               {sc.shots.map((shot, idx) => {
                 // Pure cumulative time calculation — avoids mutating outer variables during render
                 const start = sc.shots.slice(0, idx).reduce((s, sh) => s + sh.duration, 0);
                 const end = start + shot.duration;
                 const meta = shotTypeLabels[shot.type];
                 return (
-                  <div key={shot.shotId} className="rounded-lg border border-border/50 bg-muted/10 p-4">
+                  <li key={shot.shotId} className="py-4 first:pt-0 last:pb-0">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-xs font-mono text-muted-foreground">{String(idx + 1).padStart(2, "0")}</span>
                       <Badge className={`${meta.color} border-0 text-[10px]`}>{t(meta.labelKey)}</Badge>
@@ -86,10 +85,10 @@ export default function ShowcasePage() {
                     {shot.voiceover && (
                       <p className="flex items-start gap-1.5 text-xs text-muted-foreground"><LuMic className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />{shot.voiceover}</p>
                     )}
-                  </div>
+                  </li>
                 );
               })}
-            </div>
+            </ol>
           </div>
         </div>
 
@@ -100,10 +99,9 @@ export default function ShowcasePage() {
             <Badge variant="secondary" className="text-[10px]">{t("templatesBadge")}</Badge>
           </div>
           <p className="text-xs text-muted-foreground mb-4">{t("templatesDesc")}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 divide-y divide-border border-y border-border sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             {getExampleTemplates(locale).map((tpl) => (
-              <Card key={tpl.id} className="glass-card">
-                <CardContent className="p-4">
+              <div key={tpl.id} className="py-4 sm:px-4 sm:first:pl-0 sm:last:pr-0">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-medium">{tpl.name}</h3>
                     <Badge variant="secondary" className="text-[10px]">{tpl.styleLabel}</Badge>
@@ -117,22 +115,11 @@ export default function ShowcasePage() {
                     ))}
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-2">{t("templateShotsMeta", { shots: tpl.shots.length, duration: tpl.totalDuration })}</p>
-                </CardContent>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
-
-        {/* Bottom CTA */}
-        <div className="mt-12 flex justify-center">
-          <Link href="/project/new">
-            <Button size="lg" className="brand-gradient text-white px-10">
-              <LuPlus className="w-5 h-5 mr-2" />
-              {t("bottomCta")}
-            </Button>
-          </Link>
-        </div>
-      </main>
+      </PageContainer>
     </div>
   );
 }

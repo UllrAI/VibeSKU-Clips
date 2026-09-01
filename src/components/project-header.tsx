@@ -19,7 +19,7 @@ export function ProjectHeader({
   pageTitle: string;
 }) {
   return (
-    <div className="sticky top-12 z-40 border-b border-border/50 bg-background/80 backdrop-blur-xl md:top-0">
+    <div className="sticky top-12 z-40 border-b border-border bg-background md:top-0">
       <div className="mx-auto flex h-12 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
         <h1 className="min-w-0 truncate text-sm font-medium">
           <span>{projectName ?? ""}</span>

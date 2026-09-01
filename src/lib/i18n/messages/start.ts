@@ -9,17 +9,17 @@ export const start: NamespaceMessages = {
     navClone: "爆款复刻",
     navSettings: "设置",
     // 主视觉
-    eyebrow: "AI 带货短视频工作台",
+    eyebrow: "带货短视频工作台",
     h1Lead: "丢张商品图，",
     h1Highlight: "直接出片",
-    sub: "上传商品图，或说一句话主题。AI 自动写脚本、配画面、配音，合成竖屏成片——先开跑，要用到 AI 时再配 Key。",
+    sub: "上传商品图，或输入一句话主题。ClipForge 会生成脚本、匹配画面并完成配音；需要调用外部模型时，再连接你的 API Key。",
     // 模式切换
     tabUpload: "上传商品图",
     tabLink: "商品链接",
     tabTopic: "一句话成片",
     // 商品链接模式
     linkPlaceholder: "粘贴商品链接（淘宝/京东/拼多多/1688/独立站…）",
-    linkHint: "自动抓取商品标题、价格、主图，直接建项目并写带货脚本",
+    linkHint: "读取商品标题、价格和主图，创建项目并生成带货脚本",
     linkProductFallback: "导入的商品",
     // 上传模式
     dropTitle: "拖入商品图，或点击上传",
@@ -34,7 +34,7 @@ export const start: NamespaceMessages = {
     genFree: "免费快剪",
     genFreeDesc: "真实素材混剪 + 免费配音 · 全程 ¥0 · 约 2 分钟",
     genAi: "AI 生成成片",
-    genAiDesc: "AI 生成画面与口播大片 · 用你的模型 Key 按秒计费（约 ¥5~35/条，付给模型平台）",
+    genAiDesc: "生成画面与口播 · 使用你的 API Key 按秒计费（约 ¥5～35/条，费用由模型平台收取）",
     // 带货形式（仅 AI 档出现）
     formLabel: "带货形式",
     form_auto: "智能推荐",
@@ -77,12 +77,12 @@ export const start: NamespaceMessages = {
     profileModelWarning: "当前方案还缺少生图或视频模型，开始时可能无法完成 AI 画面。",
     profileConfigure: "去补齐配置",
     // 未配 Key 提示
-    keyboxText: "还没配 Key？脚本/画面需要先接一个 AI 平台。推荐 Atlas Cloud——一个 Key 搞定脚本+图+视频+配音。",
-    keyboxCta: "去配置",
+    keyboxText: "脚本和生成画面需要连接模型服务。可用 Atlas Cloud 同时配置脚本、图片、视频和配音。",
+    keyboxCta: "配置 API Key",
     // Atlas 一键接入（落地页内联，免跳设置）
     atlasBadge: "一个 Key",
-    atlasTitle: "接入 Atlas Cloud，立即开跑",
-    atlasDesc: "脚本 + 图 + 视频 + 配音都用它，模型已自动选好。",
+    atlasTitle: "连接 Atlas Cloud",
+    atlasDesc: "一次配置脚本、图片、视频和配音模型。",
     atlasGetKey: "没有 Key？1 分钟免费获取",
     atlasKeyPlaceholder: "粘贴 Atlas Cloud API Key",
     atlasConnectStart: "连接并开始",
@@ -92,10 +92,10 @@ export const start: NamespaceMessages = {
     atlasConnectFailed: "连接失败，请检查网络后重试",
     atlasDismiss: "稍后再说",
     // 主按钮 + 安心文案
-    ctaStart: "开始生成",
+    ctaStart: "创建项目并生成脚本",
     busyDefault: "生成中…",
-    reassureLead: "还没配 Key？开始时一键接 ",
-    reassureTail: "——脚本 + 图 + 视频 + 配音，一个 Key 全搞定。",
+    reassureLead: "尚未连接模型服务？开始时可配置 ",
+    reassureTail: "，用于脚本、图片、视频和配音。",
     // 生成阶段提示
     stageCreate: "创建项目…",
     stageUpload: "上传商品图…",
@@ -103,7 +103,7 @@ export const start: NamespaceMessages = {
     stageIngest: "抓取商品信息…",
     // 忙碌接管卡（点「开始生成」后整卡变进度清单）
     progTitle: "正在为你生成",
-    progHint: "通常 20~60 秒 · 写完脚本会自动进入下一步，请别关页面",
+    progHint: "通常需要 20～60 秒。脚本完成后会自动进入素材步骤，请保持页面开启。",
     // 错误提示
     errTopicScript: "生成失败，请检查 LLM 配置",
     errProjectCreate: "项目创建失败，请重试",
@@ -147,8 +147,8 @@ export const start: NamespaceMessages = {
     recentAll: "查看全部",
     guideTitle: "第一次用？三步出片",
     guideStep1: "丢一张商品图，或用「一句话成片」说个主题（没素材点下面的示例商品）",
-    guideStep2: "AI 自动写脚本、配画面、配音——不用改任何设置，默认就能出片",
-    guideStep3: "等 1–3 分钟直接看成片、下载发布；想精修再进编辑",
+    guideStep2: "确认脚本与生成方式；默认设置可以直接使用",
+    guideStep3: "检查素材和成片，再下载或继续编辑",
     guideFoot: "免费素材和配音不要钱；用到 AI 生成画面时才需要配一次 Key。",
     guideClose: "不再显示",
     untitledProject: "未命名项目",
@@ -169,17 +169,17 @@ export const start: NamespaceMessages = {
     navClone: "Clone a hit",
     navSettings: "Settings",
     // 主视觉
-    eyebrow: "AI Short-Video Studio",
+    eyebrow: "Commerce video workspace",
     h1Lead: "Drop a product photo, ",
     h1Highlight: "ship the video",
-    sub: "Upload a product photo or just type a topic. AI writes the script, fills the visuals, adds voiceover, and renders a vertical short — start now, add a key only when AI kicks in.",
+    sub: "Upload a product photo or enter a topic. ClipForge drafts the script, matches visuals, and adds voiceover; connect your API key only when an external model is needed.",
     // 模式切换
     tabUpload: "Upload product photo",
     tabLink: "Product link",
     tabTopic: "One-sentence video",
     // 商品链接模式
     linkPlaceholder: "Paste a product URL (Taobao / JD / Amazon / Shopify / any store…)",
-    linkHint: "Auto-grabs the title, price and images, creates the project and writes the script",
+    linkHint: "Reads the title, price, and images, then creates a project and drafts the script",
     linkProductFallback: "Imported product",
     // 上传模式
     dropTitle: "Drop a product photo, or click to upload",
@@ -194,7 +194,7 @@ export const start: NamespaceMessages = {
     genFree: "Free quick cut",
     genFreeDesc: "Real stock footage + free voice-over · $0 end to end · ~2 min",
     genAi: "AI-generated film",
-    genAiDesc: "AI visuals & spoken lines · billed to your own model key by the second (~$1–5 per video, paid to the platform)",
+    genAiDesc: "Generated visuals and voiceover · billed to your API key by the second (~$1–5 per video, charged by the model provider)",
     // 带货形式（仅 AI 档出现）
     formLabel: "Format",
     form_auto: "Smart pick",
@@ -237,12 +237,12 @@ export const start: NamespaceMessages = {
     profileModelWarning: "This strategy still needs an image or video model before it can finish AI visuals.",
     profileConfigure: "Complete setup",
     // 未配 Key 提示
-    keyboxText: "No key yet? Scripts and visuals need an AI platform first. We recommend Atlas Cloud — one key covers script + image + video + voiceover.",
-    keyboxCta: "Configure",
+    keyboxText: "Scripts and generated visuals need a model service. Atlas Cloud can configure script, image, video, and voiceover together.",
+    keyboxCta: "Configure API key",
     // Atlas 一键接入（落地页内联，免跳设置）
     atlasBadge: "One key",
-    atlasTitle: "Connect Atlas Cloud and start now",
-    atlasDesc: "It powers script + image + video + voiceover — models are auto-picked.",
+    atlasTitle: "Connect Atlas Cloud",
+    atlasDesc: "Configure script, image, video, and voiceover models together.",
     atlasGetKey: "No key? Get one free in a minute",
     atlasKeyPlaceholder: "Paste your Atlas Cloud API key",
     atlasConnectStart: "Connect & start",
@@ -252,10 +252,10 @@ export const start: NamespaceMessages = {
     atlasConnectFailed: "Connection failed — check your network and retry",
     atlasDismiss: "Maybe later",
     // 主按钮 + 安心文案
-    ctaStart: "Start generating",
+    ctaStart: "Create project and draft script",
     busyDefault: "Generating…",
-    reassureLead: "No key yet? Connect ",
-    reassureTail: " in one click — script + image + video + voiceover, all with a single key.",
+    reassureLead: "No model service connected? Configure ",
+    reassureTail: " when you start, for scripts, images, video, and voiceover.",
     // 生成阶段提示
     stageCreate: "Creating project…",
     stageUpload: "Uploading product photos…",
@@ -263,7 +263,7 @@ export const start: NamespaceMessages = {
     stageIngest: "Fetching product info…",
     // 忙碌接管卡（点「开始生成」后整卡变进度清单）
     progTitle: "Generating for you",
-    progHint: "Usually 20–60s · you'll move to the next step automatically — keep this page open",
+    progHint: "Usually 20–60 seconds. When the script is ready, you'll move to Assets automatically; keep this page open.",
     // 错误提示
     errTopicScript: "Generation failed. Check your LLM settings",
     errProjectCreate: "Failed to create project. Please try again",

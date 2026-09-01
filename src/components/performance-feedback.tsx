@@ -89,7 +89,7 @@ export function PerformanceFeedback({ projectId }: { projectId: string }) {
   const canSave = Number(form.views) > 0;
 
   return (
-    <Card className="glass-card">
+    <Card className="surface-panel">
       <CardContent className="p-5">
         <div className="flex items-center gap-2 mb-1">
           <LuChartNoAxesColumn className="w-4 h-4 text-primary" />
@@ -146,7 +146,7 @@ export function PerformanceFeedback({ projectId }: { projectId: string }) {
               />
             </label>
           ))}
-          <Button onClick={submit} disabled={!canSave || saving} size="sm" className="brand-gradient text-white h-9">
+          <Button onClick={submit} disabled={!canSave || saving} size="sm" className="brand-fill text-white h-9">
             {saved ? <LuCheck className="w-4 h-4 mr-1" /> : null}
             {saving ? (en ? "Saving…" : "保存中…") : saved ? (en ? "Saved" : "已保存") : en ? "Save" : "保存"}
           </Button>

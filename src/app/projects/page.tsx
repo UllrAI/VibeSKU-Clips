@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { LuPlus, LuFolderOpen, LuLoader, LuTrash2, LuDownload, LuImage, LuPlay } from "react-icons/lu";
+import { LuChevronRight, LuPlus, LuFolderOpen, LuLoader, LuTrash2, LuDownload, LuImage, LuPlay } from "react-icons/lu";
 import { useT, useLocale } from "@/lib/i18n";
 import { formatRelativeTime } from "@/lib/relative-time";
 import { PageContainer, PageHeader } from "@/components/page-layout";
@@ -132,29 +132,28 @@ export default function ProjectsPage() {
   };
 
   return (
-    <div className="min-h-screen grid-bg">
-      <PageContainer width="wide">
+    <div className="min-h-screen page-canvas">
+      <PageContainer width="standard">
         <PageHeader
           title={t("pageTitle")}
           description={t("pageSubtitle")}
           actions={
-          <Link href="/project/new">
-            <Button className="brand-gradient text-white">
+            <Button render={<Link href="/project/new" />} className="brand-fill text-white">
               <LuPlus className="h-4 w-4" />
               <span className="ml-1.5">{t("newProject")}</span>
             </Button>
-          </Link>
           }
         />
 
         {/* projects / works view switch */}
-        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-border/60 bg-card/70 p-2.5 shadow-sm sm:flex-row sm:items-center">
+        <div className="mb-6 flex flex-col gap-3 rounded-xl border border-border bg-card p-2.5 sm:flex-row sm:items-center">
           <div className="flex rounded-lg border border-border/50 p-0.5">
             {(["projects", "works"] as const).map((v) => (
               <button
                 key={v}
                 type="button"
                 onClick={() => setView(v)}
+                aria-pressed={view === v}
                 className={`rounded-md px-4 py-1.5 text-xs font-medium transition-colors ${
                   view === v ? "bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"
                 }`}
@@ -169,6 +168,7 @@ export default function ProjectsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("searchPlaceholder")}
+              aria-label={t("searchPlaceholder")}
               className="w-full text-sm sm:ml-auto sm:max-w-md"
             />
           )}
@@ -185,14 +185,14 @@ export default function ProjectsPage() {
           </div>
         ) : view === "works" ? (
           works.length === 0 ? (
-            <Card className="glass-card">
+            <Card className="surface-panel">
               <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
                 <LuImage className="h-8 w-8 text-muted-foreground/60" />
                 <div>
                   <p className="font-medium">{t("worksEmpty")}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{t("worksEmptyDesc")}</p>
                 </div>
-                <Link href="/start"><Button size="sm" className="mt-2">{t("goStart")}</Button></Link>
+                <Button render={<Link href="/start" />} size="sm" className="mt-2">{t("goStart")}</Button>
               </CardContent>
             </Card>
           ) : (
@@ -202,7 +202,7 @@ export default function ProjectsPage() {
                 {works.map((w) => {
                   const rel = formatRelativeTime(w.createdAt, locale);
                   return (
-                    <Card key={w.id} className="glass-card card-hover group overflow-hidden">
+                    <Card key={w.id} className="surface-panel interactive-surface group overflow-hidden">
                       <CardContent className="p-0">
                         <Link href={`/project/${w.projectId}/export`} className="block">
                           <div className="relative aspect-[3/4] bg-muted/30">
@@ -229,6 +229,7 @@ export default function ProjectsPage() {
                           <a
                             href={`${w.url}?download=1`}
                             title={t("download")}
+                            aria-label={`${t("download")}：${w.productName || w.projectName || t("untitled")}`}
                             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
                           >
                             <LuDownload className="h-3.5 w-3.5" />
@@ -242,7 +243,7 @@ export default function ProjectsPage() {
             </>
           )
         ) : rows.length === 0 ? (
-          <Card className="glass-card">
+          <Card className="surface-panel">
             <CardContent className="flex flex-col items-center gap-3 py-14 text-center">
               <LuFolderOpen className="h-8 w-8 text-muted-foreground/60" />
               <div>
@@ -250,24 +251,22 @@ export default function ProjectsPage() {
                 <p className="mt-1 text-sm text-muted-foreground">{t("emptyDesc")}</p>
               </div>
               <div className="mt-2 flex gap-2">
-                <Link href="/start"><Button size="sm">{t("goStart")}</Button></Link>
-                <Link href="/project/new"><Button size="sm" variant="outline">{t("goNew")}</Button></Link>
+                <Button render={<Link href="/start" />} size="sm">{t("goStart")}</Button>
+                <Button render={<Link href="/project/new" />} size="sm" variant="outline">{t("goNew")}</Button>
               </div>
             </CardContent>
           </Card>
         ) : filtered.length === 0 ? (
           <p className="py-10 text-center text-sm text-muted-foreground">{t("noMatch")}</p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="overflow-hidden rounded-xl border border-border bg-card divide-y divide-border">
             {filtered.map((p) => {
               const rel = formatRelativeTime(p.updatedAt, locale);
               const poster = posterByProject.get(p.id) ?? (p.productImages?.[0] || null);
               return (
-                <Card key={p.id} className="glass-card card-hover group h-full overflow-hidden">
-                  <CardContent className="p-0">
-                    <Link href={`/project/${p.id}/${stepFor(p.status)}`} className="block">
-                      {/* poster: latest render's first frame, falling back to the product photo */}
-                      <div className="relative aspect-video bg-muted/30">
+                <div key={p.id} className="group flex min-w-0 items-center gap-3 p-3 transition-colors hover:bg-muted/20 sm:gap-4 sm:p-4">
+                  <Link href={`/project/${p.id}/${stepFor(p.status)}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:gap-4">
+                      <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded-lg bg-muted/30 sm:h-[72px] sm:w-28">
                         {poster ? (
                           // eslint-disable-next-line @next/next/no-img-element -- local file server, next/image adds nothing
                           <img src={poster} alt="" loading="lazy" className="h-full w-full object-cover" />
@@ -276,36 +275,30 @@ export default function ProjectsPage() {
                             <LuImage className="h-7 w-7 text-muted-foreground/40" />
                           </div>
                         )}
-                        <Badge
-                          variant={p.status === "done" ? "default" : "secondary"}
-                          className="absolute left-2 top-2 text-[11px]"
-                        >
-                          {tc(statusKeyFor(p.status))}
-                        </Badge>
                       </div>
-                      <div className="p-4 pb-3">
-                        <p className="min-w-0 truncate text-sm font-medium">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium sm:text-base">
                           {p.name || p.productName || t("untitled")}
                         </p>
-                        <p className="mt-1.5 truncate text-xs text-muted-foreground">
-                          {p.productName || ""}
-                          {p.productName && rel ? " · " : ""}
-                          {rel || ""}
-                        </p>
+                        {p.productName && <p className="mt-1 truncate text-sm text-muted-foreground">{p.productName}</p>}
+                        {rel && <p className="mt-1 text-xs text-muted-foreground sm:hidden">{rel}</p>}
                       </div>
+                      <Badge variant={p.status === "done" ? "default" : "secondary"} className="hidden text-xs sm:inline-flex">
+                        {tc(statusKeyFor(p.status))}
+                      </Badge>
+                      <span className="hidden w-28 text-right text-xs text-muted-foreground lg:block">{rel}</span>
+                      <LuChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     </Link>
-                    <div className="flex justify-end px-2 pb-2">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(p)}
-                        title={t("deleteProject")}
-                        className="flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 opacity-100 transition-colors hover:bg-destructive/15 hover:text-destructive md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
-                      >
-                        <LuTrash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </CardContent>
-                </Card>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(p)}
+                    title={t("deleteProject")}
+                    aria-label={`${t("deleteProject")}：${p.name || p.productName || t("untitled")}`}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                  >
+                    <LuTrash2 className="h-4 w-4" />
+                  </button>
+                </div>
               );
             })}
           </div>

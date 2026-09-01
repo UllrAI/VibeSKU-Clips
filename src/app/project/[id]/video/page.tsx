@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { LuArrowLeft, LuPlay, LuChevronDown, LuArrowRight, LuLoaderCircle, LuMic, LuCircleAlert, LuFlaskConical, LuCheck, LuX } from "react-icons/lu";
+import { LuArrowLeft, LuPlay, LuChevronDown, LuArrowRight, LuLoaderCircle, LuMic, LuCircleAlert, LuFilm, LuFlaskConical, LuCheck, LuRefreshCw, LuX } from "react-icons/lu";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { resolveTTSConfig, isPaidTTSReady, getTTSProviderMeta } from "@/lib/tts-presets";
 import Link from "next/link";
@@ -570,13 +570,15 @@ export default function VideoPage() {
     }
   };
 
+  const missingScript = loadError === t("errorNoScript");
+
   return (
-    <div className="min-h-screen grid-bg">
+    <div className="min-h-screen page-canvas">
       {/* project context strip: name + CLICKABLE step navigation — replaces the legacy
           inline non-clickable stepper this page carried while owned by a parallel session */}
       <ProjectHeader projectName={projectName || t("defaultProjectName")} pageTitle={t("timelineTitle")} />
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* page-level load feedback: these states existed but were never rendered,
             leaving an empty timeline with no explanation */}
         {loading && (
@@ -586,16 +588,25 @@ export default function VideoPage() {
           </div>
         )}
         {!loading && loadError && (
-          <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
-            <p className="text-sm text-muted-foreground">{loadError}</p>
-            <Link href={`/project/${id}/assets`}>
-              <Button variant="outline" size="sm">{t("backToAssets")}</Button>
-            </Link>
+          <div className="mx-auto flex max-w-lg flex-col items-center justify-center px-4 py-20 text-center" role="alert">
+            <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-muted/50 text-muted-foreground">
+              {missingScript ? <LuFilm className="h-6 w-6" aria-hidden="true" /> : <LuCircleAlert className="h-6 w-6" aria-hidden="true" />}
+            </span>
+            <h2 className="text-lg font-semibold">{missingScript ? t("missingScriptTitle") : t("loadErrorTitle")}</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">{loadError}</p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {missingScript ? (
+                <Link href={`/project/${id}/script`}><Button size="sm">{t("goToScript")}</Button></Link>
+              ) : (
+                <Button size="sm" onClick={() => window.location.reload()}><LuRefreshCw />{t("retryLoad")}</Button>
+              )}
+              <Link href={`/project/${id}/assets`}><Button variant="outline" size="sm">{t("backToAssets")}</Button></Link>
+            </div>
           </div>
         )}
-        <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${loading || loadError ? "hidden" : ""}`}>
+        <div className={`grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px] ${loading || loadError ? "hidden" : ""}`}>
           {/* 左侧：视频时间线 */}
-          <div className="lg:col-span-2">
+          <div className="min-w-0">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h2 className="text-base font-semibold">{t("timelineTitle")}</h2>
@@ -615,12 +626,12 @@ export default function VideoPage() {
                 return (
                   <div key={clip.shotId}>
                     {/* 片段卡片 */}
-                    <Card className="glass-card">
+                    <Card className="surface-panel">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
                           {/* 缩略图：有已生成的画面就直接预览，否则回退占位图 */}
                           <div className="w-20 h-14 bg-muted/30 rounded-md shrink-0 overflow-hidden border border-border/30 relative">
-                            <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                            <div className="absolute inset-0 flex items-center justify-center bg-primary/8">
                               <LuPlay className="w-4 h-4 text-primary/60" />
                             </div>
                             {thumbs[clip.shotId] &&
@@ -688,11 +699,11 @@ export default function VideoPage() {
           </div>
 
           {/* 右侧：合成配置 */}
-          <div className="lg:col-span-1 space-y-4">
+          <aside className="min-w-0 space-y-4">
             <h2 className="text-base font-semibold">{t("composeSettings")}</h2>
 
             {/* style packs: apply a whole look at once; import shared packs / export the current settings */}
-            <Card className="glass-card">
+            <Card className="surface-panel">
               <CardContent className="p-4 space-y-3">
                 <Label className="text-sm font-medium">{t("stylePackLabel")}</Label>
                 <div className="grid grid-cols-2 gap-2">
@@ -701,7 +712,7 @@ export default function VideoPage() {
                       key={p.name}
                       onClick={() => applyStylePack(p)}
                       title={p.description}
-                      className="h-9 rounded-md text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 hover:text-primary transition-[background-color,border-color,color,box-shadow,opacity,transform,width] px-1 truncate"
+                      className="h-9 truncate rounded-md border border-border/50 bg-muted/20 px-1 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
                     >
                       {p.name.split(" / ")[0]}
                     </button>
@@ -710,13 +721,13 @@ export default function VideoPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => packFileRef.current?.click()}
-                    className="h-8 rounded-md text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
+                    className="h-8 rounded-md border border-border/50 bg-muted/20 text-xs text-muted-foreground transition-colors hover:border-primary/40"
                   >
                     {t("stylePackImport")}
                   </button>
                   <button
                     onClick={exportStylePack}
-                    className="h-8 rounded-md text-xs border border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40 transition-[background-color,border-color,color,box-shadow,opacity,transform,width]"
+                    className="h-8 rounded-md border border-border/50 bg-muted/20 text-xs text-muted-foreground transition-colors hover:border-primary/40"
                   >
                     {t("stylePackExport")}
                   </button>
@@ -738,7 +749,7 @@ export default function VideoPage() {
             </Card>
 
             {/* 配音设置 */}
-            <Card className="glass-card">
+            <Card className="surface-panel">
               <CardContent className="p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">{t("ttsLabel")}</Label>
@@ -749,10 +760,14 @@ export default function VideoPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{t("ttsEnableLabel")}</span>
                   <button
+                    type="button"
+                    role="switch"
+                    aria-checked={config.ttsEnabled}
+                    aria-label={t("ttsEnableLabel")}
                     onClick={() => setConfig((c) => ({ ...c, ttsEnabled: !c.ttsEnabled }))}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${config.ttsEnabled ? "bg-primary" : "bg-muted"}`}
+                    className={`relative h-6 w-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${config.ttsEnabled ? "bg-primary" : "bg-muted"}`}
                   >
-                    <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${config.ttsEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${config.ttsEnabled ? "translate-x-6" : "translate-x-1"}`} />
                   </button>
                 </div>
                 {config.ttsEnabled && paidTtsReady && (
@@ -793,7 +808,7 @@ export default function VideoPage() {
             </Card>
 
             {/* 背景音乐 */}
-            <Card className="glass-card">
+            <Card className="surface-panel">
               <CardContent className="p-4 space-y-3">
                 <Label className="text-sm font-medium">{t("bgmSectionLabel")}</Label>
                 <Select value={config.bgm} onValueChange={(v) => setConfig((c) => ({ ...c, bgm: v ?? c.bgm }))}>
@@ -818,27 +833,35 @@ export default function VideoPage() {
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-xs text-muted-foreground">{t("bgmDuckLabel")}</span>
                   <button
+                    type="button"
+                    role="switch"
+                    aria-checked={config.bgmDuck}
+                    aria-label={t("bgmDuckLabel")}
                     onClick={() => setConfig((c) => ({ ...c, bgmDuck: !c.bgmDuck }))}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${config.bgmDuck ? "bg-primary" : "bg-muted"}`}
+                    className={`relative h-6 w-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${config.bgmDuck ? "bg-primary" : "bg-muted"}`}
                   >
-                    <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${config.bgmDuck ? "translate-x-5" : "translate-x-0.5"}`} />
+                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${config.bgmDuck ? "translate-x-6" : "translate-x-1"}`} />
                   </button>
                 </div>
                 {/* 人声落地：TTS 旁白过手机麦频段+AGC 压缩+房间底噪垫底，摆脱「播音棚干声」感（原生模型人声不经过此链） */}
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-xs text-muted-foreground">{t("voiceGroundLabel")}</span>
                   <button
+                    type="button"
+                    role="switch"
+                    aria-checked={config.voiceGround}
+                    aria-label={t("voiceGroundLabel")}
                     onClick={() => setConfig((c) => ({ ...c, voiceGround: !c.voiceGround }))}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${config.voiceGround ? "bg-primary" : "bg-muted"}`}
+                    className={`relative h-6 w-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${config.voiceGround ? "bg-primary" : "bg-muted"}`}
                   >
-                    <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${config.voiceGround ? "translate-x-5" : "translate-x-0.5"}`} />
+                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${config.voiceGround ? "translate-x-6" : "translate-x-1"}`} />
                   </button>
                 </div>
               </CardContent>
             </Card>
 
             {/* 字幕设置 */}
-            <Card className="glass-card">
+            <Card className="surface-panel">
               <CardContent className="p-4 space-y-3">
                 <Label className="text-sm font-medium">{t("subtitleLabel")}</Label>
                 <div className="grid grid-cols-3 gap-2">
@@ -846,7 +869,7 @@ export default function VideoPage() {
                     <button
                       key={pos}
                       onClick={() => setConfig((c) => ({ ...c, subtitlePosition: pos }))}
-                      className={`h-9 rounded-md text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                      className={`h-9 rounded-md border text-xs transition-colors ${
                         config.subtitlePosition === pos
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -864,7 +887,7 @@ export default function VideoPage() {
                       <button
                         key={preset}
                         onClick={() => setConfig((c) => ({ ...c, captionPreset: preset }))}
-                        className={`h-9 rounded-md text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                        className={`h-9 rounded-md border text-xs transition-colors ${
                           config.captionPreset === preset
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -880,12 +903,16 @@ export default function VideoPage() {
             </Card>
 
             {/* 带货转化：购买 CTA 片尾 */}
-            <Card className="glass-card">
+            <Card className="surface-panel">
               <CardContent className="p-4 space-y-3">
                 <Label className="text-sm font-medium">{t("complianceLabel")}</Label>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{t("ctaLabel")}</span>
                   <button
+                    type="button"
+                    role="switch"
+                    aria-checked={config.ctaEnabled}
+                    aria-label={t("ctaLabel")}
                     onClick={() =>
                       setConfig((c) => {
                         const enabling = !c.ctaEnabled;
@@ -893,9 +920,9 @@ export default function VideoPage() {
                         return { ...c, ctaEnabled: enabling, ctaText: enabling && !c.ctaText.trim() ? t("ctaPlaceholder") : c.ctaText };
                       })
                     }
-                    className={`relative w-10 h-5 rounded-full transition-colors ${config.ctaEnabled ? "bg-primary" : "bg-muted"}`}
+                    className={`relative h-6 w-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${config.ctaEnabled ? "bg-primary" : "bg-muted"}`}
                   >
-                    <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${config.ctaEnabled ? "translate-x-5" : "translate-x-0.5"}`} />
+                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${config.ctaEnabled ? "translate-x-6" : "translate-x-1"}`} />
                   </button>
                 </div>
                 {config.ctaEnabled && (
@@ -909,17 +936,21 @@ export default function VideoPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{t("productCardLabel")}</span>
                   <button
+                    type="button"
+                    role="switch"
+                    aria-checked={config.productCard}
+                    aria-label={t("productCardLabel")}
                     onClick={() => setConfig((c) => ({ ...c, productCard: !c.productCard }))}
-                    className={`relative w-10 h-5 rounded-full transition-colors ${config.productCard ? "bg-primary" : "bg-muted"}`}
+                    className={`relative h-6 w-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${config.productCard ? "bg-primary" : "bg-muted"}`}
                   >
-                    <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${config.productCard ? "translate-x-5" : "translate-x-0.5"}`} />
+                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${config.productCard ? "translate-x-6" : "translate-x-1"}`} />
                   </button>
                 </div>
               </CardContent>
             </Card>
 
             {/* 画面设置 */}
-            <Card className="glass-card">
+            <Card className="surface-panel">
               <CardContent className="p-4 space-y-4">
                 <Label className="text-sm font-medium">{t("canvasLabel")}</Label>
                 {/* 渲染质量预设：快速/标准/高清（选中同步分辨率） */}
@@ -932,7 +963,7 @@ export default function VideoPage() {
                         onClick={() =>
                           setConfig((c) => ({ ...c, renderPreset: preset, resolution: RENDER_PRESETS[preset].resolution }))
                         }
-                        className={`flex flex-col items-center gap-0.5 rounded-md py-1.5 text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                        className={`flex flex-col items-center gap-0.5 rounded-md border py-1.5 text-xs transition-colors ${
                           config.renderPreset === preset
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -953,7 +984,7 @@ export default function VideoPage() {
                       <button
                         key={ratio}
                         onClick={() => setConfig((c) => ({ ...c, aspectRatio: ratio }))}
-                        className={`h-9 rounded-md text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                        className={`h-9 rounded-md border text-xs transition-colors ${
                           config.aspectRatio === ratio
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -972,7 +1003,7 @@ export default function VideoPage() {
                       <button
                         key={res}
                         onClick={() => setConfig((c) => ({ ...c, resolution: res }))}
-                        className={`h-9 rounded-md text-xs border transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                        className={`h-9 rounded-md border text-xs transition-colors ${
                           config.resolution === res
                             ? "border-primary bg-primary/10 text-primary"
                             : "border-border/50 bg-muted/20 text-muted-foreground hover:border-primary/40"
@@ -1008,7 +1039,7 @@ export default function VideoPage() {
                 <div>
                   <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-[background-color,border-color,color,box-shadow,opacity,transform,width] duration-200 ${composeDone ? "bg-emerald-500" : "brand-gradient"}`}
+                      className={`h-full rounded-full transition-[width] duration-200 ${composeDone ? "bg-emerald-500" : "brand-fill"}`}
                       style={{ width: `${composeProgress}%` }}
                     />
                   </div>
@@ -1035,7 +1066,7 @@ export default function VideoPage() {
               <Button
                 onClick={startCompose}
                 disabled={isComposing || clips.length === 0}
-                className="w-full brand-gradient text-white"
+                className="w-full brand-fill text-white"
               >
                 {isComposing ? (
                   <>
@@ -1089,7 +1120,7 @@ export default function VideoPage() {
                               key={h.key}
                               type="button"
                               onClick={() => toggleInSet(setMatrixHooks, h.key)}
-                              className={`rounded-full border px-2 py-0.5 transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                              className={`rounded-full border px-2 py-0.5 transition-colors ${
                                 matrixHooks.has(h.key)
                                   ? "border-primary bg-primary/10 text-primary"
                                   : "border-border/60 text-muted-foreground hover:border-primary/40"
@@ -1108,7 +1139,7 @@ export default function VideoPage() {
                               key={c}
                               type="button"
                               onClick={() => toggleInSet(setMatrixCaptions, c)}
-                              className={`rounded-full border px-2 py-0.5 transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                              className={`rounded-full border px-2 py-0.5 transition-colors ${
                                 matrixCaptions.has(c)
                                   ? "border-primary bg-primary/10 text-primary"
                                   : "border-border/60 text-muted-foreground hover:border-primary/40"
@@ -1127,7 +1158,7 @@ export default function VideoPage() {
                               key={b}
                               type="button"
                               onClick={() => toggleInSet(setMatrixBgms, b)}
-                              className={`rounded-full border px-2 py-0.5 transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                              className={`rounded-full border px-2 py-0.5 transition-colors ${
                                 matrixBgms.has(b)
                                   ? "border-primary bg-primary/10 text-primary"
                                   : "border-border/60 text-muted-foreground hover:border-primary/40"
@@ -1186,7 +1217,7 @@ export default function VideoPage() {
                 </div>
               )}
             </div>
-          </div>
+          </aside>
         </div>
       </main>
     </div>

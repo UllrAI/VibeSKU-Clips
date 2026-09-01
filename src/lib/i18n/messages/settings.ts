@@ -6,13 +6,13 @@ export const settings: NamespaceMessages = {
     backHome: "返回首页",
     pageTitle: "设置",
     pageSubtitle:
-      "配置 AI 服务后即可开始生成带货视频。需要配置 LLM（生成脚本）+ 至少一个 AI 平台（生成图片/视频）。",
+      "先连接推荐服务，也可以分别配置脚本、图片、视频和配音模型。每项设置都会说明作用范围与连接状态。",
 
     // 新手一键接入 Atlas
-    oneKeyTitle: "推荐接入 · 一个 Key 配好全流程",
-    oneKeyDesc: "填 Atlas Cloud 的 API Key，自动配好脚本 + 图 + 视频 + 配音，无需在下面逐项设置。",
+    oneKeyTitle: "推荐：用一个 API Key 配置全流程",
+    oneKeyDesc: "填写 Atlas Cloud API Key，同时配置脚本、图片、视频和配音；之后仍可单独调整。",
     oneKeyPlaceholder: "粘贴 Atlas Cloud API Key",
-    oneKeyCta: "一键接入",
+    oneKeyCta: "连接并测试",
     oneKeyDone: "Atlas Cloud 已接入，脚本、生图、视频和配音均已配置，可直接开始出片",
     oneKeyGetKey: "没有 Key？前往 Atlas Cloud 获取 →",
 
@@ -206,13 +206,13 @@ export const settings: NamespaceMessages = {
     backHome: "Back to home",
     pageTitle: "Settings",
     pageSubtitle:
-      "Configure your AI services to start generating commerce videos. You'll need an LLM (for scripts) plus at least one AI platform (for images/video).",
+      "Connect the recommended service first, or configure script, image, video, and voiceover models separately. Each setting shows its scope and connection state.",
 
     // One-key Atlas setup for newcomers
-    oneKeyTitle: "Recommended setup · One key for the full workflow",
-    oneKeyDesc: "Paste your Atlas Cloud API key and we'll wire up scripts + images + video + voiceover automatically — no need to configure each section below.",
+    oneKeyTitle: "Recommended: configure the workflow with one API key",
+    oneKeyDesc: "Add an Atlas Cloud API key to configure script, image, video, and voiceover together; you can still adjust each one later.",
     oneKeyPlaceholder: "Paste your Atlas Cloud API key",
-    oneKeyCta: "Connect",
+    oneKeyCta: "Connect and test",
     oneKeyDone: "Atlas Cloud is connected. Scripts, images, video, and voiceover are ready to use.",
     oneKeyGetKey: "No key? Get one from Atlas Cloud →",
 

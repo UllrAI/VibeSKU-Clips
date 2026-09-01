@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LuSparkles, LuCircleAlert, LuLoaderCircle, LuWandSparkles } from "react-icons/lu";
+import { LuCheck, LuSparkles, LuCircleAlert, LuLoaderCircle, LuWandSparkles } from "react-icons/lu";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useT } from "@/lib/i18n";
 import { Card, CardContent } from "@/components/ui/card";
@@ -88,8 +88,8 @@ export default function TopicProjectPage() {
   };
 
   return (
-    <div className="min-h-screen grid-bg">
-      <main className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+    <div className="min-h-screen page-canvas">
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* page title */}
         <header className="mb-8 border-b border-border/60 pb-6">
           <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -118,8 +118,9 @@ export default function TopicProjectPage() {
           </Link>
         )}
 
-        <Card className="glass-card">
-          <CardContent className="p-6 space-y-6">
+        <Card className="surface-panel overflow-hidden">
+          <CardContent className="grid p-0 lg:grid-cols-[minmax(0,1fr)_20rem]">
+            <div className="space-y-6 p-5 sm:p-6 lg:p-8">
             {/* topic input */}
             <div className="space-y-2">
               <Label htmlFor="topic" className="text-sm font-medium">
@@ -184,6 +185,7 @@ export default function TopicProjectPage() {
                   <button
                     key={o.value}
                     type="button"
+                    aria-pressed={duration === o.value}
                     onClick={() => setDuration(o.value)}
                     className={`flex-1 rounded-lg border px-4 py-2 text-sm font-medium transition-colors ${
                       duration === o.value
@@ -209,7 +211,7 @@ export default function TopicProjectPage() {
             <Button
               onClick={handleGenerate}
               disabled={!isValid || isSubmitting}
-              className="w-full brand-gradient text-white"
+              className="w-full brand-fill text-white"
               size="lg"
             >
               {isSubmitting ? (
@@ -224,15 +226,32 @@ export default function TopicProjectPage() {
                 </>
               )}
             </Button>
-
-            {/* workflow hints */}
-            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground pt-1">
-              <Badge variant="secondary" className="text-[10px]">{t("flowStep1")}</Badge>
-              <span className="text-border">→</span>
-              <Badge variant="secondary" className="text-[10px]">{t("flowStep2")}</Badge>
-              <span className="text-border">→</span>
-              <Badge variant="secondary" className="text-[10px]">{t("flowStep3")}</Badge>
+            {!isValid && !isSubmitting && (
+              <p className="text-center text-xs text-muted-foreground">{t("planRequired")}</p>
+            )}
             </div>
+
+            <aside className="border-t border-border bg-muted/20 p-5 sm:p-6 lg:border-l lg:border-t-0 lg:p-8">
+              <h2 className="text-sm font-semibold">{t("planTitle")}</h2>
+              <ol className="mt-5 space-y-4 text-sm">
+                <li className="flex gap-3">
+                  <LuCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span>{t("planScript")}</span>
+                </li>
+                <li className="flex gap-3">
+                  <LuCheck className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <span>{t("planFootage")}</span>
+                </li>
+              </ol>
+              <p className="mt-6 border-t border-border pt-4 text-xs leading-5 text-muted-foreground">
+                {t("planCost")}
+              </p>
+              <div className="mt-6 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                <Badge variant="secondary">{t("flowStep1")}</Badge>
+                <Badge variant="secondary">{t("flowStep2")}</Badge>
+                <Badge variant="secondary">{t("flowStep3")}</Badge>
+              </div>
+            </aside>
           </CardContent>
         </Card>
       </main>

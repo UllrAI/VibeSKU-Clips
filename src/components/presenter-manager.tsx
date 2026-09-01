@@ -128,7 +128,7 @@ export function PresenterManager() {
 
   return (
     <div className="space-y-4">
-      <Card className="glass-card">
+      <Card className="surface-panel">
         <CardContent className="p-4">
           <p className="text-sm text-muted-foreground leading-relaxed">
             {t("characterIntro")}
@@ -145,7 +145,7 @@ export function PresenterManager() {
       {characters.length > 0 && (
         <div className="grid gap-3 xl:grid-cols-2">
           {characters.map((char) => (
-            <Card key={char.id} className={`glass-card ${char.isDefault ? "ring-1 ring-primary/50" : ""}`}>
+            <Card key={char.id} className={`surface-panel ${char.isDefault ? "ring-1 ring-primary/50" : ""}`}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -212,7 +212,7 @@ export function PresenterManager() {
       )}
 
       {isCreating ? (
-        <Card className="glass-card ring-1 ring-primary/30">
+        <Card className="surface-panel ring-1 ring-primary/30">
           <CardContent className="p-5 space-y-4">
             <h3 className="text-sm font-semibold">{editingId ? t("characterFormEditTitle") : t("characterFormAddTitle")}</h3>
             <div className="space-y-1.5">
@@ -234,7 +234,7 @@ export function PresenterManager() {
             </div>
             <div className="flex items-center justify-end gap-2 pt-2">
               <Button variant="outline" size="sm" onClick={resetForm}>{t("characterCancel")}</Button>
-              <Button size="sm" className="brand-gradient text-white" onClick={handleSave} disabled={!form.name.trim()}>
+              <Button size="sm" className="brand-fill text-white" onClick={handleSave} disabled={!form.name.trim()}>
                 {editingId ? t("characterSaveEdit") : t("characterAddSubmit")}
               </Button>
             </div>

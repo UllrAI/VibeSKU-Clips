@@ -64,9 +64,9 @@ export function ProductionProfilePicker() {
               role="radio"
               aria-checked={selected}
               onClick={() => applyProductionProfile(id)}
-              className={`min-h-28 rounded-xl border p-3 text-left transition-[border-color,background-color,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 ${
+              className={`min-h-28 rounded-xl border p-3 text-left transition-[border-color,background-color] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 ${
                 selected
-                  ? "border-primary/70 bg-primary/10 shadow-[0_0_0_1px_rgba(139,92,246,0.18)]"
+                  ? "border-primary/70 bg-primary/10 outline-1 outline-primary/25"
                   : "border-white/8 bg-black/10 hover:border-white/20 hover:bg-white/[0.035]"
               }`}
             >

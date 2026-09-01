@@ -5,10 +5,10 @@ import type { NamespaceMessages } from "../config";
 export const presenters: NamespaceMessages = {
   zh: {
     pageTitle: "主播库",
-    pageSubtitle: "把出镜的人做成可复用资产：定一次妆，九宫格和整片处处不换脸",
+    pageSubtitle: "集中管理可复用的出镜形象，在分镜、素材和成片中保持人物一致",
   },
   en: {
     pageTitle: "Presenter library",
-    pageSubtitle: "Make your on-camera people reusable assets: style once, keep the same face across grids and films",
+    pageSubtitle: "Manage reusable on-camera identities and keep each person consistent across shots, assets, and final videos",
   },
 };

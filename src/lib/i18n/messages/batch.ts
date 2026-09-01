@@ -7,7 +7,7 @@ export const batch: NamespaceMessages = {
     navTitle: "批量出片",
     // 页面标题
     heroTitle: "批量出片",
-    heroSubtitle: "选择多个商品并统一配置，一键批量生成带货视频",
+    heroSubtitle: "选择多个商品，共用一套成片设置，并分别查看每个任务的进度",
     // 视频模式选项
     modeProductCloseup: "产品特写",
     modeGraphicMontage: "图文混剪",
@@ -61,19 +61,23 @@ export const batch: NamespaceMessages = {
     goToProducts: "前往商品库",
     // 步骤 2
     step2Label: "步骤 2：统一配置",
+    step2Desc: "这些设置会应用到本批次的每个商品。",
     videoModeLabel: "视频模式",
     livePresenterHint: "「真人出镜」不渲染数字人：需在合成步骤自备真人素材，或只用 AI 生成中远景人物场景。没有真人素材时，建议改用「产品特写」或「场景演示」。",
     scriptStyleLabel: "脚本风格",
     durationLabel: "目标时长",
-    autoComposeLabel: "生成脚本后自动配画面 + 合成成片（免费，全程 0 Key）",
+    autoComposeLabel: "脚本完成后自动配画面并在本地合成（不消耗视频模型额度）",
     productCardLabel: "左下角叠商品卡贴片（商品图+名+价+购买引导）",
-    variationLabel: "防同质化变体：每条自动换钩子/风格/音色/BGM/字幕样式（平台会限流模板化批量内容，推荐开启）",
+    variationLabel: "为每条内容轮换钩子、音色、BGM 与字幕样式，降低批量内容的重复感",
+    advancedLabel: "成片与差异化选项",
+    advancedDesc: "默认只生成脚本；需要直接成片或降低同质化时再展开。",
+    actionTitle: "提交本批次",
     // 生成进度
     progressLabel: "生成进度",
     progressDone: "{done}/{total} 已完成",
     taskView: "查看",
     taskViewVideo: "看成片",
-    completeMsg: "批量生成完成！共 {count} 条视频",
+    completeMsg: "批次已完成，共处理 {count} 个商品",
     // 底部操作栏
     ctaGenerating: "批量生成中...",
     ctaAgain: "生成完成，再来一批",
@@ -86,7 +90,7 @@ export const batch: NamespaceMessages = {
     navTitle: "Batch production",
     // 页面标题
     heroTitle: "Batch production",
-    heroSubtitle: "Select multiple products, set shared options, and generate commerce videos in one click",
+    heroSubtitle: "Select multiple products, share one production setup, and track each task separately",
     // 视频模式选项
     modeProductCloseup: "Product close-up",
     modeGraphicMontage: "Graphic montage",
@@ -140,19 +144,23 @@ export const batch: NamespaceMessages = {
     goToProducts: "Go to products",
     // 步骤 2
     step2Label: "Step 2: Shared settings",
+    step2Desc: "These settings apply to every product in this batch.",
     videoModeLabel: "Video mode",
     livePresenterHint: "Live-presenter mode renders no digital human: bring your own real-person footage at the compose step, or use AI mid/long-shot person scenes only. No footage? Switch to Product close-up or Scene demo.",
     scriptStyleLabel: "Script style",
     durationLabel: "Target duration",
-    autoComposeLabel: "Auto-fill footage + render the video after scripting (free, 0 API key)",
+    autoComposeLabel: "Auto-fill footage and render locally after scripting (uses no video-model credits)",
     productCardLabel: "Overlay a product card (image + name + price + buy CTA)",
-    variationLabel: "Anti-template variation: rotate hook/style/voice/BGM/captions per video (platforms suppress templated batches; recommended)",
+    variationLabel: "Rotate hooks, voices, BGM, and caption styles to reduce repetition across the batch",
+    advancedLabel: "Rendering and variation options",
+    advancedDesc: "The default generates scripts only. Expand this when you need finished videos or less repetition.",
+    actionTitle: "Submit this batch",
     // 生成进度
     progressLabel: "Progress",
     progressDone: "{done}/{total} done",
     taskView: "View",
     taskViewVideo: "View video",
-    completeMsg: "Batch generation complete! {count} videos created",
+    completeMsg: "Batch complete. {count} products processed",
     // 底部操作栏
     ctaGenerating: "Generating batch...",
     ctaAgain: "Done — run another batch",

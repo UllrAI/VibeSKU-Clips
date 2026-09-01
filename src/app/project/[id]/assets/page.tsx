@@ -974,7 +974,7 @@ export default function AssetsPage() {
   }, [assets, generateOne, generateMotion, autoMotion, videoModelTarget, chainMode]);
 
   return (
-    <div className="min-h-screen grid-bg">
+    <div className="min-h-screen page-canvas">
       {/* project context strip: name + step navigation (global chrome lives in AppShell) */}
       <ProjectHeader projectName={projectName || t("untitledProject")} pageTitle={t("title")} />
 
@@ -987,7 +987,7 @@ export default function AssetsPage() {
         onChange={onUploadFileChange}
       />
 
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
+      <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         {/* Action bar: title + generation ACTIONS only. Creative settings live in the
             director panel below so this row stays a stable, scannable set of verbs. */}
         <div className="flex flex-wrap items-center justify-between gap-y-3 mb-4">
@@ -1074,7 +1074,7 @@ export default function AssetsPage() {
             <Button
               onClick={generateAll}
               disabled={isBatchGenerating || allDone || assets.length === 0}
-              className="brand-gradient text-white text-xs"
+              className="brand-fill text-white text-xs"
             >
               {isBatchGenerating ? (
                 <>
@@ -1099,19 +1099,20 @@ export default function AssetsPage() {
         {uiMode === "pro" && (
         <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-border/50 bg-muted/10 px-3 py-2.5">
           <span className="mr-1 text-xs font-semibold tracking-wide text-muted-foreground">{t("directorPanel")}</span>
-          <Link href={`/project/${id}/production`} className="inline-flex h-8 items-center rounded-full border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+          <Link href={`/project/${id}/production`} className="inline-flex h-8 items-center rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
             {t("productionConsole")}
           </Link>
           {/* Presenter picker: characters from the library; ones with a multi-view sheet
               anchor the person's identity through the grid and film passes */}
           {presenterLib.length > 0 && (
             <div
-              className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1.5 h-8"
+              className="flex h-8 items-center gap-1 rounded-lg border border-border/60 bg-muted/20 pl-2.5 pr-1.5"
               title={t("presenterTip")}
             >
               <span className="text-xs font-medium text-muted-foreground">{t("presenterLabel")}</span>
               <select
                 value={presenterId}
+                aria-label={t("presenterLabel")}
                 onChange={(e) => setPresenterId(e.target.value)}
                 className="bg-transparent text-xs outline-none h-6 max-w-28 text-foreground"
               >
@@ -1128,12 +1129,13 @@ export default function AssetsPage() {
           {/* Visual-look picker with enumerated lighting/palette
               panel): applies to keyframe image prompts AND pins lighting through the i2v pass */}
           <div
-            className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1.5 h-8"
+            className="flex h-8 items-center gap-1 rounded-lg border border-border/60 bg-muted/20 pl-2.5 pr-1.5"
             title={t("lookTip")}
           >
             <span className="text-xs font-medium text-muted-foreground">{t("lookLabel")}</span>
             <select
               value={visualLook}
+              aria-label={t("lookLabel")}
               onChange={(e) => setVisualLook(e.target.value)}
               className="bg-transparent text-xs outline-none h-6 max-w-28 text-foreground"
             >
@@ -1157,7 +1159,7 @@ export default function AssetsPage() {
           </div>
           {videoModelTarget && (
             <div
-              className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1 h-8"
+              className="flex h-8 items-center gap-0.5 rounded-lg border border-border/60 bg-muted/20 pl-2.5 pr-1"
               title={t("motionIntensityTip")}
             >
               <span className="text-xs font-medium text-muted-foreground mr-1">{t("motionIntensity")}</span>
@@ -1165,8 +1167,9 @@ export default function AssetsPage() {
                 <button
                   key={v}
                   type="button"
+                  aria-pressed={motionIntensity === v}
                   onClick={() => setMotionIntensity(v)}
-                  className={`rounded-full px-2 h-6 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                  className={`h-6 rounded-md px-2 text-xs font-medium transition-colors ${
                     motionIntensity === v
                       ? "bg-primary/15 text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -1179,7 +1182,7 @@ export default function AssetsPage() {
           )}
           {videoModelTarget && (
             <div
-              className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1 h-8"
+              className="flex h-8 items-center gap-0.5 rounded-lg border border-border/60 bg-muted/20 pl-2.5 pr-1"
               title={t("motionRealismTip")}
             >
               <span className="text-xs font-medium text-muted-foreground mr-1">{t("motionRealism")}</span>
@@ -1187,8 +1190,9 @@ export default function AssetsPage() {
                 <button
                   key={v}
                   type="button"
+                  aria-pressed={motionRealism === v}
                   onClick={() => setMotionRealism(v)}
-                  className={`rounded-full px-2 h-6 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                  className={`h-6 rounded-md px-2 text-xs font-medium transition-colors ${
                     motionRealism === v
                       ? "bg-primary/15 text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -1201,7 +1205,7 @@ export default function AssetsPage() {
           )}
           {videoModelTarget && modelSupportsLastFrame(videoModelTarget.model) && (
             <div
-              className="flex items-center gap-0.5 rounded-full border border-border/60 bg-muted/20 pl-2.5 pr-1 h-8"
+              className="flex h-8 items-center gap-0.5 rounded-lg border border-border/60 bg-muted/20 pl-2.5 pr-1"
               title={t("chainModeTip")}
             >
               <span className="text-xs font-medium text-muted-foreground mr-1">{t("chainMode")}</span>
@@ -1209,8 +1213,9 @@ export default function AssetsPage() {
                 <button
                   key={v}
                   type="button"
+                  aria-pressed={chainMode === v}
                   onClick={() => setChainMode(v)}
-                  className={`rounded-full px-2 h-6 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                  className={`h-6 rounded-md px-2 text-xs font-medium transition-colors ${
                     chainMode === v
                       ? "bg-primary/15 text-primary"
                       : "text-muted-foreground hover:text-foreground"
@@ -1224,9 +1229,10 @@ export default function AssetsPage() {
           {videoModelTarget && (
             <button
               type="button"
+              aria-pressed={autoMotion}
               onClick={() => setAutoMotion((v) => !v)}
               title={t("autoMotionTip")}
-              className={`flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+              className={`flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ${
                 autoMotion
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border/60 bg-muted/20 text-muted-foreground"
@@ -1239,9 +1245,10 @@ export default function AssetsPage() {
           {productImages.length > 0 && (
             <button
               type="button"
+              aria-pressed={productSafe}
               onClick={() => setProductSafe((v) => !v)}
               title={t("productSafeTip")}
-              className={`flex items-center gap-1.5 rounded-full border px-3 h-8 text-xs font-medium transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+              className={`flex h-8 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition-colors ${
                 productSafe
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border/60 bg-muted/20 text-muted-foreground"
@@ -1371,7 +1378,7 @@ export default function AssetsPage() {
             <div className="mb-6">
               <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
                 <div
-                  className="h-full brand-gradient transition-[background-color,border-color,color,box-shadow,opacity,transform,width] duration-700 rounded-full"
+                  className="h-full rounded-full brand-fill transition-[width] duration-700"
                   style={{ width: `${assets.length ? (doneCount / assets.length) * 100 : 0}%` }}
                 />
               </div>
@@ -1402,7 +1409,7 @@ export default function AssetsPage() {
                   done: asset.status === "done",
                 });
                 return (
-                  <Card key={asset.shotId} className="glass-card overflow-hidden">
+                  <Card key={asset.shotId} className="surface-panel overflow-hidden">
                     <CardContent className="p-0">
                       <div className="flex">
                         {/* left-side index */}
@@ -1556,7 +1563,7 @@ export default function AssetsPage() {
                                 <img src={asset.thumbnailUrl} alt={t("assetPreviewAlt")} className="w-full h-full object-cover" />
                               )
                             ) : asset.status === "done" ? (
-                              <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                              <div className="flex h-full w-full items-center justify-center bg-primary/8">
                                 <LuCheck className="w-5 h-5 text-primary" />
                               </div>
                             ) : asset.status === "generating" ? (
@@ -1672,7 +1679,7 @@ export default function AssetsPage() {
             {/* bottom action */}
             <div className="mt-8 flex justify-end">
               <Link href={allDone ? `/project/${id}/video` : "#"}>
-                <Button className="brand-gradient text-white text-sm" disabled={!allDone}>
+                <Button className="brand-fill text-white text-sm" disabled={!allDone}>
                   {t("nextCompose")}
                   <LuArrowRight className="w-4 h-4 ml-1" />
                 </Button>

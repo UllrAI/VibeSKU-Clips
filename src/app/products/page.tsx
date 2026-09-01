@@ -306,17 +306,18 @@ export default function ProductsPage() {
   };
 
   // Delete product
-  const handleDelete = (id: string) => {
-    removeProduct(id);
+  const handleDelete = (product: ProductItem) => {
+    if (!window.confirm(t("deleteConfirm", { name: product.name }))) return;
+    removeProduct(product.id);
     // If the deleted product is currently being edited, close the form
-    if (editingId === id) resetForm();
+    if (editingId === product.id) resetForm();
   };
 
   return (
-    <div className="min-h-screen grid-bg">
-      <PageContainer width="wide">
+    <div className="min-h-screen page-canvas">
+      <PageContainer width="standard">
         <PageHeader
-          title={<><span className="brand-gradient-text">{t("pageTitleAccent")}</span>{t("pageTitleRest")}</>}
+          title={t("pageTitle")}
           description={t("pageSubtitle")}
           actions={!isFormOpen ? (
             <div className="flex items-center gap-2">
@@ -331,7 +332,7 @@ export default function ProductsPage() {
                 {t("importLink")}
               </Button>
               <Button
-                className="brand-gradient text-white"
+                className="brand-fill text-white"
                 onClick={() => {
                   resetForm();
                   setIsFormOpen(true);
@@ -352,9 +353,7 @@ export default function ProductsPage() {
               {t("importSaved")}
             </p>
             <div className="flex shrink-0 items-center gap-2">
-              <Link href="/batch">
-                <Button size="sm" variant="outline" className="text-xs">{t("importGoBatch")}</Button>
-              </Link>
+              <Button render={<Link href="/batch" />} size="sm" variant="outline" className="text-xs">{t("importGoBatch")}</Button>
               <button
                 type="button"
                 onClick={() => setImportedNotice(false)}
@@ -369,7 +368,7 @@ export default function ProductsPage() {
 
         {/* link-import entry: paste URL → extract → review in the form before it enters the library */}
         {importOpen && !isFormOpen && (
-          <Card className="glass-card ring-1 ring-primary/30 mb-8">
+          <Card className="surface-panel ring-1 ring-primary/30 mb-8">
             <CardContent className="p-5 space-y-3">
               <h3 className="text-sm font-semibold">{t("importLinkTitle")}</h3>
               <div className="flex gap-2">
@@ -381,7 +380,7 @@ export default function ProductsPage() {
                   onKeyDown={(e) => { if (e.key === "Enter") void handleImportExtract(); }}
                 />
                 <Button
-                  className="brand-gradient text-white shrink-0"
+                  className="brand-fill text-white shrink-0"
                   disabled={!importUrl.trim() || importLoading}
                   onClick={handleImportExtract}
                 >
@@ -419,7 +418,7 @@ export default function ProductsPage() {
 
         {/* Add / edit form */}
         {isFormOpen && (
-          <Card className="glass-card ring-1 ring-primary/30 mb-8">
+          <Card className="surface-panel ring-1 ring-primary/30 mb-8">
             <CardContent className="p-5 space-y-5">
               <h3 className="text-sm font-semibold">
                 {editingId ? t("formEditTitle") : t("formAddTitle")}
@@ -505,7 +504,10 @@ export default function ProductsPage() {
                 {/* Drag-and-drop upload area */}
                 {images.length < 5 && (
                   <div
-                    className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-[background-color,border-color,color,box-shadow,opacity,transform,width] ${
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t("dropHintClick")}
+                    className={`relative cursor-pointer rounded-xl border border-dashed p-6 text-center outline-none transition-[background-color,border-color,color] focus-visible:ring-3 focus-visible:ring-ring/50 sm:p-8 ${
                       isDragging
                         ? "border-primary bg-primary/5"
                         : "border-border/60 hover:border-primary/50 hover:bg-muted/20"
@@ -514,6 +516,12 @@ export default function ProductsPage() {
                     onDragLeave={handleDragLeave}
                     onDrop={handleDrop}
                     onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        fileInputRef.current?.click();
+                      }
+                    }}
                   >
                     <input
                       ref={fileInputRef}
@@ -533,7 +541,7 @@ export default function ProductsPage() {
                       <div>
                         <p className="text-sm font-medium">
                           {t("dropHintPrefix")}
-                          <span className="brand-gradient-text font-semibold">
+                          <span className="brand-text font-semibold">
                             {t("dropHintClick")}
                           </span>
                         </p>
@@ -565,8 +573,10 @@ export default function ProductsPage() {
                         />
                         {/* Delete button */}
                         <button
+                          type="button"
                           onClick={() => removeImage(img.id)}
                           className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                          aria-label={t("removeImage")}
                         >
                           <LuX className="w-3 h-3" />
                         </button>
@@ -632,7 +642,7 @@ export default function ProductsPage() {
                 </Button>
                 <Button
                   size="sm"
-                  className="brand-gradient text-white"
+                  className="brand-fill text-white"
                   onClick={handleSave}
                   disabled={!name.trim() || isSaving}
                 >
@@ -646,7 +656,7 @@ export default function ProductsPage() {
         {/* Product list */}
         {products.length === 0 && !isFormOpen ? (
           // Empty state
-          <Card className="glass-card">
+          <Card className="surface-panel">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-muted/50">
                 <LuPackage className="w-7 h-7 text-muted-foreground" />
@@ -654,9 +664,9 @@ export default function ProductsPage() {
               <p className="text-muted-foreground mb-4">
                 {t("emptyText")}
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
                 <Button
-                  className="brand-gradient text-white"
+                  className="brand-fill text-white"
                   onClick={() => {
                     resetForm();
                     setIsFormOpen(true);
@@ -682,15 +692,10 @@ export default function ProductsPage() {
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="overflow-hidden rounded-xl border border-border bg-card divide-y divide-border">
                 {products.map((product) => (
-                  <Card
-                    key={product.id}
-                    className="card-hover glass-card group"
-                  >
-                    <CardContent className="p-0">
-                      {/* Product thumbnail */}
-                      <div className="relative aspect-video bg-muted/30 rounded-t-lg overflow-hidden">
+                  <div key={product.id} className="flex flex-col gap-4 p-4 transition-colors hover:bg-muted/20 sm:flex-row sm:items-center">
+                      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted/30">
                         {product.images.length > 0 ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -703,63 +708,35 @@ export default function ProductsPage() {
                             <LuImage className="w-8 h-8 text-muted-foreground/50" />
                           </div>
                         )}
-                        {/* Category badge */}
-                        <div className="absolute top-2 left-2">
-                          <Badge
-                            className={`${
-                              categoryColorMap[product.category] || categoryColorMap.other
-                            } border-0 text-xs`}
-                          >
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="truncate text-sm font-medium sm:text-base">
+                          {product.name}
+                          </h3>
+                          <Badge className={`${categoryColorMap[product.category] || categoryColorMap.other} border-0 text-xs`}>
                             {t(categoryLabelKeyMap[product.category] || "categoryOther")}
                           </Badge>
                         </div>
-                        {/* Floating action buttons */}
-                        <div className="absolute top-2 right-2 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              startEdit(product);
-                            }}
-                            className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-primary transition-colors"
-                          >
-                            <LuPencil className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(product.id);
-                            }}
-                            className="flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-red-500 transition-colors"
-                          >
-                            <LuTrash2 className="w-3.5 h-3.5" />
-                          </button>
+                        {product.description && <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{product.description}</p>}
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          {product.price && <span className="font-medium text-foreground">{product.price}</span>}
+                          <span>{t("videoCount", { n: product.videoCount })}</span>
                         </div>
                       </div>
-                      {/* Product info */}
-                      <div className="p-4">
-                        <h3 className="font-medium text-sm truncate group-hover:text-primary transition-colors">
-                          {product.name}
-                        </h3>
-                        <div className="flex items-center justify-between mt-2">
-                          {product.price && (
-                            <span className="text-xs text-primary font-medium">
-                              {product.price}
-                            </span>
-                          )}
-                          <span className="text-xs text-muted-foreground ml-auto">
-                            {t("videoCount", { n: product.videoCount })}
-                          </span>
-                        </div>
-                        {/* Make video: beginner mode routes to the one-tap studio, director mode to the full advanced form — both pre-fill via productId */}
-                        <Link href={`${uiMode === "pro" ? "/project/new" : "/start"}?productId=${product.id}`} className="block mt-3">
-                          <Button size="sm" className="w-full brand-gradient text-white border-0">
+                      <div className="flex shrink-0 items-center gap-1 border-t border-border/60 pt-3 sm:border-0 sm:pt-0">
+                          <Button type="button" variant="ghost" size="icon-sm" onClick={() => startEdit(product)} aria-label={`${t("editProduct")}：${product.name}`}>
+                            <LuPencil className="h-4 w-4" />
+                          </Button>
+                          <Button type="button" variant="ghost" size="icon-sm" onClick={() => handleDelete(product)} aria-label={`${t("deleteProduct")}：${product.name}`} className="text-muted-foreground hover:text-destructive">
+                            <LuTrash2 className="h-4 w-4" />
+                          </Button>
+                          <Button render={<Link href={`${uiMode === "pro" ? "/project/new" : "/start"}?productId=${product.id}`} />} size="sm" className="ml-1">
                             <LuVideo className="w-3.5 h-3.5 mr-1.5" />
                             {t("makeVideo")}
                           </Button>
-                        </Link>
                       </div>
-                    </CardContent>
-                  </Card>
+                  </div>
                 ))}
               </div>
             </div>

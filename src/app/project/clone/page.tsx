@@ -374,12 +374,12 @@ export default function ClonePage() {
     productFeatures.trim() !== "";
 
   return (
-    <div className="min-h-screen grid-bg">
+    <div className="min-h-screen page-canvas">
       <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         {/* page title */}
         <header className="mb-8 border-b border-border/60 pb-6">
           <h1 className="mb-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-            <span className="brand-gradient-text">{t("heroTitle")}</span>
+            <span className="brand-text">{t("heroTitle")}</span>
           </h1>
           <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
             {t("heroSubtitle")}
@@ -394,7 +394,7 @@ export default function ClonePage() {
               <div className="text-xs text-muted-foreground mt-1">{t("trendBannerDesc")}</div>
             </div>
             <a
-              className="shrink-0 rounded-lg brand-gradient px-4 py-2 text-sm font-semibold text-white"
+              className="shrink-0 rounded-lg brand-fill px-4 py-2 text-sm font-semibold text-white"
               href={`https://www.douyin.com/search/${encodeURIComponent(trendFrom)}`}
               target="_blank"
               rel="noreferrer"
@@ -413,14 +413,17 @@ export default function ClonePage() {
 
         {/* Step 1 - enter viral video URL */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full brand-gradient text-sm font-bold text-white">
+          <div className="mb-5 flex items-start gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full brand-fill text-sm font-bold text-white">
               1
             </div>
-            <h2 className="text-lg font-semibold">{t("step1Title")}</h2>
+            <div>
+              <h2 className="text-lg font-semibold">{t("step1Title")}</h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">{t("step1Desc")}</p>
+            </div>
           </div>
 
-          <Card className="glass-card card-hover">
+          <Card className="surface-panel">
             <CardContent className="p-6 space-y-5">
               {/* reference video file upload — the REAL analysis path (scene-cut skeleton) */}
               <div className="space-y-2">
@@ -465,7 +468,7 @@ export default function ClonePage() {
                     className="flex-1"
                   />
                   <Button
-                    className="brand-gradient text-white shrink-0"
+                    className="brand-fill text-white shrink-0"
                     disabled={(!videoUrl.trim() && !refVideoFile) || isAnalyzing}
                     onClick={handleAnalyze}
                   >
@@ -534,27 +537,29 @@ export default function ClonePage() {
 
         {/* Step 2 - upload your product */}
         <div className="mb-10">
-          <div className="flex items-center gap-3 mb-5">
+          <div className="mb-5 flex items-start gap-3">
             <div
               className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white ${
                 hasAnalysis
-                  ? "brand-gradient"
+                  ? "brand-fill"
                   : "bg-muted text-muted-foreground"
               }`}
             >
               2
             </div>
-            <h2
-              className={`text-lg font-semibold ${
-                hasAnalysis ? "" : "text-muted-foreground"
-              }`}
-            >
-              {t("step2Title")}
-            </h2>
+            <div>
+              <h2 className={`text-lg font-semibold ${hasAnalysis ? "" : "text-muted-foreground"}`}>
+                {t("step2Title")}
+              </h2>
+              <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
+                {hasAnalysis ? t("step2Desc") : t("step2Locked")}
+              </p>
+            </div>
           </div>
 
           <Card
-            className={`glass-card card-hover ${
+            aria-disabled={!hasAnalysis}
+            className={`surface-panel ${
               !hasAnalysis ? "opacity-50 pointer-events-none" : ""
             }`}
           >
@@ -667,68 +672,77 @@ export default function ClonePage() {
         {/* model-tier one-shot replication (Seedance reference-to-video, ≤15s references) */}
         {refAnalysis && (
           <div className="mb-10">
-            <Card className="glass-card">
-              <CardContent className="p-6 space-y-3">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="flex items-center gap-1.5 text-sm font-semibold"><LuZap className="size-4 text-primary" aria-hidden="true" />{t("modelTierTitle")}</h3>
-                  {!refAnalysis.modelTierEligible && (
-                    <Badge variant="outline" className="text-xs text-warning">
-                      {t("modelTierTooLong", { max: REPLICATE_MAX_REF_SEC })}
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">{t("modelTierDesc")}</p>
-                {videoModelTarget && !referenceModelFor(videoModelTarget.model) && (
-                  <p className="text-xs text-warning/90">{t("modelTierNeedSeedance")}</p>
-                )}
-                {!videoModelTarget && <p className="text-xs text-warning/90">{t("modelTierNeedModel")}</p>}
-                {replicateError && <p className="text-xs text-destructive">{replicateError}</p>}
-                {replicateResult ? (
-                  <div className="space-y-2">
-                    <video src={replicateResult.url} controls className="w-full max-w-xs rounded-lg border border-border/50" />
-                    <div className="flex items-center gap-3 text-xs">
-                      <span className="flex items-center gap-1 text-success"><LuCheck className="size-3.5" aria-hidden="true" />{t("modelTierDone")}</span>
-                      <Link href={`/project/${replicateResult.projectId}/export`} className="text-primary underline">
-                        {t("modelTierViewExport")}
-                      </Link>
-                    </div>
+            <Card className="surface-panel">
+              <CardContent className="p-0">
+                <details className="group">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                    <span className="flex items-center gap-2"><LuZap className="size-4 text-primary" aria-hidden="true" />{t("modelTierTitle")}</span>
+                    {!refAnalysis.modelTierEligible && (
+                      <Badge variant="outline" className="text-xs text-warning">
+                        {t("modelTierTooLong", { max: REPLICATE_MAX_REF_SEC })}
+                      </Badge>
+                    )}
+                  </summary>
+                  <div className="space-y-3 border-t border-border px-5 py-5">
+                    <p className="text-xs leading-5 text-muted-foreground">{t("modelTierDesc")}</p>
+                    {videoModelTarget && !referenceModelFor(videoModelTarget.model) && (
+                      <p className="text-xs text-warning/90">{t("modelTierNeedSeedance")}</p>
+                    )}
+                    {!videoModelTarget && <p className="text-xs text-warning/90">{t("modelTierNeedModel")}</p>}
+                    {replicateError && <p className="text-xs text-destructive">{replicateError}</p>}
+                    {replicateResult ? (
+                      <div className="space-y-2">
+                        <video src={replicateResult.url} controls className="w-full max-w-xs rounded-lg border border-border/50" />
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="flex items-center gap-1 text-success"><LuCheck className="size-3.5" aria-hidden="true" />{t("modelTierDone")}</span>
+                          <Link href={`/project/${replicateResult.projectId}/export`} className="text-primary underline">
+                            {t("modelTierViewExport")}
+                          </Link>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-primary/50 text-xs text-primary hover:bg-primary/10"
+                        disabled={
+                          isReplicating ||
+                          !refAnalysis.modelTierEligible ||
+                          !videoModelTarget ||
+                          !referenceModelFor(videoModelTarget.model) ||
+                          productImages.length === 0 ||
+                          !productName.trim()
+                        }
+                        onClick={handleModelReplicate}
+                        title={
+                          videoModelTarget
+                            ? `${videoModelTarget.provider} · ${referenceModelFor(videoModelTarget.model) ?? videoModelTarget.model}`
+                            : undefined
+                        }
+                      >
+                        {isReplicating ? t("modelTierRunning") : t("modelTierBtn")}
+                      </Button>
+                    )}
                   </div>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="text-xs border-primary/50 text-primary hover:bg-primary/10"
-                    disabled={
-                      isReplicating ||
-                      !refAnalysis.modelTierEligible ||
-                      !videoModelTarget ||
-                      !referenceModelFor(videoModelTarget.model) ||
-                      productImages.length === 0 ||
-                      !productName.trim()
-                    }
-                    onClick={handleModelReplicate}
-                    title={
-                      videoModelTarget
-                        ? `${videoModelTarget.provider} · ${referenceModelFor(videoModelTarget.model) ?? videoModelTarget.model}`
-                        : undefined
-                    }
-                  >
-                    {isReplicating ? t("modelTierRunning") : t("modelTierBtn")}
-                  </Button>
-                )}
+                </details>
               </CardContent>
             </Card>
           </div>
         )}
 
         {/* bottom action buttons */}
-        <div className="flex flex-col items-center pb-10 gap-3">
+        <div className="flex flex-col gap-4 border-t border-border py-8 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl">
+            <h2 className="text-lg font-semibold">{t("step3Title")}</h2>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">{t("step3Desc")}</p>
+          </div>
+          <div className="flex shrink-0 flex-col gap-2">
           {genError && (
-            <p className="text-sm text-destructive">{genError}</p>
+            <p className="text-sm text-destructive" aria-live="polite">{genError}</p>
           )}
           <Button
             size="lg"
-            className="brand-gradient text-white px-10 text-base font-semibold"
+            className="brand-fill min-w-56 px-8 text-base font-semibold text-white"
             disabled={!canGenerate || isGenerating}
             onClick={handleGenerate}
           >
@@ -744,6 +758,7 @@ export default function ClonePage() {
               </>
             )}
           </Button>
+          </div>
         </div>
       </main>
     </div>

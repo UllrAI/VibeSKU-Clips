@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 const containerWidth = {
   compact: "max-w-5xl",
-  standard: "max-w-6xl",
+  standard: "max-w-7xl",
   wide: "max-w-[1500px]",
   fluid: "max-w-none",
 } as const;

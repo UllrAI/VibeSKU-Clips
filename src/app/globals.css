@@ -191,77 +191,59 @@
   }
 }
 
-/* Legacy class names remain as solid warm brand fills while call sites migrate. */
-.brand-gradient {
+/* Brand emphasis is deliberately solid; the name describes the result. */
+.brand-fill {
   background: var(--primary);
 }
 
-.brand-gradient-text {
+.brand-text {
   color: var(--primary);
 }
 
-/* ==================== 卡片 ==================== */
-.glass-card {
+/* Bordered task surface. Hierarchy comes from structure, not elevation. */
+.surface-panel {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: 0.75rem;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
-.dark .glass-card {
+.dark .surface-panel {
   background: var(--card);
   border-color: var(--border);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.025), 0 12px 36px rgba(0, 0, 0, 0.18);
 }
 
-/* ==================== 页面背景 ==================== */
-.grid-bg {
-  background-color: #f7f6f2;
-  background-image:
-    radial-gradient(circle at 20% 50%, rgba(232, 93, 4, 0.04) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(184, 110, 0, 0.03) 0%, transparent 50%);
+/* Continuous page canvas; decorative gradients are intentionally excluded. */
+.page-canvas {
+  background-color: var(--background);
 }
 
-.dark .grid-bg {
-  background-color: #0d0d0c;
-  background-image:
-    radial-gradient(circle at 50% -8%, rgba(249, 115, 22, 0.09) 0%, transparent 55%),
-    radial-gradient(circle at 85% 0%, rgba(242, 184, 75, 0.04) 0%, transparent 50%);
+.dark .page-canvas {
+  background-color: var(--background);
 }
 
-/* ==================== 选中高亮 ==================== */
-.neon-glow {
-  box-shadow:
-    0 0 0 2px rgba(232, 93, 4, 0.2),
-    0 4px 16px rgba(232, 93, 4, 0.08);
+/* Selected surfaces stay explicit without glow or depth. */
+.selected-outline {
+  outline: 2px solid color-mix(in srgb, var(--primary) 32%, transparent);
+  outline-offset: -1px;
 }
 
-.dark .neon-glow {
-  box-shadow:
-    0 0 0 2px rgba(249, 115, 22, 0.34),
-    0 4px 20px rgba(249, 115, 22, 0.14);
+.dark .selected-outline {
+  outline-color: color-mix(in srgb, var(--primary) 48%, transparent);
 }
 
-/* ==================== 卡片悬停 ==================== */
-.card-hover {
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+/* Interactive surfaces change tone and boundary without moving. */
+.interactive-surface {
+  transition: background-color 0.16s ease, border-color 0.16s ease;
 }
 
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 4px 6px rgba(0, 0, 0, 0.04),
-    0 10px 24px rgba(0, 0, 0, 0.06),
-    0 0 0 1px rgba(232, 93, 4, 0.1);
-  border-color: rgba(232, 93, 4, 0.3);
+.interactive-surface:hover {
+  background: color-mix(in srgb, var(--card) 88%, var(--primary));
+  border-color: color-mix(in srgb, var(--border) 58%, var(--primary));
 }
 
-.dark .card-hover:hover {
-  box-shadow:
-    0 4px 6px rgba(0, 0, 0, 0.25),
-    0 10px 24px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(249, 115, 22, 0.22);
-  border-color: rgba(249, 115, 22, 0.4);
+.dark .interactive-surface:hover {
+  background: color-mix(in srgb, var(--card) 90%, var(--primary));
+  border-color: color-mix(in srgb, var(--border) 52%, var(--primary));
 }
 
 @media (prefers-reduced-motion: reduce) {
