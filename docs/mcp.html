@@ -3,24 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MCP 视频生成:在 Claude 一句话出片 — ClipForge MCP Server + CLI + 定时日更(开源免费)</title>
-<meta name="description" content="ClipForge MCP Server 把开源出片流水线变成 MCP 工具:在 Claude、Cursor 等 agent 里贴商品链接或说一句话,自动写脚本、配画面、配音、合成竖屏带货成片,素材配音免 Key。搭配 CLI 与 cron 定时、按人设选题即全自动日更机;批量出片页大促多商品排队。开源免费。">
-<link rel="canonical" href="https://xixihhhh.github.io/clipforge/mcp.html">
+<title>MCP 视频生成:在 Claude 一句话出片 — VibeSKU Clips MCP Server + CLI + 定时日更(开源免费)</title>
+<meta name="description" content="VibeSKU Clips MCP Server 把开源出片流水线变成 MCP 工具:在 Claude、Cursor 等 agent 里贴商品链接或说一句话,自动写脚本、配画面、配音、合成竖屏带货成片,素材配音免 Key。搭配 CLI 与 cron 定时、按人设选题即全自动日更机;批量出片页大促多商品排队。开源免费。">
+<link rel="canonical" href="https://ullrai.github.io/VibeSKU-Clips/mcp.html">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="site.css">
 <meta property="og:type" content="article">
-<meta property="og:title" content="MCP 视频生成:在 Claude 一句话出片 — ClipForge MCP Server + CLI + 定时日更">
+<meta property="og:title" content="MCP 视频生成:在 Claude 一句话出片 — VibeSKU Clips MCP Server + CLI + 定时日更">
 <meta property="og:description" content="把出片流水线暴露为 MCP 工具:agent 里贴商品链接一句话成片 · CLI 脚本化出片 · cron + 按人设选题全自动日更 · 批量出片排队。开源 AGPL-3.0 免费。">
-<meta property="og:image" content="https://xixihhhh.github.io/clipforge/banner.png">
-<meta property="og:url" content="https://xixihhhh.github.io/clipforge/mcp.html">
+<meta property="og:image" content="https://ullrai.github.io/VibeSKU-Clips/banner.png">
+<meta property="og:url" content="https://ullrai.github.io/VibeSKU-Clips/mcp.html">
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "ClipForge 首页", "item": "https://xixihhhh.github.io/clipforge/" },
-    { "@type": "ListItem", "position": 2, "name": "MCP 视频生成", "item": "https://xixihhhh.github.io/clipforge/mcp.html" }
+    { "@type": "ListItem", "position": 1, "name": "VibeSKU Clips 首页", "item": "https://ullrai.github.io/VibeSKU-Clips/" },
+    { "@type": "ListItem", "position": 2, "name": "MCP 视频生成", "item": "https://ullrai.github.io/VibeSKU-Clips/mcp.html" }
   ]
 }
 </script>
@@ -28,28 +28,28 @@
 {
   "@context": "https://schema.org",
   "@type": "Article",
-  "headline": "MCP 视频生成:在 Claude 一句话出片 — ClipForge MCP Server + CLI + 定时日更",
-  "description": "ClipForge 把 AI 短视频出片流水线暴露为 MCP 工具:在 Claude / Cursor 等 agent 里贴商品链接一句话成片;CLI 脚本化出片,cron 定时加按人设选题组成全自动日更机,批量出片页支持大促多商品排队。",
+  "headline": "MCP 视频生成:在 Claude 一句话出片 — VibeSKU Clips MCP Server + CLI + 定时日更",
+  "description": "VibeSKU Clips 把 AI 短视频出片流水线暴露为 MCP 工具:在 Claude / Cursor 等 agent 里贴商品链接一句话成片;CLI 脚本化出片,cron 定时加按人设选题组成全自动日更机,批量出片页支持大促多商品排队。",
   "inLanguage": "zh-CN",
-  "image": "https://xixihhhh.github.io/clipforge/banner.png",
-  "mainEntityOfPage": "https://xixihhhh.github.io/clipforge/mcp.html",
-  "author": { "@type": "Organization", "name": "ClipForge", "url": "https://github.com/xixihhhh/clipforge" },
-  "publisher": { "@type": "Organization", "name": "ClipForge", "url": "https://xixihhhh.github.io/clipforge/" }
+  "image": "https://ullrai.github.io/VibeSKU-Clips/banner.png",
+  "mainEntityOfPage": "https://ullrai.github.io/VibeSKU-Clips/mcp.html",
+  "author": { "@type": "Organization", "name": "VibeSKU Clips", "url": "https://github.com/UllrAI/VibeSKU-Clips" },
+  "publisher": { "@type": "Organization", "name": "VibeSKU Clips", "url": "https://ullrai.github.io/VibeSKU-Clips/" }
 }
 </script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "HowTo",
-  "name": "三步把 ClipForge MCP 接入 Claude / Cursor,agent 一句话出片",
-  "description": "启动一个 ClipForge 实例,在 MCP 客户端注册 clipforge-mcp,然后在对话里说一句话主题——agent 调用 clipforge_create_video,几十秒返回可下载的竖屏成片地址。素材与配音全程免 Key。",
+  "name": "三步把 VibeSKU Clips MCP 接入 Claude / Cursor,agent 一句话出片",
+  "description": "启动一个 VibeSKU Clips 实例,在 MCP 客户端注册 vibesku-clips-mcp,然后在对话里说一句话主题——agent 调用 vibesku_clips_create_video,几十秒返回可下载的竖屏成片地址。素材与配音全程免 Key。",
   "totalTime": "PT10M",
   "estimatedCost": { "@type": "MonetaryAmount", "currency": "CNY", "value": "0" },
-  "tool": [{ "@type": "HowToTool", "name": "ClipForge(开源,Docker/源码/桌面版)" }],
+  "tool": [{ "@type": "HowToTool", "name": "VibeSKU Clips(开源,Docker/源码/桌面版)" }],
   "step": [
-    { "@type": "HowToStep", "name": "启动 ClipForge 实例", "text": "Docker 一行命令 docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge,或源码 pnpm dev;MCP Server 是这个实例 HTTP API 的薄封装,默认指向 http://localhost:3000。" },
-    { "@type": "HowToStep", "name": "在 agent 客户端注册 MCP Server", "text": "Claude Desktop / Cursor 在 MCP 配置里加一条 command: node,args: [mcp/clipforge-mcp.mjs 的绝对路径];Claude Code 一条命令 claude mcp add clipforge -- node /路径/mcp/clipforge-mcp.mjs。写脚本需在 env 里配一个 OpenAI 兼容 LLM Key,素材与配音免 Key。" },
-    { "@type": "HowToStep", "name": "对话里一句话出片", "text": "直接说「用 clipforge 做一条关于在家泡手冲咖啡的竖屏短视频」,agent 调用 clipforge_create_video——写脚本、免费素材配画面、免费配音加字幕、FFmpeg 合成,返回可下载的 mp4 地址。" }
+    { "@type": "HowToStep", "name": "启动 VibeSKU Clips 实例", "text": "Docker 一行命令 docker run -d -p 3000:3000 -v vibesku-clips-data:/data ghcr.io/ullrai/vibesku-clips,或源码 pnpm dev;MCP Server 是这个实例 HTTP API 的薄封装,默认指向 http://localhost:3000。" },
+    { "@type": "HowToStep", "name": "在 agent 客户端注册 MCP Server", "text": "Claude Desktop / Cursor 在 MCP 配置里加一条 command: node,args: [mcp/vibesku-clips-mcp.mjs 的绝对路径];Claude Code 一条命令 claude mcp add vibesku-clips -- node /路径/mcp/vibesku-clips-mcp.mjs。写脚本需在 env 里配一个 OpenAI 兼容 LLM Key,素材与配音免 Key。" },
+    { "@type": "HowToStep", "name": "对话里一句话出片", "text": "直接说「用 vibesku-clips 做一条关于在家泡手冲咖啡的竖屏短视频」,agent 调用 vibesku_clips_create_video——写脚本、免费素材配画面、免费配音加字幕、FFmpeg 合成,返回可下载的 mp4 地址。" }
   ]
 }
 </script>
@@ -84,23 +84,23 @@
 <div class="container">
 
 <nav>
-  <img src="logo.svg" alt="ClipForge logo">
-  <span class="name">ClipForge<em>Agent 出片</em></span>
+  <img src="logo.svg" alt="VibeSKU Clips logo">
+  <span class="name">VibeSKU Clips<em>Agent 出片</em></span>
   <span class="spacer"></span>
   <a class="plain" href="index.html">首页</a>
   <a class="plain" href="guide.html">使用手册</a>
   <a class="plain" href="feature-compliance.html">合规发布</a>
-  <a class="plain keep" href="https://github.com/xixihhhh/clipforge" rel="noopener">GitHub</a>
-  <a class="btn btn-brand" href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">免费下载</a>
+  <a class="plain keep" href="https://github.com/UllrAI/VibeSKU-Clips" rel="noopener">GitHub</a>
+  <a class="btn btn-brand" href="https://github.com/UllrAI/VibeSKU-Clips/releases/latest" rel="noopener">免费下载</a>
 </nav>
 
 <article class="doc">
-<h1>MCP 视频生成:让 Claude 一句话出片 — ClipForge MCP Server + CLI + 定时日更</h1>
-<p class="lead"><b>先说结论:接上 ClipForge MCP Server,你在 Claude / Cursor 等 AI agent 里贴一条商品链接、说一句话主题,几十秒后就能拿到可下载的竖屏带货成片。</b>素材(Openverse / Wikimedia Commons)与配音(微软 Edge TTS)全程免 Key,只有写脚本需要一个 OpenAI 兼容的 LLM Key;再配上 CLI 命令行 + cron 定时 + 按人设自动选题,就是一台不用碰界面的全自动短视频日更机。开源 AGPL-3.0、免费自部署。想先了解产品全貌?看<a href="index.html">首页</a>与<a href="guide.html">使用手册</a>。</p>
+<h1>MCP 视频生成:让 Claude 一句话出片 — VibeSKU Clips MCP Server + CLI + 定时日更</h1>
+<p class="lead"><b>先说结论:接上 VibeSKU Clips MCP Server,你在 Claude / Cursor 等 AI agent 里贴一条商品链接、说一句话主题,几十秒后就能拿到可下载的竖屏带货成片。</b>素材(Openverse / Wikimedia Commons)与配音(微软 Edge TTS)全程免 Key,只有写脚本需要一个 OpenAI 兼容的 LLM Key;再配上 CLI 命令行 + cron 定时 + 按人设自动选题,就是一台不用碰界面的全自动短视频日更机。开源 AGPL-3.0、免费自部署。想先了解产品全貌?看<a href="index.html">首页</a>与<a href="guide.html">使用手册</a>。</p>
 
 <div class="toc">
   <b>目录</b>
-  <a href="#what">一、什么是 ClipForge MCP</a>
+  <a href="#what">一、什么是 VibeSKU Clips MCP</a>
   <a href="#setup">二、三步接入</a>
   <a href="#tools">三、MCP 工具清单</a>
   <a href="#cli">四、CLI 脚本化出片</a>
@@ -110,65 +110,65 @@
   <a href="#scenes">八、三个典型场景</a>
 </div>
 
-<h2 id="what">一、什么是 ClipForge MCP:把出片流水线变成 agent 工具</h2>
-<p>ClipForge 是开源的 AI 短视频工具(带货为主场景),它把整条「一句话 → 脚本 → 配画面 → 配音字幕 → FFmpeg 合成竖屏成片」流水线通过 <b>MCP(Model Context Protocol)Server</b> 暴露成标准工具——任何 MCP 客户端(<b>Claude Desktop、Claude Code、Cursor</b> 等)注册之后,agent 就能直接调用「视频生成」这个能力,不用你打开任何界面。</p>
+<h2 id="what">一、什么是 VibeSKU Clips MCP:把出片流水线变成 agent 工具</h2>
+<p>VibeSKU Clips 是开源的 AI 短视频工具(带货为主场景),它把整条「一句话 → 脚本 → 配画面 → 配音字幕 → FFmpeg 合成竖屏成片」流水线通过 <b>MCP(Model Context Protocol)Server</b> 暴露成标准工具——任何 MCP 客户端(<b>Claude Desktop、Claude Code、Cursor</b> 等)注册之后,agent 就能直接调用「视频生成」这个能力,不用你打开任何界面。</p>
 <ul>
-  <li><b>形态</b>:仓库内 <code>mcp/clipforge-mcp.mjs</code>,一个 stdio MCP Server,是 ClipForge HTTP API 的<b>薄封装</b>——复用实例里的全部编排(脚本引擎 / 免费素材 / 免费 Edge TTS / FFmpeg 合成),运行前需先启动一个 ClipForge 实例;npm 包形态 <code>clipforge-mcp</code> 也已在仓库备好(发布后可 <code>npx</code> 零安装接入)。</li>
+  <li><b>形态</b>:仓库内 <code>mcp/vibesku-clips-mcp.mjs</code>,一个 stdio MCP Server,是 VibeSKU Clips HTTP API 的<b>薄封装</b>——复用实例里的全部编排(脚本引擎 / 免费素材 / 免费 Edge TTS / FFmpeg 合成),运行前需先启动一个 VibeSKU Clips 实例;npm 包形态 <code>vibesku-clips-mcp</code> 也已在仓库备好(发布后可 <code>npx</code> 零安装接入)。</li>
   <li><b>费用</b>:素材与配音<b>免 Key、¥0</b>;只有「生成脚本」需要一个 OpenAI 兼容 LLM Key(如 DeepSeek,单次约 ¥0.001)。</li>
   <li><b>产出</b>:1080p 竖屏(也可 16:9 / 1:1)无水印 mp4,自带字幕,AIGC 合规标识可开——发布前怎么不踩限流坑,见<a href="feature-compliance.html">AI 视频合规发布指南</a>。</li>
 </ul>
 
 <h2 id="setup">二、三步接入:从零到 agent 一句话成片</h2>
-<h3>第 1 步:启动一个 ClipForge 实例</h3>
-<pre><code>docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
-# 或源码:git clone https://github.com/xixihhhh/clipforge.git &amp;&amp; cd clipforge &amp;&amp; pnpm install &amp;&amp; pnpm dev</code></pre>
-<p>MCP Server 默认指向 <code>http://localhost:3000</code>(可用 <code>CLIPFORGE_BASE_URL</code> 改)。</p>
+<h3>第 1 步:启动一个 VibeSKU Clips 实例</h3>
+<pre><code>docker run -d -p 3000:3000 -v vibesku-clips-data:/data ghcr.io/ullrai/vibesku-clips
+# 或源码:git clone https://github.com/UllrAI/VibeSKU-Clips.git &amp;&amp; cd vibesku-clips &amp;&amp; pnpm install &amp;&amp; pnpm dev</code></pre>
+<p>MCP Server 默认指向 <code>http://localhost:3000</code>(可用 <code>VIBESKU_CLIPS_BASE_URL</code> 改)。</p>
 <h3>第 2 步:在 MCP 客户端注册</h3>
 <p>Claude Desktop(<code>claude_desktop_config.json</code>)或 Cursor(<code>~/.cursor/mcp.json</code>)加入:</p>
 <pre><code>{
   "mcpServers": {
-    "clipforge": {
+    "vibesku-clips": {
       "command": "node",
-      "args": ["/绝对路径/clipforge/mcp/clipforge-mcp.mjs"],
+      "args": ["/绝对路径/vibesku-clips/mcp/vibesku-clips-mcp.mjs"],
       "env": {
-        "CLIPFORGE_BASE_URL": "http://localhost:3000",
-        "CLIPFORGE_LLM_BASE_URL": "https://api.atlascloud.ai/v1",
-        "CLIPFORGE_LLM_API_KEY": "sk-...",
-        "CLIPFORGE_LLM_MODEL": "deepseek-ai/deepseek-v4-pro"
+        "VIBESKU_CLIPS_BASE_URL": "http://localhost:3000",
+        "VIBESKU_CLIPS_LLM_BASE_URL": "https://api.atlascloud.ai/v1",
+        "VIBESKU_CLIPS_LLM_API_KEY": "sk-...",
+        "VIBESKU_CLIPS_LLM_MODEL": "deepseek-ai/deepseek-v4-pro"
       }
     }
   }
 }</code></pre>
 <p>Claude Code 一条命令:</p>
-<pre><code>claude mcp add clipforge -- node /绝对路径/clipforge/mcp/clipforge-mcp.mjs</code></pre>
+<pre><code>claude mcp add vibesku-clips -- node /绝对路径/vibesku-clips/mcp/vibesku-clips-mcp.mjs</code></pre>
 <h3>第 3 步:对话里直接说</h3>
-<pre><code>用 clipforge 做一条关于「在家如何泡手冲咖啡」的竖屏短视频</code></pre>
-<p>agent 会调用 <code>clipforge_create_video</code>,几十秒后返回可下载的 mp4 地址。带货场景则先贴商品链接——<code>clipforge_ingest_product</code> 自动抓标题 / 价格 / 主图并建好项目,接着出脚本、出片一气呵成。</p>
-<div class="tip"><p>本地想直接试 Server 本体:仓库根目录 <code>pnpm mcp</code>(等价于 <code>node mcp/clipforge-mcp.mjs</code>,stdio 模式)。</p></div>
+<pre><code>用 vibesku-clips 做一条关于「在家如何泡手冲咖啡」的竖屏短视频</code></pre>
+<p>agent 会调用 <code>vibesku_clips_create_video</code>,几十秒后返回可下载的 mp4 地址。带货场景则先贴商品链接——<code>vibesku_clips_ingest_product</code> 自动抓标题 / 价格 / 主图并建好项目,接着出脚本、出片一气呵成。</p>
+<div class="tip"><p>本地想直接试 Server 本体:仓库根目录 <code>pnpm mcp</code>(等价于 <code>node mcp/vibesku-clips-mcp.mjs</code>,stdio 模式)。</p></div>
 
 <h2 id="tools">三、MCP 工具清单:从建项目到发布把关</h2>
 <p>共 <b>29 个 MCP 工具</b>覆盖出片、原片剪辑与专业交付全流程,核心几个:</p>
 <table>
   <thead><tr><th>工具</th><th>做什么</th><th>需要 LLM Key</th></tr></thead>
   <tbody>
-    <tr><td><code>clipforge_create_video</code></td><td>一句话 → 脚本 → 免费配画面 → 免费配音+字幕 → 合成竖屏成片,返回可下载 mp4 地址</td><td>✅</td></tr>
-    <tr><td><code>clipforge_ingest_product</code></td><td>贴商品链接 → 抓标题/价/图 → 一键建带货项目</td><td>—</td></tr>
-    <tr><td><code>clipforge_generate_script</code></td><td>只生成旁白分镜脚本(含英文素材检索词)</td><td>✅</td></tr>
-    <tr><td><code>clipforge_search_stock</code></td><td>从免费可商用素材库检索画面(免 Key)</td><td>—</td></tr>
-    <tr><td><code>clipforge_compose</code></td><td>为已有脚本+素材的项目合成出片,可开卡拉OK字幕 / 商品卡 / AI 合规标识 / 购买 CTA / BGM 等带货增强</td><td>—</td></tr>
-    <tr><td><code>clipforge_trends</code></td><td>拉热榜选题(国内榜 / Google Trends),不知道做什么先问它</td><td>—</td></tr>
-    <tr><td><code>clipforge_list_voices</code></td><td>列出免费 Edge TTS 多语言音色(中/英/日/韩/西)</td><td>—</td></tr>
-    <tr><td><code>clipforge_get_video</code></td><td>查询项目最新合成结果(状态/下载地址),轮询异步产物</td><td>—</td></tr>
-    <tr><td><code>clipforge_master</code></td><td>默认只读分析切点连续性与响度;显式应用后另存两遍响度或去闪烁母版</td><td>—</td></tr>
-    <tr><td><code>clipforge_transcript_inspect</code></td><td>分页读取原片逐词稿、稳定词 ID 与当前剪辑版本</td><td>—</td></tr>
-    <tr><td><code>clipforge_transcript_edit</code></td><td>预演或应用剪辑计划;默认只返回 diff,明确确认后才渲染新版本</td><td>—</td></tr>
-    <tr><td><code>clipforge_timeline_export</code></td><td>导出 OTIO / EDL / CSV 专业时间线;不写库、不含本机绝对路径</td><td>—</td></tr>
+    <tr><td><code>vibesku_clips_create_video</code></td><td>一句话 → 脚本 → 免费配画面 → 免费配音+字幕 → 合成竖屏成片,返回可下载 mp4 地址</td><td>✅</td></tr>
+    <tr><td><code>vibesku_clips_ingest_product</code></td><td>贴商品链接 → 抓标题/价/图 → 一键建带货项目</td><td>—</td></tr>
+    <tr><td><code>vibesku_clips_generate_script</code></td><td>只生成旁白分镜脚本(含英文素材检索词)</td><td>✅</td></tr>
+    <tr><td><code>vibesku_clips_search_stock</code></td><td>从免费可商用素材库检索画面(免 Key)</td><td>—</td></tr>
+    <tr><td><code>vibesku_clips_compose</code></td><td>为已有脚本+素材的项目合成出片,可开卡拉OK字幕 / 商品卡 / AI 合规标识 / 购买 CTA / BGM 等带货增强</td><td>—</td></tr>
+    <tr><td><code>vibesku_clips_trends</code></td><td>拉热榜选题(国内榜 / Google Trends),不知道做什么先问它</td><td>—</td></tr>
+    <tr><td><code>vibesku_clips_list_voices</code></td><td>列出免费 Edge TTS 多语言音色(中/英/日/韩/西)</td><td>—</td></tr>
+    <tr><td><code>vibesku_clips_get_video</code></td><td>查询项目最新合成结果(状态/下载地址),轮询异步产物</td><td>—</td></tr>
+    <tr><td><code>vibesku_clips_master</code></td><td>默认只读分析切点连续性与响度;显式应用后另存两遍响度或去闪烁母版</td><td>—</td></tr>
+    <tr><td><code>vibesku_clips_transcript_inspect</code></td><td>分页读取原片逐词稿、稳定词 ID 与当前剪辑版本</td><td>—</td></tr>
+    <tr><td><code>vibesku_clips_transcript_edit</code></td><td>预演或应用剪辑计划;默认只返回 diff,明确确认后才渲染新版本</td><td>—</td></tr>
+    <tr><td><code>vibesku_clips_timeline_export</code></td><td>导出 OTIO / EDL / CSV 专业时间线;不写库、不含本机绝对路径</td><td>—</td></tr>
   </tbody>
 </table>
-<p>出片之后还有<b>交付把关</b>工具:连续性与母版 <code>clipforge_master</code>(默认只分析切点和响度)、发布门禁 <code>clipforge_gate</code>(脚本就绪+质检+素材授权一键体检,<code>fail</code> 别交付)、成片质检 <code>clipforge_qc</code>(黑屏/静音/响度)、成片速览 <code>clipforge_contact_sheet</code>(agent 看图自检)、素材授权清单 <code>clipforge_credits</code>、平台导出 <code>clipforge_export_platform</code> 等——agent 不只是能出片,还能自己检查完再交给你。完整清单见 <a href="https://github.com/xixihhhh/clipforge/tree/main/mcp" rel="noopener">mcp/README</a>。</p>
+<p>出片之后还有<b>交付把关</b>工具:连续性与母版 <code>vibesku_clips_master</code>(默认只分析切点和响度)、发布门禁 <code>vibesku_clips_gate</code>(脚本就绪+质检+素材授权一键体检,<code>fail</code> 别交付)、成片质检 <code>vibesku_clips_qc</code>(黑屏/静音/响度)、成片速览 <code>vibesku_clips_contact_sheet</code>(agent 看图自检)、素材授权清单 <code>vibesku_clips_credits</code>、平台导出 <code>vibesku_clips_export_platform</code> 等——agent 不只是能出片,还能自己检查完再交给你。完整清单见 <a href="https://github.com/UllrAI/VibeSKU-Clips/tree/main/mcp" rel="noopener">mcp/README</a>。</p>
 
 <h2 id="cli">四、CLI 脚本化出片:一行命令一条片</h2>
-<p>不走 agent 也可以纯命令行(先启动实例、设好 <code>CLIPFORGE_LLM_*</code> 环境变量):</p>
+<p>不走 agent 也可以纯命令行(先启动实例、设好 <code>VIBESKU_CLIPS_LLM_*</code> 环境变量):</p>
 <pre><code>npm run cli -- trends                              # 不知道做什么?先拉热搜选题
 npm run cli -- create --topic "在家手冲咖啡" --quality hd --bgm   # 一句话出片,回填 videoUrl
 npm run cli -- qc --project &lt;id&gt;                   # 成片质检(黑屏/静音/响度)
@@ -179,48 +179,48 @@ npm run cli -- transcript --project &lt;id&gt; --media &lt;mediaId&gt;  # 检查
 npm run cli -- transcript-edit --project &lt;id&gt; --media &lt;mediaId&gt; --plan edit.json --revision 0 --operation edit-001  # 默认预演;--apply 才执行
 npm run cli -- timeline --project &lt;id&gt; --media &lt;mediaId&gt; --plan edit.json --format otio --out edit.otio  # 导出可编辑时间线
 npm run cli -- --help                              # 全部命令与参数</code></pre>
-<p>等价写法 <code>node bin/clipforge.mjs create --topic "..."</code>。还有 <code>import</code>(自带稿子出片)、<code>dub</code>(换语种译制出海)、<code>cover</code>(封面图)、<code>carousel</code>(小红书图文卡)等子命令,全部可编排进脚本。</p>
+<p>等价写法 <code>node bin/vibesku-clips.mjs create --topic "..."</code>。还有 <code>import</code>(自带稿子出片)、<code>dub</code>(换语种译制出海)、<code>cover</code>(封面图)、<code>carousel</code>(小红书图文卡)等子命令,全部可编排进脚本。</p>
 
 <h2 id="cron">五、cron 定时 + 按人设选题 = 全自动日更机</h2>
 <p><b>「AI agent 短视频日更」最省事的形态其实是一行 crontab</b>:<code>trends</code> 拉热榜、<code>create</code> 出片,接上 cron 每天固定时间产出一条待发成片:</p>
 <pre><code>crontab -e   # 加入下面一行(路径与环境变量换成你的):每天 9 点从国内热榜拿榜一出一条
-0 9 * * * cd /path/to/clipforge &amp;&amp; TOPIC=$(node bin/clipforge.mjs trends --json | python3 -c "import json,sys;print(json.load(sys.stdin)['topics'][0]['title'])") &amp;&amp; node bin/clipforge.mjs create --topic "$TOPIC" --bgm &gt;&gt; daily.log 2&gt;&amp;1</code></pre>
+0 9 * * * cd /path/to/vibesku-clips &amp;&amp; TOPIC=$(node bin/vibesku-clips.mjs trends --json | python3 -c "import json,sys;print(json.load(sys.stdin)['topics'][0]['title'])") &amp;&amp; node bin/vibesku-clips.mjs create --topic "$TOPIC" --bgm &gt;&gt; daily.log 2&gt;&amp;1</code></pre>
 <p>不想碰终端?网页版是同一逻辑:工作台的<b>「日更 · 按人设选题」</b>填几个人设关键词,自动按人设挑选题、预填一句话成片——cron 负责准时,人设负责选题,你只负责最后点发布。</p>
 
 <h2 id="batch">六、批量出片:大促 10 个商品排队</h2>
-<p>大促备货不用一条条来:导演模式的<b>批量出片页</b>把多个商品(如 10 个)一键排队,自动逐条走完「脚本 → 画面 → 配音 → 合成」,产出后统一查收——自动化带货视频的产能瓶颈从「人剪多快」变成「机器排多长的队」。</p>
-<figure><img class="shot" src="screenshots/06-batch.png" alt="ClipForge 批量出片页截图:多商品排队自动逐条产出带货视频" loading="lazy"><figcaption>批量出片:多商品排队,自动逐条产出</figcaption></figure>
+<p>大促备货不用一条条来:专业模式的<b>批量出片页</b>把多个商品(如 10 个)一键排队,自动逐条走完「脚本 → 画面 → 配音 → 合成」,产出后统一查收——自动化带货视频的产能瓶颈从「人剪多快」变成「机器排多长的队」。</p>
+<figure><img class="shot" src="screenshots/06-batch.png" alt="VibeSKU Clips 批量出片页截图:多商品排队自动逐条产出带货视频" loading="lazy"><figcaption>批量出片:多商品排队,自动逐条产出</figcaption></figure>
 
 <h2 id="skill">七、Agent Skill:教会 agent「什么时候用哪个工具」</h2>
 <p>MCP 给了 agent 可调用的工具,<b>Skill 则教它何时、如何组合使用</b>(Claude Code / Cursor / Copilot / Windsurf 通用的 SKILL.md 约定):</p>
 <ul>
-  <li><b>clipforge-video skill</b>:把整条出片流水线(脚本 → 素材 → 配音 → 字幕 → 合成 → 质检门禁)教给编程助手,自然语言驱动全程;</li>
+  <li><b>vibesku-clips-video skill</b>:把整条出片流水线(脚本 → 素材 → 配音 → 字幕 → 合成 → 质检门禁)教给编程助手,自然语言驱动全程;</li>
   <li><b>script-judges 判官团 skill</b>:独立可用的四判官(节奏 / 口语 / 新鲜感 / 结构)在<b>花生成费之前</b>逐句撕台词并给等长重写——「大家好,今天给大家推荐」这种一眼广告腔活不过第一轮;</li>
-  <li><b>装法任选</b>:<code>npx skills add xixihhhh/clipforge</code> 一条命令;Claude Code 里 <code>/plugin marketplace add xixihhhh/clipforge</code> 装 skill + MCP 二合一。</li>
+  <li><b>装法任选</b>:<code>npx skills add UllrAI/VibeSKU-Clips</code> 一条命令;Claude Code 里 <code>/plugin marketplace add UllrAI/VibeSKU-Clips</code> 装 skill + MCP 二合一。</li>
 </ul>
 
 <h2 id="scenes">八、三个典型场景</h2>
 <h3>场景 1:店群日更</h3>
 <p>多店铺多账号,每天每号一条。cron 定时 + 按人设选题各管一摊,免费快剪链路 ¥0 跑量,agent 只在选题与最终发布两个点上要你确认。</p>
 <h3>场景 2:大促备货</h3>
-<p>大促前一周,把主推商品链接全部丢给 agent:<code>clipforge_ingest_product</code> 批量建项目、批量出片页排队产出,再用 <code>clipforge_gate</code> 逐条过发布门禁,不合格的不出库。</p>
+<p>大促前一周,把主推商品链接全部丢给 agent:<code>vibesku_clips_ingest_product</code> 批量建项目、批量出片页排队产出,再用 <code>vibesku_clips_gate</code> 逐条过发布门禁,不合格的不出库。</p>
 <h3>场景 3:内容矩阵</h3>
-<p>同一条内容多语种多平台分发:<code>dub</code> 换语种译制(中文版发抖音、英文版发 TikTok,同源同画面),<code>clipforge_export_platform</code> 出各平台规格,配 <code>carousel</code> 小红书图文卡把矩阵铺满。</p>
+<p>同一条内容多语种多平台分发:<code>dub</code> 换语种译制(中文版发抖音、英文版发 TikTok,同源同画面),<code>vibesku_clips_export_platform</code> 出各平台规格,配 <code>carousel</code> 小红书图文卡把矩阵铺满。</p>
 
-<div class="tip"><p>提醒:AI 生成内容发国内平台需按规则标识,ClipForge 已把 AIGC 标识做成默认开——细节见<a href="feature-compliance.html">AI 视频合规发布</a>;工具与费用的完整上手路径见<a href="guide.html">使用手册</a>。</p></div>
+<div class="tip"><p>提醒:AI 生成内容发国内平台需按规则标识,VibeSKU Clips 已把 AIGC 标识做成默认开——细节见<a href="feature-compliance.html">AI 视频合规发布</a>;工具与费用的完整上手路径见<a href="guide.html">使用手册</a>。</p></div>
 
 <div class="last-call reveal" style="margin-top:48px">
   <h2>让你的 agent <span class="hl">今天就出第一条片</span></h2>
   <p>开源 AGPL-3.0 · 素材配音免 Key · MCP + CLI + Skill 全都在仓库里。</p>
   <div class="cta">
-    <a class="btn btn-primary" href="https://github.com/xixihhhh/clipforge" rel="noopener">GitHub 源码与 MCP 接入</a>
+    <a class="btn btn-primary" href="https://github.com/UllrAI/VibeSKU-Clips" rel="noopener">GitHub 源码与 MCP 接入</a>
     <a class="btn btn-ghost" href="guide.html">先看使用手册</a>
   </div>
 </div>
 </article>
 
 <footer>
-  <p>ClipForge(原带货剪手)· 开源 AGPL-3.0 · <a href="https://github.com/xixihhhh/clipforge" rel="noopener">GitHub</a> · <a href="index.html">首页</a> · <a href="guide.html">使用手册</a> · <a href="feature-compliance.html">合规发布</a></p>
+  <p>VibeSKU Clips(原带货剪手)· 开源 AGPL-3.0 · <a href="https://github.com/UllrAI/VibeSKU-Clips" rel="noopener">GitHub</a> · <a href="index.html">首页</a> · <a href="guide.html">使用手册</a> · <a href="feature-compliance.html">合规发布</a></p>
   <p style="margin-top:8px">请遵守各平台广告与 AIGC 标识规则,对发布内容负责。</p>
 </footer>
 

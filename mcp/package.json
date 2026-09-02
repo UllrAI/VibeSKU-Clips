@@ -1,14 +1,14 @@
 {
-  "name": "clipforge-mcp",
+  "name": "vibesku-clips-mcp",
   "version": "0.1.2",
-  "mcpName": "io.github.xixihhhh/clipforge",
-  "description": "MCP server for ClipForge — drive the keyless AI 带货/short-video pipeline (create_video, generate_script, list_voices, get_video …) from any MCP client. Thin stdio wrapper over a running ClipForge instance; stock + Edge-TTS are keyless, only script generation needs an LLM key.",
+  "mcpName": "io.github.ullrai/vibesku-clips",
+  "description": "MCP server for VibeSKU Clips — drive the keyless AI 带货/short-video pipeline (create_video, generate_script, list_voices, get_video …) from any MCP client. Thin stdio wrapper over a running VibeSKU Clips instance; stock + Edge-TTS are keyless, only script generation needs an LLM key.",
   "type": "module",
   "bin": {
-    "clipforge-mcp": "clipforge-mcp.mjs"
+    "vibesku-clips-mcp": "vibesku-clips-mcp.mjs"
   },
   "files": [
-    "clipforge-mcp.mjs",
+    "vibesku-clips-mcp.mjs",
     "README.md"
   ],
   "engines": {
@@ -29,15 +29,15 @@
     "ai-video",
     "text-to-video",
     "ffmpeg",
-    "clipforge"
+    "vibesku-clips"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/xixihhhh/clipforge",
+    "url": "https://github.com/UllrAI/VibeSKU-Clips",
     "directory": "mcp"
   },
-  "homepage": "https://github.com/xixihhhh/clipforge/tree/main/mcp",
-  "bugs": "https://github.com/xixihhhh/clipforge/issues",
+  "homepage": "https://github.com/UllrAI/VibeSKU-Clips/tree/main/mcp",
+  "bugs": "https://github.com/UllrAI/VibeSKU-Clips/issues",
   "license": "AGPL-3.0",
-  "author": "xixihhhh"
+  "author": "UllrAI"
 }

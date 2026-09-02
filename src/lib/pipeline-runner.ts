@@ -50,8 +50,8 @@ export interface StartPipelineInput {
 // Survives route-module reloads in dev: one registry of run ids currently executing in THIS
 // process. A DB row saying "running" whose id is absent here means the server restarted
 // mid-run — the row is an orphan and gets surfaced as interrupted.
-const globalRuns = globalThis as unknown as { __clipforgeActivePipelines?: Set<string> };
-const activeRuns = (globalRuns.__clipforgeActivePipelines ??= new Set<string>());
+const globalRuns = globalThis as unknown as { __vibeskuClipsActivePipelines?: Set<string> };
+const activeRuns = (globalRuns.__vibeskuClipsActivePipelines ??= new Set<string>());
 
 export function isPipelineRunActive(runId: string): boolean {
   return activeRuns.has(runId);

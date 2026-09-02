@@ -1,11 +1,11 @@
 <p align="right"><a href="TUTORIAL.en.md">English</a> · <strong>中文</strong></p>
 
-# ClipForge 使用教程（小白版 · 每一步都写清楚）
+# VibeSKU Clips 使用教程（小白版 · 每一步都写清楚）
 
 > **一句话版**：装好 → 配一个「写脚本」的 Key → 点两下 → 1~3 分钟拿到一条能直接发抖音/小红书的竖屏视频。**全程 0 元也能跑通，成片无水印。**
 
 这篇是给**完全没用过、也不会剪辑**的人写的。每一步都告诉你：**点哪里、会看到什么、出错了怎么办**。
-看完还有问题 → [提 Issue](https://github.com/xixihhhh/clipforge/issues) / [Discussions](https://github.com/xixihhhh/clipforge/discussions)，中英文都行。
+看完还有问题 → [提 Issue](https://github.com/UllrAI/VibeSKU-Clips/issues) / [Discussions](https://github.com/UllrAI/VibeSKU-Clips/discussions)，中英文都行。
 
 ---
 
@@ -13,12 +13,12 @@
 
 1. [先看这张流程图：你要走的路](#1-先看这张流程图你要走的路)
 2. [名词速查（30 秒扫一眼，后面就都看得懂）](#2-名词速查30-秒扫一眼后面就都看得懂)
-3. [第一步：装上 ClipForge（三选一）](#3-第一步装上-clipforge三选一)
+3. [第一步：装上 VibeSKU Clips（三选一）](#3-第一步装上-vibesku-clips三选一)
 4. [第二步：配一个「写脚本」的 Key（唯一必配项）](#4-第二步配一个写脚本的-key唯一必配项)
 5. [第三步：3 分钟出第一条片（免费快剪，¥0）](#5-第三步3-分钟出第一条片免费快剪0-元)
 6. [第四步：下载、发布文案、合规标识](#6-第四步下载发布文案合规标识)
 7. [进阶一：AI 生成成片（花钱前必读）](#7-进阶一ai-生成成片花钱前必读)
-8. [进阶二：导演模式四步工作台逐页说明](#8-进阶二导演模式四步工作台逐页说明)
+8. [进阶二：专业模式四步工作台逐页说明](#8-进阶二专业模式四步工作台逐页说明)
 9. [进阶三：商品库 / 批量 / 爆款复刻 / 日更](#9-进阶三商品库--批量--爆款复刻--日更)
 10. [进阶四：让 AI 助手或命令行替你出片](#10-进阶四让-ai-助手或命令行替你出片)
 11. [出问题了怎么办（报错对照表）](#11-出问题了怎么办报错对照表)
@@ -31,7 +31,7 @@
 
 ```
                  ┌─────────────────────────────────────────┐
-  安装 ClipForge │ 桌面版双击 / Docker 一行 / 源码 pnpm dev │
+  安装 VibeSKU Clips │ 桌面版双击 / Docker 一行 / 源码 pnpm dev │
                  └─────────────────────────────────────────┘
                                     ↓
                  ┌─────────────────────────────────────────┐
@@ -63,24 +63,24 @@
 
 | 名词 | 人话解释 |
 |---|---|
-| **Key / API Key** | 一串密码（形如 `sk-xxxx`），你去 AI 平台注册后拿到，填给 ClipForge 用来调用 AI。**钱是充给那个平台的，ClipForge 不收钱、不经手。** |
-| **BYOK** | Bring Your Own Key，自带 Key。ClipForge 开源免费，AI 用量按量付给你自己选的平台，我们不加价不抽成。 |
+| **Key / API Key** | 一串密码（形如 `sk-xxxx`），你去 AI 平台注册后拿到，填给 VibeSKU Clips 用来调用 AI。**钱是充给那个平台的，VibeSKU Clips 不收钱、不经手。** |
+| **BYOK** | Bring Your Own Key，自带 Key。VibeSKU Clips 开源免费，AI 用量按量付给你自己选的平台，我们不加价不抽成。 |
 | **LLM** | 写文字的大模型（DeepSeek、GPT 那类）。这里只用来**写口播脚本**。 |
 | **口播 / 旁白** | 视频里"说的话"，也就是配音文案。 |
 | **分镜 / 镜头** | 视频被切成的若干小段，每段有一句口播 + 一个画面。 |
 | **钩子** | 视频前 3 秒那句抓人的话，决定别人划不划走。 |
-| **TTS** | 文字转语音，也就是自动配音。ClipForge 默认用**免费的微软 Edge TTS**，不要 Key。 |
+| **TTS** | 文字转语音，也就是自动配音。VibeSKU Clips 默认用**免费的微软 Edge TTS**，不要 Key。 |
 | **免费快剪** | 用免费可商用图库/实拍素材配画面 + 免费配音 + 本机合成，**全程 ¥0**。 |
 | **AI 生成成片** | 画面和人物口播都由 AI 模型生成，**按秒付费给模型平台**，质感更好。 |
 | **九宫格分镜** | 一次生图把所有镜头画在一张 3×3 大图里，人物/服装/房间/光线天然一致，再裁成每个镜头的画面。 |
 | **一键整片** | 把所有镜头画面喂给视频模型，一次生成整条片，镜头间原生切换、台词由人物原声说出。 |
 | **判官团** | 四位"毒舌评委"（节奏/口语/创意/结构）在花钱之前先把台词撕一遍并重写。免费。 |
-| **小白模式 / 导演模式** | 侧边栏底部一键切换。小白模式只留一条一键出片主路；导演模式解锁分镜、导演台等全部专业工具。 |
-| **AIGC 标识** | 国内平台要求 AI 内容打标。ClipForge **默认自动打好**（片头角标 + 文件元数据），不用你操心。 |
+| **极简模式 / 专业模式** | 侧边栏底部一键切换。极简模式只留一条一键出片主路；专业模式解锁分镜、导演台等全部专业工具。 |
+| **AIGC 标识** | 国内平台要求 AI 内容打标。VibeSKU Clips **默认自动打好**（片头角标 + 文件元数据），不用你操心。 |
 
 ---
 
-## 3. 第一步：装上 ClipForge（三选一）
+## 3. 第一步：装上 VibeSKU Clips（三选一）
 
 ### 3.1 我该选哪个？
 
@@ -98,15 +98,15 @@
 
 **① 下载**
 
-打开 👉 **https://github.com/xixihhhh/clipforge/releases/latest**
+打开 👉 **https://github.com/UllrAI/VibeSKU-Clips/releases/latest**
 
 页面往下拉到 **Assets**（资产）区，按你的系统下载对应文件：
 
 | 系统 | 下载这个文件 | 说明 |
 |---|---|---|
-| macOS（M1/M2/M3/M4 芯片） | `ClipForge-x.x.x-arm64.dmg` | Apple Silicon 版 |
-| Windows 10/11（64 位） | `ClipForge.Setup.x.x.x.exe` | 安装包 |
-| Linux（64 位） | `ClipForge-x.x.x.AppImage` | 免安装可执行文件（Linux 包从 v0.8.90 起随版本发布；旧版 Release 里没有，用 Docker 或源码代替） |
+| macOS（M1/M2/M3/M4 芯片） | `VibeSKU Clips-x.x.x-arm64.dmg` | Apple Silicon 版 |
+| Windows 10/11（64 位） | `VibeSKU Clips.Setup.x.x.x.exe` | 安装包 |
+| Linux（64 位） | `VibeSKU Clips-x.x.x.AppImage` | 免安装可执行文件（Linux 包从 v0.8.90 起随版本发布；旧版 Release 里没有，用 Docker 或源码代替） |
 
 > 桌面版**已内置 FFmpeg 和数据库**，不用另外装 Node、不用装 FFmpeg，双击即用。
 
@@ -115,14 +115,14 @@
 <details open>
 <summary><b>macOS：双击提示「无法打开，因为无法验证开发者」</b></summary>
 
-1. 双击 `.dmg`，把 ClipForge 拖进「应用程序」文件夹；
-2. 打开「应用程序」，**在 ClipForge 图标上点右键 →「打开」**（注意：一定要右键打开，直接双击不行）；
+1. 双击 `.dmg`，把 VibeSKU Clips 拖进「应用程序」文件夹；
+2. 打开「应用程序」，**在 VibeSKU Clips 图标上点右键 →「打开」**（注意：一定要右键打开，直接双击不行）；
 3. 弹窗里再点一次「打开」——**只需要这么做一次**，之后正常双击即可。
 
 如果提示「文件已损坏，无法打开」，在「终端」里执行一次：
 
 ```bash
-xattr -cr /Applications/ClipForge.app
+xattr -cr /Applications/VibeSKU Clips.app
 ```
 
 </details>
@@ -134,7 +134,7 @@ xattr -cr /Applications/ClipForge.app
 2. 再点 **「仍要运行」**；
 3. 按提示完成安装。
 
-> ⚠️ Windows / Linux 版是自动构建产物、作者未逐版实测，遇到问题欢迎[开 Issue](https://github.com/xixihhhh/clipforge/issues)反馈。
+> ⚠️ Windows / Linux 版是自动构建产物、作者未逐版实测，遇到问题欢迎[开 Issue](https://github.com/UllrAI/VibeSKU-Clips/issues)反馈。
 
 </details>
 
@@ -144,8 +144,8 @@ xattr -cr /Applications/ClipForge.app
 先给它可执行权限，再运行：
 
 ```bash
-chmod +x ClipForge-*.AppImage
-./ClipForge-*.AppImage
+chmod +x VibeSKU Clips-*.AppImage
+./VibeSKU Clips-*.AppImage
 ```
 
 </details>
@@ -157,7 +157,7 @@ chmod +x ClipForge-*.AppImage
 ### 3.3 方式二：Docker（一行命令，适合服务器/NAS）
 
 ```bash
-docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge:latest
+docker run -d -p 3000:3000 -v vibesku-clips-data:/data ghcr.io/ullrai/vibesku-clips:latest
 ```
 
 然后浏览器打开 **http://localhost:3000**（部署在服务器上就换成服务器 IP）。
@@ -168,8 +168,8 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge:la
 |---|---|
 | `-d` | 后台运行 |
 | `-p 3000:3000` | 用 3000 端口访问。端口被占了就改左边，如 `-p 8080:3000`，然后访问 `localhost:8080` |
-| `-v clipforge-data:/data` | **数据卷，必须加**。项目、商品图、成片都存在这里；不加的话容器一删数据全没 |
-| `ghcr.io/xixihhhh/clipforge:latest` | 官方镜像，每次发版自动构建并冒烟测试 |
+| `-v vibesku-clips-data:/data` | **数据卷，必须加**。项目、商品图、成片都存在这里；不加的话容器一删数据全没 |
+| `ghcr.io/ullrai/vibesku-clips:latest` | 官方镜像，每次发版自动构建并冒烟测试 |
 
 常用运维命令：
 
@@ -177,7 +177,7 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge:la
 docker ps                      # 看是否在跑
 docker logs -f <容器ID>         # 看日志（启动失败时看这里）
 docker stop <容器ID>            # 停止
-docker pull ghcr.io/xixihhhh/clipforge:latest   # 升级到最新版（然后 stop 旧容器、用同样命令重新 run，数据卷不动就不会丢数据）
+docker pull ghcr.io/ullrai/vibesku-clips:latest   # 升级到最新版（然后 stop 旧容器、用同样命令重新 run，数据卷不动就不会丢数据）
 ```
 
 > 镜像里已经装好 FFmpeg 和中文字幕字体，**不需要你自己装任何东西**。
@@ -198,8 +198,8 @@ sudo apt install ffmpeg  # Ubuntu / Debian
 # Windows：到 https://ffmpeg.org/download.html 下载后把 bin 目录加进 PATH
 
 # 3) 跑起来
-git clone https://github.com/xixihhhh/clipforge.git
-cd clipforge
+git clone https://github.com/UllrAI/VibeSKU-Clips.git
+cd vibesku-clips
 pnpm install
 pnpm dev
 # 打开 http://localhost:3000
@@ -221,7 +221,7 @@ pnpm dev
 
 ## 4. 第二步：配一个「写脚本」的 Key（唯一必配项）
 
-**为什么必须配**：ClipForge 不自带大模型，写口播脚本要调用一个 AI 平台。**这是全流程唯一的必配项**——素材、配音、合成都免费不要 Key。
+**为什么必须配**：VibeSKU Clips 不自带大模型，写口播脚本要调用一个 AI 平台。**这是全流程唯一的必配项**——素材、配音、合成都免费不要 Key。
 
 **要花多少钱**：写一条脚本大约 **¥0.001**（不到一分钱），充 10 块能写几千条。
 
@@ -235,7 +235,7 @@ pnpm dev
 
 1. 打开工作台，点 **开始生成**，页面会内联弹出「接入 Atlas Cloud，立即开跑」的卡片（也可以走 **设置 → 顶部「新手推荐 · 一个 Key 全搞定」**）；
 2. 点卡片里的 **「没有 Key？1 分钟免费获取」**（也可直接打开注册页 https://www.atlascloud.ai?ref=JPM683 ），注册并复制 API Key；
-3. 回到 ClipForge，把 Key 粘进输入框，点 **「连接并开始」**；
+3. 回到 VibeSKU Clips，把 Key 粘进输入框，点 **「连接并开始」**；
 4. 看到 **「已接入 Atlas Cloud」** 的绿色提示 = 成功，脚本 / 生图 / 生视频 / 配音的模型已自动帮你选好，不用再逐项设置。
 
 ---
@@ -243,7 +243,7 @@ pnpm dev
 ### 4.2 路线 B（最便宜）：DeepSeek，手动填三格
 
 1. 打开 https://platform.deepseek.com 注册，充值几块钱，在「API Keys」页面创建一个 Key 并复制（**Key 只显示一次，先存下来**）；
-2. ClipForge → **设置 → 「脚本模型」标签页**；
+2. VibeSKU Clips → **设置 → 「脚本模型」标签页**；
 3. 在「快捷预设」里点一下 **DeepSeek** —— baseUrl 和模型名会自动填好；
 4. 在 **API Key** 那一格粘贴你刚复制的 Key；
 5. 点 **「测试连接」**，看到 **连接成功 ✓** 就完事了（设置**改了即存**，不用点保存）。
@@ -256,7 +256,7 @@ pnpm dev
 
 1. 到 https://ollama.com 下载安装 Ollama；
 2. 终端执行 `ollama pull qwen2.5`（下载一个中文还不错的模型）；
-3. ClipForge → 设置 → 脚本模型 → 快捷预设点 **「Ollama 本地」**；
+3. VibeSKU Clips → 设置 → 脚本模型 → 快捷预设点 **「Ollama 本地」**；
 4. 模型名要写全（含 tag），比如 `qwen2.5:7b-instruct`；不确定就点 **「读取可用模型」** 看本机装了哪些；
 5. 点「测试连接」→ 成功即可。
 
@@ -337,7 +337,7 @@ pnpm dev
 - 觉得不行 → 点 **「重新生成」** 换一版（还是免费）；
 - 觉得可以 → 点 **「免费快剪成片」**（¥0）；
 - 想要 AI 画面 → 点 **「AI 生成成片」**（这里开始才花钱，见[第 7 节](#7-进阶一ai-生成成片花钱前必读)）；
-- 想自己精修每个镜头 → 点 **「进导演模式精修 →」**（见[第 8 节](#8-进阶二导演模式四步工作台逐页说明)）。
+- 想自己精修每个镜头 → 点 **「进专业模式精修 →」**（见[第 8 节](#8-进阶二专业模式四步工作台逐页说明)）。
 
 点了免费快剪后它会自动跑：**判官团过台词（自动重写弱句，不花钱）→ 配画面（免费素材，优先实拍视频、配不到退图片）→ 免费配音 + 字幕 → 本机合成**。通常 1~3 分钟。
 
@@ -381,7 +381,7 @@ pnpm dev
 
 ### 7.1 先说钱：一条多少
 
-**ClipForge 本身永远免费开源**，AI 用量按秒**直接付给你自己选的模型平台**，我们不加价、不抽成、不经手。
+**VibeSKU Clips 本身永远免费开源**，AI 用量按秒**直接付给你自己选的模型平台**，我们不加价、不抽成、不经手。
 
 | 环节 | 实测参考价 |
 |---|---|
@@ -429,14 +429,14 @@ pnpm dev
 
 - **免费链路**：随便重试，不花钱；
 - **AI 链路**：采用两阶段任务表，**已提交的云端任务可以在素材页恢复领取**，不会重复扣费；
-- 任何一步失败，都可以转导演模式手动逐步完成，或退回免费快剪出片。
+- 任何一步失败，都可以转专业模式手动逐步完成，或退回免费快剪出片。
 
 ---
 
-## 8. 进阶二：导演模式四步工作台逐页说明
+## 8. 进阶二：专业模式四步工作台逐页说明
 
-**怎么切换**：侧边栏底部 **小白模式 ⇄ 导演模式**。
-小白模式只留一键出片主路；导演模式解锁全部专业工具。项目顶部会出现四步进度条：**脚本 → 素材 → 视频 → 导出**。
+**怎么切换**：侧边栏底部 **极简模式 ⇄ 专业模式**。
+极简模式只留一键出片主路；专业模式解锁全部专业工具。项目顶部会出现四步进度条：**脚本 → 素材 → 视频 → 导出**。
 
 ### 8.1 脚本页
 
@@ -480,7 +480,7 @@ pnpm dev
 
 ### 8.4 导出页
 
-见[第 6 节](#6-第四步下载发布文案合规标识)，导演模式和小白模式的导出页是同一个。
+见[第 6 节](#6-第四步下载发布文案合规标识)，专业模式和极简模式的导出页是同一个。
 
 ---
 
@@ -489,7 +489,7 @@ pnpm dev
 | 功能 | 在哪 | 怎么用 |
 |---|---|---|
 | **商品库** | 侧边栏 → 商品库 | 把常卖的商品存起来，下次建项目直接选，不用重复上传 |
-| **批量出片** | 侧边栏 → 批量出片（导演模式） | 勾选多个商品 + 统一配置（视频模式/脚本风格/品类）→ 一键排队逐条产出，大促前一晚跑十条 |
+| **批量出片** | 侧边栏 → 批量出片（专业模式） | 勾选多个商品 + 统一配置（视频模式/脚本风格/品类）→ 一键排队逐条产出，大促前一晚跑十条 |
 | **爆款复刻** | 侧边栏 → 爆款复刻 | 粘贴抖音/快手/小红书爆款视频链接 → 载入高转化结构 → 上传你的商品 → 用同结构重新生成。⚠️ 注意素材授权，风险自担 |
 | **今天发什么** | 工作台热榜区 | 实时抖音/头条热搜（已过滤时政），点一条直接写成视频；每条带「同款」直达复刻 |
 | **日更 · 按人设选题** | 工作台 | 填人设关键词（如"美妆 护肤 好物"）→ 点「出今日一条」自动选题 → 点「开始生成」 |
@@ -502,39 +502,39 @@ pnpm dev
 
 ### 10.1 命令行 CLI
 
-**前提**：先跑起一个 ClipForge 实例（`pnpm dev` / `pnpm start` / Docker 都行）。
+**前提**：先跑起一个 VibeSKU Clips 实例（`pnpm dev` / `pnpm start` / Docker 都行）。
 
 设置环境变量（写脚本要用）：
 
 ```bash
 # macOS / Linux
-export CLIPFORGE_BASE_URL="http://localhost:3000"
-export CLIPFORGE_LLM_BASE_URL="https://api.atlascloud.ai/v1"
-export CLIPFORGE_LLM_API_KEY="sk-你的key"
-export CLIPFORGE_LLM_MODEL="deepseek-ai/deepseek-v4-pro"
+export VIBESKU_CLIPS_BASE_URL="http://localhost:3000"
+export VIBESKU_CLIPS_LLM_BASE_URL="https://api.atlascloud.ai/v1"
+export VIBESKU_CLIPS_LLM_API_KEY="sk-你的key"
+export VIBESKU_CLIPS_LLM_MODEL="deepseek-ai/deepseek-v4-pro"
 ```
 
 ```powershell
 # Windows PowerShell
-$env:CLIPFORGE_BASE_URL="http://localhost:3000"
-$env:CLIPFORGE_LLM_BASE_URL="https://api.atlascloud.ai/v1"
-$env:CLIPFORGE_LLM_API_KEY="sk-你的key"
-$env:CLIPFORGE_LLM_MODEL="deepseek-ai/deepseek-v4-pro"
+$env:VIBESKU_CLIPS_BASE_URL="http://localhost:3000"
+$env:VIBESKU_CLIPS_LLM_BASE_URL="https://api.atlascloud.ai/v1"
+$env:VIBESKU_CLIPS_LLM_API_KEY="sk-你的key"
+$env:VIBESKU_CLIPS_LLM_MODEL="deepseek-ai/deepseek-v4-pro"
 ```
 
 常用命令：
 
 ```bash
-node bin/clipforge.mjs trends                                          # 拉热搜选题
-node bin/clipforge.mjs create --topic "在家手冲咖啡" --quality hd --bgm  # 一句话出片，最后打印 videoUrl
-node bin/clipforge.mjs list                                            # 列出项目
-node bin/clipforge.mjs get --project <id>                              # 查最新成片地址
-node bin/clipforge.mjs qc --project <id>                               # 成片质检（黑屏/静音/响度）
-node bin/clipforge.mjs gate --project <id> --strict                    # 发布门禁，拦截时退出码 2
-node bin/clipforge.mjs transcript --project <id> --media <mediaId>     # 检查原片逐词稿和剪辑版本
-node bin/clipforge.mjs transcript-edit --project <id> --media <mediaId> --plan edit.json --revision 0 --operation edit-001  # 先预演，确认后加 --apply
-node bin/clipforge.mjs timeline --project <id> --media <mediaId> --plan edit.json --format otio --out edit.otio  # 导出可编辑专业时间线
-node bin/clipforge.mjs --help                                          # 全部命令
+node bin/vibesku-clips.mjs trends                                          # 拉热搜选题
+node bin/vibesku-clips.mjs create --topic "在家手冲咖啡" --quality hd --bgm  # 一句话出片，最后打印 videoUrl
+node bin/vibesku-clips.mjs list                                            # 列出项目
+node bin/vibesku-clips.mjs get --project <id>                              # 查最新成片地址
+node bin/vibesku-clips.mjs qc --project <id>                               # 成片质检（黑屏/静音/响度）
+node bin/vibesku-clips.mjs gate --project <id> --strict                    # 发布门禁，拦截时退出码 2
+node bin/vibesku-clips.mjs transcript --project <id> --media <mediaId>     # 检查原片逐词稿和剪辑版本
+node bin/vibesku-clips.mjs transcript-edit --project <id> --media <mediaId> --plan edit.json --revision 0 --operation edit-001  # 先预演，确认后加 --apply
+node bin/vibesku-clips.mjs timeline --project <id> --media <mediaId> --plan edit.json --format otio --out edit.otio  # 导出可编辑专业时间线
+node bin/vibesku-clips.mjs --help                                          # 全部命令
 ```
 
 ### 10.2 全自动日更（cron）
@@ -542,7 +542,7 @@ node bin/clipforge.mjs --help                                          # 全部�
 ```bash
 crontab -e
 # 每天 9 点从热榜拿榜一，自动出一条待发成片（路径和环境变量换成你自己的）
-# 0 9 * * * cd /path/to/clipforge && TOPIC=$(node bin/clipforge.mjs trends --json | python3 -c "import json,sys;print(json.load(sys.stdin)['topics'][0]['title'])") && node bin/clipforge.mjs create --topic "$TOPIC" --bgm >> daily.log 2>&1
+# 0 9 * * * cd /path/to/vibesku-clips && TOPIC=$(node bin/vibesku-clips.mjs trends --json | python3 -c "import json,sys;print(json.load(sys.stdin)['topics'][0]['title'])") && node bin/vibesku-clips.mjs create --topic "$TOPIC" --bgm >> daily.log 2>&1
 ```
 
 > 出的是**待发草稿**（本地视频文件）。**发布动作留给你自己做**——自动发布有账号风控和平台协议风险，我们不做。
@@ -554,14 +554,14 @@ crontab -e
 ```json
 {
   "mcpServers": {
-    "clipforge": {
+    "vibesku-clips": {
       "command": "node",
-      "args": ["/绝对路径/clipforge/mcp/clipforge-mcp.mjs"],
+      "args": ["/绝对路径/vibesku-clips/mcp/vibesku-clips-mcp.mjs"],
       "env": {
-        "CLIPFORGE_BASE_URL": "http://localhost:3000",
-        "CLIPFORGE_LLM_BASE_URL": "https://api.atlascloud.ai/v1",
-        "CLIPFORGE_LLM_API_KEY": "sk-...",
-        "CLIPFORGE_LLM_MODEL": "deepseek-ai/deepseek-v4-pro"
+        "VIBESKU_CLIPS_BASE_URL": "http://localhost:3000",
+        "VIBESKU_CLIPS_LLM_BASE_URL": "https://api.atlascloud.ai/v1",
+        "VIBESKU_CLIPS_LLM_API_KEY": "sk-...",
+        "VIBESKU_CLIPS_LLM_MODEL": "deepseek-ai/deepseek-v4-pro"
       }
     }
   }
@@ -571,10 +571,10 @@ crontab -e
 Claude Code 用户一条命令：
 
 ```bash
-claude mcp add clipforge -- node /绝对路径/clipforge/mcp/clipforge-mcp.mjs
+claude mcp add vibesku-clips -- node /绝对路径/vibesku-clips/mcp/vibesku-clips-mcp.mjs
 ```
 
-配好之后，直接对 AI 说「用 ClipForge 给这个商品链接做一条竖屏带货视频」即可。完整工具清单见 [mcp/README.md](mcp/README.md)。
+配好之后，直接对 AI 说「用 VibeSKU Clips 给这个商品链接做一条竖屏带货视频」即可。完整工具清单见 [mcp/README.md](mcp/README.md)。
 
 ---
 
@@ -584,9 +584,9 @@ claude mcp add clipforge -- node /绝对路径/clipforge/mcp/clipforge-mcp.mjs
 
 | 症状 | 原因 | 解法 |
 |---|---|---|
-| macOS「无法验证开发者」/「已损坏」 | 应用未做代码签名 | 右键 →「打开」；或终端 `xattr -cr /Applications/ClipForge.app` |
+| macOS「无法验证开发者」/「已损坏」 | 应用未做代码签名 | 右键 →「打开」；或终端 `xattr -cr /Applications/VibeSKU Clips.app` |
 | Windows「已保护你的电脑」 | SmartScreen | 「更多信息」→「仍要运行」 |
-| Linux AppImage 双击没反应 | 缺可执行权限 | `chmod +x ClipForge-*.AppImage` |
+| Linux AppImage 双击没反应 | 缺可执行权限 | `chmod +x VibeSKU Clips-*.AppImage` |
 | `pnpm install` 之前用了 `npm install` 报一堆错 | 本项目必须用 pnpm | 删掉 `node_modules` 后 `pnpm install` |
 | 启动报 better-sqlite3 相关错误 | 原生模块和当前 Node/Electron ABI 不匹配 | 源码：重新 `pnpm install`；Electron 开发：`pnpm electron:rebuild` |
 | 打开 localhost:3000 打不开 | 端口被占 / 服务没起来 | 换端口 `PORT=3001 pnpm dev`；Docker 看 `docker logs` |
@@ -607,7 +607,7 @@ claude mcp add clipforge -- node /绝对路径/clipforge/mcp/clipforge-mcp.mjs
 |---|---|---|
 | 「没能从该链接抓取到商品信息」 | 该站点反爬或结构特殊 | 改用「上传商品图」手动建项目 |
 | 卡在"生成中"很久 | AI 平台排队/网络慢 | AI 整片本来就要 3~6 分钟；超过 10 分钟去素材页看看能不能恢复领取任务 |
-| 自动成片失败 | 中间某步失败 | 点「转手动编辑」进导演模式逐步完成；或退回免费快剪 |
+| 自动成片失败 | 中间某步失败 | 点「转手动编辑」进专业模式逐步完成；或退回免费快剪 |
 | 成片没有声音 | TTS 被关了 | 视频页 →「配音 (TTS)」→ 打开「启用自动配音」 |
 | 字幕是方块/乱码 | 系统缺中文字体（自建环境） | 用官方 Docker 镜像（已内置中文字幕字体），或给系统装中文字体 |
 | 合成直接失败、日志提到 drawtext | FFmpeg 构建缺 drawtext 滤镜 | 用系统包管理器装的 FFmpeg（`brew install ffmpeg` / `apt install ffmpeg`），别用缺 harfbuzz 的静态构建 |
@@ -617,7 +617,7 @@ claude mcp add clipforge -- node /绝对路径/clipforge/mcp/clipforge-mcp.mjs
 
 | 症状 | 原因 | 解法 |
 |---|---|---|
-| 重启容器后项目全没了 | 没挂数据卷 | 一定要带 `-v clipforge-data:/data` |
+| 重启容器后项目全没了 | 没挂数据卷 | 一定要带 `-v vibesku-clips-data:/data` |
 | 升级后数据还在吗？ | 数据在卷里，不在容器里 | `docker pull` 新镜像 → 停旧容器 → 用**同样的 `-v`** 重新 run，数据不动 |
 | 端口冲突 | 3000 被占 | `-p 8080:3000`，访问 `localhost:8080` |
 
@@ -629,23 +629,23 @@ claude mcp add clipforge -- node /绝对路径/clipforge/mcp/clipforge-mcp.mjs
 
 | 安装方式 | 数据目录 |
 |---|---|
-| macOS 桌面版 | `~/Library/Application Support/ClipForge/data` |
-| Windows 桌面版 | `%APPDATA%\ClipForge\data` |
-| Linux 桌面版 | `~/.config/ClipForge/data` |
+| macOS 桌面版 | `~/Library/Application Support/VibeSKU Clips/data` |
+| Windows 桌面版 | `%APPDATA%\VibeSKU Clips\data` |
+| Linux 桌面版 | `~/.config/VibeSKU Clips/data` |
 | 源码运行 | 项目目录下的 `data/` |
-| Docker | 数据卷 `clipforge-data`（容器内 `/data`） |
+| Docker | 数据卷 `vibesku-clips-data`（容器内 `/data`） |
 
 目录里有什么：`sqlite.db`（项目数据库）、`uploads/`（你上传的图）、`output/`（合成好的视频）。
 
 - **备份 / 换电脑**：整个 `data` 目录复制走，粘到新机器同样位置即可。
-- **卸载**：桌面版直接删应用（想彻底清干净就再删上面的数据目录）；Docker `docker rm` 容器 + `docker volume rm clipforge-data`。
+- **卸载**：桌面版直接删应用（想彻底清干净就再删上面的数据目录）；Docker `docker rm` 容器 + `docker volume rm vibesku-clips-data`。
 - **Key 存哪**：存在本地设置里，不会随项目文件外发；诊断信息和日志里**不含任何密钥**。
 
 ---
 
 ## 13. 还是搞不定？这样提问最快被解决
 
-去 [Issues](https://github.com/xixihhhh/clipforge/issues) 或 [Discussions](https://github.com/xixihhhh/clipforge/discussions)（**中英文都可以**），带上这三样，基本一轮就能定位：
+去 [Issues](https://github.com/UllrAI/VibeSKU-Clips/issues) 或 [Discussions](https://github.com/UllrAI/VibeSKU-Clips/discussions)（**中英文都可以**），带上这三样，基本一轮就能定位：
 
 1. **诊断信息**：设置 → 拉到底 → 系统诊断 → 「查看诊断信息」→「复制」；网页/Docker 也可以直接贴 `http://localhost:3000/api/health` 的内容（**不含密钥，可以放心贴**）；
 2. **你做了什么**：哪个页面、点了哪个按钮、卡在第几步；
@@ -653,9 +653,9 @@ claude mcp add clipforge -- node /绝对路径/clipforge/mcp/clipforge-mcp.mjs
 
 其它文档入口：
 
-- 📘 [官网使用手册](https://xixihhhh.github.io/clipforge/guide.html)（网页版，同内容速览）
-- ❓ [FAQ 大全](https://xixihhhh.github.io/clipforge/faq.html)
-- 🧰 [MCP 工具清单](mcp/README.md) · [Agent Skill](skills/clipforge-video/SKILL.md)
+- 📘 [官网使用手册](https://ullrai.github.io/VibeSKU-Clips/guide.html)（网页版，同内容速览）
+- ❓ [FAQ 大全](https://ullrai.github.io/VibeSKU-Clips/faq.html)
+- 🧰 [MCP 工具清单](mcp/README.md) · [Agent Skill](skills/vibesku-clips-video/SKILL.md)
 - 📄 [README](README.md)（功能全景、技术架构、Roadmap）
 
 > 请遵守各平台广告与 AIGC 标识规则，对你发布的内容负责。

@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import Link from "next/link";
 import { LuPlus, LuTrash2, LuPencil, LuPackage, LuImage, LuX, LuVideo, LuCircleAlert, LuLink, LuLoader, LuCheck } from "react-icons/lu";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -353,7 +352,7 @@ export default function ProductsPage() {
               {t("importSaved")}
             </p>
             <div className="flex shrink-0 items-center gap-2">
-              <Button render={<Link href="/batch" />} size="sm" variant="outline" className="text-xs">{t("importGoBatch")}</Button>
+              <ButtonLink href="/batch" size="sm" variant="outline" className="text-xs">{t("importGoBatch")}</ButtonLink>
               <button
                 type="button"
                 onClick={() => setImportedNotice(false)}
@@ -731,10 +730,10 @@ export default function ProductsPage() {
                           <Button type="button" variant="ghost" size="icon-sm" onClick={() => handleDelete(product)} aria-label={`${t("deleteProduct")}：${product.name}`} className="text-muted-foreground hover:text-destructive">
                             <LuTrash2 className="h-4 w-4" />
                           </Button>
-                          <Button render={<Link href={`${uiMode === "pro" ? "/project/new" : "/start"}?productId=${product.id}`} />} size="sm" className="ml-1">
+                          <ButtonLink href={`${uiMode === "pro" ? "/project/new" : "/start"}?productId=${product.id}`} size="sm" className="ml-1">
                             <LuVideo className="w-3.5 h-3.5 mr-1.5" />
                             {t("makeVideo")}
-                          </Button>
+                          </ButtonLink>
                       </div>
                   </div>
                 ))}

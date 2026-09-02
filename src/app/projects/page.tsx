@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { LuChevronRight, LuPlus, LuFolderOpen, LuLoader, LuTrash2, LuDownload, LuImage, LuPlay } from "react-icons/lu";
@@ -138,10 +138,10 @@ export default function ProjectsPage() {
           title={t("pageTitle")}
           description={t("pageSubtitle")}
           actions={
-            <Button render={<Link href="/project/new" />} className="brand-fill text-white">
+            <ButtonLink href="/project/new" className="brand-fill text-white">
               <LuPlus className="h-4 w-4" />
               <span className="ml-1.5">{t("newProject")}</span>
-            </Button>
+            </ButtonLink>
           }
         />
 
@@ -192,7 +192,7 @@ export default function ProjectsPage() {
                   <p className="font-medium">{t("worksEmpty")}</p>
                   <p className="mt-1 text-sm text-muted-foreground">{t("worksEmptyDesc")}</p>
                 </div>
-                <Button render={<Link href="/start" />} size="sm" className="mt-2">{t("goStart")}</Button>
+                <ButtonLink href="/start" size="sm" className="mt-2">{t("goStart")}</ButtonLink>
               </CardContent>
             </Card>
           ) : (
@@ -251,8 +251,8 @@ export default function ProjectsPage() {
                 <p className="mt-1 text-sm text-muted-foreground">{t("emptyDesc")}</p>
               </div>
               <div className="mt-2 flex gap-2">
-                <Button render={<Link href="/start" />} size="sm">{t("goStart")}</Button>
-                <Button render={<Link href="/project/new" />} size="sm" variant="outline">{t("goNew")}</Button>
+                <ButtonLink href="/start" size="sm">{t("goStart")}</ButtonLink>
+                <ButtonLink href="/project/new" size="sm" variant="outline">{t("goNew")}</ButtonLink>
               </div>
             </CardContent>
           </Card>

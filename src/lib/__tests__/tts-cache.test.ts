@@ -11,7 +11,7 @@ const origData = process.env.APP_DATA_DIR;
 let dir: string;
 
 beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), "clipforge-ttscache-"));
+  dir = await mkdtemp(join(tmpdir(), "vibesku-clips-ttscache-"));
   process.env.APP_DATA_DIR = dir;
 });
 

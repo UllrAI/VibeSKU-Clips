@@ -1,26 +1,26 @@
 {
-  "name": "clipforge",
+  "name": "vibesku-clips",
   "owner": {
-    "name": "xixihhhh",
-    "url": "https://github.com/xixihhhh"
+    "name": "UllrAI",
+    "url": "https://github.com/UllrAI"
   },
   "plugins": [
     {
-      "name": "clipforge",
+      "name": "vibesku-clips",
       "source": "./skills",
-      "description": "AI short-video production: a topic or product link becomes a finished vertical video (script → free stock footage → free TTS → captions → BGM → FFmpeg compose), keyless by default. Installs the clipforge-video skill plus the ClipForge MCP server (clipforge_create_video, clipforge_product_script, clipforge_gate …) targeting your local ClipForge instance. 一句话/商品链接直接出带货短视频。",
+      "description": "AI short-video production: a topic or product link becomes a finished vertical video (script → free stock footage → free TTS → captions → BGM → FFmpeg compose), keyless by default. Installs the vibesku-clips-video skill plus the VibeSKU Clips MCP server (vibesku_clips_create_video, vibesku_clips_product_script, vibesku_clips_gate …) targeting your local VibeSKU Clips instance. 一句话/商品链接直接出带货短视频。",
       "version": "0.8.58",
-      "author": { "name": "xixihhhh" },
-      "homepage": "https://github.com/xixihhhh/clipforge",
+      "author": { "name": "UllrAI" },
+      "homepage": "https://github.com/UllrAI/VibeSKU-Clips",
       "license": "AGPL-3.0-only",
       "category": "media",
       "tags": ["video", "ai-video", "short-video", "tiktok", "douyin", "ecommerce", "ffmpeg", "mcp"],
       "strict": false,
-      "skills": ["./clipforge-video", "./script-judges"],
+      "skills": ["./vibesku-clips-video", "./script-judges"],
       "mcpServers": {
-        "clipforge": {
+        "vibesku-clips": {
           "command": "npx",
-          "args": ["-y", "clipforge-mcp"]
+          "args": ["-y", "vibesku-clips-mcp"]
         }
       }
     }

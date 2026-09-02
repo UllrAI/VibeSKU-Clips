@@ -525,7 +525,7 @@ export default function TranscriptPage() {
 
   function exportDraft(format: "srt" | "vtt" | "json") {
     if (!selected || !transcript) return;
-    const stem = `clipforge-${selected.id.slice(0, 8)}-draft`;
+    const stem = `vibesku-clips-${selected.id.slice(0, 8)}-draft`;
     if (format === "json") {
       downloadText(`${stem}.json`, "application/json", JSON.stringify({
         format: TRANSCRIPT_EDIT_FORMAT,
@@ -558,7 +558,7 @@ export default function TranscriptPage() {
       }
       const disposition = response.headers.get("content-disposition") ?? "";
       const encodedName = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
-      const fileName = encodedName ? decodeURIComponent(encodedName) : `clipforge-draft.${format}`;
+      const fileName = encodedName ? decodeURIComponent(encodedName) : `vibesku-clips-draft.${format}`;
       const url = URL.createObjectURL(await response.blob());
       const anchor = document.createElement("a");
       anchor.href = url;

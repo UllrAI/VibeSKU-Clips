@@ -19,7 +19,7 @@
 export interface AigcMetadataOpts {
   /** Content production ID (use projectId / compositionId) */
   contentId: string;
-  /** Service provider name, defaults to ClipForge */
+  /** Service provider name, defaults to VibeSKU Clips */
   serviceProvider?: string;
 }
 
@@ -30,7 +30,7 @@ function sanitize(v: string): string {
 
 /** The three GB 45438 metadata fields as [key, value] pairs (shared by the shell-string and argv builders). */
 export function buildAigcMetadataFields(opts: AigcMetadataOpts): Array<[string, string]> {
-  const provider = sanitize(opts.serviceProvider || "ClipForge") || "ClipForge";
+  const provider = sanitize(opts.serviceProvider || "VibeSKU Clips") || "VibeSKU Clips";
   const id = sanitize(opts.contentId).slice(0, 64) || "unknown";
   // Three required fields: AI-generated/synthesized tag (AIGC=1 / 内容=AI生成合成) + service provider + content production ID
   const triple = `AIGC=1; 内容=AI生成合成; 服务提供者=${provider}; 内容制作编号=${id}`;

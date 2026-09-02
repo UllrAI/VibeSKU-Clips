@@ -186,7 +186,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className={`flex min-h-16 items-center gap-2.5 border-b border-sidebar-border ${collapsed ? "justify-center px-0" : "px-4"}`}
         >
           <img src="/icon.svg" alt="" width={30} height={30} className="rounded-lg" />
-          {!collapsed && <span className="text-base font-semibold tracking-tight">ClipForge</span>}
+          {!collapsed && <span className="text-base font-semibold tracking-tight">VibeSKU Clips</span>}
         </Link>
 
         <nav aria-label={t("navMenu")} className={`flex-1 space-y-5 overflow-y-auto py-4 ${collapsed ? "px-2" : "px-3"}`}>
@@ -261,7 +261,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-border bg-background px-4 md:hidden">
           <Link href="/start" className="flex items-center gap-2">
             <img src="/icon.svg" alt="" width={24} height={24} className="rounded-md" />
-            <span className="text-sm font-semibold tracking-tight">ClipForge</span>
+            <span className="text-sm font-semibold tracking-tight">VibeSKU Clips</span>
           </Link>
           <div className="flex items-center gap-1">
             <TaskCenter collapsed />

@@ -254,7 +254,7 @@ export default function NewProjectPage() {
     const blob = new Blob([exportAdTemplateShare(tpl)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `clipforge-template-${tpl.name.en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "recipe"}.json`;
+    a.download = `vibesku-clips-template-${tpl.name.en.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "recipe"}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -264,7 +264,7 @@ export default function NewProjectPage() {
     const blob = new Blob([exportAdTemplatePack(myTemplates)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `clipforge-template-pack-${myTemplates.length}.json`;
+    a.download = `vibesku-clips-template-pack-${myTemplates.length}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
   };

@@ -20,7 +20,7 @@ describe("professional timeline export", () => {
     expect(otio.tracks.children[0].children).toHaveLength(2);
     expect(otio.tracks.children[0].children[0].source_range.start_time).toEqual(expect.objectContaining({ rate: 25, value: 25 }));
     expect(otio.tracks.children[0].children[0].media_reference.target_url).toBe("interview.mov");
-    expect(otio.tracks.children[0].children[0].metadata.clipforge.transcript).toBe("开场");
+    expect(otio.tracks.children[0].children[0].metadata["vibesku-clips"].transcript).toBe("开场");
     expect(JSON.stringify(otio)).not.toContain("private");
   });
 

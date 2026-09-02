@@ -1,19 +1,19 @@
-<p align="center"><img src="docs/banner.en.png" alt="ClipForge — open-source AI e-commerce short-video generator: turn one product photo into a TikTok Shop / Reels / Shorts / Douyin ad that sells" width="820"/></p>
+<p align="center"><img src="docs/banner.en.png" alt="VibeSKU Clips — open-source AI e-commerce short-video generator: turn one product photo into a TikTok Shop / Reels / Shorts / Douyin ad that sells" width="820"/></p>
 
-# ClipForge — Open-source AI shopping-video maker ｜ One product photo, an auto-generated video that sells
+# VibeSKU Clips — Open-source AI shopping-video maker ｜ One product photo, an auto-generated video that sells
 
 > **Turn one product photo into a short video that actually converts.** Upload a product image → AI extracts selling points · writes the script · **locks your product so it never gets distorted** · adds voiceover + subtitles + BGM → in tens of seconds you get a video ready to post to **TikTok Shop / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu**. **One person, dozens of videos a day · 0-cost batch production · open-source, no watermark.**
 >
 > <sub>📌 Formerly『**带货剪手** / daihuo-jianshou』— repo · stars · history all carried over; also does "one-sentence topic → video" for any non-commerce subject.</sub>
 
-<p align="center"><strong>🌐 Website: <a href="https://xixihhhh.github.io/clipforge/en.html">xixihhhh.github.io/clipforge</a></strong> — see what ClipForge can sell for you in 30 seconds</p>
+<p align="center"><strong>🌐 Website: <a href="https://ullrai.github.io/VibeSKU-Clips/en.html">ullrai.github.io/VibeSKU-Clips</a></strong> — see what VibeSKU Clips can sell for you in 30 seconds</p>
 
 <p align="center"><strong>🧑‍🎓 First time here? Start with the 👉 <a href="TUTORIAL.en.md">beginner tutorial (every step spelled out)</a></strong> · <a href="TUTORIAL.md">中文教程</a><br/><sub>Install · add one key · your first free video in 3 minutes · troubleshooting table · where your data lives</sub></p>
 
 <p align="right"><strong>English</strong> · <a href="README.md">中文</a></p>
 
 <p align="center">
-  <img src="https://github.com/xixihhhh/clipforge/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  <img src="https://github.com/UllrAI/VibeSKU-Clips/actions/workflows/ci.yml/badge.svg" alt="CI" />
   <img src="https://img.shields.io/badge/License-AGPL%20v3-blue?style=flat-square" alt="License: AGPL v3" />
   <img src="https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js" alt="Next.js 16" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react" alt="React 19" />
@@ -21,15 +21,15 @@
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss" alt="Tailwind CSS 4" />
   <img src="https://img.shields.io/badge/FFmpeg-compositing-007808?style=flat-square&logo=ffmpeg" alt="FFmpeg" />
   <img src="https://img.shields.io/badge/AI-multi--model-FF6F00?style=flat-square" alt="AI Multi-Model" />
-  <a href="https://skills.sh/xixihhhh/clipforge"><img src="https://skills.sh/b/xixihhhh/clipforge" alt="Agent Skill installs" /></a>
+  <a href="https://skills.sh/UllrAI/VibeSKU-Clips"><img src="https://skills.sh/b/UllrAI/VibeSKU-Clips" alt="Agent Skill installs" /></a>
 </p>
 
-## ✨ Why ClipForge
+## ✨ Why VibeSKU Clips
 
 | Exclusive | In one line |
 |---|---|
 | 🚀 **Two paths to a finished video** | Render at $0 with free stock, voiceover, and local compose—or confirm the price before AI generation |
-| 🧭 **Easy / Director modes** | One-tap automation for beginners; storyboard, model, cost, version, and repair controls for pros |
+| 🧭 **Lite / Pro modes** | One-tap automation for beginners; storyboard, model, cost, version, and repair controls for pros |
 | 🧬 **Cross-shot consistency** | Character, product, and previous-tail references adapt per model, with synced dialogue and ambience where supported |
 | 🔬 **Repair only the bad segment** | Keep every take; QC timestamps a precise retake, and spending needs confirmation |
 | 🎬 **Generate and edit** | Real image-to-video, then import footage to cut by text, remove silence, and burn captions |
@@ -44,15 +44,15 @@
 - 🎞️ **One-tap full film**: before generation costs a cent, four narrow judges (pacing / spoken voice / freshness / structure) tear the lines per shot and produce length-preserving rewrites, applied in one click (also a standalone [script-judges skill](skills/script-judges/SKILL.md)); the **storyboard grid** paints ≤9 shots into one 3x3 image — person, outfit, room and light physically consistent — auto-cropped into per-shot keyframes; all keyframes then ride one Seedance 2.5 reference-to-video call into a complete film (≤30s) — native cuts, lines spoken verbatim, continuous audio (real-product samples below).
 - 🎬 **Real moving shots**: i2v + keyframe-chained seamless transitions; 18 named camera presets per shot with Mix two-preset overlays; 8 one-click visual looks; redo any shot keeping its keyframe.
 - 🎭 **Mini-drama selling**: ten script styles across four forms with a free voice per character; six built-in ordinary-person presenters + a real-face constraint; UGC realism trio — spoken-not-written lines (hooks start mid-conversation, no punchline endings), named-light lived-in first frames, behavior beats rotating per talking shot.
-- 🧭 **Two-mode workspace**: a persistent sidebar (home/projects/products/presenters — one logo, one language toggle) with an Easy ⇄ Director switch at the bottom. Easy mode runs hands-off from the workspace: script → free stock visuals → free voice-over & compose → straight to the finished video, with a single progress card in between; Director mode reveals the storyboard, the director desk (presenter/look/motion intensity), the 3x3 grid and per-shot camera tools.
-- 🧠 **Intelligent production system (v0.8.93)**: ① Director mode gains one production console for the nine-stage workflow, execution location, billing status, real model-price ranges, time estimates, and goal-based model routing; applying a recommendation changes the real default video model, while unknown prices stay honest ranges. ② Project-level structured intent and a visual bible compile into actual image and image-to-video prompts, carrying character/product/outfit/environment/lighting anchors across shots and blocking explicit forbidden changes before a paid request. ③ The media-analysis workspace reads subjects, light, palette, composition, camera motion, and pacing from any image/video, derives a reusable prompt, and saves the finding into a project. ④ Scripts, assets, cloud tasks, compositions, and manual snapshots form one version tree; failures are classified into auth/parameter/moderation/input-limit/media/detached-task recovery paths. ⑤ Instant preview reuses the real local 720p / veryfast / CRF26 compose tier without regenerating AI assets; finished-video QC turns black/frozen frames, silence, loudness, and spec drift into a repair plan, with confirmed free recomposition and no silent paid reruns.
+- 🧭 **Two-mode workspace**: a persistent sidebar (home/projects/products/presenters — one logo, one language toggle) with an Lite ⇄ Pro switch at the bottom. Lite mode runs hands-off from the workspace: script → free stock visuals → free voice-over & compose → straight to the finished video, with a single progress card in between; Pro mode reveals the storyboard, the director desk (presenter/look/motion intensity), the 3x3 grid and per-shot camera tools.
+- 🧠 **Intelligent production system (v0.8.93)**: ① Pro mode gains one production console for the nine-stage workflow, execution location, billing status, real model-price ranges, time estimates, and goal-based model routing; applying a recommendation changes the real default video model, while unknown prices stay honest ranges. ② Project-level structured intent and a visual bible compile into actual image and image-to-video prompts, carrying character/product/outfit/environment/lighting anchors across shots and blocking explicit forbidden changes before a paid request. ③ The media-analysis workspace reads subjects, light, palette, composition, camera motion, and pacing from any image/video, derives a reusable prompt, and saves the finding into a project. ④ Scripts, assets, cloud tasks, compositions, and manual snapshots form one version tree; failures are classified into auth/parameter/moderation/input-limit/media/detached-task recovery paths. ⑤ Instant preview reuses the real local 720p / veryfast / CRF26 compose tier without regenerating AI assets; finished-video QC turns black/frozen frames, silence, loudness, and spec drift into a repair plan, with confirmed free recomposition and no silent paid reruns.
 - 🔬 **Shot quality gate (v0.8.98)**: every generated take remains available. Per-shot review scores visible evidence across visual fidelity, temporal coherence, script alignment, subject identity, action binding, continuity, and text; only the candidate a human accepts becomes the real compose input. Project-local acceptance history improves model routing, while regeneration or model switching is suggested but never purchased automatically.
 - 🧬 **Adaptive shot conditioning (v0.8.99)**: each shot compiles its keyframe, character sheet, product image, and previous real tail frame into the strongest reference pack the selected model can accept. Capable models generate exact dialogue, lip sync, ambience, and object sounds together; others fall back before spending to keyframes or post voice. Every take records its real anchor count, audio path, and capability fallback for inspection in the quality gate.
-- 🩺 **Precision shot repair (v0.9.0)**: quality evidence becomes a bounded retake window with optional timed identity, product, composition, or continuity anchors. Preview the real window, billed model duration, price, and fallbacks before confirming; ClipForge generates only that segment, splices it into the untouched source while preserving source audio, keeps the original take, and can resume local finalization after a remote task completes.
+- 🩺 **Precision shot repair (v0.9.0)**: quality evidence becomes a bounded retake window with optional timed identity, product, composition, or continuity anchors. Preview the real window, billed model duration, price, and fallbacks before confirming; VibeSKU Clips generates only that segment, splices it into the untouched source while preserving source audio, keeps the original take, and can resume local finalization after a remote task completes.
 - 🎚️ **Cut continuity & local mastering (v0.9.1)**: samples both sides of real splice points and reports time-specific, inspectable exposure, chroma, and saturation deltas, plus whole-film EBU R128 loudness. Analysis is the default and calls no model. When explicitly selected, two-pass loudness normalization or temporal deflicker creates a new master version without overwriting the source; deflicker is never enabled automatically.
 - ✂️ **Long-form text editing (v0.8.97)**: bounded-memory local transcription now handles up to two hours with cancel/resume checkpoints. Remove words to remove video, review diffs and versions, then hand editable OTIO / EDL / CSV timelines to a professional NLE. Sources and earlier transcripts remain untouched.
-- 🚦 **Free / AI dual path**: creation asks exactly two questions — how the visuals get made (🆓 free quick cut, $0 in ~2 min / ✨ AI-generated film, per-second cost printed right on the option) and the format (smart pick / talking presenter with your own presenter / mini drama / graphic montage). The free path runs fully hands-off; the AI path treats the free script as a text-level confirmation gate — read the voice-over, click "Generate with AI" once, and the grid-locked storyboard → one-call film (native cuts + spoken lines) runs automatically. Open-source BYOK: usage is billed by your chosen model platform; ClipForge itself stays free.
-- ⚖️ **Easy mode, full quality**: hands-off removes the operating, not the quality features. All five one-tap chains (web free quick cut / AI film / batch / CLI create / MCP create_video) automatically run the judge panel before any footage or generation money — four judges tear the lines apart and length-preserving rewrites are applied in place (the report stays visible in the editor; no LLM configured → silently skipped, never blocking the chain). On the AI path, a presenter picked without a reference sheet gets their four-view sheet generated on the spot and saved back to the library for reuse across videos; the one-tap film's timecoded prompt now carries each shot's camera move. The default LLM tier also moves up to DeepSeek V4 Pro (the old v3.2 default leaked thinking text into JSON output in field tests) — the settings model picker still lets you choose any model.
+- 🚦 **Free / AI dual path**: creation asks exactly two questions — how the visuals get made (🆓 free quick cut, $0 in ~2 min / ✨ AI-generated film, per-second cost printed right on the option) and the format (smart pick / talking presenter with your own presenter / mini drama / graphic montage). The free path runs fully hands-off; the AI path treats the free script as a text-level confirmation gate — read the voice-over, click "Generate with AI" once, and the grid-locked storyboard → one-call film (native cuts + spoken lines) runs automatically. Open-source BYOK: usage is billed by your chosen model platform; VibeSKU Clips itself stays free.
+- ⚖️ **Lite mode, full quality**: hands-off removes the operating, not the quality features. All five one-tap chains (web free quick cut / AI film / batch / CLI create / MCP create_video) automatically run the judge panel before any footage or generation money — four judges tear the lines apart and length-preserving rewrites are applied in place (the report stays visible in the editor; no LLM configured → silently skipped, never blocking the chain). On the AI path, a presenter picked without a reference sheet gets their four-view sheet generated on the spot and saved back to the library for reuse across videos; the one-tap film's timecoded prompt now carries each shot's camera move. The default LLM tier also moves up to DeepSeek V4 Pro (the old v3.2 default leaked thinking text into JSON output in field tests) — the settings model picker still lets you choose any model.
 - 🎭 **Realism kit (built to kill the "obviously AI" look)**: ① a new "real" look family — phone raw / front-cam selfie (26mm edge distortion, arm in frame) / propped static — with the camera-identity opener injected at the FRONT of the video prompt where tokens weigh most; ② voice grounding on by default — TTS narration passes a phone-mic band + AGC-style compression + light exciter chain, with a room-tone bed under the whole timeline so gaps never drop to digital silence (measured: -91dB → -58dB between sentences; native model voices are never touched); ③ three new native-feel layers: a walking strength (micro-rotation), lens halation, and a platform-transcode look (720p generational loss + CRF27 — reads like an upload that already survived one re-encode); ④ the one-tap film prompt adopts Seedance 2.5's official syntax — `{}` dialogue brackets, an up-front reference-mapping + keyframe-order declaration, the official no-captions/no-bgm negative channel, and a dialogue-density check against lip-sync drift.
 - 🪝 **Attention upgrade (how commerce videos keep people watching)**: the hook library grows from 10 to 16 patterns with six trust/social-proof types — confession, honest-flaw opener, elimination haul, cost math, comment reply, hype-confirm (ad-platform data: non-stop praise is the #1 "this is an ad" signal); the script prompt gains retention-and-conversion hard rules — product visible in the first 3 seconds (63% of top-CTR videos do), a mandatory mid-video re-hook at 40–60% for scripts over 20s, dual CTA placement (a casual first mention around 70% + a final-shot repeat with a pointing gesture), and tiered urgency (personal-experience soft urgency by default; fabricated scarcity is an ad-law violation) with the structure judge checking the mid-hook; the publish pack adds a comment-ops kit — a pinned self-Q&A plus objection reply templates (comments are the video's second landing page; seeded fake comments deliberately NOT included, with a compliance note). Field-tested with a real LLM: the rules land — the generated script drops its first CTA mention at ~70% and adopts the soft-urgency line.
 - 👤 **Presenter library · multi-view sheets**: build multiple presenter personas (name / persona / appearance / voice) in Settings and generate a front / side / back / close-up reference sheet with GPT Image in one shot — physically the same person; pick the presenter on the assets page and the storyboard grid + one-tap film anchor to the sheet (@Image1 identity reference), keeping the same face across shots and across videos.
@@ -67,7 +67,7 @@
 - 🧑‍⚖️ **Judge panel v2 (v0.8.91)**: ① a fifth "visual judge" audits every shot for "who does what in this second" — purpose sentences ("shows product quality", "builds trust") are not frames; they get named per shot and rewritten into visible actions, written straight back into the shot description; ② every issue must quote the offending fragment and state what fails — quoteless complaints are discarded; ③ all issues and rewrites carry an adoption tier (invariant / default / taste): the five hands-off chains (web free / AI / batch / CLI / MCP) auto-apply only the first two, taste-tier stays display-only — hard defects get caught without steamrolling creative choices; ④ rewrites are fact-checked server-side: every numeric token (price, spec) of the original must survive verbatim or the rewrite is dropped; ⑤ style-specific criteria: a one-sentence formula check for reversals, action-verb + speaker-swap tests for dialogue skits.
 - 🎬 **Script & prompt discipline pack (v0.8.91)**: ① action-generability rules enter the script prompt — four un-filmable patterns banned (dual-subject precision interaction / inner psychology / negated actions / 3+ step hand chains) with a five-step rewrite ladder; ② three hard shot-design rules (one committing shot per key product action, adjacent shots must vary framing/angle/relation, shot size decided by what must be readable); ③ scene-driven camera language per style (shot-reverse-shot for dialogue, slow push-in on turns, tracking for conflict); ④ emotion iron rule: end-state words banned, always trigger → body-first → restrained face; ⑤ character appearance requires a wearable state anchor (rolled sleeve, pen in collar) and context traces; ⑥ multi-character film prompts attribute every line to its named speaker with a screen-direction convention and sheet-backdrop stripping; ⑦ keyframe prompts get a static lint (time-sequence wording warning) plus a "freeze the instant before the action" directive; ⑧ the camera vocabulary gains shot size / focal length / mood notes and three new presets (locked-on / FPV dive / close orbit walk); ⑨ look presets gain color-temperature & aperture parameters, and the real family adds dashcam / old DV / store CCTV low-credibility-medium looks.
 - 🔊 **Voice expressiveness & seams (v0.8.91)**: ① TTS carries a per-shot emotional register automatically (hook eager / pain-point troubled / CTA confident — MiniMax via its official emotion enum, OpenAI-compatible via instructions, other engines silently ignore); ② lines may carry a `[pause]` breath marker — the free Edge engine renders a real SSML break while captions/karaoke/paid TTS/native-voice paths all strip it; ③ adjacent native-audio cuts get 20ms edge micro-fades (drift-free, unlike acrossfade) and the room-tone bed now also covers native-audio-only timelines at a fainter level; ④ every generated motion clip saves its REAL last frame, and a new three-way seam mode single-select ships: Pin (default) / Continue (next shot starts from the previous clip's real tail frame — pixel-continuous) / Off; ⑤ the VolcEngine (Ark) direct connection now speaks the full official content protocol (first/last frame, ≤9 reference images, ≤3 reference videos, ≤3 reference audios, two-phase submit, real tail frame returned).
-- 💸 **Pre-spend gate & retake diagnosis (v0.8.91)**: ① the AI film path gains a free dryRun preview — the full film prompt, shot count/duration, reference count and dialogue-density flags, with money moving only after an explicit confirm; edits between preview and submit invalidate the confirmation and refresh the preview; ② reference-image quota is hard-checked before submission (e.g. Seedance caps at 9 — the classic 9 keyframes + 1 presenter sheet = 10 overflow is caught before a guaranteed-to-fail paid task); ③ six-symptom retake diagnosis (broken face / waxy skin / dead background / wrong light / blur / warped product): each retake changes exactly ONE prompt variable and says so; ④ MCP completions: `wait:false` non-blocking compose against client timeouts, a `clipforge_update_shots` surgical-edit tool, and a routing priority table in the skill.
+- 💸 **Pre-spend gate & retake diagnosis (v0.8.91)**: ① the AI film path gains a free dryRun preview — the full film prompt, shot count/duration, reference count and dialogue-density flags, with money moving only after an explicit confirm; edits between preview and submit invalidate the confirmation and refresh the preview; ② reference-image quota is hard-checked before submission (e.g. Seedance caps at 9 — the classic 9 keyframes + 1 presenter sheet = 10 overflow is caught before a guaranteed-to-fail paid task); ③ six-symptom retake diagnosis (broken face / waxy skin / dead background / wrong light / blur / warped product): each retake changes exactly ONE prompt variable and says so; ④ MCP completions: `wait:false` non-blocking compose against client timeouts, a `vibesku_clips_update_shots` surgical-edit tool, and a routing priority table in the skill.
 - 🎤 **True karaoke sync + zero freeze-frames (v0.8.90)**: ① the free Edge voiceover now enables word-boundary events — karaoke highlights follow the engine's real per-word timestamps (comma pauses, tempo changes and all) instead of an even per-character estimate, caption cards snap their flips to the nearest word edge, and thousands-grouped prices (¥1,299) or times (3:45) are never split, with closing punctuation banned from line starts; ② stock search binds to each shot's slot length (clips under 70% of the slot are filtered), moderately-short clips are slow-fitted (≤1.43x) at compose time, fallback searches try the video's topic anchor before generic filler, and shots that did receive generic filler are named in the result so you know exactly which to swap; ③ image camera moves render through a 2x supersampled zoompan then downscale — per-pixel stutter on slow pans and zoom blur both gone.
 - 🧱 **Triple reliability gate (v0.8.90)**: ① every downloaded asset (stock / AI output / BGM) is decode-validated on landing — truncated CDN streams and error pages saved as fake .mp4 are deleted on the spot with the next candidate picked automatically, and undecodable videos degrade to the product image before compose, so one rotten file can no longer void an entire single-pass render; ② TTS gains transient-failure retries (deterministic key errors fail fast) and a paid-to-free engine fallback so a shot is never silent, with degradations logged into the output's timeline sidecar; ③ reasoning-model `<think>` residue is scrubbed at every LLM parse point (known endpoints also disable thinking request-side and get JSON mode), and an unparseable reply is echoed back to the model with the error for one repair round — script generation, the judge panel, semantic footage matching and translation all benefit.
 - 🧩 **Infinite Canvas**: [canvas plugin](integrations/infinite-canvas/) — product images in, finished video back as a canvas node for further remixing.
@@ -84,7 +84,7 @@ Want higher quality? Add one key: a single interface aggregates **7 platforms, 3
 
 ## 🎬 Sample: one product photo in, a postable video out (Seedance 2.5 field test)
 
-**The input is just the product photo below plus a one-sentence request.** Script, storyboard, visuals and voice are all generated by ClipForge: the judge panel tears up the "hi everyone" draft lines → one storyboard-grid generation locks the person/scene/product → one-tap full film:
+**The input is just the product photo below plus a one-sentence request.** Script, storyboard, visuals and voice are all generated by VibeSKU Clips: the judge panel tears up the "hi everyone" draft lines → one storyboard-grid generation locks the person/scene/product → one-tap full film:
 
 <table>
   <tr>
@@ -95,7 +95,7 @@ Want higher quality? Add one key: a single interface aggregates **7 platforms, 3
   <tr>
     <td align="center"><img src="docs/videos/input-coffee.jpg" width="210" alt="Input: cold-brew coffee concentrate product photo"/></td>
     <td align="center"><img src="docs/videos/grid-coffee.jpg" width="210" alt="Auto-generated storyboard grid: 9 shots, same person/room/light"/></td>
-    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="210" alt="Click to play: 4-cut full film"/></a><br/><sub>▶️ Click to play (sound on)</sub></td>
+    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="210" alt="Click to play: 4-cut full film"/></a><br/><sub>▶️ Click to play (sound on)</sub></td>
   </tr>
 </table>
 
@@ -107,20 +107,20 @@ Two more outputs from the same pipeline (input → output):
   <tr>
     <td align="center"><img src="docs/videos/input-coffee.jpg" width="110" alt="The same coffee product photo"/></td>
     <td align="center">→</td>
-    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="110" alt="Click to play: Chinese talking-head"/></a><br/><sub>🎙️ Chinese talking-head, 12s</sub></td>
+    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="110" alt="Click to play: Chinese talking-head"/></a><br/><sub>🎙️ Chinese talking-head, 12s</sub></td>
     <td align="center" width="40"></td>
     <td align="center"><img src="docs/videos/input-blender.jpg" width="110" alt="Input: portable blender product photo"/></td>
     <td align="center">→</td>
-    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-blender-en.mp4"><img src="docs/videos/poster-blender-en.jpg" width="110" alt="Click to play: English UGC talking-head"/></a><br/><sub>🌍 English UGC talking-head, 12s</sub></td>
+    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-blender-en.mp4"><img src="docs/videos/poster-blender-en.jpg" width="110" alt="Click to play: English UGC talking-head"/></a><br/><sub>🌍 English UGC talking-head, 12s</sub></td>
   </tr>
 </table>
 
-Voices, dialogue and lip-sync are native model output, untouched; they autoplay on the <a href="https://xixihhhh.github.io/clipforge/en.html">website</a>.
+Voices, dialogue and lip-sync are native model output, untouched; they autoplay on the <a href="https://ullrai.github.io/VibeSKU-Clips/en.html">website</a>.
 
 ## 🚀 Run it in 30 seconds
 
 ```bash
-docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
+docker run -d -p 3000:3000 -v vibesku-clips-data:/data ghcr.io/ullrai/vibesku-clips
 ```
 
 Open `http://localhost:3000` — **render your first video with no key at all** (free stock + free voiceover). Local dev / desktop app / model setup: see [Quick start](#quick-start).
@@ -135,9 +135,9 @@ Open `http://localhost:3000` — **render your first video with no key at all** 
 | **Compose · voiceover/subtitles/BGM** | **Export · multi-platform** | **Batch production** |
 | ![Compose](docs/screenshots/04b-video.en.png) | ![Export](docs/screenshots/05-export.en.png) | ![Batch](docs/screenshots/06-batch.en.png) |
 
-> Top-left is the whole creation flow: photo / URL / topic → pick a path (🆓 free quick cut at $0 / ✨ AI film with the per-second price on the option) → pick a format → start. Step-by-step: [**beginner tutorial**](TUTORIAL.en.md); condensed web version: [User Guide](https://xixihhhh.github.io/clipforge/guide.en.html).
+> Top-left is the whole creation flow: photo / URL / topic → pick a path (🆓 free quick cut at $0 / ✨ AI film with the per-second price on the option) → pick a format → start. Step-by-step: [**beginner tutorial**](TUTORIAL.en.md); condensed web version: [User Guide](https://ullrai.github.io/VibeSKU-Clips/guide.en.html).
 
-<p align="center"><img src="docs/showcase-platforms.en.png" alt="ClipForge produces faceless vertical shopping videos for TikTok Shop, Reels, Shorts, Douyin, Kuaishou and Xiaohongshu — never showing a real face" width="820"/></p>
+<p align="center"><img src="docs/showcase-platforms.en.png" alt="VibeSKU Clips produces faceless vertical shopping videos for TikTok Shop, Reels, Shorts, Douyin, Kuaishou and Xiaohongshu — never showing a real face" width="820"/></p>
 
 ---
 
@@ -145,7 +145,7 @@ Open `http://localhost:3000` — **render your first video with no key at all** 
 
 ## ✅ Compliance-first by default (ship to China without getting throttled)
 
-Chinese platforms (Douyin / Kuaishou / Xiaohongshu) **silently throttle unlabeled AI content** and **suppress ad-law banned terms**. ClipForge makes compliance **on by default, zero config** — it ships compliant, you don't patch it afterward:
+Chinese platforms (Douyin / Kuaishou / Xiaohongshu) **silently throttle unlabeled AI content** and **suppress ad-law banned terms**. VibeSKU Clips makes compliance **on by default, zero config** — it ships compliant, you don't patch it afterward:
 
 - **AIGC labeling (explicit + implicit, aligned with China's GB 45438-2025)**: every render **burns a default-on "内容由 AI 生成" opening badge** (top-left, >=2s — Douyin's 2026-07 rules require it, and AI voice-over alone triggers the requirement; opt-out is flagged by the release gate) plus auto-written **implicit file metadata** (generation/synthesis tags, service provider, content ID), and the export page provides a copy-ready "AI-generated" declaration line — dodging the throttle platforms apply to unlabeled AI content.
 - **Pre-publish self-check**: ad-law risk terms / opening hook / duration sweet-spot / subtitle readability / call-to-action / e-commerce 3-act structure / AIGC-label status, each flagged ✓⚠✗ with a **concrete fix** (no fake score) — spot throttling risk before you render.
@@ -165,7 +165,7 @@ Chinese platforms (Douyin / Kuaishou / Xiaohongshu) **silently throttle unlabele
 - **🛒 Product-card overlay (cart feel)**: optionally overlay a product card in the lower-left — thumbnail + name + a yellow "tap below to buy →" prompt, shown for the first few seconds to reinforce conversion.
 - **📋 Copy-and-post pack**: the export page generates catchy titles + #hashtags + caption copy in one click; even without an AI key, a **key-free template version** outputs per category/platform — just copy and post.
 
-<p align="center"><img src="docs/hero.en.png" alt="ClipForge workflow: product photo → AI selling points & script → product-fidelity visuals → free voiceover + subtitles → TikTok / Reels / Shorts / Douyin shopping video" width="820"/></p>
+<p align="center"><img src="docs/hero.en.png" alt="VibeSKU Clips workflow: product photo → AI selling points & script → product-fidelity visuals → free voiceover + subtitles → TikTok / Reels / Shorts / Douyin shopping video" width="820"/></p>
 
 ## 💡 In practice: one product photo → a video in 30 seconds
 
@@ -183,9 +183,9 @@ Using the sample "Soft Thick Facial Tissue":
 
 ---
 
-## 🆚 Making a shopping video: traditional outsourcing vs ClipForge
+## 🆚 Making a shopping video: traditional outsourcing vs VibeSKU Clips
 
-| Pain point | Traditional way | ClipForge |
+| Pain point | Traditional way | VibeSKU Clips |
 |------|---------|---------|
 | **Scriptwriting** | Director writes for 1–2 hours | AI generates 3 scripts in 30s |
 | **Asset creation** | Shoot + retouch, 1–3 days | AI image/video, render in minutes |
@@ -198,7 +198,7 @@ Using the sample "Soft Thick Facial Tissue":
 
 ### And against similar tools?
 
-| What you care about | **ClipForge** | Traditional OSS stitchers | Commercial AI video SaaS | Manual-first editors |
+| What you care about | **VibeSKU Clips** | Traditional OSS stitchers | Commercial AI video SaaS | Manual-first editors |
 |---|:---:|:---:|:---:|:---:|
 | **Product fidelity** (your real product, undistorted) | ✅ image-to-image lock | ❌ keyword-matched stock, product never appears | ⚠️ partial, model-dependent | ➖ paste it manually |
 | **Moving-shot quality** | ✅ i2v + seamless chained transitions + adjustable/redo-able camera | ❌ stills / stock clips stitched | ✅ mostly i2v | ➖ depends on your footage |
@@ -208,14 +208,14 @@ Using the sample "Soft Thick Facial Tissue":
 | **No watermark + data stays local** | ✅ open-source, self-hosted | ✅ | ❌ cloud upload, watermarked free tier | ❌ cloud processing |
 | **Agents / automation** (MCP · CLI · batch) | ✅ MCP + CLI + Skill + batch | ⚠️ some have APIs | ⚠️ some have APIs | ❌ |
 
-> Based on public materials as of 2026-07; features evolve with each product's releases. ClipForge is unaffiliated with all of the above — comparison for evaluation only.
+> Based on public materials as of 2026-07; features evolve with each product's releases. VibeSKU Clips is unaffiliated with all of the above — comparison for evaluation only.
 
 ---
 
 ## ❓ FAQ
 
-**What is ClipForge?**
-ClipForge (formerly 带货剪手 / daihuo-jianshou) is an **open-source, free AI shopping-video tool**: upload one product photo and AI extracts selling points, writes a sales script, **keeps your product undistorted**, fills visuals + voiceover + subtitles, and outputs a TikTok Shop / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu video in one click; it also does "one-sentence topic → video" for any non-commerce subject.
+**What is VibeSKU Clips?**
+VibeSKU Clips (formerly 带货剪手 / daihuo-jianshou) is an **open-source, free AI shopping-video tool**: upload one product photo and AI extracts selling points, writes a sales script, **keeps your product undistorted**, fills visuals + voiceover + subtitles, and outputs a TikTok Shop / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu video in one click; it also does "one-sentence topic → video" for any non-commerce subject.
 
 **Is it really free? Do I need an API key?**
 The free path is **0-key**: assets from free commercial-use CC libraries (Openverse images + Wikimedia real footage), voiceover from free Microsoft Edge TTS, compositing from local FFmpeg. You only need a key for the platform you choose when you want paid AI image/video models.
@@ -227,10 +227,10 @@ Yes. Upload a product photo and AI analyzes selling points, writes multiple sale
 No watermark. Self-hosted + open-source (AGPL-3.0); output is clean and commercially usable (third-party assets follow their own licenses; exports can include attribution credits).
 
 **How is it different from CapCut / commercial AI video SaaS?**
-ClipForge is **open-source, runs locally, no watermark, zero-cost on the free path, and your data never leaves your machine**; commercial SaaS usually charges per video, watermarks output, and requires uploading assets to the cloud.
+VibeSKU Clips is **open-source, runs locally, no watermark, zero-cost on the free path, and your data never leaves your machine**; commercial SaaS usually charges per video, watermarks output, and requires uploading assets to the cloud.
 
 **I've never used anything like this — is there a hand-holding guide?**
-Yes: [**TUTORIAL.en.md**](TUTORIAL.en.md) ([中文](TUTORIAL.md)) — three install options, three ways to add a key, your first free video in 3 minutes, what the AI path costs before you spend, Director mode page by page, a troubleshooting table, and where your data lives.
+Yes: [**TUTORIAL.en.md**](TUTORIAL.en.md) ([中文](TUTORIAL.md)) — three install options, three ways to add a key, your first free video in 3 minutes, what the AI path costs before you spend, Pro mode page by page, a troubleshooting table, and where your data lives.
 
 **Can I use it if I can't write scripts or edit?**
 Yes. The whole flow is automatic — AI writes the script, fills visuals, adds voiceover, burns subtitles, adds transitions. **No on-camera presence, no shooting, no editing.**
@@ -239,7 +239,7 @@ Yes. The whole flow is automatic — AI writes the script, fills visuals, adds v
 One-click fit for TikTok / Reels / Shorts (9:16) / Douyin / Kuaishou / Xiaohongshu (3:4); the UI and docs support **中文 / English**, auto-switching by system language.
 
 **Can an AI assistant (Claude / Cursor) generate videos directly?**
-Yes. ClipForge ships an **MCP Server** (`clipforge_product_script` turns a product link straight into a sales script — see [mcp/README.md](mcp/README.md)) plus an **agent Skill** ([skills/clipforge-video](skills/clipforge-video/SKILL.md)) that teaches an assistant the whole pipeline. Install any way you like: `npx skills add xixihhhh/clipforge`; or `/plugin marketplace add xixihhhh/clipforge` in Claude Code for skill + MCP in one; or paste the Setup prompt from [skills/README](skills/README.md) to your agent and it installs itself.
+Yes. VibeSKU Clips ships an **MCP Server** (`vibesku_clips_product_script` turns a product link straight into a sales script — see [mcp/README.md](mcp/README.md)) plus an **agent Skill** ([skills/vibesku-clips-video](skills/vibesku-clips-video/SKILL.md)) that teaches an assistant the whole pipeline. Install any way you like: `npx skills add UllrAI/VibeSKU-Clips`; or `/plugin marketplace add UllrAI/VibeSKU-Clips` in Claude Code for skill + MCP in one; or paste the Setup prompt from [skills/README](skills/README.md) to your agent and it installs itself.
 
 ---
 
@@ -323,7 +323,7 @@ New projects are tagged `contentType=topic` and share the second half of the com
 - **Burned subtitles**: auto-detects a CJK font (a full CJK subtitle font is bundled so zh/ja/ko render consistently on every OS); two viral subtitle styles — **① rapid short-card flashes** (**cards break at punctuation into natural phrases** — never mid-word; punctuation-pause-weighted timing follows the voice; only punctuation-free lines fall back to even char/word splits); **② karaoke per-character highlight** (sentence stays on screen, each character lights up as the voiceover "sings" past it, libass-rendered, aligned to TTS timing with no ASR). CJK by character, English by word — built for "80% watch on mute" retention
 - **Caption style presets**: four one-click looks — **Standard boxed** (white on a translucent box) / **Bold punch** (big type, heavy outline, no box — the high-retention creator look) / **Minimal** (small, thin stroke, clean documentary feel) / **Karaoke**; selectable everywhere (video page, CLI `--caption`, MCP `captionPreset`), guarded by a pixel-level real-render regression test
 - **Style packs**: apply a whole finished-video look in one click (caption preset / BGM mood / ducking / quality / CTA / product card) — 4 built-in packs (Commerce Punch / Karaoke Viral / Clean Documentary / Standard) plus **import/export of JSON pack files** for team sharing; packs are **purely declarative data** (whitelist-validated, nothing executable) — the novice-safe way to "install an external skill"
-- **Contact sheet**: the whole finished video condensed into one PNG — an evenly-sampled filmstrip plus the audio waveform — so black frames, caption collisions, audio spikes and dead-air endings show at a glance; agents can call it via MCP and *look* at the image to self-check a render before delivering (export page / CLI `clipforge sheet` / MCP `clipforge_contact_sheet`)
+- **Contact sheet**: the whole finished video condensed into one PNG — an evenly-sampled filmstrip plus the audio waveform — so black frames, caption collisions, audio spikes and dead-air endings show at a glance; agents can call it via MCP and *look* at the image to self-check a render before delivering (export page / CLI `vibesku-clips sheet` / MCP `vibesku_clips_contact_sheet`)
 - **Smart transitions**: AI first/last-frame (Seedance 2.0 / Vidu) / AI reference (Kling) / crossfade / hard cut
 - **Ken Burns motion**: slow push / pan / depth drift — makes a static product image feel alive without altering the product
 - **Dual voiceover**: paid OpenAI-compatible TTS (more controllable), or **free Edge keyless TTS** (no key, multilingual voices with preview) as a zero-config fallback, generating per-shot narration and aligning subtitles to its timing; **narration is never cut mid-sentence** — text-based duration estimate backs up a failed probe, a natural breathing gap sits between segments, and fades only ever consume tail silence
@@ -369,11 +369,11 @@ Scripts auto-adapt to platform algorithms; every video outputs a full SEO pack:
 ### 🐳 Self-host with Docker (fastest — no Node / FFmpeg needed)
 
 ```bash
-docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
+docker run -d -p 3000:3000 -v vibesku-clips-data:/data ghcr.io/ullrai/vibesku-clips
 # Open http://localhost:3000 — make videos keyless (free stock + Edge TTS)
 ```
 
-The image bundles ffmpeg and the CJK subtitle font; your data (projects / product images / renders) persists in the `clipforge-data` volume. To enable AI image/video or paid TTS, open **Settings** and add the relevant provider key. Image: `ghcr.io/xixihhhh/clipforge` (see the repo **Packages**), auto-built and smoke-tested on every Release.
+The image bundles ffmpeg and the CJK subtitle font; your data (projects / product images / renders) persists in the `vibesku-clips-data` volume. To enable AI image/video or paid TTS, open **Settings** and add the relevant provider key. Image: `ghcr.io/ullrai/vibesku-clips` (see the repo **Packages**), auto-built and smoke-tested on every Release.
 
 ### Local development
 
@@ -381,8 +381,8 @@ The image bundles ffmpeg and the CJK subtitle font; your data (projects / produc
 
 ```bash
 # Clone
-git clone https://github.com/xixihhhh/clipforge.git
-cd clipforge
+git clone https://github.com/UllrAI/VibeSKU-Clips.git
+cd vibesku-clips
 
 # Install (pnpm required)
 pnpm install
@@ -556,7 +556,7 @@ pnpm dist       # .dmg installer
 
 ## Roadmap
 
-> Per-version history lives in [GitHub Releases](https://github.com/xixihhhh/clipforge/releases); usage details for each capability are in [Core features](#core-features) above.
+> Per-version history lives in [GitHub Releases](https://github.com/UllrAI/VibeSKU-Clips/releases); usage details for each capability are in [Core features](#core-features) above.
 
 **Done**
 - ✅ **Main pipeline**: AI scripts (5 categories × ten styles in four forms + golden-3s + platform SEO) → product-faithful assets (7 platforms, 30+ models) → i2v moving shots (motion-prompt engine / named camera presets per shot / visual looks / keyframe chaining / intensity tiers / per-shot redo) → FFmpeg compositing (viral captions / free multi-voice TTS / BGM / smart transitions / style recipes / quality presets) → multi-platform export (bitrate pinned under re-compression thresholds)
@@ -568,25 +568,25 @@ pnpm dist       # .dmg installer
 **Planned (real AI editing)**
 - [ ] Auto subtitle ASR (whisper / transformers.js) → burned subtitles
 - [ ] Import existing video to edit + silence-trim
-- [ ] Cut long video into viral clips — available today via [HotClip](https://github.com/xixihhhh/hotclip) by the same author
+- [ ] Cut long video into viral clips — available today via [HotClip](https://github.com/xixihhhh/hotclip)
 - [ ] Digital-human lip-sync (fal.ai Lipsync) / timeline editing
 
 ---
 
 ## From the same author
 
-✂️ **[HotClip](https://github.com/xixihhhh/hotclip)** — open-source AI long-video clipper: drop in a podcast or stream VOD, AI finds the highlights and cuts publish-ready vertical clips with word-level captions, all on your own machine. **ClipForge builds short videos from a single image; HotClip clips highlights out of long videos** — the "cut long video into viral clips" item above, available today.
+✂️ **[HotClip](https://github.com/xixihhhh/hotclip)** — open-source AI long-video clipper: drop in a podcast or stream VOD, AI finds the highlights and cuts publish-ready vertical clips with word-level captions, all on your own machine. **VibeSKU Clips builds short videos from a single image; HotClip clips highlights out of long videos** — the "cut long video into viral clips" item above, available today.
 
 ---
 
 ## License
 
-[AGPL-3.0](LICENSE) © 2026 xixihhhh
+[AGPL-3.0](LICENSE) © 2026 UllrAI
 
 Modification / redistribution (incl. SaaS) must stay open-source and keep attribution.
 
 ---
 
-<sub><b>Keywords</b>: AI short-video generator · AI shopping video · one-sentence to video · text to video · faceless video generator · AI short video maker · TikTok / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu maker · AI UGC e-commerce ads · AI voiceover · free-stock auto editing · open-source / self-hosted video tool · AI script generation · MCP server · ClipForge (formerly 带货剪手 / daihuo-jianshou).</sub>
+<sub><b>Keywords</b>: AI short-video generator · AI shopping video · one-sentence to video · text to video · faceless video generator · AI short video maker · TikTok / Reels / Shorts / Douyin / Kuaishou / Xiaohongshu maker · AI UGC e-commerce ads · AI voiceover · free-stock auto editing · open-source / self-hosted video tool · AI script generation · MCP server · VibeSKU Clips (formerly 带货剪手 / daihuo-jianshou).</sub>
 
-<sub>ClipForge is an independent open-source project, not officially affiliated with TikTok, Douyin, Kuaishou, Xiaohongshu, YouTube, Shopify, Amazon, Microsoft, OpenAI or any model provider; follow each third-party model's and asset's terms when using them.</sub>
+<sub>VibeSKU Clips is an independent open-source project, not officially affiliated with TikTok, Douyin, Kuaishou, Xiaohongshu, YouTube, Shopify, Amazon, Microsoft, OpenAI or any model provider; follow each third-party model's and asset's terms when using them.</sub>

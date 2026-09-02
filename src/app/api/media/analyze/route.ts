@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     return apiError(req, mediaType === "image" ? "图片不能超过 15MB" : "视频不能超过 80MB", mediaType === "image" ? "Images must be 15MB or smaller" : "Videos must be 80MB or smaller", 400);
   }
 
-  const workingDir = await mkdtemp(join(tmpdir(), "clipforge-media-"));
+  const workingDir = await mkdtemp(join(tmpdir(), "vibesku-clips-media-"));
   try {
     const extension = EXTENSIONS[file.type] || extname(file.name) || ".bin";
     const mediaPath = join(workingDir, `source${extension}`);

@@ -28,7 +28,7 @@ describe("video repair rendering", () => {
   });
 
   it("creates a valid full-duration candidate and preserves source audio", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "clipforge-video-repair-"));
+    const directory = await mkdtemp(join(tmpdir(), "vibesku-clips-video-repair-"));
     directories.push(directory);
     const source = join(directory, "source.mp4");
     const replacement = join(directory, "replacement.mp4");

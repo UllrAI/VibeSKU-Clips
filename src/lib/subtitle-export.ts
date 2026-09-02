@@ -1,7 +1,7 @@
 /**
  * Subtitle export — converts script shot voiceover text into standard subtitle formats (SRT / WebVTT).
  *
- * ClipForge normally burns subtitles directly into the video (drawtext / karaoke ASS) and does not
+ * VibeSKU Clips normally burns subtitles directly into the video (drawtext / karaoke ASS) and does not
  * expose them to users; however, creators often need editable .srt/.vtt files for: re-editing,
  * uploading platform-native subtitles, accessibility/localization, and proofreading.
  * Timestamps are accumulated using the scripted duration (shot.duration, in seconds) —

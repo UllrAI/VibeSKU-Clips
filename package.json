@@ -1,9 +1,9 @@
 {
-  "name": "clipforge",
+  "name": "vibesku-clips",
   "version": "0.9.1",
   "private": true,
   "license": "AGPL-3.0-only",
-  "author": "xixihhhh",
+  "author": "UllrAI",
   "main": "electron/main.js",
   "packageManager": "pnpm@10.33.0",
   "engines": {
@@ -17,8 +17,8 @@
     "lint": "eslint",
     "design:check": "node scripts/check-design-system.mjs",
     "test": "vitest run",
-    "mcp": "node mcp/clipforge-mcp.mjs",
-    "cli": "node bin/clipforge.mjs",
+    "mcp": "node mcp/vibesku-clips-mcp.mjs",
+    "cli": "node bin/vibesku-clips.mjs",
     "render:element": "node scripts/render-element.mjs",
     "bundle:standalone": "node scripts/bundle-standalone.mjs",
     "electron": "electron .",
@@ -62,8 +62,8 @@
     ]
   },
   "build": {
-    "appId": "com.clipforge.app",
-    "productName": "ClipForge",
+    "appId": "com.ullrai.vibesku-clips",
+    "productName": "VibeSKU Clips",
     "npmRebuild": false,
     "compression": "maximum",
     "directories": {

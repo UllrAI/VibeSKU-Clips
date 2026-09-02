@@ -22,13 +22,13 @@ describe("video mastering contract", () => {
   it("parses tagged signalstats blocks", () => {
     const parsed = parseSignalStats([
       "frame:0 pts:0 pts_time:0",
-      "clipforge.sample=0",
+      "vibesku-clips.sample=0",
       "lavfi.signalstats.YAVG=42.5",
       "lavfi.signalstats.UAVG=121",
       "lavfi.signalstats.VAVG=135",
       "lavfi.signalstats.SATAVG=18.5",
       "frame:0 pts:0 pts_time:0",
-      "clipforge.sample=1",
+      "vibesku-clips.sample=1",
       "lavfi.signalstats.YAVG=180",
       "lavfi.signalstats.UAVG=102",
       "lavfi.signalstats.VAVG=160",
@@ -55,7 +55,7 @@ describe("video mastering contract", () => {
   it("builds one-pass boundary sampling and risk-scoped mastering args", () => {
     const filter = buildBoundarySignalFilter([1, 2], 3);
     expect(filter).toContain("split=4");
-    expect(filter).toContain("clipforge.sample:value=3");
+    expect(filter).toContain("vibesku-clips.sample:value=3");
     const args = buildMasteringArgs({
       videoPath: "/tmp/in.mp4",
       outputPath: "/tmp/out.mp4",
@@ -90,7 +90,7 @@ describe("video mastering FFmpeg integration", () => {
   let source = "";
 
   beforeAll(async () => {
-    directory = await mkdtemp(join(tmpdir(), "clipforge-mastering-"));
+    directory = await mkdtemp(join(tmpdir(), "vibesku-clips-mastering-"));
     source = join(directory, "source.mp4");
     await run(ffmpegBin(), [
       "-y",

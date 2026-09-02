@@ -4,7 +4,7 @@ import { proxy } from "@/proxy";
 
 /**
  * Local-tool CORS (v0.8.79): /api/* reflects localhost origins only, so browser
- * pages on other local ports (the infinite-canvas ClipForge node) can call us,
+ * pages on other local ports (the infinite-canvas VibeSKU Clips node) can call us,
  * while a remote malicious page — whose origin can never be localhost — still
  * hits the browser's same-origin wall. These tests pin that security boundary.
  */

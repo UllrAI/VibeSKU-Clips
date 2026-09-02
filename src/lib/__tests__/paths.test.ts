@@ -39,7 +39,7 @@ describe("paths 运行时路径解析", () => {
 // returned the whole path and produced broken /api/output URLs (404 on playback/download)
 describe("fileNameOf", () => {
   it("extracts the file name from a Windows absolute path", () => {
-    expect(fileNameOf("D:\\clipforge\\data\\output\\proj-1\\final_123.mp4")).toBe("final_123.mp4");
+    expect(fileNameOf("D:\\vibesku-clips\\data\\output\\proj-1\\final_123.mp4")).toBe("final_123.mp4");
   });
 
   it("extracts the file name from POSIX absolute and relative paths", () => {
@@ -48,7 +48,7 @@ describe("fileNameOf", () => {
   });
 
   it("handles mixed separators (forward-slash Windows paths)", () => {
-    expect(fileNameOf("D:/clipforge\\data/output\\final.mp4")).toBe("final.mp4");
+    expect(fileNameOf("D:/vibesku-clips\\data/output\\final.mp4")).toBe("final.mp4");
   });
 
   it("returns a bare file name unchanged", () => {

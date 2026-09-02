@@ -12,7 +12,7 @@ const SAFE_ID = /^[a-zA-Z0-9\-]+$/;
 
 /**
  * POST /api/project/[id]/shop-qr — generate a scannable "scan to buy" QR PNG for the project's shop link.
- * The encoded link is UTM-tagged (utm_source=platform, campaign=clipforge) for traffic attribution.
+ * The encoded link is UTM-tagged (utm_source=platform, campaign=vibesku-clips) for traffic attribution.
  * body: { url?: string (override the project's shopUrl), platform?: string, size?: number }
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

@@ -1,9 +1,9 @@
 {
-    "name": "canvas-plugin-clipforge",
+    "name": "canvas-plugin-vibesku-clips",
     "version": "1.0.0",
     "private": true,
     "type": "module",
-    "description": "ClipForge video node: turn canvas material into a finished commerce short video via a local ClipForge instance",
+    "description": "VibeSKU Clips video node: turn canvas material into a finished commerce short video via a local VibeSKU Clips instance",
     "scripts": {
         "build": "node build.mjs",
         "dev": "node build.mjs --watch",

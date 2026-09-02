@@ -170,7 +170,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   const references = [sourceKeyframe, productReference, characterReference, previousReference].filter((value): value is string => Boolean(value));
 
-  const workingDir = await mkdtemp(join(tmpdir(), "clipforge-quality-"));
+  const workingDir = await mkdtemp(join(tmpdir(), "vibesku-clips-quality-"));
   try {
     let visualPath = assetPath;
     let sampleContext: string | undefined;

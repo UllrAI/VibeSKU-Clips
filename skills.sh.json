@@ -3,9 +3,9 @@
   "notGrouped": "bottom",
   "groupings": [
     {
-      "title": "ClipForge — AI short-video production / AI 带货短视频",
+      "title": "VibeSKU Clips — AI short-video production / AI 带货短视频",
       "description": "Topic or product link → finished vertical short video: script → free stock footage → free TTS → captions → BGM → FFmpeg compose. Keyless by default; ships with an MCP server and CLI. 一句话/商品链接直接出片。",
-      "skills": ["clipforge-video"]
+      "skills": ["vibesku-clips-video"]
     }
   ]
 }

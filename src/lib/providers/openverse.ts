@@ -109,7 +109,7 @@ export function toOpenverseAudioCandidate(a: OpenverseAudio): StockCandidate | n
 
 /** Optional Bearer token (used to increase rate limits; not required) */
 function authHeaders(token?: string): HeadersInit {
-  const h: Record<string, string> = { "User-Agent": "daihuo-jianshou/1.0 (stock media)" };
+  const h: Record<string, string> = { "User-Agent": "vibesku-clips/1.0 (stock media)" };
   if (token) h.Authorization = `Bearer ${token}`;
   return h;
 }

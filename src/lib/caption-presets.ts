@@ -3,7 +3,7 @@
  *
  * The 2026 agent-skill video-editing wave converged on a small set of named caption
  * styles (punchy high-impact / standard boxed / minimal) as the single most-used
- * option; this module brings the same triad to ClipForge, plus our existing
+ * option; this module brings the same triad to VibeSKU Clips, plus our existing
  * word-by-word karaoke burn-in as a fourth preset.
  *
  * Pure data + pure functions: the compose route validates the id and merges the

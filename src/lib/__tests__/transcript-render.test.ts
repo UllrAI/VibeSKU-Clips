@@ -47,7 +47,7 @@ describe("transcript render invocation", () => {
 
 describe("transcript renderer integration", () => {
   it("creates a valid non-destructive cut with synchronized audio", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "clipforge-text-edit-"));
+    const directory = await mkdtemp(join(tmpdir(), "vibesku-clips-text-edit-"));
     temporaryDirectories.push(directory);
     const inputPath = join(directory, "source.mp4");
     const outputPath = join(directory, "edited.mp4");

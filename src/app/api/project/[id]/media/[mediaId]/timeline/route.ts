@@ -55,8 +55,8 @@ export async function POST(
         "Content-Type": result.mimeType,
         "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(result.fileName)}`,
         "Cache-Control": "private, no-store",
-        "X-ClipForge-Clips": String(result.clips),
-        "X-ClipForge-Frame-Rate": String(result.frameRate),
+        "X-VibeSKU-Clips-Count": String(result.clips),
+        "X-VibeSKU-Clips-Frame-Rate": String(result.frameRate),
       },
     });
   } catch (error) {

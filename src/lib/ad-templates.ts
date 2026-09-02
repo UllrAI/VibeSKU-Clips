@@ -2,7 +2,7 @@
  * Ad templates — named end-to-end finished-video recipes with a selling-point title,
  * one-line pitch, and pick-and-go configuration.
  *
- * ClipForge's three template systems were fragmented (style packs = compose only,
+ * VibeSKU Clips’ three template systems were fragmented (style packs = compose only,
  * script templates = shot structure only, category templates = few-shot only).
  * An AdTemplate is the missing bundle across the WHOLE pipeline:
  *   script style + video mode  → pre-fills the new-project form

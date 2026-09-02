@@ -8,7 +8,7 @@ import { searchStock } from "@/lib/providers/stock-registry";
 
 let dir: string;
 beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), "clipforge-local-"));
+  dir = await mkdtemp(join(tmpdir(), "vibesku-clips-local-"));
   await writeFile(join(dir, "kitchen_pour_over.mp4"), "v1");
   await writeFile(join(dir, "city_night.mov"), "v2");
   await writeFile(join(dir, "product_shot.jpg"), "img");
@@ -62,7 +62,7 @@ describe("registry: searchStock('local')", () => {
 
 describe("downloadStockFile 本地复制分支", () => {
   it("绝对路径素材按复制处理，落到目标目录", async () => {
-    const out = await mkdtemp(join(tmpdir(), "clipforge-out-"));
+    const out = await mkdtemp(join(tmpdir(), "vibesku-clips-out-"));
     try {
       const { filePath, bytes } = await downloadStockFile(join(dir, "kitchen_pour_over.mp4"), out, "copied_clip", "video");
       expect(filePath.endsWith("copied_clip.mp4")).toBe(true);

@@ -1,39 +1,39 @@
 #!/usr/bin/env node
 /**
- * ClipForge CLI — generate a video from a topic in one command: auto-write script, match footage, add voiceover, and compose.
+ * VibeSKU Clips CLI — generate a video from a topic in one command: auto-write script, match footage, add voiceover, and compose.
  *
- * Thin wrapper around the ClipForge HTTP API (same orchestration as mcp/clipforge-mcp.mjs: DB / FFmpeg / free TTS / free stock),
+ * Thin wrapper around the VibeSKU Clips HTTP API (same orchestration as mcp/vibesku-clips-mcp.mjs: DB / FFmpeg / free TTS / free stock),
  * zero third-party deps, pure Node. Requires a running instance (pnpm dev / pnpm start). Stock + voiceover need no API key; only script generation needs an LLM key.
  *
  * Usage:
- *   node bin/clipforge.mjs create --topic "在家手冲咖啡" [--duration 25] [--style knowledge]
+ *   node bin/vibesku-clips.mjs create --topic "在家手冲咖啡" [--duration 25] [--style knowledge]
  *        [--footage auto|image|video] [--voice <id>] [--aspect 9:16|16:9|1:1]
  *        [--quality fast|standard|hd] [--bgm] [--bgm-mood upbeat] [--karaoke] [--caption standard|bold|minimal|karaoke]
  *        [--cta "👇 点击下方下单"] [--json]
- *   node bin/clipforge.mjs compose --project <id> [same compose options]   compose an existing project with script + assets
- *   node bin/clipforge.mjs list                     list projects
- *   node bin/clipforge.mjs voices                   list free voices
- *   node bin/clipforge.mjs get --project <id>       fetch the latest composed video URL
- *   node bin/clipforge.mjs --help | --version
+ *   node bin/vibesku-clips.mjs compose --project <id> [same compose options]   compose an existing project with script + assets
+ *   node bin/vibesku-clips.mjs list                     list projects
+ *   node bin/vibesku-clips.mjs voices                   list free voices
+ *   node bin/vibesku-clips.mjs get --project <id>       fetch the latest composed video URL
+ *   node bin/vibesku-clips.mjs --help | --version
  *
  * Environment variables (same as MCP):
- *   CLIPFORGE_BASE_URL (default http://localhost:3000)
- *   CLIPFORGE_LLM_BASE_URL / CLIPFORGE_LLM_API_KEY / CLIPFORGE_LLM_MODEL (required for create, OpenAI-compatible)
- *   CLIPFORGE_PEXELS_KEY / CLIPFORGE_PIXABAY_KEY (optional, for supplemental paid high-quality video sources)
+ *   VIBESKU_CLIPS_BASE_URL (default http://localhost:3000)
+ *   VIBESKU_CLIPS_LLM_BASE_URL / VIBESKU_CLIPS_LLM_API_KEY / VIBESKU_CLIPS_LLM_MODEL (required for create, OpenAI-compatible)
+ *   VIBESKU_CLIPS_PEXELS_KEY / VIBESKU_CLIPS_PIXABAY_KEY (optional, for supplemental paid high-quality video sources)
  */
 import { readFileSync, writeFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
-const BASE_URL = (process.env.CLIPFORGE_BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
+const BASE_URL = (process.env.VIBESKU_CLIPS_BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
 const LLM = {
-  baseUrl: process.env.CLIPFORGE_LLM_BASE_URL || "",
-  apiKey: process.env.CLIPFORGE_LLM_API_KEY || "",
-  model: process.env.CLIPFORGE_LLM_MODEL || "",
+  baseUrl: process.env.VIBESKU_CLIPS_LLM_BASE_URL || "",
+  apiKey: process.env.VIBESKU_CLIPS_LLM_API_KEY || "",
+  model: process.env.VIBESKU_CLIPS_LLM_MODEL || "",
 };
 const STOCK_KEYS = {};
-if (process.env.CLIPFORGE_PIXABAY_KEY) STOCK_KEYS.pixabay = process.env.CLIPFORGE_PIXABAY_KEY;
-if (process.env.CLIPFORGE_PEXELS_KEY) STOCK_KEYS.pexels = process.env.CLIPFORGE_PEXELS_KEY;
+if (process.env.VIBESKU_CLIPS_PIXABAY_KEY) STOCK_KEYS.pixabay = process.env.VIBESKU_CLIPS_PIXABAY_KEY;
+if (process.env.VIBESKU_CLIPS_PEXELS_KEY) STOCK_KEYS.pexels = process.env.VIBESKU_CLIPS_PEXELS_KEY;
 
 const NARRATION_STYLES = ["knowledge", "story", "lifestyle", "inspiration", "travel"];
 const FOOTAGE_KINDS = ["auto", "image", "video"];
@@ -111,7 +111,7 @@ export function defaultVoiceForTopic(topic) {
   return "en-US-AriaNeural";
 }
 
-/** Call the ClipForge HTTP API; throws with the backend error message on non-2xx responses */
+/** Call the VibeSKU Clips HTTP API; throws with the backend error message on non-2xx responses */
 async function api(path, { method = "GET", body, timeoutMs = 600000 } = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -126,7 +126,7 @@ async function api(path, { method = "GET", body, timeoutMs = 600000 } = {}) {
     text = await res.text();
   } catch (e) {
     if (e?.name === "AbortError") throw new Error(`请求超时：${path}`);
-    throw new Error(`连不上 ClipForge（${BASE_URL}）。请先启动实例：pnpm dev 或 pnpm start。原始错误：${e?.message || e}`);
+    throw new Error(`连不上 VibeSKU Clips（${BASE_URL}）。请先启动实例：pnpm dev 或 pnpm start。原始错误：${e?.message || e}`);
   } finally {
     clearTimeout(timer);
   }
@@ -167,7 +167,7 @@ const step = (m) => process.stderr.write(`· ${m}\n`);
 function requireLlm() {
   if (!LLM.baseUrl || !LLM.apiKey || !LLM.model) {
     throw new Error(
-      "create 需要 LLM。请设置环境变量 CLIPFORGE_LLM_BASE_URL、CLIPFORGE_LLM_API_KEY、CLIPFORGE_LLM_MODEL（OpenAI 兼容，如 Atlas Cloud / DeepSeek / OpenRouter）。",
+      "create 需要 LLM。请设置环境变量 VIBESKU_CLIPS_LLM_BASE_URL、VIBESKU_CLIPS_LLM_API_KEY、VIBESKU_CLIPS_LLM_MODEL（OpenAI 兼容，如 Atlas Cloud / DeepSeek / OpenRouter）。",
     );
   }
 }
@@ -233,7 +233,7 @@ async function cmdCreate(flags) {
   });
   if (!fill.filled) {
     throw new Error(
-      `免费素材库没给「${topic}」配到画面，无法合成。换个更常见/具体的主题，或设置 CLIPFORGE_PEXELS_KEY 后重试。`,
+      `免费素材库没给「${topic}」配到画面，无法合成。换个更常见/具体的主题，或设置 VIBESKU_CLIPS_PEXELS_KEY 后重试。`,
     );
   }
   step(`画面就绪：${fill.filled}/${fill.total}${fill.sameSourceHits ? ` · 同源连贯 ${fill.sameSourceHits} 镜` : ""}`);
@@ -296,9 +296,9 @@ async function cmdProduct(flags) {
   const scripts = Array.isArray(scriptRes?.scripts) ? scriptRes.scripts : [];
   step(`脚本完成：${scripts.length} 套方案 · 项目 ${projectId}`);
 
-  // Without --compose, stop at scripts (mirrors clipforge_product_script MCP tool)
+  // Without --compose, stop at scripts (mirrors vibesku_clips_product_script MCP tool)
   if (!flags.compose) {
-    step(`下一步：clipforge compose --project ${projectId}（配画面+配音+合成出片）`);
+    step(`下一步：vibesku-clips compose --project ${projectId}（配画面+配音+合成出片）`);
     return { ok: true, projectId, product: ingest.product ?? null, scripts: scripts.length };
   }
 
@@ -665,7 +665,7 @@ async function cmdTimelineExport(flags) {
     method: "POST",
     body: { format, plan, inline: true, ...(Number.isInteger(revision) && revision > 0 ? { revision } : {}) },
   });
-  const outputPath = String(flags.out || result.fileName || `clipforge-draft.${format}`);
+  const outputPath = String(flags.out || result.fileName || `vibesku-clips-draft.${format}`);
   writeFileSync(outputPath, result.content, "utf8");
   step(`专业时间线已导出：${outputPath}（${result.clips} 段 · ${result.frameRate}fps）`);
   return { ok: true, projectId, mediaId, format, outputPath, clips: result.clips, duration: result.duration, frameRate: result.frameRate };
@@ -682,7 +682,7 @@ async function cmdImport(flags) {
     method: "POST",
     body: { script, title: typeof flags.title === "string" ? flags.title : undefined },
   });
-  step(`已导入 ${res.shots} 个分镜（约 ${res.totalDuration}s）。下一步：clipforge compose --project ${projectId}`);
+  step(`已导入 ${res.shots} 个分镜（约 ${res.totalDuration}s）。下一步：vibesku-clips compose --project ${projectId}`);
   return { ok: true, projectId, ...res };
 }
 
@@ -694,52 +694,52 @@ async function cmdDub(flags) {
   const lang = String(flags.lang || "").trim();
   if (!lang) throw new Error('--lang 不能为空（如 --lang en）');
   const res = await api(`/api/project/${projectId}/dub`, { method: "POST", body: { targetLang: lang, llmConfig: LLM } });
-  step(`已生成 ${lang} 译制脚本（${res.shots} 镜）。下一步：clipforge compose --project ${projectId} --voice ${res.recommendedVoice || "<目标语种音色>"}`);
+  step(`已生成 ${lang} 译制脚本（${res.shots} 镜）。下一步：vibesku-clips compose --project ${projectId} --voice ${res.recommendedVoice || "<目标语种音色>"}`);
   return { ok: true, projectId, ...res };
 }
 
-const HELP = `ClipForge CLI · 命令行一句话出片
+const HELP = `VibeSKU Clips CLI · 命令行一句话出片
 
 用法：
-  clipforge create --topic "在家手冲咖啡" [--duration 25] [--style knowledge]
+  vibesku-clips create --topic "在家手冲咖啡" [--duration 25] [--style knowledge]
                    [--footage auto|image|video] [--voice <id>] [--aspect 9:16|16:9|1:1]
                    [--quality fast|standard|hd] [--bgm] [--bgm-mood upbeat] [--karaoke] [--cta "..."] [--json]
                    [--caption standard|bold|minimal|karaoke]   字幕样式预设(标准底板/重击大字/极简/逐字高亮)
-  clipforge product --url "<商品链接>" [--style pain_point|scene|comparison|story|drama|reversal|interview|unboxing|product_pov|talking_head|auto] [--duration 30]
+  vibesku-clips product --url "<商品链接>" [--style pain_point|scene|comparison|story|drama|reversal|interview|unboxing|product_pov|talking_head|auto] [--duration 30]
                    [--category beauty|food|home|fashion|tech|other] [--compose 同款成片选项]   贴链接→带货脚本(加 --compose 直接出片)
-  clipforge import --project <id> (--file <路径> | --text "你的脚本") [--title "..."]   自带脚本出片
-  clipforge dub --project <id> --lang en                                              配音译制(换语种,出海)
-  clipforge compose --project <id> [同款成片选项] [--no-fill]
-  clipforge trends [--geo US]   拉热搜选题(默认抖音/头条国内榜;--geo 走 Google Trends)
-  clipforge list                列出项目
-  clipforge voices              列出免费 Edge TTS 音色
-  clipforge cover --project <id> --title "手冲咖啡 三步搞定" [--position center|lower|upper]   生成封面图
-  clipforge qr --project <id> [--platform douyin --url <shopUrl> --size 512]   生成商品「扫码购买」二维码(UTM追踪)
-  clipforge endcard --project <id> [--platform douyin --seconds 3 --cta "扫码购买"]   把扫码购买二维码烧进成片片尾(需先合成)
-  clipforge export --project <id> --platform douyin|kuaishou|xiaohongshu|shipinhao|tiktok|reels|shorts   按平台导出(码率卡线免二压+实测报告)
-  clipforge qc --project <id> [--composition <id>]   成片质检(黑屏/静音/响度/流完整性,批量出片前把关)
-  clipforge master --project <id> [--composition <id>]   分析切点连续性与响度(默认只读,不调用模型)
+  vibesku-clips import --project <id> (--file <路径> | --text "你的脚本") [--title "..."]   自带脚本出片
+  vibesku-clips dub --project <id> --lang en                                              配音译制(换语种,出海)
+  vibesku-clips compose --project <id> [同款成片选项] [--no-fill]
+  vibesku-clips trends [--geo US]   拉热搜选题(默认抖音/头条国内榜;--geo 走 Google Trends)
+  vibesku-clips list                列出项目
+  vibesku-clips voices              列出免费 Edge TTS 音色
+  vibesku-clips cover --project <id> --title "手冲咖啡 三步搞定" [--position center|lower|upper]   生成封面图
+  vibesku-clips qr --project <id> [--platform douyin --url <shopUrl> --size 512]   生成商品「扫码购买」二维码(UTM追踪)
+  vibesku-clips endcard --project <id> [--platform douyin --seconds 3 --cta "扫码购买"]   把扫码购买二维码烧进成片片尾(需先合成)
+  vibesku-clips export --project <id> --platform douyin|kuaishou|xiaohongshu|shipinhao|tiktok|reels|shorts   按平台导出(码率卡线免二压+实测报告)
+  vibesku-clips qc --project <id> [--composition <id>]   成片质检(黑屏/静音/响度/流完整性,批量出片前把关)
+  vibesku-clips master --project <id> [--composition <id>]   分析切点连续性与响度(默认只读,不调用模型)
                    [--apply --normalize-audio|--deflicker] [--label "投流母版" --no-wait]
                                 显式应用后生成新版本且不覆盖原片;deflicker 会重编码画面,仅在确认闪烁时使用
-  clipforge gate --project <id> [--strict] [--composition <id>]   发布门禁:一条命令聚合 脚本就绪+成片质检+素材授权 三层检查
+  vibesku-clips gate --project <id> [--strict] [--composition <id>]   发布门禁:一条命令聚合 脚本就绪+成片质检+素材授权 三层检查
                                 fail(或 --strict 下 warn)退出码为 2,可直接接进脚本/CI 拦截发布
-  clipforge credits --project <id> [--format md --lang zh|en]   素材授权清单(商用风险+署名行,投流审核用)
-  clipforge native --project <id> [--strength subtle|medium --seed 3 --no-grain --vignette]   原生感处理(手持感+颗粒,反AI精致感)
-  clipforge preview --project <id> [--start 0 --duration 4 --width 360]   生成预览 GIF
-  clipforge sheet --project <id> [--frames 8 --proxy --mode smart|even]   成片速览一张图(scene感知抽帧+拼接点标注+波形;--proxy 出720p时间码审片小样)
-  clipforge carousel --project <id> [--theme night|warm|mint|mono|rose]   生成小红书图文卡片(标题+逐条要点)
-  clipforge transcript --project <id> --media <id> [--offset 0 --limit 500]   分页检查逐字稿、latestRevision 和当前计划
-  clipforge transcript-edit --project <id> --media <id> --plan edit-plan.json [--revision 0 --operation <id> --apply]
+  vibesku-clips credits --project <id> [--format md --lang zh|en]   素材授权清单(商用风险+署名行,投流审核用)
+  vibesku-clips native --project <id> [--strength subtle|medium --seed 3 --no-grain --vignette]   原生感处理(手持感+颗粒,反AI精致感)
+  vibesku-clips preview --project <id> [--start 0 --duration 4 --width 360]   生成预览 GIF
+  vibesku-clips sheet --project <id> [--frames 8 --proxy --mode smart|even]   成片速览一张图(scene感知抽帧+拼接点标注+波形;--proxy 出720p时间码审片小样)
+  vibesku-clips carousel --project <id> [--theme night|warm|mint|mono|rose]   生成小红书图文卡片(标题+逐条要点)
+  vibesku-clips transcript --project <id> --media <id> [--offset 0 --limit 500]   分页检查逐字稿、latestRevision 和当前计划
+  vibesku-clips transcript-edit --project <id> --media <id> --plan edit-plan.json [--revision 0 --operation <id> --apply]
                                 默认只预演 diff；用户确认后加 --apply，重试必须复用 operation ID
-  clipforge timeline --project <id> --media <id> --plan edit-plan.json [--format otio|edl|csv --out edit.otio]
+  vibesku-clips timeline --project <id> --media <id> --plan edit-plan.json [--format otio|edl|csv --out edit.otio]
                                 导出可编辑专业时间线；素材按原文件名重链，不写本机绝对路径
-  clipforge get --project <id>  查最新成片地址
-  clipforge --help | --version
+  vibesku-clips get --project <id>  查最新成片地址
+  vibesku-clips --help | --version
 
 环境变量：
-  CLIPFORGE_BASE_URL（默认 http://localhost:3000，需先 pnpm dev/start）
-  CLIPFORGE_LLM_BASE_URL / CLIPFORGE_LLM_API_KEY / CLIPFORGE_LLM_MODEL（create 必需）
-  CLIPFORGE_PEXELS_KEY / CLIPFORGE_PIXABAY_KEY（可选）
+  VIBESKU_CLIPS_BASE_URL（默认 http://localhost:3000，需先 pnpm dev/start）
+  VIBESKU_CLIPS_LLM_BASE_URL / VIBESKU_CLIPS_LLM_API_KEY / VIBESKU_CLIPS_LLM_MODEL（create 必需）
+  VIBESKU_CLIPS_PEXELS_KEY / VIBESKU_CLIPS_PIXABAY_KEY（可选）
 
 进度打印到 stderr，最终结果（含 videoUrl）打印到 stdout，便于管道取值。`;
 

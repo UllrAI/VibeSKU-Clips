@@ -18,7 +18,7 @@ describe("bounded ASR audio extraction", () => {
   });
 
   it("extracts only the requested segment from real media", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "clipforge-asr-chunk-"));
+    const directory = await mkdtemp(join(tmpdir(), "vibesku-clips-asr-chunk-"));
     const source = join(directory, "tone.wav");
     await execFileAsync(ffmpegBin(), ["-y", "-f", "lavfi", "-i", "sine=frequency=440:duration=2", source], { timeout: 60_000 });
     const pcm = await extractAsrAudioChunk({ inputPath: source, startSeconds: 0.5, durationSeconds: 0.75 });
@@ -27,7 +27,7 @@ describe("bounded ASR audio extraction", () => {
   }, 60_000);
 
   it("rejects undecodable audio", async () => {
-    const directory = await mkdtemp(join(tmpdir(), "clipforge-asr-bad-"));
+    const directory = await mkdtemp(join(tmpdir(), "vibesku-clips-asr-bad-"));
     const source = join(directory, "bad.mp4");
     await writeFile(source, "not media");
     await expect(extractAsrAudioChunk({ inputPath: source, startSeconds: 0, durationSeconds: 1 })).rejects.toThrow();

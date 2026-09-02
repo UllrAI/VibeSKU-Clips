@@ -118,7 +118,7 @@ async function executeRepair(projectId: string, body: RepairRequest) {
     throw new Error("当前平台缺少可恢复的参考视频任务能力，未提交也未产生费用");
   }
 
-  const workingDirectory = await mkdtemp(join(tmpdir(), "clipforge-repair-"));
+  const workingDirectory = await mkdtemp(join(tmpdir(), "vibesku-clips-repair-"));
   try {
     const startFrame = join(workingDirectory, "start.jpg");
     const endFrame = join(workingDirectory, "end.jpg");

@@ -2,7 +2,7 @@
 
 Smooth, animated video elements — kinetic title cards and per-word captions with spring motion, scale, and glow — the kind of motion graphics FFmpeg's `drawtext`/`zoompan` can't produce. Rendered with [Remotion](https://remotion.dev) (React → video).
 
-This is an **optional module**, excluded from ClipForge's main build (see `tsconfig.json` `exclude`). It adds no dependencies to the base install — enable it only if you want animated elements.
+This is an **optional module**, excluded from VibeSKU Clips’ main build (see `tsconfig.json` `exclude`). It adds no dependencies to the base install — enable it only if you want animated elements.
 
 ## Enable & render
 
@@ -19,7 +19,7 @@ npm run render:element -- --kind caption --text "买它 真的 好用" --aspect 
 
 Flags: `--kind title|caption`, `--text`, `--subtitle` (title only), `--aspect 9:16|16:9|1:1`, `--duration <秒>`, `--out <file.mp4>`.
 
-Output is **h264 mp4 in ClipForge's exact format** (e.g. 1080×1920), so it composites cleanly into the FFmpeg pipeline (overlay / concat) or can be dropped into a project's local material pool.
+Output is **h264 mp4 in VibeSKU Clips’ exact format** (e.g. 1080×1920), so it composites cleanly into the FFmpeg pipeline (overlay / concat) or can be dropped into a project's local material pool.
 
 ## Templates
 

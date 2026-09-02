@@ -22,7 +22,7 @@ function initLog() {
     const logDir = path.join(app.getPath("userData"), "logs");
     fs.mkdirSync(logDir, { recursive: true });
     logFilePath = path.join(logDir, "server.log");
-    fs.writeFileSync(logFilePath, `=== ClipForge 启动 ${new Date().toISOString()} (${process.platform}/${process.arch}) ===\n`);
+    fs.writeFileSync(logFilePath, `=== VibeSKU Clips 启动 ${new Date().toISOString()} (${process.platform}/${process.arch}) ===\n`);
   } catch {
     logFilePath = "";
   }
@@ -188,7 +188,7 @@ app.whenReady().then(async () => {
     // window simply never appears and the user reports "clicked, nothing happened" with no way to diagnose.
     if (!process.env.HEADLESS_SMOKE) {
       dialog.showErrorBox(
-        "ClipForge 启动失败 / Failed to start",
+        "VibeSKU Clips 启动失败 / Failed to start",
         `本地服务未能启动 / The local service failed to start.\n\n${(e && e.message) || e}\n\n` +
           `日志 / Log: ${logFilePath || "(不可用)"}\n\n--- 日志末尾 / log tail ---\n${readLogTail()}`
       );
@@ -220,7 +220,7 @@ app.whenReady().then(async () => {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 860,
-    title: "ClipForge",
+    title: "VibeSKU Clips",
     backgroundColor: "#0a0a0a",
     webPreferences: { contextIsolation: true },
   });
@@ -229,7 +229,7 @@ app.whenReady().then(async () => {
     if (errorCode === -3) return; // ERR_ABORTED: benign (e.g. redirect/navigation), ignore
     log(`页面加载失败 code=${errorCode} desc=${errorDescription} url=${validatedURL}`);
     dialog.showErrorBox(
-      "ClipForge 页面加载失败 / Page load failed",
+      "VibeSKU Clips 页面加载失败 / Page load failed",
       `${errorDescription} (${errorCode})\n${validatedURL}\n\n日志 / Log: ${logFilePath || "(不可用)"}`
     );
   });

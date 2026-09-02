@@ -7,7 +7,7 @@ describe("buildShopLink（UTM 追踪链接构造）", () => {
     const u = new URL(link);
     expect(u.searchParams.get("utm_source")).toBe("douyin");
     expect(u.searchParams.get("utm_medium")).toBe("short_video");
-    expect(u.searchParams.get("utm_campaign")).toBe("clipforge");
+    expect(u.searchParams.get("utm_campaign")).toBe("vibesku-clips");
     expect(u.origin + u.pathname).toBe("https://shop.example.com/p/123");
   });
 

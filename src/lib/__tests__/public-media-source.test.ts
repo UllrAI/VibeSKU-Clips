@@ -8,7 +8,7 @@ describe("publicMediaSource", () => {
       id: "media-1",
       projectId: "project-1",
       originalName: "source.mp4",
-      filePath: "/private/clipforge/source.mp4",
+      filePath: "/private/vibesku-clips/source.mp4",
       mimeType: "video/mp4",
       sizeBytes: 1024,
       duration: 12_000,
@@ -31,16 +31,16 @@ describe("publicMediaSource", () => {
 
     expect(result).toMatchObject({ id: "media-1", originalName: "source.mp4", status: "ready" });
     expect(result).not.toHaveProperty("filePath");
-    expect(JSON.stringify(result)).not.toContain("/private/clipforge");
+    expect(JSON.stringify(result)).not.toContain("/private/vibesku-clips");
   });
 
   it("removes every server-side path from an edit composition", () => {
     const composition: Parameters<typeof publicMediaComposition>[0] = {
       id: "composition-1",
       projectId: "project-1",
-      outputPath: "/private/clipforge/output.mp4",
-      thumbnailPath: "/private/clipforge/thumb.jpg",
-      bgmPath: "/private/clipforge/bgm.mp3",
+      outputPath: "/private/vibesku-clips/output.mp4",
+      thumbnailPath: "/private/vibesku-clips/thumb.jpg",
+      bgmPath: "/private/vibesku-clips/bgm.mp3",
       resolution: "720p",
       aspectRatio: "16:9",
       duration: 9_680,
@@ -61,6 +61,6 @@ describe("publicMediaSource", () => {
     expect(result).not.toHaveProperty("outputPath");
     expect(result).not.toHaveProperty("thumbnailPath");
     expect(result).not.toHaveProperty("bgmPath");
-    expect(JSON.stringify(result)).not.toContain("/private/clipforge");
+    expect(JSON.stringify(result)).not.toContain("/private/vibesku-clips");
   });
 });

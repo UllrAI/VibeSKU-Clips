@@ -1,6 +1,6 @@
-# 把 ClipForge 打成自托管 Docker 镜像，冒烟测试通过后发布到 GitHub Container Registry (ghcr.io)。
+# 把 VibeSKU Clips 打成自托管 Docker 镜像，冒烟测试通过后发布到 GitHub Container Registry (ghcr.io)。
 # 触发：发布 Release 时自动出 vX.Y.Z + latest；也可在 Actions 页手动 workflow_dispatch。
-# 发布后镜像出现在仓库 Packages 页：ghcr.io/xixihhhh/clipforge
+# 发布后镜像出现在仓库 Packages 页：ghcr.io/ullrai/vibesku-clips
 name: Publish Docker image (ghcr.io)
 
 on:
@@ -33,14 +33,14 @@ jobs:
         with:
           context: .
           load: true
-          tags: clipforge:smoke
+          tags: vibesku-clips:smoke
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       # 2) 冒烟测试：起容器，确认能启动 + DB 迁移成功 + 落地页 200 + ffmpeg 可用
       - name: 冒烟测试（启动 / 页面可达 / ffmpeg）
         run: |
-          docker run -d -p 3000:3000 --name smoke clipforge:smoke
+          docker run -d -p 3000:3000 --name smoke vibesku-clips:smoke
           for i in $(seq 1 40); do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/start || true)
             [ "$code" = "200" ] && break
@@ -69,7 +69,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ghcr.io/ullrai/vibesku-clips
           tags: |
             type=raw,value=latest
             type=semver,pattern={{version}}

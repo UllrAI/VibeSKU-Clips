@@ -13,7 +13,7 @@ export interface ShopLinkOpts {
   platform?: string;
   /** optional affiliate/partner code, appended as a generic `aff` param (exact mechanism is platform-specific) */
   affiliateCode?: string;
-  /** utm_campaign, defaults to "clipforge" */
+  /** utm_campaign, defaults to "vibesku-clips" */
   campaign?: string;
 }
 
@@ -36,7 +36,7 @@ export function buildShopLink(shopUrl: string | null | undefined, opts: ShopLink
   const platform = (opts.platform || "").trim().toLowerCase();
   if (platform) u.searchParams.set("utm_source", platform);
   u.searchParams.set("utm_medium", "short_video");
-  u.searchParams.set("utm_campaign", (opts.campaign || "").trim() || "clipforge");
+  u.searchParams.set("utm_campaign", (opts.campaign || "").trim() || "vibesku-clips");
 
   const aff = (opts.affiliateCode || "").trim();
   if (aff) u.searchParams.set("aff", aff);

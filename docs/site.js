@@ -1,4 +1,4 @@
-/* ClipForge site animations — GSAP + ScrollTrigger + Lenis (CDN).
+/* VibeSKU Clips site animations — GSAP + ScrollTrigger + Lenis (CDN).
    The page is fully readable with no JS: initial hidden states are
    set HERE, not in CSS, so a failed CDN load degrades gracefully. */
 (function () {

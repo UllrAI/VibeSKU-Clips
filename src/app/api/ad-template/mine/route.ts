@@ -25,10 +25,10 @@ const SAFE_ID = /^[a-zA-Z0-9\-]+$/;
 
 const SHARE_ERRORS: Record<AdTemplateShareError, { zh: string; en: string }> = {
   invalid_json: { zh: "不是有效的 JSON 文本", en: "Not valid JSON" },
-  wrong_kind: { zh: "这不是 ClipForge 模板分享文件", en: "Not a ClipForge template share file" },
+  wrong_kind: { zh: "这不是 VibeSKU Clips 模板分享文件", en: "Not a VibeSKU Clips template share file" },
   unsupported_version: {
-    zh: "模板文件版本比当前应用新，请先升级 ClipForge",
-    en: "Template file is newer than this app; please upgrade ClipForge",
+    zh: "模板文件版本比当前应用新，请先升级 VibeSKU Clips",
+    en: "Template file is newer than this app; please upgrade VibeSKU Clips",
   },
   invalid_template: { zh: "模板内容无法解析", en: "Could not parse the template content" },
 };

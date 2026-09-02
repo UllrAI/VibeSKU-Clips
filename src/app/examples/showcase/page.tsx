@@ -1,9 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { LuMic, LuPlus } from "react-icons/lu";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { getExampleShowcase, getExampleTemplates } from "@/lib/examples";
 import type { Shot } from "@/lib/db/schema";
@@ -34,7 +33,7 @@ export default function ShowcasePage() {
             {t("introLead")}{t("introMeta", { style: sc.styleLabel, shots: sc.shots.length, duration: sc.totalDuration, resolution: sc.resolution, aspectRatio: sc.aspectRatio })}
             {t("introTail")}
           </>}
-          actions={<Button render={<Link href="/project/new" />}><LuPlus className="h-4 w-4" />{t("makeSimilar")}</Button>}
+          actions={<ButtonLink href="/project/new"><LuPlus className="h-4 w-4" />{t("makeSimilar")}</ButtonLink>}
         />
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-10">

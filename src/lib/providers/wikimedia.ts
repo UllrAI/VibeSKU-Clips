@@ -13,7 +13,7 @@
 import { type StockCandidate, type StockMediaType, fetchWithTimeout } from "./stock-types";
 
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
-const USER_AGENT = "clipforge/1.0 (https://github.com/xixihhhh/clipforge; stock media search)";
+const USER_AGENT = "vibesku-clips/1.0 (https://github.com/UllrAI/VibeSKU-Clips; stock media search)";
 
 // ==================== Raw response types ====================
 

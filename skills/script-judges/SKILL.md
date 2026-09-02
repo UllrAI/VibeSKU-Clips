@@ -2,16 +2,16 @@
 name: script-judges
 description: A four-judge adversarial panel for short-video script lines (UGC ads, talking-head, mini-drama, 口播/带货台词). Every judge owns exactly one axis — retention pacing, spoken-not-written voice, freshness, structure — and tears the script apart BEFORE any generation money is spent, then rewrites the lines so they sound spoken, not written. Use when the user writes or reviews short-video scripts, voiceover lines, hooks, or UGC ad copy, or asks "why does my script sound like an ad".
 license: AGPL-3.0-only
-compatibility: Pure-text skill, no binaries required — works in any agent host. Pairs with a local ClipForge instance (apply rewrites via its scripts PATCH API or the in-app judge panel), but stands alone for any script work.
+compatibility: Pure-text skill, no binaries required — works in any agent host. Pairs with a local VibeSKU Clips instance (apply rewrites via its scripts PATCH API or the in-app judge panel), but stands alone for any script work.
 metadata:
   {
     "version": "0.8.83",
-    "homepage": "https://github.com/xixihhhh/clipforge",
+    "homepage": "https://github.com/UllrAI/VibeSKU-Clips",
     "keywords": "script-review, ugc-ads, hook-writing, short-video, copywriting, 口播, 带货脚本, 台词, judge-panel",
     "openclaw":
       {
         "emoji": "⚖️",
-        "homepage": "https://github.com/xixihhhh/clipforge",
+        "homepage": "https://github.com/UllrAI/VibeSKU-Clips",
         "requires": {},
       },
   }
@@ -69,6 +69,6 @@ Judges are only as sharp as what they're fed. Before serious use, paste calibrat
 - Across a batch, vary the person, the setting and the phrasing patterns — repetition is the biggest tell.
 - If the hook wouldn't hold you, say so BEFORE anything gets generated. If a claim isn't supported by the product, flag it.
 
-## With ClipForge
+## With VibeSKU Clips
 
-ClipForge ships this panel built in: the script page's ⚖️ judge-panel button runs all four judges in one LLM call and applies rewrites through `PATCH /api/project/{id}/scripts` (`shotTexts`). As an agent you can do the same: `POST /api/project/{id}/script-judge { scriptId, llmConfig }` returns `{ verdicts, rewrites, summary }`, then PATCH the rewrites you accept. Judging is cheap (one text call); generation is not — always judge first.
+VibeSKU Clips ships this panel built in: the script page's ⚖️ judge-panel button runs all four judges in one LLM call and applies rewrites through `PATCH /api/project/{id}/scripts` (`shotTexts`). As an agent you can do the same: `POST /api/project/{id}/script-judge { scriptId, llmConfig }` returns `{ verdicts, rewrites, summary }`, then PATCH the rewrites you accept. Judging is cheap (one text call); generation is not — always judge first.

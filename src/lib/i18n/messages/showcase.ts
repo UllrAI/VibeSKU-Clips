@@ -8,7 +8,7 @@ export const showcase: NamespaceMessages = {
     navBadge: "示例",
     makeSimilar: "按这个结构创建",
     // 说明区
-    introLead: "这个示例由 ClipForge 完成：",
+    introLead: "这个示例由 VibeSKU Clips 完成：",
     introMeta: "{style} · {shots} 个镜头 · {duration} 秒 · {resolution} {aspectRatio}。",
     introTail: "查看成片和分镜脚本，确认这套结构是否适合你的内容。",
     // 分镜脚本
@@ -32,7 +32,7 @@ export const showcase: NamespaceMessages = {
     navTitle: "Example works",
     navBadge: "Demo",
     makeSimilar: "Use this structure",
-    introLead: "A complete example built with ClipForge: ",
+    introLead: "A complete example built with VibeSKU Clips: ",
     introMeta: "{style} · {shots} shots · {duration}s · {resolution} {aspectRatio}.",
     introTail: " Below are the final preview and shot-by-shot script — follow along to make your own.",
     scriptTitle: "Shot script",

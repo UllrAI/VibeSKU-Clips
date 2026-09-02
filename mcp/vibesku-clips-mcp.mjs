@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
- * ClipForge MCP Server — exposes ClipForge's "one-sentence-to-video" pipeline as MCP tools,
+ * VibeSKU Clips MCP Server — exposes VibeSKU Clips’ "one-sentence-to-video" pipeline as MCP tools,
  * allowing any MCP client (Claude Desktop / Claude Code / Cursor, etc.) to drive video generation directly.
  *
- * Design: this service is a thin wrapper around the ClipForge HTTP API (reusing all its orchestration:
+ * Design: this service is a thin wrapper around the VibeSKU Clips HTTP API (reusing all its orchestration:
  * DB / FFmpeg / free TTS / free stock), communicating with the client via stdio.
  * Only "generate script" requires an LLM Key; Openverse stock + Edge TTS are fully key-free.
  *
  * Environment variables:
- *   CLIPFORGE_BASE_URL     ClipForge instance URL (default http://localhost:3000; run `pnpm dev` / `pnpm start` first)
- *   CLIPFORGE_LLM_BASE_URL LLM endpoint (OpenAI-compatible, e.g. https://api.atlascloud.ai/v1)
- *   CLIPFORGE_LLM_API_KEY  LLM key (required for script generation; omitting it gives a clear prompt in create_video / generate_script)
- *   CLIPFORGE_LLM_MODEL    LLM model name (e.g. deepseek-ai/deepseek-v4-pro)
+ *   VIBESKU_CLIPS_BASE_URL     VibeSKU Clips instance URL (default http://localhost:3000; run `pnpm dev` / `pnpm start` first)
+ *   VIBESKU_CLIPS_LLM_BASE_URL LLM endpoint (OpenAI-compatible, e.g. https://api.atlascloud.ai/v1)
+ *   VIBESKU_CLIPS_LLM_API_KEY  LLM key (required for script generation; omitting it gives a clear prompt in create_video / generate_script)
+ *   VIBESKU_CLIPS_LLM_MODEL    LLM model name (e.g. deepseek-ai/deepseek-v4-pro)
  */
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -20,17 +20,17 @@ import {
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-const BASE_URL = (process.env.CLIPFORGE_BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
+const BASE_URL = (process.env.VIBESKU_CLIPS_BASE_URL || "http://localhost:3000").replace(/\/+$/, "");
 const LLM = {
-  baseUrl: process.env.CLIPFORGE_LLM_BASE_URL || "",
-  apiKey: process.env.CLIPFORGE_LLM_API_KEY || "",
-  model: process.env.CLIPFORGE_LLM_MODEL || "",
+  baseUrl: process.env.VIBESKU_CLIPS_LLM_BASE_URL || "",
+  apiKey: process.env.VIBESKU_CLIPS_LLM_API_KEY || "",
+  model: process.env.VIBESKU_CLIPS_LLM_MODEL || "",
 };
 
 // Free stock source keys (optional): when provided, adds high-quality Pexels/Pixabay video; without them, keyless Wikimedia video + Openverse images are still available
 const STOCK_KEYS = {};
-if (process.env.CLIPFORGE_PIXABAY_KEY) STOCK_KEYS.pixabay = process.env.CLIPFORGE_PIXABAY_KEY;
-if (process.env.CLIPFORGE_PEXELS_KEY) STOCK_KEYS.pexels = process.env.CLIPFORGE_PEXELS_KEY;
+if (process.env.VIBESKU_CLIPS_PIXABAY_KEY) STOCK_KEYS.pixabay = process.env.VIBESKU_CLIPS_PIXABAY_KEY;
+if (process.env.VIBESKU_CLIPS_PEXELS_KEY) STOCK_KEYS.pexels = process.env.VIBESKU_CLIPS_PEXELS_KEY;
 
 const NARRATION_STYLES = ["knowledge", "story", "lifestyle", "inspiration", "travel"];
 const FOOTAGE_KINDS = ["auto", "image", "video"];
@@ -77,7 +77,7 @@ export function defaultVoiceForTopic(topic) {
 
 /** Shared "output options" JSON-Schema properties for create_video / compose */
 const OUTPUT_OPTION_PROPS = {
-  voice: { type: "string", description: "Edge TTS 音色 value（如 zh-CN-XiaoxiaoNeural / en-US-AriaNeural，必须来自 clipforge_list_voices，猜测的 id 会合成失败或读错语种）。create_video 不指定则按主题语言自动挑（英文主题→英文音色，日/韩同理；中文→晓晓）" },
+  voice: { type: "string", description: "Edge TTS 音色 value（如 zh-CN-XiaoxiaoNeural / en-US-AriaNeural，必须来自 vibesku_clips_list_voices，猜测的 id 会合成失败或读错语种）。create_video 不指定则按主题语言自动挑（英文主题→英文音色，日/韩同理；中文→晓晓）" },
   aspectRatio: { type: "string", enum: ASPECT_RATIOS, description: "画幅，默认 9:16 竖屏" },
   quality: { type: "string", enum: QUALITY_PRESETS, description: "画质预设 fast/standard/hd，默认 standard" },
   bgm: {
@@ -121,7 +121,7 @@ const OUTPUT_OPTION_PROPS = {
 /** Shared projectId schema property — most tools operate on an existing project */
 const PROJECT_ID_PROP = {
   type: "string",
-  description: "项目 ID（来自 clipforge_list_projects，或 create/ingest/generate 类工具返回的 projectId）",
+  description: "项目 ID（来自 vibesku_clips_list_projects，或 create/ingest/generate 类工具返回的 projectId）",
 };
 
 const TRANSCRIPT_PLAN_PROP = {
@@ -138,7 +138,7 @@ const TRANSCRIPT_PLAN_PROP = {
   required: ["version", "removedWordIds", "removeSilence", "silencePaddingMs", "wordPaddingMs", "burnSubtitles"],
 };
 
-/** Call the ClipForge HTTP API; throws an error with the backend error message on non-2xx responses */
+/** Call the VibeSKU Clips HTTP API; throws an error with the backend error message on non-2xx responses */
 async function api(path, { method = "GET", body, timeoutMs = 600000 } = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
@@ -155,7 +155,7 @@ async function api(path, { method = "GET", body, timeoutMs = 600000 } = {}) {
     text = await res.text();
   } catch (e) {
     if (e?.name === "AbortError") throw new Error(`请求超时：${path}`);
-    throw new Error(`连不上 ClipForge（${BASE_URL}）。请先启动实例：pnpm dev 或 pnpm start。原始错误：${e?.message || e}`);
+    throw new Error(`连不上 VibeSKU Clips（${BASE_URL}）。请先启动实例：pnpm dev 或 pnpm start。原始错误：${e?.message || e}`);
   } finally {
     clearTimeout(timer);
   }
@@ -178,7 +178,7 @@ async function api(path, { method = "GET", body, timeoutMs = 600000 } = {}) {
 function requireLlm() {
   if (!LLM.baseUrl || !LLM.apiKey || !LLM.model) {
     throw new Error(
-      "生成脚本需要 LLM。请为 MCP 服务设置环境变量：CLIPFORGE_LLM_BASE_URL、CLIPFORGE_LLM_API_KEY、CLIPFORGE_LLM_MODEL（OpenAI 兼容接口，如 Atlas Cloud / DeepSeek / OpenRouter）。",
+      "生成脚本需要 LLM。请为 MCP 服务设置环境变量：VIBESKU_CLIPS_LLM_BASE_URL、VIBESKU_CLIPS_LLM_API_KEY、VIBESKU_CLIPS_LLM_MODEL（OpenAI 兼容接口，如 Atlas Cloud / DeepSeek / OpenRouter）。",
     );
   }
 }
@@ -199,7 +199,7 @@ async function pollCompose(projectId, { compositionId, timeoutMs = 660000, inter
     const status = composition?.status;
     if (status === "done") return composition;
     if (status === "failed") throw new Error("合成失败（FFmpeg/TTS 出错），请检查素材与脚本");
-    if (Date.now() > deadline) throw new Error("合成超时，可稍后用 clipforge_get_video 再查结果");
+    if (Date.now() > deadline) throw new Error("合成超时，可稍后用 vibesku_clips_get_video 再查结果");
     await new Promise((r) => setTimeout(r, intervalMs));
   }
 }
@@ -216,7 +216,7 @@ function ok(textObj) {
 // ---- Tool definitions (JSON Schema, no zod required) ----
 const TOOLS = [
   {
-    name: "clipforge_create_video",
+    name: "vibesku_clips_create_video",
     description:
       "一句话成片：输入一个主题，自动写旁白脚本→判官团（节奏/口语/创意/结构/画面五判官）自动挑刺并重写弱句→从免费素材库配齐画面→免费 AI 配音+字幕→FFmpeg 合成竖屏短视频，返回可下载的视频地址。需要为 MCP 配置 LLM 环境变量；素材与配音全程免 Key。",
     inputSchema: {
@@ -233,7 +233,7 @@ const TOOLS = [
         wait: {
           type: "boolean",
           description:
-            "默认 true=等合成完成后返回视频地址（最长约 11 分钟，MCP 客户端超时较短时可能被掐断）。false=提交合成后立即返回 compositionId，用 clipforge_get_video { projectId, compositionId } 轮询取片——长视频/严格超时环境推荐 false。",
+            "默认 true=等合成完成后返回视频地址（最长约 11 分钟，MCP 客户端超时较短时可能被掐断）。false=提交合成后立即返回 compositionId，用 vibesku_clips_get_video { projectId, compositionId } 轮询取片——长视频/严格超时环境推荐 false。",
         },
         ...OUTPUT_OPTION_PROPS,
       },
@@ -241,7 +241,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_ingest_product",
+    name: "vibesku_clips_ingest_product",
     description:
       "贴一个商品页链接，自动抓取标题/价格/商品图（解析优先级 schema.org JSON-LD > OpenGraph > Twitter Card > 标题/meta），可一键建带货项目并下载前几张商品图。带货成片的「链接优先」入口。返回 projectId、解析出的商品信息与已下载商品图列表。不需要 LLM；对带标准 OG/JSON-LD 标签的页面（Shopify、独立站、TikTok Shop 等）支持最好，部分平台有反爬可能解析不全。",
     inputSchema: {
@@ -257,9 +257,9 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_product_script",
+    name: "vibesku_clips_product_script",
     description:
-      "带货脚本一条龙：贴商品链接 → 自动抓取商品信息（标题/价/图）→ LLM 生成多套带货分镜脚本，返回 projectId 与脚本数据。等于 clipforge_ingest_product + 网页端「生成带货脚本」两步合一，agent 一句话即可从链接到脚本。生成时会自动结合你已发布视频的转化数据（数据飞轮）偏向更能卖的风格/钩子。之后用 clipforge_compose { projectId } 出片。需要 LLM 环境变量。",
+      "带货脚本一条龙：贴商品链接 → 自动抓取商品信息（标题/价/图）→ LLM 生成多套带货分镜脚本，返回 projectId 与脚本数据。等于 vibesku_clips_ingest_product + 网页端「生成带货脚本」两步合一，agent 一句话即可从链接到脚本。生成时会自动结合你已发布视频的转化数据（数据飞轮）偏向更能卖的风格/钩子。之后用 vibesku_clips_compose { projectId } 出片。需要 LLM 环境变量。",
     inputSchema: {
       type: "object",
       properties: {
@@ -281,7 +281,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_generate_script",
+    name: "vibesku_clips_generate_script",
     description:
       "只生成去商品化的旁白分镜脚本（不配画面/不合成），返回 projectId 与各分镜（含英文素材检索词）。需要 LLM 环境变量。",
     inputSchema: {
@@ -295,7 +295,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_search_stock",
+    name: "vibesku_clips_search_stock",
     description:
       "从免费可商用素材库检索画面（keyless Openverse 图片优先；配了 Pexels/Pixabay Key 的实例还会聚合视频）。返回候选列表（title/provider/license/author/预览图与来源页链接），只检索不下载——用于人工挑素材或核对授权；自动配画面无需先调它（create_video/compose 内置逐镜配片）。检索词建议英文。不需要 LLM。",
     inputSchema: {
@@ -309,12 +309,12 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_list_projects",
-    description: "列出 ClipForge 里的项目。返回项目数组（id / 名称 / 类型 / 状态 / 主题），后续工具的 projectId 从这里取。不需要 LLM。",
+    name: "vibesku_clips_list_projects",
+    description: "列出 VibeSKU Clips 里的项目。返回项目数组（id / 名称 / 类型 / 状态 / 主题），后续工具的 projectId 从这里取。不需要 LLM。",
     inputSchema: { type: "object", properties: {} },
   },
   {
-    name: "clipforge_compose",
+    name: "vibesku_clips_compose",
     description:
       "为一个已有脚本+素材的项目执行合成（免费 Edge TTS 配音+字幕），返回可下载的视频地址。用于 generate_script 之后单独出片。不需要 LLM。",
     inputSchema: {
@@ -326,7 +326,7 @@ const TOOLS = [
         wait: {
           type: "boolean",
           description:
-            "默认 true=等合成完成后返回视频地址。false=提交后立即返回 compositionId，用 clipforge_get_video { projectId, compositionId } 轮询——长视频/严格超时环境推荐 false。",
+            "默认 true=等合成完成后返回视频地址。false=提交后立即返回 compositionId，用 vibesku_clips_get_video { projectId, compositionId } 轮询——长视频/严格超时环境推荐 false。",
         },
         ...OUTPUT_OPTION_PROPS,
       },
@@ -334,9 +334,9 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_update_shots",
+    name: "vibesku_clips_update_shots",
     description:
-      "单句精修：只改指定分镜的台词/画面描述/运镜，不动其他镜头——配合 clipforge_gate / clipforge_qc 的反馈做点改（如「第3镜台词拖」），改完重新 clipforge_compose 出片即可，不必整篇重生成（重生成会丢掉判官团已做的重写）。建议改完台词可再跑一次判官（重新 compose 前无强制要求）。不需要 LLM。",
+      "单句精修：只改指定分镜的台词/画面描述/运镜，不动其他镜头——配合 vibesku_clips_gate / vibesku_clips_qc 的反馈做点改（如「第3镜台词拖」），改完重新 vibesku_clips_compose 出片即可，不必整篇重生成（重生成会丢掉判官团已做的重写）。建议改完台词可再跑一次判官（重新 compose 前无强制要求）。不需要 LLM。",
     inputSchema: {
       type: "object",
       properties: {
@@ -361,12 +361,12 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_list_voices",
+    name: "vibesku_clips_list_voices",
     description: "列出可用的免费 Edge TTS 多语言音色（中/英/日/韩/西）。返回音色数组（value/label/gender/lang）与默认音色，create_video / compose 的 voice 参数只能从这里选。不需要 LLM。",
     inputSchema: { type: "object", properties: {} },
   },
   {
-    name: "clipforge_get_video",
+    name: "vibesku_clips_get_video",
     description:
       "查询某项目合成的视频结果，不触发重新合成——用于轮询 create_video/compose 的异步产物或取回此前做过的视频。传 compositionId 可查指定那一次合成（并发合成时防串片）；缺省查最新一次。返回状态（composing/done/failed/none）与可下载的 mp4 地址。不需要 LLM。",
     inputSchema: {
@@ -379,18 +379,18 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_trends",
+    name: "vibesku_clips_trends",
     description:
-      "拉某地区每日热搜，建议「该做什么主题」。返回话题数组（含热度 + 相关新闻背景），条目可直接当 clipforge_create_video 的 topic。免 Key，不需要 LLM。",
+      "拉某地区每日热搜，建议「该做什么主题」。返回话题数组（含热度 + 相关新闻背景），条目可直接当 vibesku_clips_create_video 的 topic。免 Key，不需要 LLM。",
     inputSchema: {
       type: "object",
       properties: { geo: { type: "string", description: "地区两字母码，如 US/JP/GB，默认 US（en 系国家覆盖最全）" } },
     },
   },
   {
-    name: "clipforge_import_script",
+    name: "vibesku_clips_import_script",
     description:
-      "把你已经写好的整段旁白导入某项目，自动切成分镜（免 AI 生成），之后用 clipforge_compose 出片。配合本地素材即「自带稿子+自带素材」全自主成片。返回 scriptId 与切出的分镜数。不需要 LLM。",
+      "把你已经写好的整段旁白导入某项目，自动切成分镜（免 AI 生成），之后用 vibesku_clips_compose 出片。配合本地素材即「自带稿子+自带素材」全自主成片。返回 scriptId 与切出的分镜数。不需要 LLM。",
     inputSchema: {
       type: "object",
       properties: {
@@ -402,9 +402,9 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_dub",
+    name: "vibesku_clips_dub",
     description:
-      "把某项目当前脚本翻成目标语种、存为译制版（出海：同片换语种发不同市场，画面不变只换声音字幕）。返回推荐音色，再用 clipforge_compose 传该 voice 出译制版。需要 LLM 环境变量。",
+      "把某项目当前脚本翻成目标语种、存为译制版（出海：同片换语种发不同市场，画面不变只换声音字幕）。返回推荐音色，再用 vibesku_clips_compose 传该 voice 出译制版。需要 LLM 环境变量。",
     inputSchema: {
       type: "object",
       properties: {
@@ -415,7 +415,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_cover",
+    name: "vibesku_clips_cover",
     description:
       "从某项目最新成片抽一帧 + 叠加大标题生成封面图/缩略图（提升点击率）。返回封面 PNG 地址。需先合成过视频。不需要 LLM。",
     inputSchema: {
@@ -430,9 +430,9 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_shop_qr",
+    name: "vibesku_clips_shop_qr",
     description:
-      "为某项目的商品链接生成「扫码购买」二维码 PNG（适合私域分发：微信群/朋友圈/详情页）。编码的链接自动打 UTM 追踪参数（utm_source=平台、campaign=clipforge）。返回二维码 PNG 地址与实际编码的 shopLink；指定国内平台时返回 warning 提示站外导流风险（抖音等平台处罚成片内二维码，独立 PNG 不受影响）。项目需已有商品链接（ingest 商品链接会自动保留），或用 url 传入。不需要 LLM。",
+      "为某项目的商品链接生成「扫码购买」二维码 PNG（适合私域分发：微信群/朋友圈/详情页）。编码的链接自动打 UTM 追踪参数（utm_source=平台、campaign=vibesku-clips）。返回二维码 PNG 地址与实际编码的 shopLink；指定国内平台时返回 warning 提示站外导流风险（抖音等平台处罚成片内二维码，独立 PNG 不受影响）。项目需已有商品链接（ingest 商品链接会自动保留），或用 url 传入。不需要 LLM。",
     inputSchema: {
       type: "object",
       properties: {
@@ -445,7 +445,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_end_card",
+    name: "vibesku_clips_end_card",
     description:
       "把「扫码购买」二维码烧进某项目最新成片的片尾最后几秒（后处理，不改合成管线），引导扫码转化。⚠️ 站外导流风险：platform=douyin 默认拒绝（抖音 2026-07 起成片内二维码首违关橱窗 7 天、二违永久收回带货权限，force=true 可强制）；其他国内平台会生成但返回 warning；tiktok/reels/shorts 无此风险。二维码编码项目商品链接（UTM 追踪）。返回处理后的新 mp4 地址与 shopLink（不覆盖原片），必要时含 warning。需先合成过视频、且项目有商品链接（或用 url 传入）。CTA 文字默认关闭（易与视频自带贴片重叠），可 ctaText 开启。不需要 LLM。",
     inputSchema: {
@@ -465,7 +465,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_export_platform",
+    name: "vibesku_clips_export_platform",
     description:
       "把某项目最新成片按目标平台规格导出（后处理重编码，不改合成管线）：按平台画幅模糊填充重构图 + 码率卡在平台二压线内（CRF+VBV 双约束，抖音 6000kbps / Reels 5000 / 其余 8000，社区经验值）+ 导出后 ffprobe 实测回读，返回「实测码率 vs 平台线」双语报告（report.withinCap 表示预计可免平台二次压缩变糊）。支持 douyin|kuaishou|xiaohongshu|shipinhao|tiktok|reels|shorts。需先合成过视频。不需要 LLM。",
     inputSchema: {
@@ -478,7 +478,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_qc",
+    name: "vibesku_clips_qc",
     description:
       "对某项目最新成片跑自动质检（后处理，不改合成管线）：流完整性/时长/分辨率校验 + 黑屏(blackdetect)/长静音(silencedetect)/响度漂移(EBU R128 对 -14 LUFS)/画面冻结检测，返回结构化双语报告（status: ok|warn|fail + 逐项 checks）。批量出片后发布前把关用：fail 的片子别直接发。需先合成过视频。不需要 LLM。",
     inputSchema: {
@@ -491,7 +491,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_master",
+    name: "vibesku_clips_master",
     description:
       "分析成片真实拼接点前后的亮度/色度/饱和度差异，并测量整片 EBU R128 响度。默认 apply=false，只返回证据与建议：不改文件、不调用模型、不会产生模型费用。apply=true 时必须显式选择 normalizeAudio 或 deflicker，并创建新的非破坏母版版本，不覆盖原片；normalizeAudio 使用两遍响度标准化，deflicker 会重编码画面且可能抹平纹理，只应在确认画面存在时间闪烁时启用。",
     inputSchema: {
@@ -503,13 +503,13 @@ const TOOLS = [
         normalizeAudio: { type: "boolean", description: "两遍 EBU R128 响度标准化到 -14 LUFS；仅 apply=true 时执行" },
         deflicker: { type: "boolean", description: "时间去闪烁，会重编码画面；仅确认存在闪烁且 apply=true 时启用" },
         label: { type: "string", description: "新母版版本名称，最长 60 字符" },
-        wait: { type: "boolean", description: "apply=true 时默认等待完成；false 立即返回 compositionId，之后用 clipforge_get_video 精确轮询" },
+        wait: { type: "boolean", description: "apply=true 时默认等待完成；false 立即返回 compositionId，之后用 vibesku_clips_get_video 精确轮询" },
       },
       required: ["projectId"],
     },
   },
   {
-    name: "clipforge_gate",
+    name: "vibesku_clips_gate",
     description:
       "发布门禁（交付/发布前必跑的一键聚合检查）：脚本发布就绪（广告法风险词/开场钩子/时长/CTA/前3秒亮品）+ 成片质检（黑屏/静音/响度/流完整性）+ 素材授权（商用风险/署名要求）三层一次跑完，返回单一 status: pass|warn|fail 与逐项双语说明（report.items[].problems 列具体问题）。语义：fail=有必须修复的问题，先修复再交付；warn=需人工确认的风险（许可复核/署名），交付时必须把这些风险明示给用户；pass=自动检查无拦截项。strict=true 时 warn 也使返回的 ok 为 false。不需要 LLM。",
     inputSchema: {
@@ -523,7 +523,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_credits",
+    name: "vibesku_clips_credits",
     description:
       "导出某项目的素材授权清单：逐镜溯源（来源/作者/许可）+ 商用风险分级（NC/ND/未知许可标记「需人工复核」）+ CC BY 素材的可直接粘贴署名行 + BGM 授权。投流/广告审核要授权凭证时用，或发布前自查素材商用安全。返回结构化 JSON（summary.commercialSafe 表示是否无风险项）。不需要 LLM。",
     inputSchema: {
@@ -535,7 +535,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_native_feel",
+    name: "vibesku_clips_native_feel",
     description:
       "把某项目最新成片重渲成「原生实拍感」（后处理，不改合成管线）：手持微抖动（确定性正弦驱动，可用 seed 让 A/B 变体动线不同）+ 轻颗粒 + 轻微去精致化调色。应对 2026 平台对「过度精致 AI 感」内容的降权，让 AI 成片更像手机实拍。返回处理后的新 mp4 地址（不覆盖原片）。需先合成过视频。不需要 LLM。",
     inputSchema: {
@@ -551,7 +551,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_preview_gif",
+    name: "vibesku_clips_preview_gif",
     description:
       "从某项目最新成片切一小段转成循环 GIF 预览（分享 / 嵌入 / 列表 hover 用）。返回 GIF 地址。需先合成过视频。不需要 LLM。",
     inputSchema: {
@@ -566,7 +566,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_contact_sheet",
+    name: "vibesku_clips_contact_sheet",
     description:
       "把某项目最新成片渲成一张速览图 PNG：默认 smart 模式按真实场景切换抽帧——拼接点缩略图带红框、波形时间轴上红线标出所有检测到的切点，一眼看出黑屏/字幕遮挡/拼接突兀/爆音/静音尾巴。返回速览图 PNG 地址、切点秒数组 cuts、抽帧时刻 frameTimes（proxy=true 时另含审片小样地址）。合成后建议调用并查看这张图再告知用户成片可用。proxy=true 额外生成短边≤720、烧录时间码的审片小样 mp4，便于人工按精确时刻反馈。需先合成过视频。不需要 LLM。",
     inputSchema: {
@@ -582,7 +582,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_export_subtitle",
+    name: "vibesku_clips_export_subtitle",
     description:
       "导出某项目脚本字幕为 SRT 或 WebVTT（二次剪辑 / 平台原生字幕 / 无障碍）。返回字幕文本内容（subtitle 字段，可直接存为 .srt/.vtt 文件）。不需要 LLM。",
     inputSchema: {
@@ -595,7 +595,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_transcript_inspect",
+    name: "vibesku_clips_transcript_inspect",
     description:
       "检查一条已导入原片的本地逐字稿和当前剪辑版本。分页返回稳定词 ID、时间戳、latestRevision/latestPlan 和最新执行状态；不修改任何数据。长逐字稿用 offset/limit 分页读取。",
     inputSchema: {
@@ -610,7 +610,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_transcript_edit",
+    name: "vibesku_clips_transcript_edit",
     description:
       "预演或应用文字剪辑计划。默认 apply=false，只返回删除词数、区间、缩短时长和下一 revision，不写库也不渲染；只有用户明确确认后才传 apply=true。正式应用必须携带 inspect 返回的 baseRevision 和稳定 operationId，重复 operationId 幂等，不覆盖原片或旧版本。",
     inputSchema: {
@@ -627,9 +627,9 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_timeline_export",
+    name: "vibesku_clips_timeline_export",
     description:
-      "把文字剪辑计划导出为专业时间线。OTIO 保留可编辑视频/音频切片，EDL 用于传统 NLE 交换，CSV 用于人工审阅；只返回文件内容和元数据，不写库、不渲染、不包含本机绝对路径。先用 clipforge_transcript_inspect 获取 latestPlan，修改后可先用 transcript_edit dry-run 审阅。",
+      "把文字剪辑计划导出为专业时间线。OTIO 保留可编辑视频/音频切片，EDL 用于传统 NLE 交换，CSV 用于人工审阅；只返回文件内容和元数据，不写库、不渲染、不包含本机绝对路径。先用 vibesku_clips_transcript_inspect 获取 latestPlan，修改后可先用 transcript_edit dry-run 审阅。",
     inputSchema: {
       type: "object",
       properties: {
@@ -643,7 +643,7 @@ const TOOLS = [
     },
   },
   {
-    name: "clipforge_carousel",
+    name: "vibesku_clips_carousel",
     description:
       "把某项目脚本渲成小红书图文卡片（标题卡 + 逐条要点卡，渐变底，默认 3:4），返回各卡片图地址。视频之外的图文输出。不需要 LLM。",
     inputSchema: {
@@ -720,7 +720,7 @@ async function handleCreateVideo(args) {
       footage: mediaType,
       footageFilled: `0/${fill.total}`,
       error:
-        "免费素材库没给这个主题配到任何画面，无法合成。换个更常见/更具体的主题，或为实例配 Pexels/Pixabay Key（CLIPFORGE_PEXELS_KEY）后重试。",
+        "免费素材库没给这个主题配到任何画面，无法合成。换个更常见/更具体的主题，或为实例配 Pexels/Pixabay Key（VIBESKU_CLIPS_PEXELS_KEY）后重试。",
     });
   }
 
@@ -749,7 +749,7 @@ async function handleCreateVideo(args) {
       shots: shots.length,
       ...(judgeRewrites ? { judgeRewrites } : {}),
       footageFilled: `${fill.filled}/${fill.total}`,
-      next: `合成已在后台进行。用 clipforge_get_video { projectId: "${projectId}", compositionId: "${compositionId}" } 轮询取片。`,
+      next: `合成已在后台进行。用 vibesku_clips_get_video { projectId: "${projectId}", compositionId: "${compositionId}" } 轮询取片。`,
     });
   }
   const composition = await pollCompose(projectId, { compositionId });
@@ -770,7 +770,7 @@ async function handleCreateVideo(args) {
     ...(fill.sameSourceHits ? { sameSourceShots: fill.sameSourceHits } : {}),
     videoUrl: absVideoUrl(composition),
     status: composition.status,
-    hint: "videoUrl 可直接下载/播放（mp4）。在 ClipForge 网页 /project/" + projectId + "/export 可进一步多平台导出。",
+    hint: "videoUrl 可直接下载/播放（mp4）。在 VibeSKU Clips 网页 /project/" + projectId + "/export 可进一步多平台导出。",
   });
 }
 
@@ -795,7 +795,7 @@ async function handleGenerateScript(args) {
       voiceover: s.voiceover,
       stockKeywords: s.stockKeywords ?? [],
     })),
-    next: "用 clipforge_compose { projectId } 出片。",
+    next: "用 vibesku_clips_compose { projectId } 出片。",
   });
 }
 
@@ -859,7 +859,7 @@ async function handleCompose(args) {
       projectId,
       compositionId,
       status: "composing",
-      next: `合成已在后台进行。用 clipforge_get_video { projectId: "${projectId}", compositionId: "${compositionId}" } 轮询取片。`,
+      next: `合成已在后台进行。用 vibesku_clips_get_video { projectId: "${projectId}", compositionId: "${compositionId}" } 轮询取片。`,
     });
   }
   const composition = await pollCompose(projectId, { compositionId });
@@ -896,7 +896,7 @@ async function handleUpdateShots(args) {
     projectId,
     scriptId,
     updatedShots: patches.map((sh) => sh.shotId),
-    next: `已改 ${patches.length} 个分镜。重新 clipforge_compose { projectId: "${projectId}" } 出片使修改生效。`,
+    next: `已改 ${patches.length} 个分镜。重新 vibesku_clips_compose { projectId: "${projectId}" } 出片使修改生效。`,
   });
 }
 
@@ -914,7 +914,7 @@ async function handleGetVideo(args) {
   const query = compositionId ? `?compositionId=${encodeURIComponent(compositionId)}` : "";
   const { composition } = await api(`/api/project/${projectId}/compose${query}`);
   if (!composition) {
-    return ok({ ok: true, projectId, status: "none", videoUrl: null, hint: "该项目还没有合成记录，用 clipforge_compose 出片。" });
+    return ok({ ok: true, projectId, status: "none", videoUrl: null, hint: "该项目还没有合成记录，用 vibesku_clips_compose 出片。" });
   }
   return ok({ ok: true, projectId, status: composition.status, videoUrl: absVideoUrl(composition) });
 }
@@ -930,7 +930,7 @@ async function handleIngestProduct(args) {
     product: data.product ?? null,
     productImages: data.productImages ?? [],
     hint: data.projectId
-      ? "已建带货项目并抓取商品图。下一步：用 clipforge_product_script 直接从链接生成带货脚本（需 LLM），或 clipforge_compose 出片。"
+      ? "已建带货项目并抓取商品图。下一步：用 vibesku_clips_product_script 直接从链接生成带货脚本（需 LLM），或 vibesku_clips_compose 出片。"
       : "仅解析、未建项目（createProject=false）。",
   });
 }
@@ -986,7 +986,7 @@ async function handleProductScript(args) {
         stockKeywords: sh.stockKeywords ?? [],
       })),
     })),
-    next: `已生成 ${scripts.length} 套带货脚本（默认选中第一套）。下一步用 clipforge_compose { projectId: "${projectId}" } 配画面+配音+合成出片。`,
+    next: `已生成 ${scripts.length} 套带货脚本（默认选中第一套）。下一步用 vibesku_clips_compose { projectId: "${projectId}" } 配画面+配音+合成出片。`,
   });
 }
 
@@ -1007,7 +1007,7 @@ async function handleImportScript(args) {
     method: "POST",
     body: { script, title: typeof args.title === "string" ? args.title : undefined },
   });
-  return ok({ ok: true, projectId, scriptId: res.scriptId, shots: res.shots, next: "用 clipforge_compose { projectId } 出片。" });
+  return ok({ ok: true, projectId, scriptId: res.scriptId, shots: res.shots, next: "用 vibesku_clips_compose { projectId } 出片。" });
 }
 
 // Dub: translate the current script into another language (needs LLM)
@@ -1024,7 +1024,7 @@ async function handleDub(args) {
     targetLang,
     scriptId: res.scriptId,
     recommendedVoice: res.recommendedVoice ?? null,
-    next: `用 clipforge_compose { projectId, voice: "${res.recommendedVoice || "<目标语种音色>"}" } 出译制版。`,
+    next: `用 vibesku_clips_compose { projectId, voice: "${res.recommendedVoice || "<目标语种音色>"}" } 出译制版。`,
   });
 }
 
@@ -1122,7 +1122,7 @@ async function handleMaster(args) {
       status: res.status,
       analysis: res.analysis ?? null,
       options: res.options ?? null,
-      next: `母版正在后台生成。用 clipforge_get_video { projectId: "${projectId}", compositionId: "${res.compositionId}" } 轮询取片。`,
+      next: `母版正在后台生成。用 vibesku_clips_get_video { projectId: "${projectId}", compositionId: "${res.compositionId}" } 轮询取片。`,
     });
   }
   const composition = await pollCompose(projectId, { compositionId: res.compositionId });
@@ -1236,8 +1236,8 @@ async function handleTranscriptInspect(args) {
     ok: true,
     ...result,
     next: result.transcript?.hasMore
-      ? `继续读取 offset=${result.transcript.wordOffset + result.transcript.words.length}；修改完整 plan 后先调用 clipforge_transcript_edit（apply=false）预演。`
-      : "修改完整 plan 后先调用 clipforge_transcript_edit（apply=false）预演；向用户展示 diff，确认后才 apply=true。",
+      ? `继续读取 offset=${result.transcript.wordOffset + result.transcript.words.length}；修改完整 plan 后先调用 vibesku_clips_transcript_edit（apply=false）预演。`
+      : "修改完整 plan 后先调用 vibesku_clips_transcript_edit（apply=false）预演；向用户展示 diff，确认后才 apply=true。",
   });
 }
 
@@ -1245,7 +1245,7 @@ async function handleTranscriptEdit(args) {
   const projectId = String(args.projectId || "").trim();
   const mediaId = String(args.mediaId || "").trim();
   if (!projectId || !mediaId) throw new Error("projectId 和 mediaId 不能为空");
-  if (!Number.isInteger(args.baseRevision) || Number(args.baseRevision) < 0) throw new Error("baseRevision 必须来自 clipforge_transcript_inspect");
+  if (!Number.isInteger(args.baseRevision) || Number(args.baseRevision) < 0) throw new Error("baseRevision 必须来自 vibesku_clips_transcript_inspect");
   if (!args.plan || typeof args.plan !== "object") throw new Error("plan 不能为空");
   const apply = args.apply === true;
   const operationId = typeof args.operationId === "string" ? args.operationId.trim() : "";
@@ -1266,7 +1266,7 @@ async function handleTranscriptEdit(args) {
     mediaId,
     ...result,
     next: apply
-      ? "剪辑版本已提交；用 clipforge_transcript_inspect 查看 latestEdit.status，完成后再做 QC。"
+      ? "剪辑版本已提交；用 vibesku_clips_transcript_inspect 查看 latestEdit.status，完成后再做 QC。"
       : "这是 dry-run，尚未写库或渲染。把 proposal.diff/summary 展示给用户；明确确认后用同一 plan、baseRevision 与 proposal.operationId 调用 apply=true。",
   });
 }
@@ -1314,40 +1314,40 @@ async function handleCarousel(args) {
 }
 
 const HANDLERS = {
-  clipforge_create_video: handleCreateVideo,
-  clipforge_ingest_product: handleIngestProduct,
-  clipforge_product_script: handleProductScript,
-  clipforge_generate_script: handleGenerateScript,
-  clipforge_search_stock: handleSearchStock,
-  clipforge_list_projects: handleListProjects,
-  clipforge_compose: handleCompose,
-  clipforge_update_shots: handleUpdateShots,
-  clipforge_list_voices: handleListVoices,
-  clipforge_get_video: handleGetVideo,
-  clipforge_trends: handleTrends,
-  clipforge_import_script: handleImportScript,
-  clipforge_dub: handleDub,
-  clipforge_cover: handleCover,
-  clipforge_shop_qr: handleShopQr,
-  clipforge_end_card: handleEndCard,
-  clipforge_export_platform: handleExportPlatform,
-  clipforge_qc: handleQc,
-  clipforge_master: handleMaster,
-  clipforge_gate: handleGate,
-  clipforge_credits: handleCredits,
-  clipforge_native_feel: handleNativeFeel,
-  clipforge_preview_gif: handlePreviewGif,
-  clipforge_contact_sheet: handleContactSheet,
-  clipforge_export_subtitle: handleExportSubtitle,
-  clipforge_transcript_inspect: handleTranscriptInspect,
-  clipforge_transcript_edit: handleTranscriptEdit,
-  clipforge_timeline_export: handleTimelineExport,
-  clipforge_carousel: handleCarousel,
+  vibesku_clips_create_video: handleCreateVideo,
+  vibesku_clips_ingest_product: handleIngestProduct,
+  vibesku_clips_product_script: handleProductScript,
+  vibesku_clips_generate_script: handleGenerateScript,
+  vibesku_clips_search_stock: handleSearchStock,
+  vibesku_clips_list_projects: handleListProjects,
+  vibesku_clips_compose: handleCompose,
+  vibesku_clips_update_shots: handleUpdateShots,
+  vibesku_clips_list_voices: handleListVoices,
+  vibesku_clips_get_video: handleGetVideo,
+  vibesku_clips_trends: handleTrends,
+  vibesku_clips_import_script: handleImportScript,
+  vibesku_clips_dub: handleDub,
+  vibesku_clips_cover: handleCover,
+  vibesku_clips_shop_qr: handleShopQr,
+  vibesku_clips_end_card: handleEndCard,
+  vibesku_clips_export_platform: handleExportPlatform,
+  vibesku_clips_qc: handleQc,
+  vibesku_clips_master: handleMaster,
+  vibesku_clips_gate: handleGate,
+  vibesku_clips_credits: handleCredits,
+  vibesku_clips_native_feel: handleNativeFeel,
+  vibesku_clips_preview_gif: handlePreviewGif,
+  vibesku_clips_contact_sheet: handleContactSheet,
+  vibesku_clips_export_subtitle: handleExportSubtitle,
+  vibesku_clips_transcript_inspect: handleTranscriptInspect,
+  vibesku_clips_transcript_edit: handleTranscriptEdit,
+  vibesku_clips_timeline_export: handleTimelineExport,
+  vibesku_clips_carousel: handleCarousel,
 };
 
 // ---- Start MCP server ----
 const server = new Server(
-  { name: "clipforge", version: "0.9.1" },
+  { name: "vibesku-clips", version: "0.9.1" },
   { capabilities: { tools: {} } },
 );
 
@@ -1372,4 +1372,4 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
 const transport = new StdioServerTransport();
 await server.connect(transport);
 // startup log goes to stderr (stdout is reserved for the MCP protocol)
-console.error(`ClipForge MCP server 已启动 · 目标实例 ${BASE_URL}`);
+console.error(`VibeSKU Clips MCP server 已启动 · 目标实例 ${BASE_URL}`);

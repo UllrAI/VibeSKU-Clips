@@ -80,7 +80,7 @@ export function parseSignalStats(log: string): Map<number, FrameSignalStats> {
   const result = new Map<number, FrameSignalStats>();
   const blocks = String(log).split(/(?=frame:\d+\s+pts:)/);
   for (const block of blocks) {
-    const sample = block.match(/clipforge\.sample=(\d+)/);
+    const sample = block.match(/vibesku-clips\.sample=(\d+)/);
     if (!sample) continue;
     const read = (key: string) => finite(block.match(new RegExp(`lavfi\\.signalstats\\.${key}=(-?[\\d.]+)`))?.[1]);
     const y = read("YAVG");
@@ -166,7 +166,7 @@ export function buildBoundarySignalFilter(times: number[], duration: number): st
   const chains = samples.map((at, index) => {
     const start = Math.max(0, at).toFixed(3);
     const end = Math.min(duration, at + 0.08).toFixed(3);
-    return `[s${index}]trim=start=${start}:end=${end},setpts=PTS-STARTPTS,select=eq(n\\,0),signalstats,metadata=mode=add:key=clipforge.sample:value=${index},metadata=mode=print[o${index}]`;
+    return `[s${index}]trim=start=${start}:end=${end},setpts=PTS-STARTPTS,select=eq(n\\,0),signalstats,metadata=mode=add:key=vibesku-clips.sample:value=${index},metadata=mode=print[o${index}]`;
   });
   return [`[0:v]split=${samples.length}${inputs}`, ...chains].join(";");
 }

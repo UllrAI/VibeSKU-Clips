@@ -1,19 +1,19 @@
-<p align="center"><img src="docs/banner.png" alt="ClipForge — 开源 AI 带货短视频神器，一张商品图自动产出抖音小店/快手/小红书/TikTok Shop 卖货短视频" width="820"/></p>
+<p align="center"><img src="docs/banner.png" alt="VibeSKU Clips — 开源 AI 带货短视频神器，一张商品图自动产出抖音小店/快手/小红书/TikTok Shop 卖货短视频" width="820"/></p>
 
-# ClipForge — 开源 AI 带货短视频神器 ｜ 一张商品图，自动出卖货视频
+# VibeSKU Clips — 开源 AI 带货短视频神器 ｜ 一张商品图，自动出卖货视频
 
 > **把一张商品图，变成会出单的卖货短视频。** 上传商品图 → AI 提炼卖点 · 写种草脚本 · **锁定商品原图不变形** · 配音 + 字幕 + BGM → 几十秒产出能直接发**抖音小店 / 快手 / 小红书 / 视频号 / TikTok Shop** 的带货视频。**一个人一天出几十条 · 0 成本批量 · 开源无水印。**
 >
 > <sub>📌 原『**带货剪手** / daihuo-jianshou』，仓库 · Star · 历史全部延续；也支持「一句话主题成片」做任意非带货题材。</sub>
 
-<p align="center"><strong>🌐 官网:<a href="https://xixihhhh.github.io/clipforge/">xixihhhh.github.io/clipforge</a></strong> — 30 秒看懂 ClipForge 能帮你卖什么</p>
+<p align="center"><strong>🌐 官网:<a href="https://ullrai.github.io/VibeSKU-Clips/">ullrai.github.io/VibeSKU-Clips</a></strong> — 30 秒看懂 VibeSKU Clips 能帮你卖什么</p>
 
 <p align="center"><strong>🧑‍🎓 第一次用？看这篇 👉 <a href="TUTORIAL.md">小白使用教程（每一步都写清楚）</a></strong> · <a href="TUTORIAL.en.md">English tutorial</a><br/><sub>安装 · 配 Key · 3 分钟出第一条免费片 · 报错对照表 · 数据存哪，全在里面</sub></p>
 
 <p align="right"><a href="README.en.md">English</a> · <strong>中文</strong></p>
 
 <p align="center">
-  <img src="https://github.com/xixihhhh/clipforge/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  <img src="https://github.com/UllrAI/VibeSKU-Clips/actions/workflows/ci.yml/badge.svg" alt="CI" />
   <img src="https://img.shields.io/badge/License-AGPL%20v3-blue?style=flat-square" alt="License: AGPL v3" />
   <img src="https://img.shields.io/badge/Next.js-16-black?style=flat-square&logo=next.js" alt="Next.js 16" />
   <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react" alt="React 19" />
@@ -21,15 +21,15 @@
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?style=flat-square&logo=tailwindcss" alt="Tailwind CSS 4" />
   <img src="https://img.shields.io/badge/FFmpeg-视频合成-007808?style=flat-square&logo=ffmpeg" alt="FFmpeg" />
   <img src="https://img.shields.io/badge/AI-多模型聚合-FF6F00?style=flat-square" alt="AI Multi-Model" />
-  <a href="https://skills.sh/xixihhhh/clipforge"><img src="https://skills.sh/b/xixihhhh/clipforge" alt="Agent Skill 安装量" /></a>
+  <a href="https://skills.sh/UllrAI/VibeSKU-Clips"><img src="https://skills.sh/b/UllrAI/VibeSKU-Clips" alt="Agent Skill 安装量" /></a>
 </p>
 
-## ✨ 为什么选 ClipForge
+## ✨ 为什么选 VibeSKU Clips
 
 | 独家能力 | 一句话 |
 |---|---|
 | 🚀 **两条出片路** | 免费素材 + 配音 + 本地合成可 ¥0 出片；AI 档确认价格后再生成 |
-| 🧭 **小白 / 导演双模式** | 小白一键托管，导演可控分镜、模型、成本、版本与修复 |
+| 🧭 **极简 / 专业双模式** | 小白一键托管，导演可控分镜、模型、成本、版本与修复 |
 | 🧬 **跨镜头一致** | 人物、商品、前镜尾帧多参考约束，模型支持时同步生成对白与环境声 |
 | 🔬 **坏一段，只修一段** | 候选不覆盖；按质检时间点精准重做，确认费用后才执行 |
 | 🎬 **生成与剪辑一体** | 真图生视频；导入原片后还能按文字删片、删静音、烧字幕 |
@@ -44,15 +44,15 @@
 - 🎞️ **一键整片**：生成花钱之前，四位毒舌判官（节奏/口语/创意/结构）先逐镜撕台词并给等长重写，一键应用（另有独立 [script-judges skill](skills/script-judges/SKILL.md)）；**九宫格分镜**一次生图把 ≤9 个分镜画进一张 3x3 网格——人物、服装、房间、光线物理级一致，自动裁成各分镜关键帧；再把全部关键帧喂 Seedance 2.5 参考生视频，≤30 秒脚本一次生成整片——镜头原生切换、台词人物原声逐字说出、音频全程连续（真实商品实测见下方示例）。
 - 🎬 **真·动态镜头**：i2v + 链式首尾帧无缝转场；18 款命名运镜预设每镜可选、可 Mix 双预设叠加；8 款画面 Look 一键套用；不满意的镜头保持画面只重跑动态。
 - 🎭 **短剧带货**：情景短剧/街头采访等十种风格四大形态，多角色各配免费音色；内置 6 款素人主播 + 真实人脸约束；UGC 真实感三件套——台词「说出来的不是写出来的」（钩子从对话中间开始、不落金句）、首帧指名光源+生活痕迹、口播行为节拍逐镜轮换。
-- 🧭 **双模式工作台**：侧边栏常驻导航（工作台/项目/商品库/主播库…一处 logo 一处切换），底部一键切「小白模式 ⇄ 导演模式」。小白模式从工作台出发全程托管：写脚本 → 免费素材配画面 → 免费配音合成 → 直达成片页，中途只见一张进度卡；导演模式才展开分镜、导演台（出镜主播/画面 Look/运镜强度）、九宫格与逐镜运镜等专业控件。
-- 🧠 **智能生产系统（v0.8.93）**：①导演模式新增生产控制台，把九阶段工作流、执行位置、是否付费、真实模型价格区间、预计耗时与智能模型推荐放在一页；推荐可直接应用为真实默认视频模型，未知价格明确显示区间，不伪造精确数字。②项目级结构化创作意图与视觉圣经会编译进真实生图/图生视频提示词，人物、商品、服装、环境和光线锚点跨镜头复用，明确命中「禁止变化」时在付费请求前拦截。③任意图片/视频可在媒体解构工作台识别主体、光线、色彩、构图、运镜与节奏，反推提示词并保存为项目洞察。④脚本、素材、云任务、成片和手动快照自动组成版本树；失败按鉴权/参数/审核/输入上限/媒体损坏/失联任务分类给恢复动作。⑤快速预览复用真实 720p / veryfast / CRF26 本地合成档，不重新生成 AI 素材；成片 QC 将黑帧、静帧、响度、静音、规格偏差拆成修复计划，全部免费项可确认后一键重合成并再次质检，任何可能付费的镜头重做都不会静默触发。
+- 🧭 **双模式工作台**：侧边栏常驻导航（工作台/项目/商品库/主播库…一处 logo 一处切换），底部一键切「极简模式 ⇄ 专业模式」。极简模式从工作台出发全程托管：写脚本 → 免费素材配画面 → 免费配音合成 → 直达成片页，中途只见一张进度卡；专业模式才展开分镜、导演台（出镜主播/画面 Look/运镜强度）、九宫格与逐镜运镜等专业控件。
+- 🧠 **智能生产系统（v0.8.93）**：①专业模式新增生产控制台，把九阶段工作流、执行位置、是否付费、真实模型价格区间、预计耗时与智能模型推荐放在一页；推荐可直接应用为真实默认视频模型，未知价格明确显示区间，不伪造精确数字。②项目级结构化创作意图与视觉圣经会编译进真实生图/图生视频提示词，人物、商品、服装、环境和光线锚点跨镜头复用，明确命中「禁止变化」时在付费请求前拦截。③任意图片/视频可在媒体解构工作台识别主体、光线、色彩、构图、运镜与节奏，反推提示词并保存为项目洞察。④脚本、素材、云任务、成片和手动快照自动组成版本树；失败按鉴权/参数/审核/输入上限/媒体损坏/失联任务分类给恢复动作。⑤快速预览复用真实 720p / veryfast / CRF26 本地合成档，不重新生成 AI 素材；成片 QC 将黑帧、静帧、响度、静音、规格偏差拆成修复计划，全部免费项可确认后一键重合成并再次质检，任何可能付费的镜头重做都不会静默触发。
 - 🔬 **镜头质量闸门（v0.8.98）**：每个分镜保留全部候选版本，按画面、时序、脚本遵循、人物/商品、动作、连续性和文字逐维评估并给出可核对证据；人工采用的候选才进入实际合成，项目内真实验收结果反哺模型推荐。重生成或换模型只给建议，不会自动花钱。
 - 🧬 **自适应镜头条件（v0.8.99）**：逐镜把关键帧、人物定妆、商品原图与前镜真实尾帧编译成模型可接受的最强参考组合；支持时同步生成逐字对白、口型、环境声与物体声，不支持则在付费前明确降级为关键帧或后期配音。每个候选保存实际锚点数、音频方式与降级状态，质量闸门可直接追溯。
 - 🩺 **精准镜头修复（v0.9.0）**：质量闸门会从问题时间点生成局部修复窗，可追加人物 / 商品 / 构图时间锚点；先看实际区间、模型时长、价格与降级方式，再确认付费。系统只生成坏掉的一段，本地拼回原镜头并保留原声；原候选不覆盖，云端完成后即使本地中断也能继续收尾。
 - 🎚️ **成片连续性与本地母版（v0.9.1）**：在真实拼接点两侧取样，对亮度、色度和饱和度突变给出时间点、分数与可核对证据，同时测量整片 EBU R128 响度；默认只分析、不调用模型。需要处理时可显式创建两遍响度标准化或时间去闪烁的新母版版本，原成片不覆盖，去闪烁不会被机器自行开启。
 - ✂️ **长素材文字剪辑（v0.8.97）**：本地转写改为固定内存分块，最长 2 小时可取消续跑；删文字即删画面，支持即时跳播、diff、版本回退，并可导出 OTIO / EDL / CSV 继续专业精修。原片和旧稿永不覆盖。
-- 🚦 **免费 / AI 双档出片**：创建时只问两件事——出片方式（🆓 免费快剪 ¥0 约 2 分钟 / ✨ AI 生成成片·按秒计费直接标在选项上）和带货形式（智能推荐 / 真人口播·可选主播 / 情景短剧 / 图文混剪）。免费档全自动直达成片；AI 档把免费脚本当「文字方案」确认闸门——看完口播文案点一次「AI 生成成片」，自动跑 九宫格锁人锁品 → 一键整片（原生切镜+口播原声），花钱永远只有这一次点击。开源 BYOK：费用按量付给你所选的模型平台，ClipForge 本身免费。
-- ⚖️ **小白模式质量不缩水**：全托管砍的是操作，不是质量功能。五条一键链（网页免费快剪 / AI 生成成片 / 批量出片 / CLI create / MCP create_video）在配画面、花钱生成之前都自动跑判官团——四位判官挑刺 + 等长重写自动应用，弱句重写完才开拍（报告在编辑器仍可查，LLM 没配则静默跳过、绝不挡链路）；AI 档选了主播但还没定妆时，自动先生成四视图定妆照锁脸再出片，定妆照回存主播库跨条视频复用；一键整片的时间码 prompt 逐镜带上脚本运镜。LLM 默认档同步升级 DeepSeek V4 Pro（实测旧默认 v3.2 的思考文本会弄脏 JSON 输出），设置页模型选择器仍可自选任意模型。
+- 🚦 **免费 / AI 双档出片**：创建时只问两件事——出片方式（🆓 免费快剪 ¥0 约 2 分钟 / ✨ AI 生成成片·按秒计费直接标在选项上）和带货形式（智能推荐 / 真人口播·可选主播 / 情景短剧 / 图文混剪）。免费档全自动直达成片；AI 档把免费脚本当「文字方案」确认闸门——看完口播文案点一次「AI 生成成片」，自动跑 九宫格锁人锁品 → 一键整片（原生切镜+口播原声），花钱永远只有这一次点击。开源 BYOK：费用按量付给你所选的模型平台，VibeSKU Clips 本身免费。
+- ⚖️ **极简模式质量不缩水**：全托管砍的是操作，不是质量功能。五条一键链（网页免费快剪 / AI 生成成片 / 批量出片 / CLI create / MCP create_video）在配画面、花钱生成之前都自动跑判官团——四位判官挑刺 + 等长重写自动应用，弱句重写完才开拍（报告在编辑器仍可查，LLM 没配则静默跳过、绝不挡链路）；AI 档选了主播但还没定妆时，自动先生成四视图定妆照锁脸再出片，定妆照回存主播库跨条视频复用；一键整片的时间码 prompt 逐镜带上脚本运镜。LLM 默认档同步升级 DeepSeek V4 Pro（实测旧默认 v3.2 的思考文本会弄脏 JSON 输出），设置页模型选择器仍可自选任意模型。
 - 🎭 **真实感全家桶（专治「一眼 AI」）**：①Look 预设新增「实拍感」组——手机直出 / 前置自拍（26mm 广角畸变+手臂入画）/ 搁置机位，相机身份词前置注入视频 prompt（句首 token 权重最高）；②人声落地默认开——TTS 旁白过手机麦频段 + AGC 式压缩 + 轻谐波激励，全片垫房间底噪，句间不再是数字死寂（实测句间底噪 -91dB→-58dB，原生模型人声绝不过链）；③原生感后期加三件：边走边拍档（微旋转呼吸滚动）、镜头光晕（高光泛红边）、平台二压感（720p 世代损失+CRF27，像「已被平台压过一遍的真人上传」）；④一键整片 prompt 吃 Seedance 2.5 官方语法——`{}` 台词括号、素材绑定段+关键帧顺序声明、`不要字幕`/`无bgm` 官方负控通道、台词密度检查防口型漂移，质感行全正向措辞。
 - 🪝 **吸引力升级（带货视频怎么让人看完）**：钩子库从 10 款扩到 16 款，新增信任型/社证型六款——自曝反转、认缺点开场、淘汰式测评、成本拆账、评论回应、跟风真香（海外投放数据背书：「全程夸”恰是观众识别广告的第一信号）；脚本 prompt 注入留人转化硬规则——商品实体前 3 秒入画（大盘 63% 高点击视频如此）、超 20 秒必有 40%–60% 处续命钩、CTA 双落位（约 70% 顺口首提 + 末镜复读带手势）、紧迫感分档（默认个人体感软紧迫，虚假硬促违广告法），结构判官同步盯中段续命钩；发布文案包新增「评论区运营包」——置顶自问自答 + 高频异议回复模板（评论区是视频的第二落地页；刻意不做预埋假评论，附合规提示）。真实 LLM 实测：新规则被采纳，成片脚本 70% 处自然首提链接、CTA 用上软紧迫话术。
 - 👤 **主播库 · 多视图定妆**：设置页自建多个带货主播（名字/人设/外观/声线），一键用 GPT Image 生成 正面/侧面/背面/特写 四视图定妆照——同一次生成保证物理上是同一个人；素材页选中主播后，九宫格分镜与一键整片把定妆照当人物参考（@图片1 身份锚），跨镜头、跨条视频不换脸。
@@ -67,7 +67,7 @@
 - 🧑‍⚖️ **判官团二期（v0.8.91）**：①新增第五位「画面官」，专审「这一秒画面里谁在做什么」——「展示产品效果」「建立信任感」这类功能句不是画面，逐镜点名并重写成可见动作，重写直接回写分镜描述；②每条挑刺必须引用原句片段+说清什么不成立，无引文的意见作废；③挑刺与重写全部标注采纳分级（硬伤 invariant / 应改 default / 品味 taste），网页/AI/批量/CLI/MCP 五条全托管链只自动采纳前两级，品味级仅展示——既拦硬伤又不误杀创作选择；④重写句服务端逐个校验数字事实 token（价格/规格），丢一个数字整条弃用；⑤按风格附加专项判准：反转型一句话公式校验、对话剧行动动词+交换说话者测试。
 - 🎬 **脚本与提示词纪律包（v0.8.91）**：①动作可生成性硬判据进脚本生成 prompt——双主体精确交互/内部心理/否定式动作/一拍三步动作链四类禁写+五步改写序；②分镜三硬规则（商品关键动作唯一主落实镜、相邻两镜至少变一项、景别由必看信息尺度决定）；③drama/interview/story/reversal 各配场景型镜头语言（对白正反打/转折特写慢推/冲突跟拍快切）；④情绪写法铁律：禁终态词，一律「触发→身体先反应→面部克制」三拍过程；⑤人物外观强制带「随身状态锚」（袖口挽起/领口别笔）与处境痕迹，跨镜身份可核对；⑥整片 prompt 多角色台词逐句归属说话人+方向词约定+定妆照背景剥离；⑦关键帧 prompt 静态 lint（时序词告警）+「动作开始前一瞬定格」帧位指令；⑧运镜词表补景别/等效焦段/情绪注记，新增锁定跟拍/FPV俯冲/贴身环走三款预设；⑨Look 预设补色温 K 值与光圈参数，real 家族新增行车记录仪/老 DV/店内监控三款「低可信度媒介」Look。
 - 🔊 **配音表现力与接缝（v0.8.91）**：①TTS 按镜头类型自动带情绪（钩子急切/痛点困扰/CTA 笃定——MiniMax 走官方 emotion 枚举、OpenAI 兼容走 instructions，其余引擎自动忽略）；②台词支持 `[pause]` 气口标记，免费 Edge 引擎转真 SSML 停顿，字幕/卡拉OK/付费 TTS/原生人声链全部自动剥离；③相邻原生人声切点 20ms 边缘淡化平滑底噪跳变（不吃音轨时长零漂移），底噪垫扩展到纯原生音轨成片（更轻幅度统一空间感）；④每条 AI 动态镜保存时自动提取真实尾帧，新增「接缝模式」三档单选：钉帧（默认）/续拍（下一镜从上一镜真尾帧继续，像素级连续）/关；⑤火山方舟直连全面对齐官方内容协议（首尾帧/参考图≤9/参考视频≤3/参考音频≤3 角色标注+两阶段提交+回传真实尾帧），直连用户参考生视频不再缺参。
-- 💸 **付费前守门与废片诊断（v0.8.91）**：①AI 整片新增免费 dryRun 预览——先看整片 prompt 全文、镜数时长、参考图数与台词密度警告，确认后才提交计费任务；预览与提交之间脚本有改动自动作废确认并刷新预览；②参考图配额提交前硬校验（如 Seedance 上限 9 张，9 关键帧+1 定妆照=10 张的经典超限当场拦下，省一次必败付费）；③废片诊断六症状（脸崩/皮肤蜡感/背景死/光不对/模糊/商品变形）单变量重投：只改一个维度重新生成该镜，UI 明示「本次只改了什么」——单变量才知道是什么修好了它；④MCP 链补全：compose/create_video 支持 `wait:false` 非阻塞提交防客户端超时掐断、新增 `clipforge_update_shots` 单句精修工具（配合 gate/qc 反馈点改不整篇重生成）、SKILL 路由优先级表。
+- 💸 **付费前守门与废片诊断（v0.8.91）**：①AI 整片新增免费 dryRun 预览——先看整片 prompt 全文、镜数时长、参考图数与台词密度警告，确认后才提交计费任务；预览与提交之间脚本有改动自动作废确认并刷新预览；②参考图配额提交前硬校验（如 Seedance 上限 9 张，9 关键帧+1 定妆照=10 张的经典超限当场拦下，省一次必败付费）；③废片诊断六症状（脸崩/皮肤蜡感/背景死/光不对/模糊/商品变形）单变量重投：只改一个维度重新生成该镜，UI 明示「本次只改了什么」——单变量才知道是什么修好了它；④MCP 链补全：compose/create_video 支持 `wait:false` 非阻塞提交防客户端超时掐断、新增 `vibesku_clips_update_shots` 单句精修工具（配合 gate/qc 反馈点改不整篇重生成）、SKILL 路由优先级表。
 - 🎤 **卡拉OK真同步 + 冻帧清零（v0.8.90 成片体验升级）**：①免费 Edge 配音开启词边界事件，逐字点亮用引擎回传的真实词时间戳——逗号停顿、语速变化全部跟上，不再按字数均分漂移；字幕卡切换点吸附最近词尾，价格 ¥1,299 的千分位、时间 3:45 永不被切断，闭合标点不再出现在行首；②图库素材按分镜时长搜索（短于槽位 70% 的自动过滤），略短的素材合成时自动慢放补齐（≤1.43x），配不到贴题素材时先试视频主题词再退万能兜底、并在结果里明确标出哪几镜用了兜底画面建议手动更换；③图片运镜 2 倍超采样渲染再缩回，慢速推拉的逐像素抖动和放大发糊一并消除。
 - 🧱 **成片可靠性三重门（v0.8.90）**：①所有下载素材（图库/AI 生成/BGM）落盘即做解码级校验，CDN 断流、错误页存成的假 .mp4 当场删除并自动换下一候选，合成前坏视频自动降级商品图——单遍 filter_complex 整单报废成历史；②TTS 加瞬时失败重试（确定性 Key 错误不白等），付费配音挂了自动回退免费 Edge 引擎，绝不产出哑镜，降级记录写进成片旁的 timeline 侧车；③推理/思考模型的 `<think>` 痕迹在所有 LLM 解析口统一清理（已知端点还会请求侧直接关思考、JSON mode 双保险），解析失败自动把报错喂回模型重问一次——判官团、脚本生成、语义配片、翻译全链受益。
 - 🧩 **无限画布**：[Infinite Canvas 插件](integrations/infinite-canvas/)——画布连商品图一键出片，成片以视频节点落回画布继续二创。
@@ -84,7 +84,7 @@
 
 ## 🎬 示例：一张商品图进去，一条能发的片出来（Seedance 2.5 实测）
 
-**输入只有下面这一张商品图 + 一句话需求。** 台词、分镜、画面、人声全部是 ClipForge 自动产出：判官团先把「大家好体」初稿台词撕掉重写 → 九宫格一次生图锁住人物/场景/商品 → 一键整片：
+**输入只有下面这一张商品图 + 一句话需求。** 台词、分镜、画面、人声全部是 VibeSKU Clips 自动产出：判官团先把「大家好体」初稿台词撕掉重写 → 九宫格一次生图锁住人物/场景/商品 → 一键整片：
 
 <table>
   <tr>
@@ -95,7 +95,7 @@
   <tr>
     <td align="center"><img src="docs/videos/input-coffee.jpg" width="210" alt="输入：冷萃咖啡液商品图"/></td>
     <td align="center"><img src="docs/videos/grid-coffee.jpg" width="210" alt="自动产出的九宫格分镜：同一人物/房间/光线的 9 个镜头"/></td>
-    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="210" alt="点击播放：4 镜整片"/></a><br/><sub>▶️ 点图播放（开声音）</sub></td>
+    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="210" alt="点击播放：4 镜整片"/></a><br/><sub>▶️ 点图播放（开声音）</sub></td>
   </tr>
 </table>
 
@@ -107,20 +107,20 @@
   <tr>
     <td align="center"><img src="docs/videos/input-coffee.jpg" width="110" alt="同一张咖啡液商品图"/></td>
     <td align="center">→</td>
-    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="110" alt="点击播放：中文口播单镜"/></a><br/><sub>🎙️ 中文口播单镜 12s</sub></td>
+    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="110" alt="点击播放：中文口播单镜"/></a><br/><sub>🎙️ 中文口播单镜 12s</sub></td>
     <td align="center" width="40"></td>
     <td align="center"><img src="docs/videos/input-blender.jpg" width="110" alt="输入：便携榨汁杯商品图"/></td>
     <td align="center">→</td>
-    <td align="center"><a href="https://xixihhhh.github.io/clipforge/videos/demo-blender-en.mp4"><img src="docs/videos/poster-blender-en.jpg" width="110" alt="点击播放：出海英文口播"/></a><br/><sub>🌍 出海英文口播 12s</sub></td>
+    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-blender-en.mp4"><img src="docs/videos/poster-blender-en.jpg" width="110" alt="点击播放：出海英文口播"/></a><br/><sub>🌍 出海英文口播 12s</sub></td>
   </tr>
 </table>
 
-人声、台词、口型均为模型原生输出，未经人工修片；<a href="https://xixihhhh.github.io/clipforge/">官网</a>可直接自动播放。
+人声、台词、口型均为模型原生输出，未经人工修片；<a href="https://ullrai.github.io/VibeSKU-Clips/">官网</a>可直接自动播放。
 
 ## 🚀 30 秒跑起来
 
 ```bash
-docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
+docker run -d -p 3000:3000 -v vibesku-clips-data:/data ghcr.io/ullrai/vibesku-clips
 ```
 
 打开 `http://localhost:3000`，**免 Key 就能出第一条片**（免费素材 + 免费配音）。本地开发 / 桌面版 / 配模型见 [快速开始](#快速开始)。
@@ -129,15 +129,15 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 
 ## 界面预览
 
-| 工作台·免费/AI 双档明选 | 脚本闸门·一次点击才花钱 | 高级新建（导演模式） |
+| 工作台·免费/AI 双档明选 | 脚本闸门·一次点击才花钱 | 高级新建（专业模式） |
 |:---:|:---:|:---:|
 | ![工作台](docs/screenshots/01-home.png) | ![脚本好了](docs/screenshots/04-script.png) | ![高级新建](docs/screenshots/03-new.png) |
 | **视频合成·配音/字幕/BGM** | **成片导出·多平台** | **批量出片** |
 | ![合成](docs/screenshots/04b-video.png) | ![导出](docs/screenshots/05-export.png) | ![批量](docs/screenshots/06-batch.png) |
 
-> 左上就是完整创建流程：传图/贴链接/说主题 → 选出片方式（🆓 免费快剪 ¥0 / ✨ AI 生成成片·按秒标价）→ 选带货形式 → 开始生成。逐步图解见[**小白使用教程**](TUTORIAL.md)，网页速览见[官网使用手册](https://xixihhhh.github.io/clipforge/guide.html)。
+> 左上就是完整创建流程：传图/贴链接/说主题 → 选出片方式（🆓 免费快剪 ¥0 / ✨ AI 生成成片·按秒标价）→ 选带货形式 → 开始生成。逐步图解见[**小白使用教程**](TUTORIAL.md)，网页速览见[官网使用手册](https://ullrai.github.io/VibeSKU-Clips/guide.html)。
 
-<p align="center"><img src="docs/showcase-platforms.png" alt="ClipForge 一键产出抖音 / 快手 / 小红书 / TikTok 竖屏带货短视频，全程不出真人脸" width="820"/></p>
+<p align="center"><img src="docs/showcase-platforms.png" alt="VibeSKU Clips 一键产出抖音 / 快手 / 小红书 / TikTok 竖屏带货短视频，全程不出真人脸" width="820"/></p>
 
 ---
 
@@ -145,7 +145,7 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 
 ## ✅ 合规默认开：国内发布不踩坑
 
-国内平台（抖音 / 快手 / 小红书）对**未标识 AI 内容自动限流**、对**广告法违禁词直接压量**。ClipForge 把合规做成**默认就开、零配置**——出片即合规，不用你事后补：
+国内平台（抖音 / 快手 / 小红书）对**未标识 AI 内容自动限流**、对**广告法违禁词直接压量**。VibeSKU Clips 把合规做成**默认就开、零配置**——出片即合规，不用你事后补：
 
 - **AIGC 标识（显式 + 隐式双层，对齐国标 GB 45438-2025）**：成片**默认烧录片头「内容由 AI 生成」角标**（左上角 ≥2 秒，满足抖音 2026-07 新规——仅 AI 配音也属须标注内容；可关，关了发布门禁会提示风险）+ 自动写入**隐式文件元数据**（生成合成标签 / 服务提供者 / 内容制作编号），导出页另备一键复制的「AI 生成」声明文案——躲开平台对未标识 AI 内容的限流。
 - **发布前「限流自检」**：广告法风险词 / 开场钩子 / 时长甜区 / 字幕可读性 / 行动号召 / 带货三段式 / AIGC 标识状态，逐项 ✓⚠✗ + **具体改法**（不打假分数），出片前一眼看出会不会被限流。
@@ -169,7 +169,7 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 - **📈 效果回流（数据飞轮·学出爆款）**：发布后在导出页回填这条的播放/点赞/成交，跨项目按品类聚合出**哪种脚本风格、哪个开场钩子更能卖**，**直接回灌到下一次脚本生成**——「智能推荐」风格按你的实测转化优先、Prompt 带上历史转化提示，把「凭感觉」变成「用数据」。冷启动无数据时自动回落，不打扰。
 - **📝 字幕可导出**：成片内烧字幕之外，可一键导出 **SRT / WebVTT**（`/api/project/[id]/subtitle?format=srt|vtt`），用于二次剪辑、平台原生字幕、无障碍与再校对。
 
-<p align="center"><img src="docs/hero.png" alt="ClipForge 带货工作流：商品图 → AI 提炼卖点写脚本 → 商品保真配画面 → 免费配音字幕 → 抖音/快手/小红书/TikTok 卖货短视频" width="820"/></p>
+<p align="center"><img src="docs/hero.png" alt="VibeSKU Clips 带货工作流：商品图 → AI 提炼卖点写脚本 → 商品保真配画面 → 免费配音字幕 → 抖音/快手/小红书/TikTok 卖货短视频" width="820"/></p>
 
 ## 💡 带货实战：一张商品图 → 30 秒一条
 
@@ -187,9 +187,9 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 
 ---
 
-## 🆚 做一条带货视频：传统外包 vs ClipForge
+## 🆚 做一条带货视频：传统外包 vs VibeSKU Clips
 
-| 痛点 | 传统方式 | ClipForge |
+| 痛点 | 传统方式 | VibeSKU Clips |
 |------|---------|---------|
 | **脚本创作** | 编导写脚本 1-2 小时 | AI 30 秒生成 3 套脚本 |
 | **素材制作** | 拍摄+修图 1-3 天 | AI 生图/生视频，分钟级出片 |
@@ -202,7 +202,7 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 
 ### 和同类工具比呢？
 
-| 你在意的 | **ClipForge** | 传统开源拼接工具 | 商业 AI 视频 SaaS | 手工剪辑软件 |
+| 你在意的 | **VibeSKU Clips** | 传统开源拼接工具 | 商业 AI 视频 SaaS | 手工剪辑软件 |
 |---|:---:|:---:|:---:|:---:|
 | **商品保真**（原图不变形出镜） | ✅ image-to-image 锁定 | ❌ 关键词配库存素材，商品不出镜 | ⚠️ 部分支持，效果看模型 | ➖ 手动贴原图 |
 | **动态镜头质量** | ✅ i2v + 链式无缝转场 + 运镜可控可重跑 | ❌ 静图 / 库存视频拼接 | ✅ 多为 i2v | ➖ 取决于你拍的素材 |
@@ -212,14 +212,14 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 | **无水印 + 数据在本机** | ✅ 开源自部署全本地 | ✅ | ❌ 素材上传云端，免费档常带水印 | ❌ 云端处理 |
 | **Agent / 自动化**（MCP · CLI · 批量） | ✅ MCP + CLI + Skill + 批量出片 | ⚠️ 部分有 API | ⚠️ 部分有 API | ❌ |
 
-> 以各产品公开资料为准（2026-07），功能随版本演进；ClipForge 与上述产品均无关联，仅作选型参考。
+> 以各产品公开资料为准（2026-07），功能随版本演进；VibeSKU Clips 与上述产品均无关联，仅作选型参考。
 
 ---
 
 ## ❓ 常见问题 FAQ
 
-**ClipForge 是什么？**
-ClipForge（原带货剪手 / daihuo-jianshou）是一款**开源免费的 AI 带货短视频工具**：上传一张商品图，AI 自动提炼卖点、写带货脚本、**保持商品原图不变形**、配画面 + 配音 + 字幕，一键产出抖音小店 / 快手 / 小红书 / 视频号 / TikTok Shop 卖货短视频；也支持「一句话主题成片」做任意非带货题材。
+**VibeSKU Clips 是什么？**
+VibeSKU Clips（原带货剪手 / daihuo-jianshou）是一款**开源免费的 AI 带货短视频工具**：上传一张商品图，AI 自动提炼卖点、写带货脚本、**保持商品原图不变形**、配画面 + 配音 + 字幕，一键产出抖音小店 / 快手 / 小红书 / 视频号 / TikTok Shop 卖货短视频；也支持「一句话主题成片」做任意非带货题材。
 
 **真的完全免费吗？需要 API Key 吗？**
 免费路径 **0 Key**：素材用免费可商用 CC 库（Openverse 图片 + Wikimedia 实拍视频），配音用免费微软 Edge TTS，合成用本地 FFmpeg。只有想用付费 AI 生图 / 生视频模型时，才需要对应平台的 Key。
@@ -231,10 +231,10 @@ ClipForge（原带货剪手 / daihuo-jianshou）是一款**开源免费的 AI �
 没有水印。自部署 + 开源（AGPL-3.0），成片干净，可商用（第三方素材按其授权使用，导出附带署名 credits）。
 
 **和剪映 / 商业 AI 视频 SaaS 有什么区别？**
-ClipForge **开源、本地运行、无水印、免费路径零成本、数据不出本机**；商业 SaaS 通常按条扣费、带水印、需把素材上传云端。
+VibeSKU Clips **开源、本地运行、无水印、免费路径零成本、数据不出本机**；商业 SaaS 通常按条扣费、带水印、需把素材上传云端。
 
 **完全不会用、每一步都想有人带？**
-看 [**小白使用教程 TUTORIAL.md**](TUTORIAL.md)（[English](TUTORIAL.en.md)）：安装三选一、配 Key 三条路、3 分钟出第一条免费片、AI 成片花钱前必读、导演模式逐页说明、报错对照表、数据存哪怎么备份——每一步点哪里都写了。
+看 [**小白使用教程 TUTORIAL.md**](TUTORIAL.md)（[English](TUTORIAL.en.md)）：安装三选一、配 Key 三条路、3 分钟出第一条免费片、AI 成片花钱前必读、专业模式逐页说明、报错对照表、数据存哪怎么备份——每一步点哪里都写了。
 
 **不会写脚本 / 不会剪辑能用吗？**
 能。全流程自动——AI 写脚本、自动配画面、自动配音、自动烧字幕、自动转场，**不用出镜、不用拍摄、不用剪辑**。
@@ -243,35 +243,35 @@ ClipForge **开源、本地运行、无水印、免费路径零成本、数据�
 一键适配抖音 (9:16) / 快手 / 小红书 (3:4) / 视频号 / TikTok / Reels / Shorts；界面与文档支持**中文 / English**，按系统语言自动切换。
 
 **可以让 AI 助手（Claude / Cursor）直接生成视频吗？**
-可以。ClipForge 内置 **MCP Server**（`clipforge_product_script` 贴商品链接直接出带货脚本，详见 [mcp/README.md](mcp/README.md)）+ **agent Skill**（[skills/clipforge-video](skills/clipforge-video/SKILL.md)，把整条出片流水线教给编程助手）。装法任选：`npx skills add xixihhhh/clipforge` 一条命令；Claude Code 里 `/plugin marketplace add xixihhhh/clipforge` 装 skill+MCP 二合一；或把 [skills/README](skills/README.md) 的 Setup prompt 贴给你的 agent 让它自装。
+可以。VibeSKU Clips 内置 **MCP Server**（`vibesku_clips_product_script` 贴商品链接直接出带货脚本，详见 [mcp/README.md](mcp/README.md)）+ **agent Skill**（[skills/vibesku-clips-video](skills/vibesku-clips-video/SKILL.md)，把整条出片流水线教给编程助手）。装法任选：`npx skills add UllrAI/VibeSKU-Clips` 一条命令；Claude Code 里 `/plugin marketplace add UllrAI/VibeSKU-Clips` 装 skill+MCP 二合一；或把 [skills/README](skills/README.md) 的 Setup prompt 贴给你的 agent 让它自装。
 
 **能在命令行里直接出片吗？**
-可以。内置 **命令行 CLI**：先启动实例，再设好 `CLIPFORGE_LLM_*` 环境变量，然后：
+可以。内置 **命令行 CLI**：先启动实例，再设好 `VIBESKU_CLIPS_LLM_*` 环境变量，然后：
 ```bash
-node bin/clipforge.mjs trends                                            # 不知道做什么？先拉热搜选题(默认抖音/头条国内榜,--geo US 走 Google Trends)
-node bin/clipforge.mjs create --topic "在家手冲咖啡" --quality hd --bgm   # 一句话出片，回填 videoUrl
-node bin/clipforge.mjs import --project <id> --file my-script.txt        # 用自己写好的稿子出片
-node bin/clipforge.mjs dub --project <id> --lang en                      # 换语种译制(出海)，再 compose
-node bin/clipforge.mjs cover --project <id> --title "手冲咖啡 三步搞定"     # 给成片生成封面图(提升点击率)
-node bin/clipforge.mjs qr --project <id> --platform douyin               # 生成商品「扫码购买」二维码(UTM追踪)
-node bin/clipforge.mjs qc --project <id>                                 # 成片质检(黑屏/静音/响度,发布前把关)
-node bin/clipforge.mjs gate --project <id> --strict                      # 发布门禁:脚本就绪+质检+授权一键体检,拦截时退出码 2
-node bin/clipforge.mjs credits --project <id> --format md                # 素材授权清单(商用风险+署名行,投流审核用)
-node bin/clipforge.mjs native --project <id> --strength medium           # 原生感处理(手持感+颗粒,反AI精致感)
-node bin/clipforge.mjs preview --project <id>                            # 生成预览 GIF(分享/嵌入)
-node bin/clipforge.mjs carousel --project <id>                           # 生成小红书图文卡片(标题+逐条要点)
-node bin/clipforge.mjs transcript --project <id> --media <mediaId>       # 检查逐词稿、当前版本与稳定词 ID
-node bin/clipforge.mjs transcript-edit --project <id> --media <mediaId> --plan edit.json --revision 0 --operation edit-001  # 默认只预演 diff；确认后再加 --apply
-node bin/clipforge.mjs timeline --project <id> --media <mediaId> --plan edit.json --format otio --out edit.otio  # 交给专业剪辑软件继续精修
-node bin/clipforge.mjs list            # 列出项目
-node bin/clipforge.mjs --help          # 全部命令与参数
+node bin/vibesku-clips.mjs trends                                            # 不知道做什么？先拉热搜选题(默认抖音/头条国内榜,--geo US 走 Google Trends)
+node bin/vibesku-clips.mjs create --topic "在家手冲咖啡" --quality hd --bgm   # 一句话出片，回填 videoUrl
+node bin/vibesku-clips.mjs import --project <id> --file my-script.txt        # 用自己写好的稿子出片
+node bin/vibesku-clips.mjs dub --project <id> --lang en                      # 换语种译制(出海)，再 compose
+node bin/vibesku-clips.mjs cover --project <id> --title "手冲咖啡 三步搞定"     # 给成片生成封面图(提升点击率)
+node bin/vibesku-clips.mjs qr --project <id> --platform douyin               # 生成商品「扫码购买」二维码(UTM追踪)
+node bin/vibesku-clips.mjs qc --project <id>                                 # 成片质检(黑屏/静音/响度,发布前把关)
+node bin/vibesku-clips.mjs gate --project <id> --strict                      # 发布门禁:脚本就绪+质检+授权一键体检,拦截时退出码 2
+node bin/vibesku-clips.mjs credits --project <id> --format md                # 素材授权清单(商用风险+署名行,投流审核用)
+node bin/vibesku-clips.mjs native --project <id> --strength medium           # 原生感处理(手持感+颗粒,反AI精致感)
+node bin/vibesku-clips.mjs preview --project <id>                            # 生成预览 GIF(分享/嵌入)
+node bin/vibesku-clips.mjs carousel --project <id>                           # 生成小红书图文卡片(标题+逐条要点)
+node bin/vibesku-clips.mjs transcript --project <id> --media <mediaId>       # 检查逐词稿、当前版本与稳定词 ID
+node bin/vibesku-clips.mjs transcript-edit --project <id> --media <mediaId> --plan edit.json --revision 0 --operation edit-001  # 默认只预演 diff；确认后再加 --apply
+node bin/vibesku-clips.mjs timeline --project <id> --media <mediaId> --plan edit.json --format otio --out edit.otio  # 交给专业剪辑软件继续精修
+node bin/vibesku-clips.mjs list            # 列出项目
+node bin/vibesku-clips.mjs --help          # 全部命令与参数
 ```
 
 **能全自动日更吗？**
 可以，`trends` + `create` 接上 cron 就是一台日更机（首页的「日更 · 按人设选题」是同一逻辑的网页版）。示例：每天 9 点从国内热榜拿榜一出一条待发成片：
 ```bash
 crontab -e   # 加入下面一行（把路径和环境变量换成你的）
-# 0 9 * * * cd /path/to/clipforge && TOPIC=$(node bin/clipforge.mjs trends --json | python3 -c "import json,sys;print(json.load(sys.stdin)['topics'][0]['title'])") && node bin/clipforge.mjs create --topic "$TOPIC" --bgm >> daily.log 2>&1
+# 0 9 * * * cd /path/to/vibesku-clips && TOPIC=$(node bin/vibesku-clips.mjs trends --json | python3 -c "import json,sys;print(json.load(sys.stdin)['topics'][0]['title'])") && node bin/vibesku-clips.mjs create --topic "$TOPIC" --bgm >> daily.log 2>&1
 ```
 出的是**待发草稿**（本地成片文件），发布动作留给你自己——自动发布各平台有账号风控与协议风险，我们不做。
 
@@ -407,11 +407,11 @@ crontab -e   # 加入下面一行（把路径和环境变量换成你的）
 ### 🐳 Docker 自托管（最快，无需装 Node / FFmpeg）
 
 ```bash
-docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
+docker run -d -p 3000:3000 -v vibesku-clips-data:/data ghcr.io/ullrai/vibesku-clips
 # 打开 http://localhost:3000 —— 免 Key 即可出片（免费素材 + Edge TTS）
 ```
 
-镜像内置 ffmpeg 与中文字幕字体，数据（项目 / 商品图 / 成片）持久化在 `clipforge-data` 卷。要接 AI 生图/生视频/付费配音时，进「设置」填对应平台 Key 即可。镜像地址 `ghcr.io/xixihhhh/clipforge`（见仓库 **Packages**），随每次 Release 自动构建并冒烟测试。
+镜像内置 ffmpeg 与中文字幕字体，数据（项目 / 商品图 / 成片）持久化在 `vibesku-clips-data` 卷。要接 AI 生图/生视频/付费配音时，进「设置」填对应平台 Key 即可。镜像地址 `ghcr.io/ullrai/vibesku-clips`（见仓库 **Packages**），随每次 Release 自动构建并冒烟测试。
 
 ### 本地开发
 
@@ -419,8 +419,8 @@ docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge
 
 ```bash
 # 克隆项目
-git clone https://github.com/xixihhhh/clipforge.git
-cd clipforge
+git clone https://github.com/UllrAI/VibeSKU-Clips.git
+cd vibesku-clips
 
 # 安装依赖（必须用 pnpm）
 pnpm install
@@ -597,7 +597,7 @@ pnpm dist       # 出 .dmg 安装包
 
 ## Roadmap
 
-> 逐版本更新记录见 [GitHub Releases](https://github.com/xixihhhh/clipforge/releases)；各能力的使用细节见上方[核心功能](#核心功能)。
+> 逐版本更新记录见 [GitHub Releases](https://github.com/UllrAI/VibeSKU-Clips/releases)；各能力的使用细节见上方[核心功能](#核心功能)。
 
 **已完成**
 - ✅ **出片主链路**：AI 脚本（5 品类 × 十风格四形态 + 黄金 3 秒 + 平台 SEO）→ 商品保真素材（7 平台 30+ 模型）→ i2v 动态镜头（运镜引擎 / 命名运镜预设每镜可选 / 画面风格 Look / 链式首尾帧 / 强度三档 / 逐镜重跑）→ FFmpeg 合成（爆款字幕 / 免费多音色配音 / BGM / 智能转场 / 风格配方 / 质量预设）→ 多平台导出（免二压码率卡线）
@@ -609,25 +609,25 @@ pnpm dist       # 出 .dmg 安装包
 **规划（真正的 AI 剪辑能力）**
 - [ ] 自动字幕 ASR（whisper / transformers.js）→ 烧录字幕
 - [ ] 导入已有视频做剪辑 + 去静音瘦身
-- [ ] 长视频切爆款片段——同作者 [HotClip](https://github.com/xixihhhh/hotclip) 已可用
+- [ ] 长视频切爆款片段——[HotClip](https://github.com/xixihhhh/hotclip) 已可用
 - [ ] 数字人口型（fal.ai Lipsync）/ 时间轴编辑
 
 ---
 
 ## 同作者项目
 
-✂️ **[HotClip 爆款切片](https://github.com/xixihhhh/hotclip)** — 开源 AI 长视频切片工具:播客/直播回放丢进去,AI 找爆点,一键切出竖屏+逐字字幕成片,素材全程不出你的电脑。**ClipForge 从一张图造短视频,HotClip 把长视频切成爆款**——上面规划里的「长视频切爆款」,现在就能用它。
+✂️ **[HotClip 爆款切片](https://github.com/xixihhhh/hotclip)** — 开源 AI 长视频切片工具:播客/直播回放丢进去,AI 找爆点,一键切出竖屏+逐字字幕成片,素材全程不出你的电脑。**VibeSKU Clips 从一张图造短视频,HotClip 把长视频切成爆款**——上面规划里的「长视频切爆款」,现在就能用它。
 
 ---
 
 ## License
 
-[AGPL-3.0](LICENSE) © 2026 xixihhhh
+[AGPL-3.0](LICENSE) © 2026 UllrAI
 
 修改 / 再发布（含 SaaS）须开源并保留署名。
 
 ---
 
-<sub><b>关键词 / Keywords</b>：AI 短视频生成工具 · AI 带货短视频 · 短剧带货 / 剧情带货视频 · 图生视频 image-to-video · AI 运镜 / 无缝转场 · 一句话成片 · 文字转视频 · text to video · faceless video generator · AI short video maker · 抖音 / 快手 / 小红书 / TikTok / Reels / YouTube Shorts 制作 · AI UGC 电商广告 · AI 配音 / AI voiceover · 多角色多音色配音 · 免费素材自动剪辑 · 开源 / 自部署视频工具 · AI 脚本生成 · MCP server · ClipForge（原带货剪手 / daihuo-jianshou）。</sub>
+<sub><b>关键词 / Keywords</b>：AI 短视频生成工具 · AI 带货短视频 · 短剧带货 / 剧情带货视频 · 图生视频 image-to-video · AI 运镜 / 无缝转场 · 一句话成片 · 文字转视频 · text to video · faceless video generator · AI short video maker · 抖音 / 快手 / 小红书 / TikTok / Reels / YouTube Shorts 制作 · AI UGC 电商广告 · AI 配音 / AI voiceover · 多角色多音色配音 · 免费素材自动剪辑 · 开源 / 自部署视频工具 · AI 脚本生成 · MCP server · VibeSKU Clips（原带货剪手 / daihuo-jianshou）。</sub>
 
-<sub>ClipForge 是独立开源项目，与抖音、快手、小红书、TikTok、YouTube、Shopify、Amazon、Microsoft、OpenAI 及任何模型供应商无官方关联；使用第三方模型与素材请遵守其各自条款。</sub>
+<sub>VibeSKU Clips 是独立开源项目，与抖音、快手、小红书、TikTok、YouTube、Shopify、Amazon、Microsoft、OpenAI 及任何模型供应商无官方关联；使用第三方模型与素材请遵守其各自条款。</sub>

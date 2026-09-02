@@ -25,7 +25,7 @@ export interface TimelineExportResult {
 
 function safeStem(value: string, stripExtension = false): string {
   const base = basename(value);
-  return ((stripExtension ? base.replace(/\.[^.]+$/, "") : base).replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "clipforge-edit");
+  return ((stripExtension ? base.replace(/\.[^.]+$/, "") : base).replace(/[^\p{L}\p{N}._-]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "vibesku-clips-edit");
 }
 
 function safeSourceName(value: string): string {
@@ -52,7 +52,7 @@ function externalReference(sourceName: string, sourceDuration: number, rate: num
   return {
     OTIO_SCHEMA: "ExternalReference.1",
     available_range: timeRange(0, sourceDuration, rate),
-    metadata: { clipforge: { pathMode: "relative", relinkBy: "file-name" } },
+    metadata: { "vibesku-clips": { pathMode: "relative", relinkBy: "file-name" } },
     target_url: encodeURI(sourceName),
     name: sourceName,
   };
@@ -66,7 +66,7 @@ function otioClip(range: TimeRange, index: number, input: TimelineExportInput, r
     enabled: true,
     media_reference: externalReference(safeSourceName(input.sourceName), input.sourceDuration, rate),
     metadata: {
-      clipforge: {
+      "vibesku-clips": {
         sourceStartSeconds: range.start,
         sourceEndSeconds: range.end,
         revision: input.revision ?? null,
@@ -100,14 +100,14 @@ export function buildOtioTimeline(input: TimelineExportInput): string {
   return JSON.stringify({
     OTIO_SCHEMA: "Timeline.1",
     metadata: {
-      clipforge: {
+      "vibesku-clips": {
         exportedAt: new Date().toISOString(),
         pathMode: "relative",
         sourceName: safeSourceName(input.sourceName),
         revision: input.revision ?? null,
       },
     },
-    name: input.projectName || "ClipForge edit",
+    name: input.projectName || "VibeSKU Clips edit",
     tracks: {
       OTIO_SCHEMA: "Stack.1",
       children: tracks,
@@ -146,7 +146,7 @@ export function buildCmx3600Edl(input: TimelineExportInput): string {
   const rate = normalizedFrameRate(input.frameRate);
   const ranges = normalizeTimeRanges(input.keepRanges, input.sourceDuration);
   let recordCursor = 0;
-  const lines = [`TITLE: ${input.projectName || "CLIPFORGE EDIT"}`, "FCM: NON-DROP FRAME", ""];
+  const lines = [`TITLE: ${input.projectName || "VIBESKU CLIPS EDIT"}`, "FCM: NON-DROP FRAME", ""];
   ranges.forEach((range, index) => {
     const length = range.end - range.start;
     const event = String(index + 1).padStart(3, "0");
@@ -154,7 +154,7 @@ export function buildCmx3600Edl(input: TimelineExportInput): string {
     lines.push(`${event}  AX       ${channel.padEnd(4)} C        ${secondsToTimecode(range.start, rate)} ${secondsToTimecode(range.end, rate)} ${secondsToTimecode(recordCursor, rate)} ${secondsToTimecode(recordCursor + length, rate)}`);
     lines.push(`* FROM CLIP NAME: ${safeSourceName(input.sourceName)}`);
     if (input.clipNotes?.[index]) lines.push(`* TRANSCRIPT: ${input.clipNotes[index].replace(/[\r\n]+/g, " ")}`);
-    lines.push(`* CLIPFORGE SOURCE: ${range.start.toFixed(3)} - ${range.end.toFixed(3)} seconds`, "");
+    lines.push(`* VIBESKU CLIPS SOURCE: ${range.start.toFixed(3)} - ${range.end.toFixed(3)} seconds`, "");
     recordCursor += length;
   });
   return lines.join("\n");

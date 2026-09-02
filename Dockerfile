@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
-# ClipForge 自托管镜像：Next standalone + Debian 发行版 ffmpeg + 内置中文字体，数据落 /data 卷。
+# VibeSKU Clips 自托管镜像：Next standalone + Debian 发行版 ffmpeg + 内置中文字体，数据落 /data 卷。
 # 一键自托管：
-#   docker run -d -p 3000:3000 -v clipforge-data:/data ghcr.io/xixihhhh/clipforge:latest
+#   docker run -d -p 3000:3000 -v vibesku-clips-data:/data ghcr.io/ullrai/vibesku-clips:latest
 # 然后浏览器打开 http://localhost:3000 —— 免 Key 即可出片（免费素材 + Edge TTS）。
 
 # apt 源域名可通过 --build-arg APT_MIRROR=mirrors.aliyun.com 覆盖（国内构建更快更稳），默认官方源。

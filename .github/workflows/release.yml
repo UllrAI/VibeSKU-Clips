@@ -1,6 +1,6 @@
 # 发版流水线：push 形如 vX.Y.Z 的 tag 时，在 mac + windows + linux runner 上分别打桌面安装包，
 # 并把 .dmg / .exe / .AppImage 上传到对应的 GitHub Release（即"别人一键下载即用"）；
-# 另出一份 clipforge-skill.zip（zip 根即 skill 文件夹，可直接上传 claude.ai 的 Skills 面板）。
+# 另出一份 vibesku-clips-skill.zip（zip 根即 skill 文件夹，可直接上传 claude.ai 的 Skills 面板）。
 name: Release Desktop
 
 on:
@@ -51,30 +51,30 @@ jobs:
             release/*.AppImage
           fail_on_unmatched_files: false
           draft: true
-          # 双语发布说明（中文优先 + 英文），国际化友好；品牌统一为 ClipForge、数据目录与 build.productName 一致
+          # 双语发布说明（中文优先 + 英文），国际化友好；品牌统一为 VibeSKU Clips、数据目录与 build.productName 一致
           body: |
-            ClipForge 桌面版 —— 双击即用，内置 ffmpeg / sqlite，无需安装 Node。
+            VibeSKU Clips 桌面版 —— 双击即用，内置 ffmpeg / sqlite，无需安装 Node。
 
             - **macOS (Apple Silicon)**：下载 `.dmg`。未签名，首次打开右键「打开」绕过 Gatekeeper。
             - **Windows (x64)**：下载 `.exe` 安装。未签名，SmartScreen 提示时点「更多信息 → 仍要运行」。⚠️ 自动构建、未经实测，欢迎反馈。
             - **Linux (x64)**：下载 `.AppImage`，`chmod +x` 后直接运行。⚠️ 自动构建、未经实测，欢迎反馈。
 
-            首次启动后数据存于系统用户目录（macOS：`~/Library/Application Support/ClipForge`）。
+            首次启动后数据存于系统用户目录（macOS：`~/Library/Application Support/VibeSKU Clips`）。
 
             ---
 
-            ClipForge Desktop — double-click to run. FFmpeg / SQLite bundled, no Node install required.
+            VibeSKU Clips Desktop — double-click to run. FFmpeg / SQLite bundled, no Node install required.
 
             - **macOS (Apple Silicon)**: download the `.dmg`. Unsigned — on first launch, right-click → "Open" to bypass Gatekeeper.
             - **Windows (x64)**: download the `.exe` installer. Unsigned — if SmartScreen appears, click "More info → Run anyway". ⚠️ Auto-built and untested — feedback welcome.
             - **Linux (x64)**: download the `.AppImage`, `chmod +x` it and run. ⚠️ Auto-built and untested — feedback welcome.
 
-            On first launch, app data is stored under your user directory (macOS: `~/Library/Application Support/ClipForge`).
+            On first launch, app data is stored under your user directory (macOS: `~/Library/Application Support/VibeSKU Clips`).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Agent-skill bundle for claude.ai: the zip root must be the skill folder itself
-  # (clipforge-video/SKILL.md), matching claude.ai's upload requirement.
+  # (vibesku-clips-video/SKILL.md), matching claude.ai's upload requirement.
   skill-bundle:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -82,18 +82,18 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: 打包 agent skill（clipforge-skill.zip + clipforge-script-judges.zip）
+      - name: 打包 agent skill（vibesku-clips-skill.zip + vibesku-clips-script-judges.zip）
         run: |
           cd skills
-          zip -r ../clipforge-skill.zip clipforge-video
-          zip -r ../clipforge-script-judges.zip script-judges
+          zip -r ../vibesku-clips-skill.zip vibesku-clips-video
+          zip -r ../vibesku-clips-script-judges.zip script-judges
 
       - name: 上传 skill zip 到 Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            clipforge-skill.zip
-            clipforge-script-judges.zip
+            vibesku-clips-skill.zip
+            vibesku-clips-script-judges.zip
           fail_on_unmatched_files: true
           draft: true
         env:

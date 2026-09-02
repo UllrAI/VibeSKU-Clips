@@ -1,7 +1,7 @@
-// ClipForge video node for Infinite Canvas.
+// VibeSKU Clips video node for Infinite Canvas.
 //
 // Turns canvas material into a finished, publishable 9:16 short video by driving
-// a local ClipForge instance (https://github.com/xixihhhh/clipforge): script LLM
+// a local VibeSKU Clips instance (https://github.com/UllrAI/VibeSKU-Clips): script LLM
 // → free stock footage → free TTS voiceover + captions → FFmpeg compose, with the
 // China-compliance stack (AIGC badge, ad-law screening) on by default.
 //
@@ -16,10 +16,10 @@ import { definePlugin, useEffect, useRef, useState } from "@infinite-canvas/plug
 import type { CanvasNodeContentProps } from "@infinite-canvas/plugin-sdk";
 
 type Cfg = { base: string; llmBaseUrl: string; llmApiKey: string; llmModel: string };
-const CFG_KEY = "clipforge-config";
+const CFG_KEY = "vibesku-clips-config";
 const DEFAULT_CFG: Cfg = { base: "http://localhost:3000", llmBaseUrl: "", llmApiKey: "", llmModel: "" };
 
-/** Loose JSON shape from the ClipForge API — only the fields this plugin reads, all runtime-checked */
+/** Loose JSON shape from the VibeSKU Clips API — only the fields this plugin reads, all runtime-checked */
 type ApiJson = {
     id?: string;
     projectId?: string;
@@ -31,7 +31,7 @@ type ApiJson = {
     raw?: string;
 };
 
-/** Minimal JSON client against the ClipForge HTTP API */
+/** Minimal JSON client against the VibeSKU Clips HTTP API */
 async function api(base: string, path: string, init?: { method?: string; body?: unknown }): Promise<ApiJson> {
     let res: Response;
     try {
@@ -41,7 +41,7 @@ async function api(base: string, path: string, init?: { method?: string; body?: 
             body: init?.body !== undefined ? JSON.stringify(init.body) : undefined,
         });
     } catch {
-        throw new Error(`连不上 ClipForge（${base}）。请先启动实例，并确认其版本 ≥ v0.8.79（含跨端口 CORS）。`);
+        throw new Error(`连不上 VibeSKU Clips（${base}）。请先启动实例，并确认其版本 ≥ v0.8.79（含跨端口 CORS）。`);
     }
     const text = await res.text();
     let data: ApiJson;
@@ -54,7 +54,7 @@ async function api(base: string, path: string, init?: { method?: string; body?: 
     return data;
 }
 
-/** Free-voice default by writing system (mirrors ClipForge MCP's defaultVoiceForTopic) */
+/** Free-voice default by writing system (mirrors VibeSKU Clips MCP's defaultVoiceForTopic) */
 function voiceFor(text: string): string | undefined {
     if (/[぀-ヿ]/.test(text)) return "ja-JP-NanamiNeural";
     if (/[가-힣]/.test(text)) return "ko-KR-SunHiNeural";
@@ -62,7 +62,7 @@ function voiceFor(text: string): string | undefined {
     return "en-US-AriaNeural";
 }
 
-/** Poll the compose run until done/failed (compose is async on the ClipForge side) */
+/** Poll the compose run until done/failed (compose is async on the VibeSKU Clips side) */
 async function pollCompose(base: string, projectId: string, compositionId: string, onTick: (s: string) => void): Promise<string> {
     const deadline = Date.now() + 660_000;
     for (;;) {
@@ -72,13 +72,13 @@ async function pollCompose(base: string, projectId: string, compositionId: strin
             return `${base}${composition.url}`;
         }
         if (composition?.status === "failed") throw new Error("合成失败（FFmpeg/TTS 出错）");
-        if (Date.now() > deadline) throw new Error("合成超时，可去 ClipForge 网页端查看结果");
+        if (Date.now() > deadline) throw new Error("合成超时，可去 VibeSKU Clips 网页端查看结果");
         onTick("合成中（配音+字幕+剪辑）…");
         await new Promise((r) => setTimeout(r, 2500));
     }
 }
 
-function ClipForgeContent({ ctx }: CanvasNodeContentProps) {
+function VibeSKUClipsContent({ ctx }: CanvasNodeContentProps) {
     const [cfg, setCfg] = useState<Cfg>(DEFAULT_CFG);
     const [cfgOpen, setCfgOpen] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -187,13 +187,13 @@ function ClipForgeContent({ ctx }: CanvasNodeContentProps) {
             const videoUrl = await pollCompose(base, projectId, compositionId, setStage);
 
             // land the finished video on the canvas as a first-class builtin video node
-            const outId = `clipforge-out-${ctx.node.id}-${Date.now().toString(36)}`;
+            const outId = `vibesku-clips-out-${ctx.node.id}-${Date.now().toString(36)}`;
             ctx.applyOps([
                 {
                     type: "add_node",
                     id: outId,
                     nodeType: "video",
-                    title: name.trim().slice(0, 24) || "ClipForge 成片",
+                    title: name.trim().slice(0, 24) || "VibeSKU Clips 成片",
                     x: ctx.node.position.x + ctx.node.width + 60,
                     y: ctx.node.position.y,
                     width: 270,
@@ -203,7 +203,7 @@ function ClipForgeContent({ ctx }: CanvasNodeContentProps) {
                 { type: "connect_nodes", fromNodeId: ctx.node.id, toNodeId: outId },
             ]);
             ctx.updateMetadata({ cfVideoUrl: videoUrl, cfProjectId: projectId });
-            setStage(`完成 ✓ 项目 ${projectId.slice(0, 8)}…（ClipForge 网页端可继续多平台导出）`);
+            setStage(`完成 ✓ 项目 ${projectId.slice(0, 8)}…（VibeSKU Clips 网页端可继续多平台导出）`);
         } catch (e) {
             setError(e instanceof Error ? e.message : String(e));
             setStage("");
@@ -220,13 +220,13 @@ function ClipForgeContent({ ctx }: CanvasNodeContentProps) {
     return (
         <div data-canvas-no-zoom onMouseDown={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()} style={{ height: "100%", width: "100%", display: "flex", flexDirection: "column", gap: 6, padding: 12, boxSizing: "border-box", color: t.node.text, overflow: "auto" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 700 }}>🎬 ClipForge 成片</span>
+                <span style={{ fontSize: 12, fontWeight: 700 }}>🎬 VibeSKU Clips 成片</span>
                 <span style={{ ...labelStyle, marginLeft: "auto" }}>{productMode ? `带货 · ${upstreamImages.length} 图` : "主题模式"}</span>
                 <button type="button" title="设置" onClick={() => setCfgOpen((v) => !v)} style={{ border: "none", background: "transparent", cursor: "pointer", fontSize: 13, color: t.node.muted }}>⚙</button>
             </div>
             {cfgOpen && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: 8, borderRadius: 8, border: `1px dashed ${t.node.stroke}` }}>
-                    <span style={labelStyle}>ClipForge 地址</span>
+                    <span style={labelStyle}>VibeSKU Clips 地址</span>
                     <input style={inputStyle} value={cfg.base} onChange={(e) => saveCfg({ base: e.target.value })} placeholder="http://localhost:3000" />
                     <span style={labelStyle}>LLM 接口（OpenAI 兼容，用于写脚本）</span>
                     <input style={inputStyle} value={cfg.llmBaseUrl} onChange={(e) => saveCfg({ llmBaseUrl: e.target.value })} placeholder="https://api.atlascloud.ai/v1" />
@@ -258,16 +258,16 @@ function ClipForgeContent({ ctx }: CanvasNodeContentProps) {
 }
 
 export default definePlugin({
-    id: "clipforge",
-    name: "ClipForge 成片",
+    id: "vibesku-clips",
+    name: "VibeSKU Clips 成片",
     version: "1.0.0",
-    description: "画布素材一键变成可发布的带货短视频：脚本→素材→配音字幕→合成，全流程本地 ClipForge 驱动。",
+    description: "画布素材一键变成可发布的带货短视频：脚本→素材→配音字幕→合成，全流程本地 VibeSKU Clips 驱动。",
     nodes: [
         {
-            type: "clipforge:ad-video",
-            title: "ClipForge 成片",
+            type: "vibesku-clips:ad-video",
+            title: "VibeSKU Clips 成片",
             icon: "🎬",
-            description: "连上商品图，一键出 9:16 带货成片（本地 ClipForge 实例驱动）",
+            description: "连上商品图，一键出 9:16 带货成片（本地 VibeSKU Clips 实例驱动）",
             defaultSize: { width: 320, height: 330 },
             defaultMetadata: { cfName: "", cfPoints: "", cfDuration: 25 },
             minimapColor: "#7c3aed",
@@ -276,7 +276,7 @@ export default definePlugin({
                 typeof node.metadata?.cfVideoUrl === "string" && node.metadata.cfVideoUrl
                     ? { kind: "video", url: node.metadata.cfVideoUrl }
                     : null,
-            Content: ClipForgeContent,
+            Content: VibeSKUClipsContent,
         },
     ],
 });

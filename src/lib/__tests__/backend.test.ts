@@ -397,7 +397,7 @@ describe("buildComposeCommand", () => {
     const cmd = buildComposeCommand(baseConfig);
     expect(cmd).toContain("-metadata comment=");
     expect(cmd).toContain("AIGC=1");
-    expect(cmd).toContain("ClipForge");
+    expect(cmd).toContain("VibeSKU Clips");
     expect(cmd).toContain(baseConfig.projectId); // content production id = projectId
     // -metadata appears after -movflags and before the final output file
     expect(cmd.indexOf("-metadata")).toBeGreaterThan(cmd.indexOf("-movflags"));

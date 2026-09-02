@@ -10,7 +10,7 @@ import { inferExtension, MAX_DOWNLOAD_BYTES } from "@/lib/providers/stock-types"
 import { safeFetch } from "@/lib/ssrf-guard";
 import { apiError, errText } from "@/lib/api-error";
 
-const UA = "Mozilla/5.0 (compatible; ClipForge/1.0; +https://github.com/xixihhhh/clipforge)";
+const UA = "Mozilla/5.0 (compatible; VibeSKU-Clips/1.0; +https://github.com/UllrAI/VibeSKU-Clips)";
 const MAX_HTML_BYTES = 3 * 1024 * 1024;
 const MAX_IMAGES = 3;
 

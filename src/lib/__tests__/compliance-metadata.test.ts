@@ -6,7 +6,7 @@ describe("buildAigcMetadataArgs（GB 45438-2025 隐式标识）", () => {
     const s = buildAigcMetadataArgs({ contentId: "proj-123" });
     expect(s).toContain("AIGC=1");
     expect(s).toContain("AI生成合成");
-    expect(s).toContain("ClipForge"); // default service provider
+    expect(s).toContain("VibeSKU Clips"); // default service provider
     expect(s).toContain("proj-123"); // content production id
     expect(s).toContain("-metadata comment=");
     expect(s).toContain("-metadata copyright=");

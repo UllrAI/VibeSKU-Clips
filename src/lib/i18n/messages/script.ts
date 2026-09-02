@@ -111,10 +111,10 @@ export const script: NamespaceMessages = {
     autoModeManual: "转手动编辑",
     simpleTitle: "脚本好了",
     simpleSubtitle: "看一眼口播文案，没问题就选一种方式成片；想换一版就重新生成",
-    simpleGoPro: "进导演模式精修 →",
+    simpleGoPro: "进专业模式精修 →",
     // AI 成片托管链（九宫格→一键整片）：脚本页上唯一的付费点击
     aiFilmCta: "AI 生成成片",
-    aiFilmCostNote: "AI 成片用你自己的模型 Key 按秒计费（一条约 ¥5~35，付给模型平台）；ClipForge 开源免费",
+    aiFilmCostNote: "AI 成片用你自己的模型 Key 按秒计费（一条约 ¥5~35，付给模型平台）；VibeSKU Clips 开源免费",
     aiFilmResolve: "检查模型配置…",
     aiFilmSheet: "生成主播四视图定妆照（一次生成锁同人）…",
     aiFilmGrid: "AI 绘制分镜画面（九宫格锁人锁品）…",
@@ -240,7 +240,7 @@ export const script: NamespaceMessages = {
     simpleSubtitle: "Skim the voice-over — happy? Pick a finishing path. Want another take? Regenerate.",
     // AI film chain (storyboard grid → one-call film): the only paid click on this page
     aiFilmCta: "Generate with AI",
-    aiFilmCostNote: "The AI film bills your own model key by the second (roughly $1–5 per video, paid to the model platform); ClipForge itself is free and open source",
+    aiFilmCostNote: "The AI film bills your own model key by the second (roughly $1–5 per video, paid to the model platform); VibeSKU Clips itself is free and open source",
     aiFilmResolve: "Checking model setup…",
     aiFilmSheet: "Generating the presenter's four-view reference sheet (identity locked in one pass)…",
     aiFilmGrid: "AI drawing the storyboard frames (grid-locked identity)…",
@@ -258,7 +258,7 @@ export const script: NamespaceMessages = {
     aiFilmBackToEdit: "Back to edit the script",
     aiFilmFailed: "AI film failed — retry, or fall back to the free quick cut",
     aiFilmNeedModels: "No image/video model configured yet — pick one under Settings → Image model and Video model (Atlas covers both with one key)",
-    simpleGoPro: "Open Director mode \u2192",
+    simpleGoPro: "Open Pro mode \u2192",
     autoFinishFailed: "Auto-finish failed — use “Next” to complete the steps manually",
     // Server-side pipeline: resume from breakpoint (closing the tab no longer kills the chain)
     pipelineInterrupted: "The last run was interrupted (server restart or crash)",

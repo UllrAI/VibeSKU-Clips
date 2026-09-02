@@ -80,7 +80,7 @@
   30%, 60% {
     background-position: calc(100% + var(--shiny-width)) 0;}}}
 
-/* ClipForge tokens: anikuku-inspired paper, ink, and earth pigments. */
+/* VibeSKU Clips tokens: anikuku-inspired paper, ink, and earth pigments. */
 :root {
   --background: oklch(0.99 0.01 85);
   --foreground: oklch(0.2 0.02 50);

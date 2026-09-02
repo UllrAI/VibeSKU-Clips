@@ -499,7 +499,7 @@ export default function ScriptPage() {
 
   // ---- AI film chain (grid → one-call film): the paid path. The free script above is the
   // zero-cost "video plan" gate — money is only spent after this one explicit click, and the
-  // bill goes to the user's own model platform (open-source BYOK, ClipForge itself is free) ----
+  // bill goes to the user's own model platform (open-source BYOK, VibeSKU Clips itself is free) ----
   const { characters: presenterLib, updateCharacter } = useCharacterStore();
   const [aiFilming, setAiFilming] = useState(false);
   const [aiFilmStage, setAiFilmStage] = useState("");
@@ -986,7 +986,7 @@ export default function ScriptPage() {
               </div>
               <p className="text-center text-xs text-muted-foreground">{t("autoFinishHint")}</p>
               <p className="text-center text-xs text-muted-foreground/80">{t("aiFilmCostNote")}</p>
-              {/* quality reassurance: both paths run the judge panel automatically — Easy mode
+              {/* quality reassurance: both paths run the judge panel automatically — Lite mode
                   hides the operation, never the quality features */}
               <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground/80"><LuScale className="size-3.5" aria-hidden="true" />{t("autoJudgeNote")}</p>
               <div className="flex items-center gap-3">

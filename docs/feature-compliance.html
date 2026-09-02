@@ -3,24 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AIGC 标识与 AI 视频限流:合规发布指南(国标 GB 45438-2025)— ClipForge 合规默认开</title>
-<meta name="description" content="AI 视频会被限流吗?按规则标识的 AIGC 内容属有条件允许,刻意去标识才是高风险。本文讲清国标 GB 45438-2025 显式与隐式标识要求、抖音测评形态与数字人五类目规则,以及 ClipForge 合规默认开:自动写入隐式元数据标识、默认烧录「AI 生成」角标,限流自检与违禁词扫描逐项给改法。">
-<link rel="canonical" href="https://xixihhhh.github.io/clipforge/feature-compliance.html">
+<title>AIGC 标识与 AI 视频限流:合规发布指南(国标 GB 45438-2025)— VibeSKU Clips 合规默认开</title>
+<meta name="description" content="AI 视频会被限流吗?按规则标识的 AIGC 内容属有条件允许,刻意去标识才是高风险。本文讲清国标 GB 45438-2025 显式与隐式标识要求、抖音测评形态与数字人五类目规则,以及 VibeSKU Clips 合规默认开:自动写入隐式元数据标识、默认烧录「AI 生成」角标,限流自检与违禁词扫描逐项给改法。">
+<link rel="canonical" href="https://ullrai.github.io/VibeSKU-Clips/feature-compliance.html">
 <link rel="icon" href="logo.svg" type="image/svg+xml">
 <link rel="stylesheet" href="site.css">
 <meta property="og:type" content="article">
-<meta property="og:title" content="AIGC 标识与 AI 视频限流:合规发布指南(GB 45438-2025)— ClipForge 合规默认开">
+<meta property="og:title" content="AIGC 标识与 AI 视频限流:合规发布指南(GB 45438-2025)— VibeSKU Clips 合规默认开">
 <meta property="og:description" content="按规则标识的 AI 内容属有条件允许,去标识才是高风险。国标显式+隐式标识 · 限流自检 · 广告法违禁词扫描 · 抖音测评形态/数字人五类目/二维码导流护栏,全部默认开。">
-<meta property="og:image" content="https://xixihhhh.github.io/clipforge/banner.png">
-<meta property="og:url" content="https://xixihhhh.github.io/clipforge/feature-compliance.html">
+<meta property="og:image" content="https://ullrai.github.io/VibeSKU-Clips/banner.png">
+<meta property="og:url" content="https://ullrai.github.io/VibeSKU-Clips/feature-compliance.html">
 <meta name="twitter:card" content="summary_large_image">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
   "@type": "BreadcrumbList",
   "itemListElement": [
-    { "@type": "ListItem", "position": 1, "name": "ClipForge 首页", "item": "https://xixihhhh.github.io/clipforge/" },
-    { "@type": "ListItem", "position": 2, "name": "AI 视频合规发布", "item": "https://xixihhhh.github.io/clipforge/feature-compliance.html" }
+    { "@type": "ListItem", "position": 1, "name": "VibeSKU Clips 首页", "item": "https://ullrai.github.io/VibeSKU-Clips/" },
+    { "@type": "ListItem", "position": 2, "name": "AI 视频合规发布", "item": "https://ullrai.github.io/VibeSKU-Clips/feature-compliance.html" }
   ]
 }
 </script>
@@ -29,12 +29,12 @@
   "@context": "https://schema.org",
   "@type": "Article",
   "headline": "AIGC 标识与 AI 视频限流:合规发布指南(GB 45438-2025)",
-  "description": "按规则标识的 AI 内容属于有条件允许,刻意去标识才是高风险。讲清国标 GB 45438-2025 的显式与隐式标识要求、抖音等平台对 AI 内容的专门规则,以及开源工具 ClipForge 默认做的合规动作:隐式元数据标识、显式「AI 生成」角标、发布前限流自检与广告法违禁词扫描。",
+  "description": "按规则标识的 AI 内容属于有条件允许,刻意去标识才是高风险。讲清国标 GB 45438-2025 的显式与隐式标识要求、抖音等平台对 AI 内容的专门规则,以及开源工具 VibeSKU Clips 默认做的合规动作:隐式元数据标识、显式「AI 生成」角标、发布前限流自检与广告法违禁词扫描。",
   "inLanguage": "zh-CN",
-  "image": "https://xixihhhh.github.io/clipforge/banner.png",
-  "mainEntityOfPage": "https://xixihhhh.github.io/clipforge/feature-compliance.html",
-  "author": { "@type": "Organization", "name": "ClipForge", "url": "https://github.com/xixihhhh/clipforge" },
-  "publisher": { "@type": "Organization", "name": "ClipForge", "url": "https://xixihhhh.github.io/clipforge/" }
+  "image": "https://ullrai.github.io/VibeSKU-Clips/banner.png",
+  "mainEntityOfPage": "https://ullrai.github.io/VibeSKU-Clips/feature-compliance.html",
+  "author": { "@type": "Organization", "name": "VibeSKU Clips", "url": "https://github.com/UllrAI/VibeSKU-Clips" },
+  "publisher": { "@type": "Organization", "name": "VibeSKU Clips", "url": "https://ullrai.github.io/VibeSKU-Clips/" }
 }
 </script>
 <script type="application/ld+json">
@@ -44,7 +44,7 @@
   "mainEntity": [
     { "@type": "Question", "name": "AI 视频会被平台限流吗?", "acceptedAnswer": { "@type": "Answer", "text": "按规则标识的 AI 内容在抖音等国内平台属于有条件允许,真正的高风险是刻意去除或隐匿 AIGC 标识、触碰广告法违禁词,以及踩到平台专门红线(如 AI 生成测评类内容、数字人五类目、成片内二维码站外导流)。任何工具都无法保证不限流——能做的是把标识与自检做成默认项,别让片子输在低级违规上。" } },
     { "@type": "Question", "name": "国标 GB 45438-2025 要求 AI 生成内容怎么标识?", "acceptedAnswer": { "@type": "Answer", "text": "GB 45438-2025 是与《人工智能生成合成内容标识办法》配套的国家标准,要求 AI 生成合成内容做双层标识:一是用户能直接看到或听到的显式标识(如画面中的「AI 生成」文字提示),二是写入文件元数据的隐式标识(生成合成属性、服务提供者等信息),供平台机读核验。" } },
-    { "@type": "Question", "name": "ClipForge 帮我做了哪些合规动作?", "acceptedAnswer": { "@type": "Answer", "text": "合规默认开、零配置:成片自动写入 AIGC 隐式元数据标识(生成合成标签/服务提供者/内容制作编号),默认烧录片头「内容由 AI 生成」显式角标(可关,关了发布门禁会提示风险);发布前有限流自检(风险词/钩子/时长/字幕/CTA 逐项检查附改法)与广告法违禁词扫描(附替换建议);抖音测评形态、数字人五类目、二维码站外导流等平台红线以 warn 级提示把关,二维码对抖音默认拒绝。发布责任仍在使用者。" } }
+    { "@type": "Question", "name": "VibeSKU Clips 帮我做了哪些合规动作?", "acceptedAnswer": { "@type": "Answer", "text": "合规默认开、零配置:成片自动写入 AIGC 隐式元数据标识(生成合成标签/服务提供者/内容制作编号),默认烧录片头「内容由 AI 生成」显式角标(可关,关了发布门禁会提示风险);发布前有限流自检(风险词/钩子/时长/字幕/CTA 逐项检查附改法)与广告法违禁词扫描(附替换建议);抖音测评形态、数字人五类目、二维码站外导流等平台红线以 warn 级提示把关,二维码对抖音默认拒绝。发布责任仍在使用者。" } }
   ]
 }
 </script>
@@ -79,25 +79,25 @@
 <div class="container">
 
 <nav>
-  <img src="logo.svg" alt="ClipForge logo">
-  <span class="name">ClipForge<em>合规发布</em></span>
+  <img src="logo.svg" alt="VibeSKU Clips logo">
+  <span class="name">VibeSKU Clips<em>合规发布</em></span>
   <span class="spacer"></span>
   <a class="plain" href="index.html">首页</a>
   <a class="plain" href="guide.html">使用手册</a>
   <a class="plain" href="mcp.html">Agent 出片</a>
-  <a class="plain keep" href="https://github.com/xixihhhh/clipforge" rel="noopener">GitHub</a>
-  <a class="btn btn-brand" href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">免费下载</a>
+  <a class="plain keep" href="https://github.com/UllrAI/VibeSKU-Clips" rel="noopener">GitHub</a>
+  <a class="btn btn-brand" href="https://github.com/UllrAI/VibeSKU-Clips/releases/latest" rel="noopener">免费下载</a>
 </nav>
 
 <article class="doc">
 <h1>AI 视频合规发布:AIGC 标识默认开,不踩限流坑</h1>
-<p class="lead"><b>先说结论:按平台规则做好 AIGC 标识的 AI 视频属于「有条件允许」,真正的高风险是刻意去除或隐匿标识。</b>国内平台(抖音 / 快手 / 小红书)对未标识 AI 内容会自动限流、对广告法违禁词直接压量——所以开源工具 ClipForge 把合规做成<b>默认就开、零配置</b>:成片自动写入 AIGC 隐式元数据标识、默认烧录显式「AI 生成」角标,发布前限流自检与违禁词扫描逐项给改法。本文讲清国标 GB 45438-2025 要求什么、平台各自的红线在哪、以及工具替你做了哪些。完整出片流程见<a href="guide.html">使用手册</a>,agent 自动化出片见 <a href="mcp.html">MCP 一句话出片</a>。</p>
+<p class="lead"><b>先说结论:按平台规则做好 AIGC 标识的 AI 视频属于「有条件允许」,真正的高风险是刻意去除或隐匿标识。</b>国内平台(抖音 / 快手 / 小红书)对未标识 AI 内容会自动限流、对广告法违禁词直接压量——所以开源工具 VibeSKU Clips 把合规做成<b>默认就开、零配置</b>:成片自动写入 AIGC 隐式元数据标识、默认烧录显式「AI 生成」角标,发布前限流自检与违禁词扫描逐项给改法。本文讲清国标 GB 45438-2025 要求什么、平台各自的红线在哪、以及工具替你做了哪些。完整出片流程见<a href="guide.html">使用手册</a>,agent 自动化出片见 <a href="mcp.html">MCP 一句话出片</a>。</p>
 
 <div class="toc">
   <b>目录</b>
   <a href="#conclusion">一、结论:限流的真正原因</a>
   <a href="#gb45438">二、GB 45438-2025 要求什么</a>
-  <a href="#defaults">三、ClipForge 默认做了什么</a>
+  <a href="#defaults">三、VibeSKU Clips 默认做了什么</a>
   <a href="#precheck">四、发布前限流自检</a>
   <a href="#adlaw">五、广告法违禁词扫描</a>
   <a href="#platforms">六、平台差异提示</a>
@@ -125,15 +125,15 @@
 </table>
 <p>平台侧(抖音 / 快手 / 小红书等)据此要求创作者主动声明 AI 内容,并对元数据做机读核验——<b>只有画面角标没有元数据,或只有元数据没有角标,都不算标齐</b>。</p>
 
-<h2 id="defaults">三、ClipForge 默认做了什么:出片即合规</h2>
-<p>这些动作在 ClipForge 里<b>不用配置、默认执行</b>:</p>
+<h2 id="defaults">三、VibeSKU Clips 默认做了什么:出片即合规</h2>
+<p>这些动作在 VibeSKU Clips 里<b>不用配置、默认执行</b>:</p>
 <ul>
   <li><b>隐式标识自动写入</b>:每条成片的文件元数据自动写入 AIGC 隐式标识——生成合成标签、服务提供者、内容制作编号,对齐 GB 45438-2025;</li>
   <li><b>显式角标默认烧录</b>:片头「内容由 AI 生成」角标(左上角、展示 ≥2 秒,满足抖音 2026-07 新规——仅 AI 配音也属须标注内容)。可以手动关闭,但关了发布门禁会明确提示风险;</li>
   <li><b>声明文案备好</b>:导出页附一键复制的「AI 生成」声明文案,发布时配合平台的「AI 内容」声明入口使用;</li>
   <li><b>商品原图保真</b>:image-to-image 锁定商品本体,换背景、打光不篡改产品——避免「货不对板」的合规与售后风险。</li>
 </ul>
-<figure><img class="shot" src="screenshots/05-export.png" alt="ClipForge 成片导出页截图:AIGC 标识状态、多平台规格与发布前自检" loading="lazy"><figcaption>导出页:标识状态、平台规格与发布前把关都在这一页</figcaption></figure>
+<figure><img class="shot" src="screenshots/05-export.png" alt="VibeSKU Clips 成片导出页截图:AIGC 标识状态、多平台规格与发布前自检" loading="lazy"><figcaption>导出页:标识状态、平台规格与发布前把关都在这一页</figcaption></figure>
 
 <h2 id="precheck">四、发布前「限流自检」:逐项检查,附具体改法</h2>
 <p>标识只解决「能不能发」,<b>限流自检</b>解决「发了有没有人看」。出片前逐项过一遍,每项给 ✓ / ⚠ / ✗ 和<b>具体改法</b>(不打含糊的假分数):</p>
@@ -160,7 +160,7 @@
 </ul>
 
 <h2 id="platforms">六、平台差异提示:抖音的三条专门红线</h2>
-<p>各平台对 AI 内容的细则不同,ClipForge 的发布门禁按平台出针对性提示(<b>warn 级、只提醒不砍功能</b>,是否发布由你确认):</p>
+<p>各平台对 AI 内容的细则不同,VibeSKU Clips 的发布门禁按平台出针对性提示(<b>warn 级、只提醒不砍功能</b>,是否发布由你确认):</p>
 <ul>
   <li><b>测评形态</b>:对比测评 / 开箱测评风格属于抖音禁止的「AI 生成测评类内容」——发抖音建议改投口播种草或情景短剧,风格在其他平台照常可用;</li>
   <li><b>数字人五类目</b>:数字人 / AI 人物禁入<b>医疗、金融、美容功效、保健功效、教培效果</b>五类目,按商品文本自动预警;AI 人物台词出现「亲测有效」式宣称也会提示——贴近「伪造使用效果」红线,给出种草化改写;</li>
@@ -169,27 +169,27 @@
 <div class="tip"><p>加分项:抖音的推荐加权<b>偏向 AI + 真人混合内容</b>(实拍占比 ≥50% 有流量倾斜)。素材页有时长加权的实拍 / AI 占比条和逐镜徽章,发布门禁同步给出达标状态与补实拍建议——商品原图、上传素材、免费实拍库素材都计为实拍。出海发 TikTok / Reels / Shorts 时,脚本同样带「AI 内容打标识、避免夸大与未证实功效」的平台合规提示。</p></div>
 
 <h2 id="duty">七、免责与责任归属</h2>
-<p>要把边界说清楚:<b>ClipForge 做的是「默认合规」,不是「合规担保」</b>。工具能保证的是——标识默认写入、风险默认提示、改法明白给出;工具不能保证的是——任何一条内容的流量表现,也没有任何工具能承诺「不限流」。平台规则随时演进(本文口径截至 2026-08),发布前请以平台最新规则为准,<b>发布责任在使用者</b>。ClipForge 开源(AGPL-3.0)免费、1184 条单测护航,规则引擎的每一条判定都可以在<a href="https://github.com/xixihhhh/clipforge" rel="noopener">源码</a>里查证。</p>
+<p>要把边界说清楚:<b>VibeSKU Clips 做的是「默认合规」,不是「合规担保」</b>。工具能保证的是——标识默认写入、风险默认提示、改法明白给出;工具不能保证的是——任何一条内容的流量表现,也没有任何工具能承诺「不限流」。平台规则随时演进(本文口径截至 2026-08),发布前请以平台最新规则为准,<b>发布责任在使用者</b>。VibeSKU Clips 开源(AGPL-3.0)免费、1184 条单测护航,规则引擎的每一条判定都可以在<a href="https://github.com/UllrAI/VibeSKU-Clips" rel="noopener">源码</a>里查证。</p>
 
 <h2 id="faq">八、常见问题</h2>
 <div class="faq-list">
   <details open><summary>AI 视频会被平台限流吗?</summary><p>按规则标识的 AI 内容属于<b>有条件允许</b>,正常参与推荐;真正高风险的是刻意去标识、广告法违禁词和平台专门红线(测评形态 / 数字人五类目 / 二维码导流)。没有工具能保证不限流——能做的是别输在低级违规上。</p></details>
   <details><summary>GB 45438-2025 到底要求什么?</summary><p>双层标识:观众可见的<b>显式标识</b>(画面「AI 生成」提示)+ 写入文件元数据的<b>隐式标识</b>(生成合成属性、服务提供者等),自 2025 年 9 月 1 日起施行,平台据此机读核验。两层缺一不可。</p></details>
-  <details><summary>ClipForge 帮我做了哪些?</summary><p>隐式元数据标识自动写入 + 片头「内容由 AI 生成」角标默认烧录 + 导出页声明文案一键复制;发布前限流自检与广告法违禁词扫描逐项给改法;抖音三条专门红线 warn 级把关,二维码站外导流默认关。全部默认开、零配置。</p></details>
+  <details><summary>VibeSKU Clips 帮我做了哪些?</summary><p>隐式元数据标识自动写入 + 片头「内容由 AI 生成」角标默认烧录 + 导出页声明文案一键复制;发布前限流自检与广告法违禁词扫描逐项给改法;抖音三条专门红线 warn 级把关,二维码站外导流默认关。全部默认开、零配置。</p></details>
 </div>
 
 <div class="last-call reveal" style="margin-top:48px">
   <h2>出片即合规,<span class="hl">发布不裸奔</span></h2>
   <p>AIGC 标识 · 限流自检 · 违禁词扫描,默认全开、零配置。</p>
   <div class="cta">
-    <a class="btn btn-primary" href="https://github.com/xixihhhh/clipforge/releases/latest" rel="noopener">免费下载 Windows / macOS</a>
+    <a class="btn btn-primary" href="https://github.com/UllrAI/VibeSKU-Clips/releases/latest" rel="noopener">免费下载 Windows / macOS</a>
     <a class="btn btn-ghost" href="guide.html">看完整使用手册</a>
   </div>
 </div>
 </article>
 
 <footer>
-  <p>ClipForge(原带货剪手)· 开源 AGPL-3.0 · <a href="https://github.com/xixihhhh/clipforge" rel="noopener">GitHub</a> · <a href="index.html">首页</a> · <a href="guide.html">使用手册</a> · <a href="mcp.html">Agent 出片</a></p>
+  <p>VibeSKU Clips(原带货剪手)· 开源 AGPL-3.0 · <a href="https://github.com/UllrAI/VibeSKU-Clips" rel="noopener">GitHub</a> · <a href="index.html">首页</a> · <a href="guide.html">使用手册</a> · <a href="mcp.html">Agent 出片</a></p>
   <p style="margin-top:8px">本页不构成法律意见;请遵守各平台广告与 AIGC 标识规则,对发布内容负责。</p>
 </footer>
 

@@ -351,7 +351,7 @@ export default function VideoPage() {
     const url = URL.createObjectURL(new Blob([json], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "clipforge-style-pack.json";
+    a.download = "vibesku-clips-style-pack.json";
     a.click();
     URL.revokeObjectURL(url);
   };
