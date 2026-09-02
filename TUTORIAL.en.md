@@ -648,8 +648,8 @@ Open an [Issue](https://github.com/UllrAI/VibeSKU-Clips/issues) or [Discussion](
 
 More docs:
 
-- 📘 [Online user guide](https://ullrai.github.io/VibeSKU-Clips/guide.en.html) (web version of this material, condensed)
-- ❓ [Full FAQ](https://ullrai.github.io/VibeSKU-Clips/faq.html)
+- 📘 [Online user guide](https://clips.vibesku.com/guide.en.html) (web version of this material, condensed)
+- ❓ [Full FAQ](https://clips.vibesku.com/faq.html)
 - 🧰 [MCP tools](mcp/README.md) · [Agent skill](skills/vibesku-clips-video/SKILL.md)
 - 📄 [README](README.en.md) (feature tour, architecture, roadmap)
 

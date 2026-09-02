@@ -6,7 +6,7 @@
 >
 > <sub>📌 Formerly『**带货剪手** / daihuo-jianshou』— repo · stars · history all carried over; also does "one-sentence topic → video" for any non-commerce subject.</sub>
 
-<p align="center"><strong>🌐 Website: <a href="https://ullrai.github.io/VibeSKU-Clips/en.html">ullrai.github.io/VibeSKU-Clips</a></strong> — see what VibeSKU Clips can sell for you in 30 seconds</p>
+<p align="center"><strong>🌐 Website: <a href="https://clips.vibesku.com/en.html">clips.vibesku.com</a></strong> — see what VibeSKU Clips can sell for you in 30 seconds</p>
 
 <p align="center"><strong>🧑‍🎓 First time here? Start with the 👉 <a href="TUTORIAL.en.md">beginner tutorial (every step spelled out)</a></strong> · <a href="TUTORIAL.md">中文教程</a><br/><sub>Install · add one key · your first free video in 3 minutes · troubleshooting table · where your data lives</sub></p>
 
@@ -95,7 +95,7 @@ Want higher quality? Add one key: a single interface aggregates **7 platforms, 3
   <tr>
     <td align="center"><img src="docs/videos/input-coffee.jpg" width="210" alt="Input: cold-brew coffee concentrate product photo"/></td>
     <td align="center"><img src="docs/videos/grid-coffee.jpg" width="210" alt="Auto-generated storyboard grid: 9 shots, same person/room/light"/></td>
-    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="210" alt="Click to play: 4-cut full film"/></a><br/><sub>▶️ Click to play (sound on)</sub></td>
+    <td align="center"><a href="https://clips.vibesku.com/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="210" alt="Click to play: 4-cut full film"/></a><br/><sub>▶️ Click to play (sound on)</sub></td>
   </tr>
 </table>
 
@@ -107,15 +107,15 @@ Two more outputs from the same pipeline (input → output):
   <tr>
     <td align="center"><img src="docs/videos/input-coffee.jpg" width="110" alt="The same coffee product photo"/></td>
     <td align="center">→</td>
-    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="110" alt="Click to play: Chinese talking-head"/></a><br/><sub>🎙️ Chinese talking-head, 12s</sub></td>
+    <td align="center"><a href="https://clips.vibesku.com/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="110" alt="Click to play: Chinese talking-head"/></a><br/><sub>🎙️ Chinese talking-head, 12s</sub></td>
     <td align="center" width="40"></td>
     <td align="center"><img src="docs/videos/input-blender.jpg" width="110" alt="Input: portable blender product photo"/></td>
     <td align="center">→</td>
-    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-blender-en.mp4"><img src="docs/videos/poster-blender-en.jpg" width="110" alt="Click to play: English UGC talking-head"/></a><br/><sub>🌍 English UGC talking-head, 12s</sub></td>
+    <td align="center"><a href="https://clips.vibesku.com/videos/demo-blender-en.mp4"><img src="docs/videos/poster-blender-en.jpg" width="110" alt="Click to play: English UGC talking-head"/></a><br/><sub>🌍 English UGC talking-head, 12s</sub></td>
   </tr>
 </table>
 
-Voices, dialogue and lip-sync are native model output, untouched; they autoplay on the <a href="https://ullrai.github.io/VibeSKU-Clips/en.html">website</a>.
+Voices, dialogue and lip-sync are native model output, untouched; they autoplay on the <a href="https://clips.vibesku.com/en.html">website</a>.
 
 ## 🚀 Run it in 30 seconds
 
@@ -135,7 +135,7 @@ Open `http://localhost:3000` — **render your first video with no key at all** 
 | **Compose · voiceover/subtitles/BGM** | **Export · multi-platform** | **Batch production** |
 | ![Compose](docs/screenshots/04b-video.en.png) | ![Export](docs/screenshots/05-export.en.png) | ![Batch](docs/screenshots/06-batch.en.png) |
 
-> Top-left is the whole creation flow: photo / URL / topic → pick a path (🆓 free quick cut at $0 / ✨ AI film with the per-second price on the option) → pick a format → start. Step-by-step: [**beginner tutorial**](TUTORIAL.en.md); condensed web version: [User Guide](https://ullrai.github.io/VibeSKU-Clips/guide.en.html).
+> Top-left is the whole creation flow: photo / URL / topic → pick a path (🆓 free quick cut at $0 / ✨ AI film with the per-second price on the option) → pick a format → start. Step-by-step: [**beginner tutorial**](TUTORIAL.en.md); condensed web version: [User Guide](https://clips.vibesku.com/guide.en.html).
 
 <p align="center"><img src="docs/showcase-platforms.en.png" alt="VibeSKU Clips produces faceless vertical shopping videos for TikTok Shop, Reels, Shorts, Douyin, Kuaishou and Xiaohongshu — never showing a real face" width="820"/></p>
 

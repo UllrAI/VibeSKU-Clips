@@ -12,7 +12,7 @@ const geistMono = GeistMono;
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://ullrai.github.io/VibeSKU-Clips/",
+    process.env.NEXT_PUBLIC_APP_URL ?? "https://clips.vibesku.com/",
   ),
   // Title/description are bilingual (Chinese first): prioritize domestic traffic while covering overseas search indexing
   title: {

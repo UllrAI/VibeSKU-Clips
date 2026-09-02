@@ -6,7 +6,7 @@
 >
 > <sub>📌 原『**带货剪手** / daihuo-jianshou』，仓库 · Star · 历史全部延续；也支持「一句话主题成片」做任意非带货题材。</sub>
 
-<p align="center"><strong>🌐 官网:<a href="https://ullrai.github.io/VibeSKU-Clips/">ullrai.github.io/VibeSKU-Clips</a></strong> — 30 秒看懂 VibeSKU Clips 能帮你卖什么</p>
+<p align="center"><strong>🌐 官网:<a href="https://clips.vibesku.com/">clips.vibesku.com</a></strong> — 30 秒看懂 VibeSKU Clips 能帮你卖什么</p>
 
 <p align="center"><strong>🧑‍🎓 第一次用？看这篇 👉 <a href="TUTORIAL.md">小白使用教程（每一步都写清楚）</a></strong> · <a href="TUTORIAL.en.md">English tutorial</a><br/><sub>安装 · 配 Key · 3 分钟出第一条免费片 · 报错对照表 · 数据存哪，全在里面</sub></p>
 
@@ -95,7 +95,7 @@
   <tr>
     <td align="center"><img src="docs/videos/input-coffee.jpg" width="210" alt="输入：冷萃咖啡液商品图"/></td>
     <td align="center"><img src="docs/videos/grid-coffee.jpg" width="210" alt="自动产出的九宫格分镜：同一人物/房间/光线的 9 个镜头"/></td>
-    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="210" alt="点击播放：4 镜整片"/></a><br/><sub>▶️ 点图播放（开声音）</sub></td>
+    <td align="center"><a href="https://clips.vibesku.com/videos/demo-coffee-film.mp4"><img src="docs/videos/poster-coffee-film.jpg" width="210" alt="点击播放：4 镜整片"/></a><br/><sub>▶️ 点图播放（开声音）</sub></td>
   </tr>
 </table>
 
@@ -107,15 +107,15 @@
   <tr>
     <td align="center"><img src="docs/videos/input-coffee.jpg" width="110" alt="同一张咖啡液商品图"/></td>
     <td align="center">→</td>
-    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="110" alt="点击播放：中文口播单镜"/></a><br/><sub>🎙️ 中文口播单镜 12s</sub></td>
+    <td align="center"><a href="https://clips.vibesku.com/videos/demo-coffee.mp4"><img src="docs/videos/poster-coffee.jpg" width="110" alt="点击播放：中文口播单镜"/></a><br/><sub>🎙️ 中文口播单镜 12s</sub></td>
     <td align="center" width="40"></td>
     <td align="center"><img src="docs/videos/input-blender.jpg" width="110" alt="输入：便携榨汁杯商品图"/></td>
     <td align="center">→</td>
-    <td align="center"><a href="https://ullrai.github.io/VibeSKU-Clips/videos/demo-blender-en.mp4"><img src="docs/videos/poster-blender-en.jpg" width="110" alt="点击播放：出海英文口播"/></a><br/><sub>🌍 出海英文口播 12s</sub></td>
+    <td align="center"><a href="https://clips.vibesku.com/videos/demo-blender-en.mp4"><img src="docs/videos/poster-blender-en.jpg" width="110" alt="点击播放：出海英文口播"/></a><br/><sub>🌍 出海英文口播 12s</sub></td>
   </tr>
 </table>
 
-人声、台词、口型均为模型原生输出，未经人工修片；<a href="https://ullrai.github.io/VibeSKU-Clips/">官网</a>可直接自动播放。
+人声、台词、口型均为模型原生输出，未经人工修片；<a href="https://clips.vibesku.com/">官网</a>可直接自动播放。
 
 ## 🚀 30 秒跑起来
 
@@ -135,7 +135,7 @@ docker run -d -p 3000:3000 -v vibesku-clips-data:/data ghcr.io/ullrai/vibesku-cl
 | **视频合成·配音/字幕/BGM** | **成片导出·多平台** | **批量出片** |
 | ![合成](docs/screenshots/04b-video.png) | ![导出](docs/screenshots/05-export.png) | ![批量](docs/screenshots/06-batch.png) |
 
-> 左上就是完整创建流程：传图/贴链接/说主题 → 选出片方式（🆓 免费快剪 ¥0 / ✨ AI 生成成片·按秒标价）→ 选带货形式 → 开始生成。逐步图解见[**小白使用教程**](TUTORIAL.md)，网页速览见[官网使用手册](https://ullrai.github.io/VibeSKU-Clips/guide.html)。
+> 左上就是完整创建流程：传图/贴链接/说主题 → 选出片方式（🆓 免费快剪 ¥0 / ✨ AI 生成成片·按秒标价）→ 选带货形式 → 开始生成。逐步图解见[**小白使用教程**](TUTORIAL.md)，网页速览见[官网使用手册](https://clips.vibesku.com/guide.html)。
 
 <p align="center"><img src="docs/showcase-platforms.png" alt="VibeSKU Clips 一键产出抖音 / 快手 / 小红书 / TikTok 竖屏带货短视频，全程不出真人脸" width="820"/></p>
 

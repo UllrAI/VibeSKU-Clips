@@ -653,8 +653,8 @@ claude mcp add vibesku-clips -- node /绝对路径/vibesku-clips/mcp/vibesku-cli
 
 其它文档入口：
 
-- 📘 [官网使用手册](https://ullrai.github.io/VibeSKU-Clips/guide.html)（网页版，同内容速览）
-- ❓ [FAQ 大全](https://ullrai.github.io/VibeSKU-Clips/faq.html)
+- 📘 [官网使用手册](https://clips.vibesku.com/guide.html)（网页版，同内容速览）
+- ❓ [FAQ 大全](https://clips.vibesku.com/faq.html)
 - 🧰 [MCP 工具清单](mcp/README.md) · [Agent Skill](skills/vibesku-clips-video/SKILL.md)
 - 📄 [README](README.md)（功能全景、技术架构、Roadmap）
 
