@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { useSettingsStore } from "@/lib/stores/settings-store";
+import { isLLMReady, useSettingsStore } from "@/lib/stores/settings-store";
 import { buildVideoOptions, resolveModelTarget } from "@/lib/gen-params";
 import { referenceModelFor, buildReplicatePrompt, REPLICATE_MAX_REF_SEC, type ReplicateShot } from "@/lib/replicate-plan";
 import { useT } from "@/lib/i18n";
@@ -231,7 +231,7 @@ export default function ClonePage() {
    */
   const handleGenerate = useCallback(async () => {
     if (isGenerating) return;
-    if (!llm.apiKey) {
+    if (!isLLMReady(llm)) {
       setGenError(t("errorNoLlm"));
       return;
     }
@@ -552,7 +552,7 @@ export default function ClonePage() {
                     accept="image/*"
                     multiple
                     className="hidden"
-                    onChange={(e) => handleFiles(e.target.files)}
+                    onChange={(e) => { handleFiles(e.target.files); e.target.value = ""; }}
                   />
 
                   {productImages.length === 0 ? (

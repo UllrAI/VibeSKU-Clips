@@ -129,10 +129,10 @@ describe("其他模型的差异", () => {
     expect(body.generate_audio).toBe(true);
   });
 
-  it("Sora 把图片当风格参考，而不是首帧", () => {
+  it("Wan 的首帧走 reference_url，而不是 first_frame_url", () => {
     const body = buildPrismVideoBody(
-      { modelId: "sora2", mode: "image-to-video", prompt: "x", firstFrameUrl: "https://x/f.png" },
-      "sora2"
+      { modelId: "wan2.6", mode: "image-to-video", prompt: "x", firstFrameUrl: "https://x/f.png" },
+      "wan2.6"
     );
     expect(body.reference_url).toBe("https://x/f.png");
     expect(body).not.toHaveProperty("first_frame_url");

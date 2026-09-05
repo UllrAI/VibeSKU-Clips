@@ -306,6 +306,7 @@ export function buildPrismVideoBody(options: VideoOptions, modelId: string): Rec
       body.reference_url = first
     }
   } else if (first) {
+    // `first-frame` models (Wan) take the still through `reference_url`.
     body.reference_url = first
   }
 

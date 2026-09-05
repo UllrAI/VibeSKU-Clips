@@ -14,10 +14,19 @@
 import type { Shot, ScriptCharacter } from "@/lib/db/schema";
 import { stripPauseMarks } from "@/lib/voice-markup";
 import { findVideoModel } from "@/lib/providers/prism-catalog";
+import { referenceModelFor } from "@/lib/replicate-plan";
 
 /** Seedance 2.5 duration bounds (schema: integer 4-30 seconds) */
 export const FILM_MIN_SECONDS = 4;
 export const FILM_MAX_SECONDS = 30;
+
+/** The field-proven film model: Seedance 2.5 takes up to 30 reference images and 30s in one call. */
+export const FILM_DEFAULT_MODEL = "seedance2.5";
+
+/** The configured model when it accepts a reference pack, otherwise the proven default. */
+export function filmModelFor(modelId: string | undefined): string {
+  return referenceModelFor(modelId) ?? FILM_DEFAULT_MODEL;
+}
 
 /** Shot-type labels for segment lines, zh/en */
 const SHOT_TYPE_LABELS: Record<string, { zh: string; en: string }> = {

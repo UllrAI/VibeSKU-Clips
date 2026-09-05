@@ -70,8 +70,6 @@ export interface SettingsState {
   defaultVideoModel: string;
   /** Quality tier for the gpt-image-* family. Drafts are cheap on purpose. */
   imageQuality: PrismImageQuality;
-  defaultResolution: "720p" | "1080p";
-  defaultAspectRatio: "9:16" | "16:9" | "1:1";
   imageParams: ImageGenParams;
   videoParams: VideoGenParams;
   motionIntensity: MotionIntensity;
@@ -93,8 +91,6 @@ export interface SettingsState {
   setDefaultImageModel: (model: string) => void;
   setDefaultVideoModel: (model: string) => void;
   setImageQuality: (quality: PrismImageQuality) => void;
-  setDefaultResolution: (resolution: "720p" | "1080p") => void;
-  setDefaultAspectRatio: (ratio: "9:16" | "16:9" | "1:1") => void;
   setImageParams: (params: ImageGenParams) => void;
   setVideoParams: (params: VideoGenParams) => void;
   setMotionIntensity: (intensity: MotionIntensity) => void;
@@ -109,26 +105,40 @@ export function isMediaReady(media: MediaSetting | undefined): boolean {
   return Boolean(media?.apiKey?.trim() && media?.apiSecret?.trim());
 }
 
+/**
+ * True when a script request can actually be sent: endpoint, key and model all present.
+ * Every page gates on this one check, so "configured" means the same thing everywhere.
+ */
+export function isLLMReady(llm: LLMSetting | undefined): boolean {
+  return Boolean(llm?.baseUrl?.trim() && llm?.apiKey?.trim() && llm?.model?.trim());
+}
+
 const PRISM_IMAGE_IDS = new Set(PRISM_IMAGE_MODELS.map((m) => m.id));
 const PRISM_VIDEO_IDS = new Set(PRISM_VIDEO_MODELS.map((m) => m.id));
 
 /**
- * Migration to the Prism-only settings shape (v6).
+ * Migration to the Prism-only settings shape (v6) and the single video-defaults block (v7).
  *
  * Everything platform-specific is dropped rather than translated: an Atlas or fal key cannot be
  * used against Prism, and a model id like `bytedance/seedance-2.0/text-to-video` has no Prism
  * equivalent that is safe to guess — guessing wrong bills the user for a model they did not
- * choose. Stale ids are therefore reset to the defaults, and the LLM block is preserved intact
- * because any OpenAI-compatible endpoint still works exactly as it did.
+ * choose. Stale ids (including models since removed from the catalog) are therefore reset to
+ * the defaults, and the LLM block is preserved intact because any OpenAI-compatible endpoint
+ * still works exactly as it did.
  */
 export function migrateSettings(persisted: unknown): SettingsState {
   const state = (persisted ?? {}) as SettingsState & {
     providers?: Record<string, { apiKey?: string }>;
     customModels?: unknown;
+    defaultResolution?: unknown;
+    defaultAspectRatio?: unknown;
   };
 
   delete state.providers;
   delete state.customModels;
+  // v7: `videoParams` is the only place resolution and aspect ratio live now.
+  delete state.defaultResolution;
+  delete state.defaultAspectRatio;
 
   state.media = {
     apiKey: state.media?.apiKey ?? "",
@@ -184,8 +194,6 @@ export const useSettingsStore = create<SettingsState>()(
       defaultImageModel: DEFAULT_IMAGE_MODEL,
       defaultVideoModel: DEFAULT_VIDEO_MODEL,
       imageQuality: DEFAULT_IMAGE_QUALITY,
-      defaultResolution: "720p",
-      defaultAspectRatio: "9:16",
       imageParams: DEFAULT_IMAGE_PARAMS,
       videoParams: DEFAULT_VIDEO_PARAMS,
       motionIntensity: "normal",
@@ -204,8 +212,6 @@ export const useSettingsStore = create<SettingsState>()(
       setDefaultImageModel: (model) => set({ defaultImageModel: model }),
       setDefaultVideoModel: (model) => set({ defaultVideoModel: model }),
       setImageQuality: (quality) => set({ imageQuality: quality }),
-      setDefaultResolution: (resolution) => set({ defaultResolution: resolution }),
-      setDefaultAspectRatio: (ratio) => set({ defaultAspectRatio: ratio }),
       setImageParams: (params) => set({ imageParams: params }),
       setVideoParams: (params) => set({ videoParams: params }),
       setMotionIntensity: (intensity) => set({ motionIntensity: intensity }),
@@ -217,9 +223,9 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: "daihuo-jianshou-settings",
       // v6: collapse the seven-platform media config onto Prism, drop custom models, and reset
-      // model ids that belonged to the old catalog. See migrateSettings for why nothing is
-      // translated across.
-      version: 6,
+      // model ids that belonged to the old catalog. v7: drop the duplicate resolution/aspect
+      // defaults and reset ids of models removed from the catalog. See migrateSettings.
+      version: 7,
       migrate: migrateSettings,
     }
   )

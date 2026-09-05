@@ -15,7 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useLocale, useT } from "@/lib/i18n";
 import type { MediaAnalysisResult } from "@/lib/media-analysis";
-import { useSettingsStore } from "@/lib/stores/settings-store";
+import { isLLMReady, useSettingsStore } from "@/lib/stores/settings-store";
 import { PageContainer, PageHeader } from "@/components/page-layout";
 
 interface AnalysisResponse extends MediaAnalysisResult {
@@ -57,7 +57,7 @@ export default function MediaLabPage() {
   const [projectId, setProjectId] = useState("");
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
-  const configured = Boolean(llm.baseUrl && llm.apiKey && llm.model);
+  const configured = isLLMReady(llm);
   const isVideo = file?.type.startsWith("video/") ?? false;
 
   useEffect(() => {

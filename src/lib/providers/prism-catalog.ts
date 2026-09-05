@@ -45,9 +45,8 @@ export interface PrismVideoModel {
    * How a still image is attached.
    * - `frames`: dedicated `first_frame_url` / `last_frame_url` fields.
    * - `first-frame`: `reference_url` is used as a strict first frame (Wan).
-   * - `style-reference`: `reference_url` only steers content/style, it is not frame 0 (Sora).
    */
-  imageInput: 'frames' | 'first-frame' | 'style-reference'
+  imageInput: 'frames' | 'first-frame'
   /**
    * The frame fields only work as a pair. H3 answers
    * `首尾帧工作流必须同时提供 first_frame_url 和 last_frame_url` to a lone first frame, so a
@@ -184,38 +183,6 @@ export const PRISM_VIDEO_MODELS: PrismVideoModel[] = [
     negativePrompt: false,
     minSeed: -1,
     note: '单镜可到 30 秒，参考素材上限最高',
-  },
-  {
-    id: 'sora2',
-    name: 'Sora 2',
-    durations: [10, 15],
-    ratios: ['16:9', '9:16'],
-    resolutions: ['480p', '720p', '1080p'],
-    nativeAudio: true,
-    imageInput: 'style-reference',
-    lastFrame: false,
-    maxReferenceImages: 0,
-    maxReferenceVideos: 0,
-    maxReferenceAudios: 0,
-    negativePrompt: false,
-    minSeed: 0,
-    note: '参考图只影响风格，不作为首帧',
-  },
-  {
-    id: 'sora2-pro',
-    name: 'Sora 2 Pro',
-    durations: [15, 25],
-    ratios: ['16:9', '9:16'],
-    resolutions: ['480p', '720p', '1080p'],
-    nativeAudio: true,
-    imageInput: 'style-reference',
-    lastFrame: false,
-    maxReferenceImages: 0,
-    maxReferenceVideos: 0,
-    maxReferenceAudios: 0,
-    negativePrompt: false,
-    minSeed: 0,
-    note: '长镜头档位，15/25 秒',
   },
   {
     id: 'wan2.6',

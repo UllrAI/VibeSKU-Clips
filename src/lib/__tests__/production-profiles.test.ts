@@ -22,7 +22,6 @@ describe("production profiles", () => {
       videoParams: { aspectRatio: "16:9", resolution: "1080p", seed: 7 },
     });
 
-    expect(patch.defaultResolution).toBe("720p");
     expect(patch.imageParams).toMatchObject({ aspectRatio: "16:9", count: 1, negativePrompt: "blur" });
     expect(patch.videoParams).toMatchObject({ aspectRatio: "16:9", resolution: "720p", duration: 4, seed: 7 });
     expect(patch.chainMode).toBe("off");

@@ -15,18 +15,12 @@ const STEPS = [
 
 /**
  * Clickable four-step progress pills shared by the project pipeline pages
- * (script / assets / export). Visually identical to the legacy inline
- * stepper, but every pill is a real link so users can jump between steps:
- * the current step is highlighted, completed steps show a check mark, and
- * future steps are muted — all remain navigable.
+ * (script / assets / video / export). Every pill is a real link so users can
+ * jump between steps: the current step is highlighted, completed steps show a
+ * check mark, and future steps are muted — all remain navigable.
  *
  * The current step is derived from the pathname suffix (no props needed);
  * the project id comes from useParams.
- *
- * NOTE: video/page.tsx still renders its own legacy inline (non-clickable)
- * stepper because that file is owned by a parallel session (avoidance).
- * Once the avoidance is lifted, replace its inline stepper with this
- * component as well.
  */
 export function ProjectStepper() {
   const t = useT("common");

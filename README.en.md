@@ -81,7 +81,7 @@
 
 - 🎭 [**Dramake**](https://github.com/xixihhhh/ai-short-drama-skill): a director-level AI short-drama Agent Skill that turns an idea, novel, or screenplay into a traceable workflow covering scripts, character bibles, storyboards, model and budget routing, voices, editing, and QA. It supports Codex, Claude Code, and WorkBuddy. Install it with `npx skills add xixihhhh/ai-short-drama-skill --skill dramake`.
 
-Want higher quality? Add one key pair: image and video both go through the single **[Prism](https://prism.ullrai.com)** gateway, covering **MiniMax H3** (speech + ambience in one pass, the default), **Seedance 2.5**, Sora 2, Wan 2.6 and **GPT Image 2**; scripts run on any OpenAI-compatible endpoint (OpenRouter recommended). Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
+Want higher quality? Add one key pair: image and video both go through the single **[Prism](https://prism.ullrai.com)** gateway, covering **MiniMax H3** (speech + ambience in one pass, the default), **Seedance 2.5**, Wan 2.6 and **GPT Image 2**; scripts run on any OpenAI-compatible endpoint (OpenRouter recommended). Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
 
 ## 🎬 Sample: one product photo in, a postable video out (Seedance 2.5 field test)
 
@@ -269,7 +269,6 @@ All image and video generation goes through a single gateway, **[Prism](https://
 | Video | MiniMax H3 Max | Higher tier, steadier picture, 16:9 only |
 | Video | **Seedance 2.5** | Up to 30s per shot, 30 reference images / 10 reference videos — the pick for replication and multi-subject shots |
 | Video | Seedance 2.0 / Fast / Mini | Widest multimodal references, incl. reference video and video extension; Fast is quicker, Mini is cheapest |
-| Video | Sora 2 / Sora 2 Pro | The image is a style reference, not a strict first frame; 10–25s |
 | Video | Wan 2.6 / 2.6 Flash | The image IS the first frame; 5/10/15s |
 | **Image** ⭐ default | **GPT Image 2** (quality defaults to `low`) | Faithful product rendering with a quality tier; keep it on Low while drafting |
 | Image | GPT Image 2 VIP / 1.5 / 1 | Priority lane / previous generation / cheapest fallback |
@@ -344,7 +343,6 @@ New projects are tagged `contentType=topic` and share the second half of the com
 | **Batch rendering** | Before a big sale, pick multiple products and **batch-render everything in one click** — script → visuals → compositing runs fully automatically (0-key on the free path), built for 2026's "mass variants + A/B" playbook |
 | **Viral templates** | Save data-proven scripts as templates, apply to new products in one click |
 | **Viral remix** | Paste a competitor's viral video link, AI extracts the script logic, re-shoot with your product |
-| **Brand settings** | Logo watermark / brand color / consistent end-card across all videos |
 | **Character management** | Reuse on-camera characters across projects, AI keeps appearance consistent |
 | **Multi-platform export** | One video auto-fits TikTok / Reels / Shorts (9:16) / Douyin / Kuaishou / Xiaohongshu (3:4) |
 | **A/B variants** | The export page re-renders the same video into **different subtitle styles + BGM variants** (karaoke/short-card × upbeat/energetic) and downloads each, so you can test which converts (all key-free) |
@@ -406,7 +404,7 @@ open http://localhost:3000
 1. Open **Settings → Connect** and add a **script-model key** (required for writing scripts; [OpenRouter](https://openrouter.ai/keys) is the shortest path — one key, 400+ models)
 2. Want AI to draw the visuals? Add your **[Prism](https://prism.ullrai.com)** API key and secret (one pair covers image and video). Skip it if you only use free stock footage
 3. **Generation** already has sensible defaults (video MiniMax H3, image GPT Image 2 at quality `low`) — change them only if you want to
-4. (Optional) Add a presenter and brand visuals under **Advanced**
+4. (Optional) Add a presenter under **Advanced**
 5. Back on **Create**, drop a product photo or type one sentence and go
 
 > What costs money: the app itself is free and open source; the free stock path needs no key; the script model is billed by whichever provider you chose; Prism is billed per generation. Those four are independent.
@@ -507,7 +505,6 @@ Image and video both run through the **Prism** gateway — one key/secret pair c
 | **Seedance 2.5** | Switchable | 4–30s | 480p–1080p | Up to 30s per shot; 30 reference images / 10 videos / 10 audio — best for replication and multi-subject |
 | **Seedance 2.0** | Switchable | 4–15s | 480p–1080p | Widest multimodal references, incl. reference video and extension |
 | **Seedance 2.0 Fast / Mini** | Switchable | 4–15s | 480p / 720p | Fast is quicker, Mini is cheapest |
-| **Sora 2 / Sora 2 Pro** | Native (no switch) | 10–15s / 15–25s | 720p / 1080p | The image is a style reference, not a strict first frame |
 | **Wan 2.6 / 2.6 Flash** | Switchable | 5 / 10 / 15s | 480p–1080p | The image IS the first frame |
 
 ### Image

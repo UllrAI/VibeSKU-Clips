@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import Link from "next/link";
 import {
   LuCheck,
@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { useProductLibraryStore } from "@/lib/stores/product-library-store";
-import { useSettingsStore } from "@/lib/stores/settings-store";
+import { isLLMReady, useSettingsStore } from "@/lib/stores/settings-store";
 import { getExampleProducts } from "@/lib/examples";
 import { buildVariationPlan, describeSlot } from "@/lib/variation-plan";
 import { useT, useLocale } from "@/lib/i18n";
@@ -79,14 +79,6 @@ const styleTypeMap: Record<string, string> = {
   auto: "auto",
 };
 
-// Backend styleType → short display name (for variation-slot summaries; kept local to avoid pulling the prompt engine into the client bundle)
-const styleDisplayNames: Record<string, string> = {
-  pain_point: "痛点式",
-  scene: "场景种草",
-  comparison: "对比实测",
-  story: "剧情带货",
-};
-
 // Batch task status (generating=writing script; composing=matching visuals+compositing; done=all finished)
 type TaskStatus = "pending" | "generating" | "composing" | "done" | "failed";
 
@@ -121,6 +113,11 @@ const statusColors: Record<TaskStatus, string> = {
 export default function BatchPage() {
   const t = useT("batch");
   const locale = useLocale();
+  // Backend styleType → localized label, for the per-task variation summary
+  const styleNames = useMemo(
+    () => Object.fromEntries(scriptStyleOptions.map((o) => [styleTypeMap[o.value] ?? o.value, t(o.labelKey)])),
+    [t]
+  );
   // Real product library + LLM config
   const { products, incrementVideoCount, addProduct } = useProductLibraryStore();
   const { llm } = useSettingsStore();
@@ -454,7 +451,7 @@ export default function BatchPage() {
   // Start batch generation (real: create project + generate script per item, reusing the single-product flow)
   const handleStartBatch = useCallback(async () => {
     if (selectedProducts.size === 0 || isGenerating) return;
-    if (!llm.apiKey) {
+    if (!isLLMReady(llm)) {
       setConfigError(t("errorNoLlm"));
       return;
     }
@@ -481,7 +478,7 @@ export default function BatchPage() {
       id: p.id,
       productName: p.name,
       status: "pending" as TaskStatus,
-      ...(plan[i] ? { variation: describeSlot(plan[i], styleDisplayNames, locale === "en" ? "en" : "zh") } : {}),
+      ...(plan[i] ? { variation: describeSlot(plan[i], styleNames, locale === "en" ? "en" : "zh") } : {}),
     }));
     setBatchTasks(tasks);
 
@@ -514,7 +511,7 @@ export default function BatchPage() {
   // job's ORIGINAL config/slots; items whose composition already exists just poll/finish it.
   const handleResumeBatch = async () => {
     if (!resumableJob || isGenerating) return;
-    if (!llm.apiKey) {
+    if (!isLLMReady(llm)) {
       setConfigError(t("errorNoLlm"));
       return;
     }
@@ -682,9 +679,13 @@ export default function BatchPage() {
                         >
                           {isSelected && <LuCheck className="w-3 h-3 text-white" />}
                         </div>
-                        {/* Product image placeholder */}
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/30 border border-border/30">
-                          <LuPackage className="w-5 h-5 text-muted-foreground" />
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/30 bg-muted/30">
+                          {product.images[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={product.images[0]} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <LuPackage className="w-5 h-5 text-muted-foreground" />
+                          )}
                         </div>
                         {/* Product info */}
                         <div className="min-w-0 flex-1">

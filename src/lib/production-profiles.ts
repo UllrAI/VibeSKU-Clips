@@ -72,7 +72,6 @@ export function productionProfilePatch(id: ProductionProfileId, current: Current
 
   return {
     activeProductionProfile: id,
-    defaultResolution: profile.resolution,
     imageParams: { ...current.imageParams, aspectRatio, count: 1 },
     videoParams: {
       ...current.videoParams,

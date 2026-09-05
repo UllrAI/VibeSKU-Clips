@@ -54,7 +54,7 @@ import {
 } from "@/lib/production-system";
 import { prismModels } from "@/lib/providers/prism-catalog";
 import type { Model } from "@/lib/providers/types";
-import { useSettingsStore } from "@/lib/stores/settings-store";
+import { isLLMReady, useSettingsStore } from "@/lib/stores/settings-store";
 import type { QcReport } from "@/lib/video-composer/qc";
 import type { GenerationControlSummary } from "@/lib/video-repair-plan";
 import {
@@ -157,6 +157,8 @@ export default function ProductionPage() {
   const t = useT("production");
   const locale = useLocale();
   const { media, defaultImageModel, defaultVideoModel, chainMode, llm, setDefaultVideoModel } = useSettingsStore();
+  // The quality gate reads frames with the vision model, which falls back to the text model.
+  const visionReady = isLLMReady(llm);
   const [overview, setOverview] = useState<ProductionOverview | null>(null);
   // The catalog is static, so there is nothing to fetch and nothing to fail.
   const models = useMemo(() => prismModels(), []);
@@ -436,7 +438,7 @@ export default function ProductionPage() {
               <div className="border-x border-border/70 p-3"><p className="text-xs text-muted-foreground">{t("qualityAcceptedCount")}</p><p className="mt-1 text-lg font-bold tabular-nums text-success">{qualitySummary.accepted}</p></div>
               <div className="p-3"><p className="text-xs text-muted-foreground">{t("qualityAttention")}</p><p className="mt-1 text-lg font-bold tabular-nums text-warning">{qualitySummary.needsAttention}</p></div>
             </div>
-            {!llm.baseUrl || !llm.apiKey || !(llm.visionModel || llm.model) ? <p className="mb-3 rounded-xl border border-warning/25 bg-warning/8 p-3 text-xs leading-5 text-warning">{t("qualityNeedsVision")}</p> : null}
+            {!visionReady ? <p className="mb-3 rounded-xl border border-warning/25 bg-warning/8 p-3 text-xs leading-5 text-warning">{t("qualityNeedsVision")}</p> : null}
             <div className="space-y-2" aria-busy={qualityBusy !== null}>
               {qualityGroups.length ? qualityGroups.map((group) => {
                 const active = group.candidates.find((candidate) => candidate.selected) ?? group.candidates[0];
@@ -484,7 +486,7 @@ export default function ProductionPage() {
                             <Button className="h-11" disabled={Boolean(actionBusy) || review.humanDecision === "accepted"} onClick={() => void decideQuality(review.id, "accepted")}><LuThumbsUp />{review.humanDecision === "accepted" ? t("qualityAccepted") : t("qualityAccept")}</Button>
                             <Button variant="outline" className="h-11" disabled={Boolean(actionBusy) || review.humanDecision === "rejected"} onClick={() => void decideQuality(review.id, "rejected")}><LuThumbsDown />{review.humanDecision === "rejected" ? t("qualityRejected") : t("qualityReject")}</Button>
                           </div>
-                        </> : <div className="mt-3 grid gap-2 sm:grid-cols-2"><Button className="h-11" disabled={Boolean(qualityBusy) || !llm.baseUrl || !llm.apiKey || !(llm.visionModel || llm.model)} onClick={() => void evaluateCandidate(candidate.id)}>{qualityBusy === `evaluate:${candidate.id}` ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuScanSearch />}{qualityBusy === `evaluate:${candidate.id}` ? t("qualityRunning") : t("qualityEvaluate")}</Button>{!candidate.selected && <Button variant="outline" className="h-11" disabled={Boolean(qualityBusy)} onClick={() => void selectCandidate(candidate.id)}><LuCheck />{t("selectTake")}</Button>}</div>}
+                        </> : <div className="mt-3 grid gap-2 sm:grid-cols-2"><Button className="h-11" disabled={Boolean(qualityBusy) || !visionReady} onClick={() => void evaluateCandidate(candidate.id)}>{qualityBusy === `evaluate:${candidate.id}` ? <LuLoaderCircle className="animate-spin motion-reduce:animate-none" /> : <LuScanSearch />}{qualityBusy === `evaluate:${candidate.id}` ? t("qualityRunning") : t("qualityEvaluate")}</Button>{!candidate.selected && <Button variant="outline" className="h-11" disabled={Boolean(qualityBusy)} onClick={() => void selectCandidate(candidate.id)}><LuCheck />{t("selectTake")}</Button>}</div>}
                       </article>;
                     })}
                   </div>

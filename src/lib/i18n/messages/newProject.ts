@@ -35,6 +35,7 @@ export const newProject: NamespaceMessages = {
     styleAutoDesc: "根据商品信息选择合适结构",
     // 进度提示
     progressCreating: "正在创建项目…",
+    projectName: "{name} 推广",
     progressUploading: "正在上传商品图片…",
     progressGenerating: "正在分析商品并生成脚本…",
     progressDone: "脚本已生成，正在打开…",
@@ -239,6 +240,7 @@ export const newProject: NamespaceMessages = {
     styleAutoDesc: "AI recommends based on the product",
     // 进度提示
     progressCreating: "Creating project…",
+    projectName: "{name} Promo",
     progressUploading: "Uploading product images…",
     progressGenerating: "Analyzing the product and writing the script…",
     progressDone: "Script ready. Opening it…",

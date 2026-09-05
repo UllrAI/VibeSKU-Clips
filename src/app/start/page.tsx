@@ -56,7 +56,7 @@ import { useLocale, useT } from "@/lib/i18n";
 import { RECOMMENDED_PRESET, OPENROUTER_KEYS_URL } from "@/lib/llm-presets";
 import { PRISM_CONSOLE_URL } from "@/lib/providers/prism";
 import { formatRelativeTime } from "@/lib/relative-time";
-import { isMediaReady, useSettingsStore } from "@/lib/stores/settings-store";
+import { isLLMReady, isMediaReady, useSettingsStore } from "@/lib/stores/settings-store";
 import { useProductLibraryStore } from "@/lib/stores/product-library-store";
 import { useCharacterStore } from "@/lib/stores/project-store";
 import { classifyTrendTitle, pickDailyTrend, TREND_CATEGORY_IDS } from "@/lib/trends";
@@ -139,7 +139,7 @@ export default function StartPage() {
   const cardRef = useRef<HTMLDivElement>(null);
 
   // What this run actually needs: a script model always, Prism only when the visuals are generated.
-  const llmReady = llm.apiKey.trim().length > 0;
+  const llmReady = isLLMReady(llm);
   const mediaReady = isMediaReady(media);
   const ready = llmReady && (genMode === "free" || mediaReady);
   const [showConnect, setShowConnect] = useState(false);
@@ -627,7 +627,7 @@ export default function StartPage() {
                           </span>
                           <span className="text-sm font-medium">{t("dropTitle")}</span>
                           <span className="text-xs text-muted-foreground">{t("dropSub")}</span>
-                          <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => addFiles(e.target.files)} />
+                          <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
                         </div>
                         {images.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2">

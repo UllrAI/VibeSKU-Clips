@@ -24,6 +24,10 @@ import type { Shot, ScriptCharacter } from "@/lib/db/schema";
 import { assignCharacterVoices } from "@/lib/character-voices";
 import { desc, and } from "drizzle-orm";
 
+const TRANSITIONS: ReadonlySet<string> = new Set(["ai_start_end", "ai_reference", "direct_concat", "ffmpeg_fade"]);
+const isTransition = (v: unknown): v is Shot["transition"] => typeof v === "string" && TRANSITIONS.has(v);
+const isSubtitlePosition = (v: unknown): v is "bottom" | "center" | "top" => v === "bottom" || v === "center" || v === "top";
+
 // 获取该项目最新一条合成记录（导出页读取真实成片）
 export async function GET(
   req: NextRequest,
@@ -118,9 +122,8 @@ export async function POST(
       return NextResponse.json({ error: "尚未生成脚本，无法合成" }, { status: 400 });
     }
     let shots = selected.shots as Shot[];
-    // Variant-matrix voiceover overrides for hook A/B: applied in memory
-    // for this render only — the stored script stays untouched, so each variant compose can
-    // carry a different hook copy without mutating the project.
+    // Per-render overrides applied in memory only — the stored script stays untouched. Hook A/B
+    // variants swap a voiceover; the timeline page picks the transition into each shot.
     const voiceoverOverrides = body.voiceoverOverrides as Array<{ shotId: number; voiceover: string }> | undefined;
     if (Array.isArray(voiceoverOverrides) && voiceoverOverrides.length > 0) {
       const overrideByShot = new Map<number, string>();
@@ -134,6 +137,18 @@ export async function POST(
         return v ? { ...s, voiceover: v } : s;
       });
     }
+    const transitionOverrides = body.transitionOverrides as Array<{ shotId: number; transition: string }> | undefined;
+    if (Array.isArray(transitionOverrides) && transitionOverrides.length > 0) {
+      const transitionByShot = new Map<number, Shot["transition"]>();
+      for (const o of transitionOverrides) {
+        if (o && typeof o.shotId === "number" && isTransition(o.transition)) transitionByShot.set(o.shotId, o.transition);
+      }
+      shots = shots.map((s) => {
+        const transition = transitionByShot.get(s.shotId);
+        return transition ? { ...s, transition } : s;
+      });
+    }
+    const subtitlePosition = isSubtitlePosition(body.subtitlePosition) ? body.subtitlePosition : "bottom";
     // Dialogue-script cast (drama style): deterministic per-character Edge voices, free multi-voice
     // dialogue. Narrator shots (no characterId) keep the default/free voice below.
     const scriptCharacters = (selected.characters ?? []) as ScriptCharacter[];
@@ -465,7 +480,7 @@ export async function POST(
       },
       subtitle:
         subtitleTexts.length > 0
-          ? { texts: subtitleTexts, position: "bottom", ...captionPresetOverrides(captionPreset) }
+          ? { texts: subtitleTexts, position: subtitlePosition, ...captionPresetOverrides(captionPreset) }
           : undefined,
       overlays: overlays.length > 0 ? overlays : undefined,
     };

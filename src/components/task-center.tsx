@@ -75,8 +75,9 @@ export function TaskCenter({ collapsed = false }: { collapsed?: boolean }) {
     }
   }, []);
 
-  // initial load + keep polling while anything is in flight or needs attention;
-  // the leading setTimeout(…, 0) keeps the first fetch off the synchronous effect body
+  // initial load + keep polling while anything is in flight or needs attention (an idle feed is
+  // re-read whenever the panel opens); the leading setTimeout(…, 0) keeps the first fetch off the
+  // synchronous effect body
   const busy = feed.active.length > 0 || feed.attention.length > 0;
   useEffect(() => {
     const tick = () => void refresh();
@@ -134,7 +135,7 @@ export function TaskCenter({ collapsed = false }: { collapsed?: boolean }) {
   );
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => { if (open) void refresh(); }}>
       <DropdownMenuTrigger
         aria-label={t("taskCenter")}
         title={t("taskCenter")}
@@ -157,7 +158,7 @@ export function TaskCenter({ collapsed = false }: { collapsed?: boolean }) {
         {!collapsed && t("taskCenter")}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80 p-2">
-        <div onClick={() => void refresh()} className="max-h-96 space-y-2 overflow-y-auto">
+        <div className="max-h-96 space-y-2 overflow-y-auto">
           {feed.attention.length > 0 && (
             <div className="space-y-1">
               <p className="px-1 text-[11px] font-medium uppercase tracking-wider text-warning/80">{t("taskAttention")}</p>
