@@ -479,7 +479,7 @@ function ConnectSection({
               <Input
                 value={llm.model}
                 onChange={(event) => setLLM({ ...llm, model: event.target.value })}
-                placeholder="openai/gpt-5.4"
+                placeholder="openai/gpt-5.6-luna"
                 className="font-mono text-xs"
               />
               {/* A hand-typed model name is the single most common misconfiguration, and a local
@@ -490,7 +490,7 @@ function ConnectSection({
               <Input
                 value={llm.visionModel ?? ""}
                 onChange={(event) => setLLM({ ...llm, visionModel: event.target.value || undefined })}
-                placeholder="openai/gpt-5.4"
+                placeholder="openai/gpt-5.6-luna"
                 className="font-mono text-xs"
               />
               <ModelPicker

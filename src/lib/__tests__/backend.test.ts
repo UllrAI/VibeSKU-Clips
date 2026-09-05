@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { buildUserPrompt, buildBatchPrompt } from "@/lib/script-engine/prompts";
 import type { ScriptGenerationInput } from "@/lib/script-engine/prompts";
 import { extractJSON, parseScriptResponse } from "@/lib/script-engine/generator";
-import { completeJson, thinkingParams } from "@/lib/llm-call";
+import { completeJson, imagePart, streamCompletion, thinkingParams } from "@/lib/llm-call";
 import { LLMRequestError } from "@/lib/llm-error";
 import { buildComposeCommand, buildComposeInvocation, resolveChineseFontFamily, wrapCaption, composeErrorMessage, buildDrawtext, type ComposeConfig } from "@/lib/video-composer/composer";
 
@@ -839,6 +839,11 @@ describe("completeJson（解析失败带着报错重问一次；能力性失败�
         const body = JSON.parse(raw || "{}");
         seen.push(body.messages);
         const content = replies[Math.min(seen.length, replies.length) - 1];
+        if (body.stream) {
+          res.writeHead(200, { "content-type": "text/event-stream" });
+          res.end(`data: ${JSON.stringify({ id: "x", choices: [{ index: 0, delta: { role: "assistant", content }, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`);
+          return;
+        }
         res.writeHead(200, { "content-type": "application/json" });
         res.end(
           JSON.stringify({
@@ -857,6 +862,32 @@ describe("completeJson（解析失败带着报错重问一次；能力性失败�
   }
 
   const ask = { messages: [{ role: "user" as const, content: "写JSON" }] };
+
+  it("system 指令和图片通过 SDK 校验，JSON 重试保留指令", async () => {
+    const { baseUrl, seen } = await serveReplies(["invalid", '{"ok":true}']);
+    const data = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=";
+    const messages = [
+      { role: "system" as const, content: "只输出 JSON" },
+      { role: "system" as const, content: "分析商品图片" },
+      { role: "user" as const, content: [imagePart(data)] },
+    ];
+    expect(await completeJson({ baseUrl, model: "m" }, { messages }, JSON.parse)).toEqual({ ok: true });
+    for (const request of seen) {
+      expect(request.slice(0, 2)).toEqual(messages.slice(0, 2));
+      expect(request[2]).toMatchObject({ role: "user", content: [{ type: "image_url", image_url: { url: data } }] });
+    }
+    expect(messages).toHaveLength(3);
+    expect(seen[1]).toHaveLength(5);
+  });
+
+  it("流式请求保留 system 指令并返回文本", async () => {
+    const { baseUrl, seen } = await serveReplies(["hello"]);
+    const messages = [{ role: "system" as const, content: "简洁回答" }, ...ask.messages];
+    let text = "";
+    for await (const delta of streamCompletion({ baseUrl, model: "m" }, { messages })) text += delta;
+    expect(text).toBe("hello");
+    expect(seen[0][0]).toEqual(messages[0]);
+  });
 
   it("第一次输出坏 JSON → 带解析错误重问 → 第二次成功", async () => {
     const { baseUrl, seen } = await serveReplies(["这不是JSON", '{"ok":true}']);

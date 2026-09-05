@@ -8,7 +8,7 @@
  */
 
 export type GenAspectRatio = "9:16" | "16:9" | "1:1";
-export type GenResolution = "720p" | "1080p";
+export type GenResolution = "480p" | "720p" | "1080p";
 export type GenMediaType = "image" | "video";
 
 /**
@@ -43,9 +43,7 @@ export const DEFAULT_IMAGE_PARAMS: ImageGenParams = {
 
 export const DEFAULT_VIDEO_PARAMS: VideoGenParams = {
   aspectRatio: "9:16",
-  // The default model (MiniMax H3) tops out at 720p, so 1080p here would only ever be
-  // silently snapped back down — better to state the truth the user will actually get.
-  resolution: "720p",
+  resolution: "480p",
   duration: 6,
 };
 
@@ -56,8 +54,8 @@ export const ASPECT_RATIO_OPTIONS: { value: GenAspectRatio; label: string }[] = 
 ];
 
 export const RESOLUTION_OPTIONS: { value: GenResolution; label: string }[] = [
+  { value: "480p", label: "480p" },
   { value: "720p", label: "720p" },
-  { value: "1080p", label: "1080p" },
 ];
 
 /** Aspect ratio → image dimensions (portrait commerce mode defaults to higher resolution) */
@@ -75,8 +73,8 @@ export function imageSize(aspect: GenAspectRatio): { width: number; height: numb
 
 /** Resolution + aspect ratio → video dimensions */
 export function videoSize(resolution: GenResolution, aspect: GenAspectRatio): { width: number; height: number } {
-  const long = resolution === "1080p" ? 1920 : 1280;
-  const short = resolution === "1080p" ? 1080 : 720;
+  const long = resolution === "1080p" ? 1920 : resolution === "720p" ? 1280 : 854;
+  const short = resolution === "1080p" ? 1080 : resolution === "720p" ? 720 : 480;
   switch (aspect) {
     case "16:9":
       return { width: long, height: short };

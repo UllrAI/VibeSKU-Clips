@@ -261,9 +261,9 @@ export default function VideoPage() {
     };
   }, [id, t]);
 
-  // 画面比例/分辨率沿用设置里的视频默认值
+  // Composition supports 720p and 1080p; use 720p for 480p source clips.
   useEffect(() => {
-    setConfig((c) => ({ ...c, resolution: videoParams.resolution, aspectRatio: videoParams.aspectRatio }));
+    setConfig((c) => ({ ...c, resolution: videoParams.resolution === "480p" ? "720p" : videoParams.resolution, aspectRatio: videoParams.aspectRatio }));
   }, [videoParams.resolution, videoParams.aspectRatio]);
 
   // Production-console preview hand-off: select the existing real fast profile

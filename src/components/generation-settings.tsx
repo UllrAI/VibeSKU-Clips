@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { useT } from "@/lib/i18n";
 import { useSettingsStore } from "@/lib/stores/settings-store";
-import { ASPECT_RATIO_OPTIONS, RESOLUTION_OPTIONS } from "@/lib/gen-params";
+import { ASPECT_RATIO_OPTIONS, DEFAULT_VIDEO_PARAMS, RESOLUTION_OPTIONS } from "@/lib/gen-params";
 
 const labelOf = (options: { value: string; label: string }[], value: string) =>
   options.find((option) => option.value === value)?.label ?? value;
@@ -144,7 +144,7 @@ export function GenerationSettings() {
               <Select
                 value={videoParams.resolution}
                 onValueChange={(value) =>
-                  setVideoParams({ ...videoParams, resolution: (value ?? "720p") as typeof videoParams.resolution })
+                  setVideoParams({ ...videoParams, resolution: (value ?? DEFAULT_VIDEO_PARAMS.resolution) as typeof videoParams.resolution })
                 }
               >
                 <SelectTrigger aria-label={t("resolution")} className="w-full">

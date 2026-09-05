@@ -63,7 +63,8 @@ function callSettings(config: LLMCallConfig, options: CompleteOptions) {
   const extra = thinkingParams(config.baseUrl);
   return {
     model: createLLMModel(config, { jsonMode: options.jsonMode }),
-    messages: options.messages,
+    instructions: options.messages.filter((message) => message.role === "system"),
+    messages: options.messages.filter((message) => message.role !== "system"),
     ...(options.maxOutputTokens != null && { maxOutputTokens: options.maxOutputTokens }),
     ...(options.temperature != null && { temperature: options.temperature }),
     ...(options.abortSignal && { abortSignal: options.abortSignal }),
@@ -129,6 +130,6 @@ export async function completeJson<T>(
 }
 
 /** An image part for a vision message, from a URL or a data URI. */
-export function imagePart(url: string): { type: "image"; image: URL | string } {
-  return { type: "image", image: url };
+export function imagePart(url: string): { type: "file"; data: string; mediaType: "image" } {
+  return { type: "file", data: url, mediaType: "image" };
 }
