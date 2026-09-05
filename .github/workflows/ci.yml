@@ -17,9 +17,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # CI 只做 lint/test/build，不打包 Electron——跳过 Electron 二进制下载(~150MB)，保持安装快
-    env:
-      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
@@ -34,9 +31,7 @@ jobs:
           node-version: 22
           cache: pnpm
 
-      # ffmpeg-static 的 linux-x64 静态包（johnvansickle 构建）自 FFmpeg 7.x 起缺 harfbuzz、
-      # 没有 drawtext 滤镜；装发行版 ffmpeg 作为回退，让 drawtext 真渲染回归测试在 CI 上真实执行
-      - name: 安装系统 ffmpeg（供 drawtext 真渲染测试回退使用）
+      - name: 安装系统 ffmpeg
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
 
       - name: 安装依赖（锁定版本，开箱即用）

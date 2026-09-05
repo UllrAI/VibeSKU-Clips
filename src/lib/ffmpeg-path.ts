@@ -1,10 +1,8 @@
 /**
- * ffmpeg / ffprobe binary path resolution — allows commands to target the bundled binary,
- * supporting Electron packaging.
+ * ffmpeg / ffprobe binary path resolution.
  *
- * Development: falls back to `ffmpeg` / `ffprobe` on the system PATH (same behaviour as before).
- * Electron package: the main process injects the absolute paths extracted from ffmpeg-static /
- * @ffprobe-installer into FFMPEG_PATH / FFPROBE_PATH, so users don't need to install ffmpeg themselves.
+ * Falls back to `ffmpeg` / `ffprobe` on the system PATH. Deployments may inject
+ * explicit paths through FFMPEG_PATH / FFPROBE_PATH.
  *
  * Note: return values are interpolated into shell command strings; paths may contain spaces —
  * callers must wrap them in double quotes.

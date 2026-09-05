@@ -13,7 +13,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { execFile } from "child_process";
 import { promisify } from "util";
-import { existsSync } from "fs";
 import { mkdtemp, writeFile, mkdir } from "fs/promises";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -22,7 +21,7 @@ import { captionPresetOverrides } from "@/lib/caption-presets";
 
 const run = promisify(execFile);
 
-/** Probe for a drawtext-capable ffmpeg (ffmpeg-static 7.x linux builds lack harfbuzz/drawtext). */
+/** Probe for a drawtext-capable system ffmpeg. */
 async function hasDrawtext(bin: string): Promise<boolean> {
   try {
     const { stdout } = await run(bin, ["-hide_banner", "-filters"], { maxBuffer: 1e7 });
@@ -33,13 +32,6 @@ async function hasDrawtext(bin: string): Promise<boolean> {
 }
 
 async function resolveFfmpeg(): Promise<string | null> {
-  try {
-    const mod: unknown = await import("ffmpeg-static");
-    const p = (mod as { default?: string }).default ?? (mod as unknown as string);
-    if (typeof p === "string" && existsSync(p) && (await hasDrawtext(p))) return p;
-  } catch {
-    /* fall through to system ffmpeg */
-  }
   if (await hasDrawtext("ffmpeg")) return "ffmpeg";
   return null;
 }

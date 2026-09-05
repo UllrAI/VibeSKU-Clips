@@ -33,7 +33,6 @@ export async function GET() {
       platform: process.platform,
       arch: process.arch,
       node: process.versions.node,
-      electron: process.versions.electron || null,
       moduleAbi: process.versions.modules,
     },
     db: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -72,14 +72,6 @@ export default function ClonePage() {
   // drag-and-drop upload state
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // trend handoff from the landing-page trend radar (?trend=<word>); read from
-  // location instead of useSearchParams so the page needs no Suspense boundary
-  const [trendFrom, setTrendFrom] = useState<string | null>(null);
-  useEffect(() => {
-    const word = new URLSearchParams(window.location.search).get("trend")?.trim();
-    if (word) setTrendFrom(word.slice(0, 60));
-  }, []);
 
   // Drives the model-tier replicate button. A pure derivation now: one gateway, static catalog.
   const videoModelTarget = useMemo(() => resolveModelTarget(media, defaultVideoModel), [media, defaultVideoModel]);
@@ -348,31 +340,6 @@ export default function ClonePage() {
             {t("heroSubtitle")}
           </p>
         </header>
-
-        {/* trend handoff banner: guide the user from "saw a trend" to "found a reference to remix" */}
-        {trendFrom && (
-          <div className="mb-8 flex flex-wrap items-center gap-3 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4">
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold">{t("trendBannerTitle", { trend: trendFrom })}</div>
-              <div className="text-xs text-muted-foreground mt-1">{t("trendBannerDesc")}</div>
-            </div>
-            <a
-              className="shrink-0 rounded-lg brand-fill px-4 py-2 text-sm font-semibold text-white"
-              href={`https://www.douyin.com/search/${encodeURIComponent(trendFrom)}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              {t("trendBannerSearch", { trend: trendFrom })}
-            </a>
-            <button
-              type="button"
-              className="shrink-0 text-xs text-muted-foreground hover:text-foreground"
-              onClick={() => setTrendFrom(null)}
-            >
-              {t("trendBannerDismiss")}
-            </button>
-          </div>
-        )}
 
         {/* Step 1 - enter viral video URL */}
         <div className="mb-8">

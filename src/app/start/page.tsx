@@ -19,15 +19,11 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowRight,
-  CalendarDays,
   Check,
-  ExternalLink,
-  Flame,
   ImagePlus,
   Link2,
   Loader2,
   Mic2,
-  RefreshCw,
   Scissors,
   Settings2,
   Sparkles,
@@ -35,7 +31,6 @@ import {
   X,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -59,22 +54,7 @@ import { formatRelativeTime } from "@/lib/relative-time";
 import { isLLMReady, isMediaReady, useSettingsStore } from "@/lib/stores/settings-store";
 import { useProductLibraryStore } from "@/lib/stores/product-library-store";
 import { useCharacterStore } from "@/lib/stores/project-store";
-import { classifyTrendTitle, pickDailyTrend, TREND_CATEGORY_IDS } from "@/lib/trends";
-import type { TrendCategoryId, TrendTopic } from "@/lib/trends";
 import { cn } from "@/lib/utils";
-
-/** How many trend chips are shown at once; "shuffle" pages through the full board. */
-const TRENDS_PAGE_SIZE = 8;
-
-/** localStorage keys for the daily-persona picker (device-local, no account concept) */
-const DAILY_PERSONA_KEY = "clipforge_daily_persona";
-const DAILY_LAST_KEY = "clipforge_daily_last";
-
-/** Local calendar date (YYYY-MM-DD) — "today" for the daily-pick marker follows the user's clock. */
-function localDateStamp(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 type Mode = "upload" | "topic" | "link";
 
@@ -127,13 +107,6 @@ export default function StartPage() {
   const [stageIdx, setStageIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<RecentProject[]>([]);
-  const [trends, setTrends] = useState<TrendTopic[]>([]);
-  const [trendsSource, setTrendsSource] = useState<string>("");
-  const [trendsPage, setTrendsPage] = useState(0);
-  const [trendsCat, setTrendsCat] = useState<"all" | TrendCategoryId>("all");
-  const [dailyPersona, setDailyPersona] = useState("");
-  const [dailyLast, setDailyLast] = useState<{ date: string; topic: string } | null>(null);
-  const [dailyMsg, setDailyMsg] = useState<string>("");
   const fileRef = useRef<HTMLInputElement>(null);
   const connectRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -205,98 +178,6 @@ export default function StartPage() {
       cancelled = true;
     };
   }, []);
-
-  // trend radar ("what to post today"): Chinese UI reads domestic boards, English UI reads Google Trends.
-  // Failure or an empty board silently hides the section — the landing page must never block on it.
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch(locale === "zh" ? "/api/trends?source=cn&limit=48" : "/api/trends?geo=US&limit=48");
-        if (!res.ok) return;
-        const data = await res.json();
-        if (cancelled || !Array.isArray(data.topics)) return;
-        // Curate for sellable content: keep only topics that classify into a creator category, and
-        // drop "society" (news/incidents/politics) — raw boards lead with headlines that make no
-        // sense as commerce videos and are a compliance risk for AI-generated content.
-        setTrends(
-          data.topics.filter((tp: TrendTopic) => {
-            if (typeof tp?.title !== "string" || !tp.title.trim()) return false;
-            const cat = classifyTrendTitle(tp.title);
-            return cat !== null && cat !== "society";
-          })
-        );
-        setTrendsSource(typeof data.source === "string" ? data.source : "");
-        setTrendsPage(0);
-      } catch {
-        /* keyless free endpoint — silent degradation */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [locale]);
-
-  // load the persisted daily persona + today's marker once on mount
-  // (deferred to a microtask: hydrating from localStorage after paint keeps SSR markup stable)
-  useEffect(() => {
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (cancelled) return;
-      try {
-        setDailyPersona(localStorage.getItem(DAILY_PERSONA_KEY) || "");
-        const last = JSON.parse(localStorage.getItem(DAILY_LAST_KEY) || "null");
-        if (last && typeof last.date === "string" && typeof last.topic === "string") setDailyLast(last);
-      } catch {
-        /* corrupted storage → start fresh */
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // categories present on the current board (chips render only for non-empty ones)
-  const trendsCats = TREND_CATEGORY_IDS.filter((id) => trends.some((tp) => classifyTrendTitle(tp.title) === id));
-  const catFiltered = trendsCat === "all" ? trends : trends.filter((tp) => classifyTrendTitle(tp.title) === trendsCat);
-  const trendsPageCount = Math.max(1, Math.ceil(catFiltered.length / TRENDS_PAGE_SIZE));
-  const trendsShown = catFiltered.slice(
-    (trendsPage % trendsPageCount) * TRENDS_PAGE_SIZE,
-    (trendsPage % trendsPageCount) * TRENDS_PAGE_SIZE + TRENDS_PAGE_SIZE
-  );
-  const trendsSourceLabel =
-    trendsSource === "douyin" ? t("trendsSourceDouyin") : trendsSource === "toutiao" ? t("trendsSourceToutiao") : "Google Trends";
-
-  // tap a trend → prefill it as a one-sentence topic and bring the action card into view
-  const pickTrend = (tp: TrendTopic) => {
-    setMode("topic");
-    setTopic(tp.title);
-    requestAnimationFrame(() => cardRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }));
-  };
-
-  // daily pick: score the full board against the persona keywords, prefill the winner, remember today's pick
-  const runDailyPick = () => {
-    const pick = pickDailyTrend(trends, dailyPersona);
-    if (!pick) return;
-    pickTrend(pick.topic);
-    setDailyMsg(t(pick.matched ? "dailyPickedMatched" : "dailyPickedFallback").replace("{topic}", pick.topic.title));
-    const last = { date: localDateStamp(), topic: pick.topic.title };
-    setDailyLast(last);
-    try {
-      localStorage.setItem(DAILY_LAST_KEY, JSON.stringify(last));
-    } catch {
-      /* storage full/blocked — the marker is a convenience, not a requirement */
-    }
-  };
-
-  const onPersonaChange = (v: string) => {
-    setDailyPersona(v);
-    try {
-      localStorage.setItem(DAILY_PERSONA_KEY, v);
-    } catch {
-      /* ignore */
-    }
-  };
 
   // navigate to the appropriate step based on project status
   const stepFor = (status: string) =>
@@ -835,7 +716,7 @@ export default function StartPage() {
           )}
         </div>
 
-        <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-start">
+        <div className="mt-6">
           {recent.length > 0 && (
             <Card className="surface-panel">
               <CardContent className="p-5">
@@ -868,104 +749,6 @@ export default function StartPage() {
                     );
                   })}
                 </ul>
-              </CardContent>
-            </Card>
-          )}
-
-          {trends.length > 0 && (
-            <Card className="surface-panel">
-              <CardContent className="p-5">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <h2 className="flex items-center gap-1.5 text-sm font-semibold">
-                    <Flame className="size-4 text-primary" aria-hidden="true" />
-                    {t("trendsLabel")}
-                  </h2>
-                  <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setTrendsPage((p) => p + 1)}>
-                    {t("trendsRefresh")}
-                    <RefreshCw className="size-3" aria-hidden="true" />
-                  </Button>
-                </div>
-
-                {trendsCats.length > 1 && (
-                  <div className="mb-3 flex flex-wrap gap-1.5">
-                    {(["all", ...trendsCats] as const).map((id) => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => {
-                          setTrendsCat(id);
-                          setTrendsPage(0);
-                        }}
-                        className={cn(
-                          "rounded-md border px-2 py-0.5 text-xs transition-colors",
-                          trendsCat === id ? "border-primary/50 bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:text-foreground"
-                        )}
-                      >
-                        {id === "all" ? t("trendCatAll") : t(`trendCat_${id}`)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* ranked rows: scan-friendly, one action per row */}
-                <ul className="divide-y divide-border/60">
-                  {trendsShown.map((tp, i) => (
-                    <li key={`${tp.source || "t"}-${tp.rank ?? tp.title}`} className="flex items-center gap-2 py-1.5">
-                      <span
-                        className={cn(
-                          "w-5 shrink-0 text-center text-xs tabular-nums",
-                          typeof tp.rank === "number" && tp.rank <= 3 ? "font-semibold text-primary" : "text-muted-foreground"
-                        )}
-                      >
-                        {typeof tp.rank === "number" ? tp.rank : i + 1}
-                      </span>
-                      <button
-                        type="button"
-                        title={tp.context || tp.title}
-                        onClick={() => pickTrend(tp)}
-                        className="min-w-0 flex-1 truncate text-left text-sm transition-colors hover:text-primary"
-                      >
-                        {tp.title}
-                      </button>
-                      {tp.traffic && <Badge variant="secondary" className="shrink-0 text-[10px]">{tp.traffic}</Badge>}
-                      <Link
-                        href={`/project/clone?trend=${encodeURIComponent(tp.title)}`}
-                        title={t("trendCloneAria")}
-                        aria-label={t("trendCloneAria")}
-                        className="flex shrink-0 items-center gap-0.5 text-xs text-muted-foreground transition-colors hover:text-primary"
-                      >
-                        {t("trendCloneLabel")}
-                        <ExternalLink className="size-2.5" aria-hidden="true" />
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-2 text-xs text-muted-foreground">{t("trendsSourceNote", { source: trendsSourceLabel })}</p>
-
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <CalendarDays className="size-3.5" aria-hidden="true" />
-                    {t("dailyLabel")}
-                  </span>
-                  <Input
-                    value={dailyPersona}
-                    onChange={(e) => onPersonaChange(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") runDailyPick();
-                    }}
-                    placeholder={t("dailyPersonaPlaceholder")}
-                    aria-label={t("dailyPersonaPlaceholder")}
-                    className="h-8 min-w-40 flex-1 text-xs"
-                  />
-                  <Button variant="outline" size="sm" className="h-8" onClick={runDailyPick}>
-                    {t("dailyPick")}
-                  </Button>
-                </div>
-                {(dailyMsg || (dailyLast && dailyLast.date === localDateStamp())) && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {dailyMsg || t("dailyDoneHint").replace("{topic}", dailyLast?.topic ?? "")}
-                  </p>
-                )}
               </CardContent>
             </Card>
           )}

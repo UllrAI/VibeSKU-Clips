@@ -4,7 +4,6 @@
   "private": true,
   "license": "AGPL-3.0-only",
   "author": "UllrAI",
-  "main": "electron/main.js",
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=20",
@@ -17,28 +16,18 @@
     "lint": "eslint",
     "design:check": "node scripts/check-design-system.mjs",
     "test": "vitest run",
-    "mcp": "node mcp/vibesku-clips-mcp.mjs",
-    "cli": "node bin/vibesku-clips.mjs",
-    "render:element": "node scripts/render-element.mjs",
-    "bundle:standalone": "node scripts/bundle-standalone.mjs",
-    "electron": "electron .",
-    "electron:rebuild": "electron-rebuild -f -w better-sqlite3",
-    "pack:dir": "next build && pnpm bundle:standalone && electron-builder --dir",
-    "dist": "next build && pnpm bundle:standalone && electron-builder --publish never"
+    "cli": "node bin/vibesku-clips.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.43",
     "@base-ui/react": "^1.8.0",
-    "@ffprobe-installer/ffprobe": "^2.1.2",
     "@huggingface/transformers": "4.2.0",
-    "@modelcontextprotocol/sdk": "^1.30.0",
     "@types/fluent-ffmpeg": "^2.1.28",
     "ai": "^7.0.92",
     "better-sqlite3": "^13.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.2",
-    "ffmpeg-static": "^5.3.0",
     "fluent-ffmpeg": "^2.1.3",
     "geist": "^1.7.2",
     "lucide-react": "^1.41.0",
@@ -56,53 +45,10 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3",
-      "esbuild",
-      "electron",
-      "ffmpeg-static",
-      "@ffprobe-installer/ffprobe"
+      "esbuild"
     ]
   },
-  "build": {
-    "appId": "com.ullrai.vibesku-clips",
-    "productName": "VibeSKU Clips",
-    "npmRebuild": false,
-    "compression": "maximum",
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
-    "files": [
-      "electron/**/*",
-      "package.json",
-      "!node_modules/**",
-      "node_modules/ffmpeg-static/**",
-      "node_modules/@ffprobe-installer/**"
-    ],
-    "afterPack": "./electron/after-pack.cjs",
-    "asarUnpack": [
-      "node_modules/ffmpeg-static/**",
-      "node_modules/@ffprobe-installer/**"
-    ],
-    "mac": {
-      "target": "dmg",
-      "category": "public.app-category.video",
-      "identity": null,
-      "icon": "electron/icon.png"
-    },
-    "dmg": {
-      "format": "UDBZ"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "electron/icon.png"
-    },
-    "linux": {
-      "target": "AppImage",
-      "icon": "electron/icon.png"
-    }
-  },
   "devDependencies": {
-    "@electron/rebuild": "^4.2.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^26.4.1",
@@ -110,8 +56,6 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "drizzle-kit": "^0.31.10",
-    "electron": "^44.2.0",
-    "electron-builder": "^26.15.3",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.3.4",
     "jsdom": "^30.0.1",

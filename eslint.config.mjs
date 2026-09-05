@@ -12,11 +12,7 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Electron main process and build scripts are Node CommonJS/ESM entry points, not subject to Next app lint rules
-    "electron/**",
     "scripts/**",
-    "release/**",
-    "integrations/**/dist/**",
   ]),
   {
     // The upgraded React hooks plugin enables compiler-readiness rules that require

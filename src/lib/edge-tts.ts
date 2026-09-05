@@ -1,7 +1,7 @@
 /**
  * Free TTS fallback — Microsoft Edge "Read Aloud" online TTS, no API key required.
  *
- * Uses Node's built-in WebSocket + crypto (zero third-party dependencies, Electron-friendly)
+ * Uses Node's built-in WebSocket + crypto with no third-party runtime dependencies.
  * to connect directly to the Edge Read Aloud WebSocket service and synthesize Chinese /
  * multilingual speech, returning raw mp3 bytes.
  * This is the key enabler for zero-config voiceovers in "one-sentence topic" videos:

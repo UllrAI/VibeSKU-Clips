@@ -5,11 +5,6 @@ export const clone: NamespaceMessages = {
   zh: {
     heroTitle: "爆款复刻",
     heroSubtitle: "分析参考视频的节奏与结构，再用你的商品重写脚本和镜头内容",
-    // 从首页热点雷达跳转过来的同款横幅
-    trendBannerTitle: "做热点「{trend}」的同款",
-    trendBannerDesc: "选择一条有权使用的参考视频，粘贴链接或上传文件；VibeSKU Clips 只复用节奏和结构。",
-    trendBannerSearch: "去抖音搜「{trend}」 ↗",
-    trendBannerDismiss: "知道了",
     step1Title: "输入爆款视频",
     step1Desc: "上传文件可解析真实镜头节奏；仅粘贴链接时会载入通用结构，不会抓取平台视频。",
     videoUrlLabel: "视频链接",
@@ -83,11 +78,6 @@ export const clone: NamespaceMessages = {
   en: {
     heroTitle: "Clone a hit",
     heroSubtitle: "Analyze the pacing and structure of a reference video, then rewrite the script and shots for your product",
-    // 从首页热点雷达跳转过来的同款横幅
-    trendBannerTitle: "Remixing the trend “{trend}”",
-    trendBannerDesc: "Choose a reference you are allowed to use, then paste its link or upload the file. VibeSKU Clips reuses only pacing and structure.",
-    trendBannerSearch: "Search “{trend}” on Douyin ↗",
-    trendBannerDismiss: "Got it",
     step1Title: "Enter the trending video",
     step1Desc: "Upload a file to analyze its actual shot rhythm. With a link only, VibeSKU Clips loads a general structure and does not fetch the platform video.",
     videoUrlLabel: "Video link",

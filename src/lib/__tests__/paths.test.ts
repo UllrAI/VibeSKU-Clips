@@ -20,7 +20,7 @@ describe("paths 运行时路径解析", () => {
     expect(getOutputDir()).toBe(join(process.cwd(), "data", "output"));
   });
 
-  it("注入 APP_DATA_DIR 时所有可写路径都迁过去（Electron 打包关键）", () => {
+  it("注入 APP_DATA_DIR 时所有可写路径都迁过去", () => {
     process.env.APP_DATA_DIR = "/tmp/daihuo-userdata";
     expect(getDataDir()).toBe("/tmp/daihuo-userdata");
     expect(getUploadsDir()).toBe("/tmp/daihuo-userdata/uploads");

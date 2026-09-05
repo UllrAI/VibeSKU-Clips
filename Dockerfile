@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 # VibeSKU Clips 自托管镜像：Next standalone + Debian 发行版 ffmpeg + 内置中文字体，数据落 /data 卷。
-# 一键自托管：
-#   docker run -d -p 3000:3000 -v vibesku-clips-data:/data ghcr.io/ullrai/vibesku-clips:latest
+# 本地构建并运行：
+#   docker build -t ugc-video-generator .
+#   docker run -d -p 3000:3000 -v vibesku-clips-data:/data ugc-video-generator
 # 然后浏览器打开 http://localhost:3000 —— 免 Key 即可出片（免费素材 + Edge TTS）。
 
 # apt 源域名可通过 --build-arg APT_MIRROR=mirrors.aliyun.com 覆盖（国内构建更快更稳），默认官方源。
@@ -18,8 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends -o Acquire::Ret
   && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
-# 容器只跑 web，跳过 Electron 二进制下载，加快安装
-ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm build
@@ -30,9 +29,7 @@ ARG APT_MIRROR
 WORKDIR /app
 ENV NODE_ENV=production
 # ffmpeg/ffprobe 用 Debian 发行版包（app 无 FFMPEG_PATH 时回退到 PATH 里的 ffmpeg）。
-# 不能用 npm 包 ffmpeg-static 的 linux 静态二进制：johnvansickle 的 FFmpeg 7.x 构建缺 harfbuzz，
-# drawtext 滤镜整个不存在（No such filter: 'drawtext'），而烧字幕/价格贴/封面/图文卡/片尾卡全依赖
-# drawtext——用它会让 Docker 部署凡带文字的合成必挂。Debian 构建带 harfbuzz/freetype/fontconfig，
+# 烧字幕、价格贴、封面和片尾卡依赖 drawtext。Debian 构建带 harfbuzz/freetype/fontconfig，
 # 合成管线所用滤镜（drawtext/xfade/zoompan/subtitles/ass/loudnorm 等）齐全。
 # 中文字体无需系统包：内置 public/fonts/subtitle.otf 且 resolveChineseFontFile 优先用它。
 RUN sed -i "s|deb.debian.org|${APT_MIRROR}|g" /etc/apt/sources.list.d/debian.sources \

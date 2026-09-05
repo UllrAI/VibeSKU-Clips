@@ -2,7 +2,7 @@
 /**
  * VibeSKU Clips CLI — generate a video from a topic in one command: auto-write script, match footage, add voiceover, and compose.
  *
- * Thin wrapper around the VibeSKU Clips HTTP API (same orchestration as mcp/vibesku-clips-mcp.mjs: DB / FFmpeg / free TTS / free stock),
+ * Thin wrapper around the VibeSKU Clips HTTP API (DB / FFmpeg / free TTS / free stock),
  * zero third-party deps, pure Node. Requires a running instance (pnpm dev / pnpm start). Stock + voiceover need no API key; only script generation needs an LLM key.
  *
  * Usage:
@@ -586,18 +586,6 @@ async function cmdCarousel(flags) {
   return { ok: true, projectId, count: res.count, cards: res.cards };
 }
 
-// Trending topics: suggest what topic to produce next (then use create --topic).
-// Default = domestic boards (Douyin hot search / Toutiao fallback, matching the web landing page);
-// pass --geo for Google Trends daily searches of a region instead.
-async function cmdTrends(flags) {
-  const geo = typeof flags.geo === "string" ? flags.geo : "";
-  const res = await api(geo ? `/api/trends?geo=${encodeURIComponent(geo)}` : "/api/trends?source=cn");
-  const topics = res.topics || [];
-  step(`${res.geo || res.source || "cn"} 热搜选题 ${topics.length} 条：`);
-  topics.forEach((t, i) => process.stderr.write(`  ${i + 1}. ${t.title}${t.traffic ? ` (${t.traffic})` : ""}\n`));
-  return { ok: true, source: res.source, geo: res.geo, count: topics.length, topics };
-}
-
 async function cmdGet(flags) {
   const projectId = String(flags.project || "").trim();
   if (!projectId) throw new Error("--project 不能为空");
@@ -710,7 +698,6 @@ const HELP = `VibeSKU Clips CLI · 命令行一句话出片
   vibesku-clips import --project <id> (--file <路径> | --text "你的脚本") [--title "..."]   自带脚本出片
   vibesku-clips dub --project <id> --lang en                                              配音译制(换语种,出海)
   vibesku-clips compose --project <id> [同款成片选项] [--no-fill]
-  vibesku-clips trends [--geo US]   拉热搜选题(默认抖音/头条国内榜;--geo 走 Google Trends)
   vibesku-clips list                列出项目
   vibesku-clips voices              列出免费 Edge TTS 音色
   vibesku-clips cover --project <id> --title "手冲咖啡 三步搞定" [--position center|lower|upper]   生成封面图
@@ -743,7 +730,7 @@ const HELP = `VibeSKU Clips CLI · 命令行一句话出片
 
 进度打印到 stderr，最终结果（含 videoUrl）打印到 stdout，便于管道取值。`;
 
-const COMMANDS = { create: cmdCreate, product: cmdProduct, import: cmdImport, dub: cmdDub, compose: cmdCompose, cover: cmdCover, qr: cmdQr, endcard: cmdEndcard, export: cmdExport, qc: cmdQc, master: cmdMaster, gate: cmdGate, credits: cmdCredits, native: cmdNative, preview: cmdPreview, sheet: cmdSheet, carousel: cmdCarousel, transcript: cmdTranscriptInspect, "transcript-edit": cmdTranscriptEdit, timeline: cmdTimelineExport, list: cmdList, voices: cmdVoices, get: cmdGet, trends: cmdTrends };
+const COMMANDS = { create: cmdCreate, product: cmdProduct, import: cmdImport, dub: cmdDub, compose: cmdCompose, cover: cmdCover, qr: cmdQr, endcard: cmdEndcard, export: cmdExport, qc: cmdQc, master: cmdMaster, gate: cmdGate, credits: cmdCredits, native: cmdNative, preview: cmdPreview, sheet: cmdSheet, carousel: cmdCarousel, transcript: cmdTranscriptInspect, "transcript-edit": cmdTranscriptEdit, timeline: cmdTimelineExport, list: cmdList, voices: cmdVoices, get: cmdGet };
 
 async function main() {
   const { _, flags } = parseArgs(process.argv.slice(2));

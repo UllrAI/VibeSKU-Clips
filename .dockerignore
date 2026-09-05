@@ -3,7 +3,6 @@
 node_modules
 .next
 data
-release
 .git
 .github
 *.log
@@ -12,9 +11,6 @@ release
 .env.*
 Dockerfile
 .dockerignore
-*.dmg
-*.exe
-electron/dist
 coverage
 .vscode
 .idea

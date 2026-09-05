@@ -20,7 +20,7 @@ describe("ffmpeg/ffprobe 二进制路径解析", () => {
     expect(ffprobeBin()).toBe("ffprobe");
   });
 
-  it("注入绝对路径时返回该路径（Electron 随包二进制）", () => {
+  it("注入绝对路径时返回该路径", () => {
     process.env.FFMPEG_PATH = "/Apps/VibeSKU Clips.app/Contents/Resources/ffmpeg";
     process.env.FFPROBE_PATH = "/Apps/VibeSKU Clips.app/Contents/Resources/ffprobe";
     expect(ffmpegBin()).toContain("ffmpeg");

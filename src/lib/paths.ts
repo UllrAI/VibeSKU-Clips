@@ -1,13 +1,6 @@
 /**
- * Unified runtime path resolution — allows data directories to be injected via environment variables,
- * enabling Electron packaging support.
- *
- * Key background: when the Next.js standalone output's server.js starts it calls process.chdir(__dirname),
- * so after being bundled into Electron, process.cwd() points to the read-only resources directory — writing
- * sqlite/uploads/output there will crash. The Electron main process therefore injects
- * APP_DATA_DIR=app.getPath('userData')/data (a writable location).
- * In dev (next dev) the variable is not injected and falls back to the project-root data/ directory,
- * preserving the original behavior exactly.
+ * Unified runtime path resolution. Deployments may inject writable data and migration
+ * directories; local development falls back to folders under the project root.
  */
 
 import { join } from "path";
@@ -17,7 +10,7 @@ export function getDataDir(): string {
   return process.env.APP_DATA_DIR || join(process.cwd(), "data");
 }
 
-/** Migrations SQL directory (read-only resource). Points to the drizzle folder inside resources when packaged in Electron. */
+/** Migrations SQL directory. */
 export function getMigrationsDir(): string {
   return process.env.APP_MIGRATIONS_DIR || join(process.cwd(), "drizzle");
 }

@@ -20,10 +20,6 @@
 # production
 /build
 
-# electron-builder 打包产物
-/release/
-/dist/
-
 # misc
 .DS_Store
 *.pem

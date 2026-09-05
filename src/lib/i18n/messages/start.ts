@@ -96,34 +96,6 @@ export const start: NamespaceMessages = {
     errGeneric: "出错了，请重试",
     // 示例
     examplesLabel: "没素材，先试试",
-    // 热点雷达（今天发什么）
-    trendsLabel: "今天发什么",
-    trendsRefresh: "换一批",
-    trendsSourceNote: "点一个热点直接写成视频 · 实时数据来自{source}，约 10 分钟更新",
-    trendsSourceDouyin: "抖音热搜",
-    trendsSourceToutiao: "今日头条热榜",
-    // 热点类目筛选
-    trendCatAll: "全部",
-    trendCat_ent: "娱乐影视",
-    trendCat_food: "美食",
-    trendCat_tech: "数码科技",
-    trendCat_game: "游戏",
-    trendCat_sports: "体育健身",
-    trendCat_fashion: "时尚美妆",
-    trendCat_car: "汽车",
-    trendCat_pets: "萌宠",
-    trendCat_life: "生活出行",
-    trendCat_society: "社会时事",
-    // 热点 → 爆款复刻同款
-    trendCloneLabel: "同款",
-    trendCloneAria: "去爆款复刻做这个热点的同款",
-    // 日更 · 按人设选题
-    dailyLabel: "日更 · 按人设选题",
-    dailyPersonaPlaceholder: "人设关键词，如：美妆 护肤 好物",
-    dailyPick: "出今日一条",
-    dailyPickedMatched: "已按人设选中「{topic}」，点「开始生成」直接出片",
-    dailyPickedFallback: "今日热榜没有匹配人设的热点，先给你榜一「{topic}」——也可以换个关键词再选",
-    dailyDoneHint: "今日已选过「{topic}」，想再来一条直接再点",
     // 最近项目
     recentLabel: "继续未完成的项目",
     recentAll: "查看全部",
@@ -250,34 +222,6 @@ export const start: NamespaceMessages = {
     errGeneric: "Something went wrong. Please try again",
     // 示例
     examplesLabel: "No assets? Try one",
-    // 热点雷达（今天发什么）
-    trendsLabel: "What to post today",
-    trendsRefresh: "Shuffle",
-    trendsSourceNote: "Tap a trend and turn it into a video · live data from {source}, refreshed ~10 min",
-    trendsSourceDouyin: "Douyin trending",
-    trendsSourceToutiao: "Toutiao hot board",
-    // 热点类目筛选
-    trendCatAll: "All",
-    trendCat_ent: "Entertainment",
-    trendCat_food: "Food",
-    trendCat_tech: "Tech",
-    trendCat_game: "Gaming",
-    trendCat_sports: "Sports",
-    trendCat_fashion: "Fashion & beauty",
-    trendCat_car: "Cars",
-    trendCat_pets: "Pets",
-    trendCat_life: "Lifestyle",
-    trendCat_society: "News",
-    // 热点 → 爆款复刻同款
-    trendCloneLabel: "Remix",
-    trendCloneAria: "Clone a viral video for this trend",
-    // 日更 · 按人设选题
-    dailyLabel: "Daily · pick by persona",
-    dailyPersonaPlaceholder: "Persona keywords, e.g. beauty skincare finds",
-    dailyPick: "Pick today's one",
-    dailyPickedMatched: "Picked “{topic}” for your persona — hit “Start generating” to make it",
-    dailyPickedFallback: "No trend matched your persona today, so here's #1: “{topic}” — or tweak the keywords and retry",
-    dailyDoneHint: "Already picked “{topic}” today — tap again for another",
     // 最近项目
     recentLabel: "Continue an unfinished project",
     recentAll: "View all",
