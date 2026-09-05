@@ -18,12 +18,13 @@ import { apiError, errText } from "@/lib/api-error";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { appearance, name, provider: providerName, model, apiKey, baseUrl, options } = body as {
+    const { appearance, name, provider: providerName, model, apiKey, apiSecret, baseUrl, options } = body as {
       appearance?: string;
       name?: string;
       provider?: string;
       model?: string;
       apiKey?: string;
+      apiSecret?: string;
       baseUrl?: string;
       options?: Record<string, unknown>;
     };
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     const prompt = buildCharacterSheetPrompt(appearance.trim(), name);
-    const provider = createProvider({ name: providerName, apiKey, baseUrl: baseUrl ?? "" });
+    const provider = createProvider({ name: providerName, apiKey, apiSecret, baseUrl: baseUrl ?? "" });
     const result = await provider.generateImage({
       ...(options ?? {}),
       modelId: model,

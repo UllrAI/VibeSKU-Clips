@@ -238,15 +238,17 @@ describe("多角色说话人归属与参考绑定纪律", () => {
 });
 
 describe("referenceQuotaCheck（付费前参考图配额闸）", () => {
-  it("Seedance r2v 上限 9：9 张过、10 张拦（9 关键帧 + 1 定妆照的经典溢出）", async () => {
+  it("按目录里的上限拦截（H3 上限 9：9 张过、10 张拦——9 关键帧 + 1 定妆照的经典溢出）", async () => {
     const { referenceQuotaCheck } = await import("@/lib/storyboard-film");
-    expect(referenceQuotaCheck(9, "bytedance/seedance-2.5/reference-to-video")).toEqual({ ok: true, count: 9, limit: 9 });
-    expect(referenceQuotaCheck(10, "bytedance/seedance-2.5/reference-to-video")).toEqual({ ok: false, count: 10, limit: 9 });
-    expect(referenceQuotaCheck(10, "bytedance/seedance-2.0-mini/reference-to-video").ok).toBe(false);
+    expect(referenceQuotaCheck(9, "minimax-h3")).toEqual({ ok: true, count: 9, limit: 9 });
+    expect(referenceQuotaCheck(10, "minimax-h3")).toEqual({ ok: false, count: 10, limit: 9 });
   });
-  it("无已知上限的模型不拦（拿不准就放行）", async () => {
+  it("上限更高的模型放行同样的张数", async () => {
+    const { referenceQuotaCheck } = await import("@/lib/storyboard-film");
+    expect(referenceQuotaCheck(10, "seedance2.5").ok).toBe(true);
+  });
+  it("目录里没有的模型不拦（拿不准就放行，判断留给服务端）", async () => {
     const { referenceQuotaCheck } = await import("@/lib/storyboard-film");
     expect(referenceQuotaCheck(99, "some/unknown-model")).toEqual({ ok: true, count: 99 });
-    expect(referenceQuotaCheck(99, "minimax/h3/reference-to-video").ok).toBe(true);
   });
 });

@@ -29,7 +29,7 @@
 | Exclusive | In one line |
 |---|---|
 | 🚀 **Two paths to a finished video** | Render at $0 with free stock, voiceover, and local compose—or confirm the price before AI generation |
-| 🧭 **Lite / Pro modes** | One-tap automation for beginners; storyboard, model, cost, version, and repair controls for pros |
+| 🧭 **One path, opened on demand** | It asks only for content and output mode; storyboard, model, cost, version and repair controls stay folded in place, one click away |
 | 🧬 **Cross-shot consistency** | Character, product, and previous-tail references adapt per model, with synced dialogue and ambience where supported |
 | 🔬 **Repair only the bad segment** | Keep every take; QC timestamps a precise retake, and spending needs confirmation |
 | 🎬 **Generate and edit** | Real image-to-video, then import footage to cut by text, remove silence, and burn captions |
@@ -44,7 +44,7 @@
 - 🎞️ **One-tap full film**: before generation costs a cent, four narrow judges (pacing / spoken voice / freshness / structure) tear the lines per shot and produce length-preserving rewrites, applied in one click (also a standalone [script-judges skill](skills/script-judges/SKILL.md)); the **storyboard grid** paints ≤9 shots into one 3x3 image — person, outfit, room and light physically consistent — auto-cropped into per-shot keyframes; all keyframes then ride one Seedance 2.5 reference-to-video call into a complete film (≤30s) — native cuts, lines spoken verbatim, continuous audio (real-product samples below).
 - 🎬 **Real moving shots**: i2v + keyframe-chained seamless transitions; 18 named camera presets per shot with Mix two-preset overlays; 8 one-click visual looks; redo any shot keeping its keyframe.
 - 🎭 **Mini-drama selling**: ten script styles across four forms with a free voice per character; six built-in ordinary-person presenters + a real-face constraint; UGC realism trio — spoken-not-written lines (hooks start mid-conversation, no punchline endings), named-light lived-in first frames, behavior beats rotating per talking shot.
-- 🧭 **Two-mode workspace**: a persistent sidebar (home/projects/products/presenters — one logo, one language toggle) with an Lite ⇄ Pro switch at the bottom. Lite mode runs hands-off from the workspace: script → free stock visuals → free voice-over & compose → straight to the finished video, with a single progress card in between; Pro mode reveals the storyboard, the director desk (presenter/look/motion intensity), the 3x3 grid and per-shot camera tools.
+- 🧭 **One creation entry**: the sidebar keeps two destinations — Create and Projects — with replication, media analysis, batch, the SKU library and the presenter library folded into a toolbox. The create page asks only for content and output mode; presenter format, production profile and advanced creation are disclosed in place (issue #1).
 - 🧠 **Intelligent production system (v0.8.93)**: ① Pro mode gains one production console for the nine-stage workflow, execution location, billing status, real model-price ranges, time estimates, and goal-based model routing; applying a recommendation changes the real default video model, while unknown prices stay honest ranges. ② Project-level structured intent and a visual bible compile into actual image and image-to-video prompts, carrying character/product/outfit/environment/lighting anchors across shots and blocking explicit forbidden changes before a paid request. ③ The media-analysis workspace reads subjects, light, palette, composition, camera motion, and pacing from any image/video, derives a reusable prompt, and saves the finding into a project. ④ Scripts, assets, cloud tasks, compositions, and manual snapshots form one version tree; failures are classified into auth/parameter/moderation/input-limit/media/detached-task recovery paths. ⑤ Instant preview reuses the real local 720p / veryfast / CRF26 compose tier without regenerating AI assets; finished-video QC turns black/frozen frames, silence, loudness, and spec drift into a repair plan, with confirmed free recomposition and no silent paid reruns.
 - 🔬 **Shot quality gate (v0.8.98)**: every generated take remains available. Per-shot review scores visible evidence across visual fidelity, temporal coherence, script alignment, subject identity, action binding, continuity, and text; only the candidate a human accepts becomes the real compose input. Project-local acceptance history improves model routing, while regeneration or model switching is suggested but never purchased automatically.
 - 🧬 **Adaptive shot conditioning (v0.8.99)**: each shot compiles its keyframe, character sheet, product image, and previous real tail frame into the strongest reference pack the selected model can accept. Capable models generate exact dialogue, lip sync, ambience, and object sounds together; others fall back before spending to keyframes or post voice. Every take records its real anchor count, audio path, and capability fallback for inspection in the quality gate.
@@ -72,6 +72,7 @@
 - 🧱 **Triple reliability gate (v0.8.90)**: ① every downloaded asset (stock / AI output / BGM) is decode-validated on landing — truncated CDN streams and error pages saved as fake .mp4 are deleted on the spot with the next candidate picked automatically, and undecodable videos degrade to the product image before compose, so one rotten file can no longer void an entire single-pass render; ② TTS gains transient-failure retries (deterministic key errors fail fast) and a paid-to-free engine fallback so a shot is never silent, with degradations logged into the output's timeline sidecar; ③ reasoning-model `<think>` residue is scrubbed at every LLM parse point (known endpoints also disable thinking request-side and get JSON mode), and an unparseable reply is echoed back to the model with the error for one repair round — script generation, the judge panel, semantic footage matching and translation all benefit.
 - 🧩 **Infinite Canvas**: [canvas plugin](integrations/infinite-canvas/) — product images in, finished video back as a canvas node for further remixing.
 - 🚦 **Compliance**: explicit + implicit AIGC labeling, ad-law banned-term scan, publish-gate report — all on by default.
+- 🔌 **One media gateway + settings rework (v0.9.2)**: ① Image and video generation moved entirely onto the **Prism** gateway; the seven per-vendor adapters (Atlas / fal.ai / Replicate / Volcengine / Alibaba / SiliconFlow / OpenAI), their keys and their model-id vocabularies are gone. Defaults are **MiniMax H3** for video (speech and ambience in one pass) and **GPT Image 2** for image (quality `low`). ② Every model's legal durations, ratios, resolutions and reference limits live in a local catalog and are snapped before submitting — no more "waited four minutes, got a 422, still billed". ③ The script model now runs on the **Vercel AI SDK** over the OpenAI-compatible protocol, with **OpenRouter** first among the presets. ④ Settings collapsed from seven peer tabs into four sections — Connect / Generation / Voice / Advanced — with a single clear connect action up front and the four money questions (app is free / free stock needs no key / script model needs a key / Prism is metered) stated separately. ⑤ `/project/topic`, an unreachable third creation entry, is deleted; `/project/new` is demoted to "Advanced creation" inside the create page's disclosure.
 - 🩹 **Fix (v0.8.94)**: Atlas Cloud one-key onboarding wrote the media gateway `/api/v1` into the script-model endpoint while chat lives on `/v1`, so every script generation 404'd and the error blamed the model name (issue #24). One-key now writes the chat gateway, existing settings are repaired on upgrade, a hand-typed media base is corrected before the request, and the key-connectivity test hits the chat gateway so a valid key no longer reads as "cannot determine".
 
 </details>
@@ -80,7 +81,7 @@
 
 - 🎭 [**Dramake**](https://github.com/xixihhhh/ai-short-drama-skill): a director-level AI short-drama Agent Skill that turns an idea, novel, or screenplay into a traceable workflow covering scripts, character bibles, storyboards, model and budget routing, voices, editing, and QA. It supports Codex, Claude Code, and WorkBuddy. Install it with `npx skills add xixihhhh/ai-short-drama-skill --skill dramake`.
 
-Want higher quality? Add one key: a single interface aggregates **7 platforms, 30+ curated models** (GPT Image 2 / **Seedance 2.5** / **MiniMax H3** / Kling O3 / Veo 3.1…), plus **200+ video models dynamically discovered** from the whole Atlas catalog — new models show up without upgrading the app. Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
+Want higher quality? Add one key pair: image and video both go through the single **[Prism](https://prism.ullrai.com)** gateway, covering **MiniMax H3** (speech + ambience in one pass, the default), **Seedance 2.5**, Sora 2, Wan 2.6 and **GPT Image 2**; scripts run on any OpenAI-compatible endpoint (OpenRouter recommended). Self-hosted, open-source (AGPL-3.0) — your data never leaves your machine.
 
 ## 🎬 Sample: one product photo in, a postable video out (Seedance 2.5 field test)
 
@@ -230,7 +231,7 @@ No watermark. Self-hosted + open-source (AGPL-3.0); output is clean and commerci
 VibeSKU Clips is **open-source, runs locally, no watermark, zero-cost on the free path, and your data never leaves your machine**; commercial SaaS usually charges per video, watermarks output, and requires uploading assets to the cloud.
 
 **I've never used anything like this — is there a hand-holding guide?**
-Yes: [**TUTORIAL.en.md**](TUTORIAL.en.md) ([中文](TUTORIAL.md)) — three install options, three ways to add a key, your first free video in 3 minutes, what the AI path costs before you spend, Pro mode page by page, a troubleshooting table, and where your data lives.
+Yes: [**TUTORIAL.en.md**](TUTORIAL.en.md) ([中文](TUTORIAL.md)) — three install options, three ways to add a key, your first free video in 3 minutes, what the AI path costs before you spend, the four-step workspace page by page, a troubleshooting table, and where your data lives.
 
 **Can I use it if I can't write scripts or edit?**
 Yes. The whole flow is automatic — AI writes the script, fills visuals, adds voiceover, burns subtitles, adds transitions. **No on-camera presence, no shooting, no editing.**
@@ -260,19 +261,23 @@ Yes. VibeSKU Clips ships an **MCP Server** (`vibesku_clips_product_script` turns
 >
 > 💰 **Paid-task safety**: every cloud video task is **persisted with its provider task ID the moment it is accepted** — a poll timeout, network drop, or restart can no longer lose a task you already paid for (the assets page offers "resume query", preventing duplicate billing); task-creating requests are **never auto-retried**; image-to-video requests are **validated and mapped to a true i2v model**, so "add motion" can never be billed as text-to-video; image sizes are **auto-adapted to each model's protocol** (exact aspect ratios), eliminating "invalid size but already billed" failures.
 
-One interface aggregates 7 image/video platforms + OpenRouter LLMs and 30+ curated models, plus **200+ dynamically discovered video models** on Atlas (the live model catalog is fetched at runtime and request params are derived from each model's published schema — every new model the platform ships appears in the picker without an app upgrade):
+All image and video generation goes through a single gateway, **[Prism](https://prism.ullrai.com)**: one API key/secret pair, with vendor racing and fallback handled on Prism's side instead of seven SDKs, seven model vocabularies and seven keys on yours.
 
-| Platform | Image models | Video models | Highlights |
-|------|---------|---------|------|
-| **[Atlas Cloud](https://www.atlascloud.ai?ref=JPM683)** ⭐ recommended | **GPT Image 2**, Seedream 5.0, Nano Banana 2 | **Seedance 2.5** (4-30s · native speech), Seedance 2.0, **MiniMax H3** (Hailuo 3.0 · 2K · native stereo), Kling O3, Veo 3.1, Wan 2.7, Hailuo 2.3, Vidu Q3 + 200+ discovered live | One key for LLM + image + video; widest models, best price |
-| **fal.ai** | **GPT Image 2** (+edit), FLUX.1/2 Pro, Recraft V4, Seedream V5 Edit | Kling 3.0 Pro, Veo 3, Hailuo 2.3, Luma Ray 2, Vidu Q2 | Broad model set, incl. OpenAI image gen & product-fidelity edit |
-| **Replicate** | FLUX 1.1 Pro/Kontext, Imagen 4, Seedream 4 | Kling v2.1, Seedance 1 Pro, Hailuo 02, Veo 3 Fast | Largest model library, unified predictions API |
-| **Volcengine (Ark)** | Seedream 5.0/4.0 | Seedance 2.0/1.0 Pro (native audio) | ByteDance flagship models, cinematic quality, fast |
-| **Alibaba Bailian** | Tongyi Wanxiang | Wanxiang 2.6/2.5/2.2/2.1 | Strong product image-to-video |
-| **SiliconFlow** | Kolors, Qwen-Image | - | Cost-effective, China-made |
-| **OpenAI** | **gpt-image-2** (any resolution + image edit), gpt-image-1.5 | - | 2026 flagship image model, strong text rendering, native 9:16, product-fidelity edit |
+| Type | Model | Notes |
+|------|-------|-------|
+| **Video** ⭐ default | **MiniMax H3** | Speech, ambience and motion in one pass — a shot stands on its own without a separately dubbed track; 480p/720p, 1–15s, first/last frame pair + reference images |
+| Video | MiniMax H3 Max | Higher tier, steadier picture, 16:9 only |
+| Video | **Seedance 2.5** | Up to 30s per shot, 30 reference images / 10 reference videos — the pick for replication and multi-subject shots |
+| Video | Seedance 2.0 / Fast / Mini | Widest multimodal references, incl. reference video and video extension; Fast is quicker, Mini is cheapest |
+| Video | Sora 2 / Sora 2 Pro | The image is a style reference, not a strict first frame; 10–25s |
+| Video | Wan 2.6 / 2.6 Flash | The image IS the first frame; 5/10/15s |
+| **Image** ⭐ default | **GPT Image 2** (quality defaults to `low`) | Faithful product rendering with a quality tier; keep it on Low while drafting |
+| Image | GPT Image 2 VIP / 1.5 / 1 | Priority lane / previous generation / cheapest fallback |
+| Image | Nano Banana / Pro / 2 / 2 Lite | Fast, good for bulk drafts; Pro does 4K, Lite is 1K-only and cheapest |
 
-> **LLM (script generation)** uses the OpenAI-compatible protocol, with built-in presets for Atlas Cloud / **OpenRouter** (400+ models) / DeepSeek / Kimi / Zhipu / Doubao / OpenAI.
+> Each model's legal durations, aspect ratios, resolutions and reference limits live in a local catalog (`src/lib/providers/prism-catalog.ts`, every entry transcribed from the live API's own error messages) and are snapped client-side before submitting — no more "waited four minutes, got a 422, still billed".
+
+> **LLM (script generation)** speaks the OpenAI-compatible protocol through the Vercel AI SDK, with built-in presets for **OpenRouter** (one key, 400+ models) / OpenAI / DeepSeek / Kimi / Zhipu / MiniMax / Doubao, plus **local Ollama** (offline, keyless). Any OpenAI-compatible endpoint works.
 
 ### 3. Multi-source free asset engine 🆕 (not just AI generation)
 
@@ -398,11 +403,13 @@ open http://localhost:3000
 
 ### First-time setup
 
-1. Click **Settings** (top-right) and configure at least one AI platform's API key (we recommend **[Atlas Cloud](https://www.atlascloud.ai?ref=JPM683)** — one key for LLM + image + video)
-2. Configure the LLM (needed for script generation; any OpenAI-compatible endpoint works)
-3. In "Defaults," pick your default image / video models (e.g. GPT Image 2, Seedance 2.5)
-4. (Optional) Add a character under "On-camera" and brand visuals under "Brand"
-5. Back on the home page, click **New project** to start
+1. Open **Settings → Connect** and add a **script-model key** (required for writing scripts; [OpenRouter](https://openrouter.ai/keys) is the shortest path — one key, 400+ models)
+2. Want AI to draw the visuals? Add your **[Prism](https://prism.ullrai.com)** API key and secret (one pair covers image and video). Skip it if you only use free stock footage
+3. **Generation** already has sensible defaults (video MiniMax H3, image GPT Image 2 at quality `low`) — change them only if you want to
+4. (Optional) Add a presenter and brand visuals under **Advanced**
+5. Back on **Create**, drop a product photo or type one sentence and go
+
+> What costs money: the app itself is free and open source; the free stock path needs no key; the script model is billed by whichever provider you chose; Prism is billed per generation. Those four are independent.
 
 > Compositing needs local **FFmpeg** (install it yourself: `brew install ffmpeg` / `apt install ffmpeg`).
 
@@ -457,12 +464,13 @@ open http://localhost:3000
 ```
 src/
 ├── app/                              # Page routes
-│   ├── page.tsx                      # Home (project list + quick entries)
+│   ├── page.tsx                      # Home (redirects to /start)
+│   ├── start/                        # Create page (the single entry: photo / link / one sentence)
 │   ├── products/                     # Product library
 │   ├── batch/                        # Batch rendering
-│   ├── settings/                     # Settings (AI platform / LLM / character / brand)
+│   ├── settings/                     # Settings (Connect / Generation / Voice / Advanced)
 │   ├── project/
-│   │   ├── new/                      # New project (form + video mode + character + template)
+│   │   ├── new/                      # Advanced creation (category / duration / script style / ad templates)
 │   │   ├── clone/                    # Viral remix
 │   │   └── [id]/
 │   │       ├── script/               # Script editor (3 variants + save as template)
@@ -472,7 +480,8 @@ src/
 │   └── api/                          # API routes
 │
 ├── lib/
-│   ├── providers/                    # AI provider abstraction (7 platforms) + multi-source asset engine
+│   ├── providers/                    # Prism media gateway + multi-source free asset engine
+│   │   ├── prism.ts prism-catalog.ts #   the only image/video channel + model constraint catalog
 │   ├── script-engine/                # Script engine (prompt + templates + SEO)
 │   ├── video-composer/               # FFmpeg compositing engine
 │   ├── paths.ts ffmpeg-path.ts       # Injectable paths (for Electron packaging)
@@ -485,41 +494,33 @@ src/
 
 ---
 
-## Supported AI models (confirmed against official docs, 2026.08)
+## Supported AI models
 
-### Video generation
+Image and video both run through the **Prism** gateway — one key/secret pair covers every model below. Each model's legal durations, ratios, resolutions and reference limits live in `src/lib/providers/prism-catalog.ts` (every entry transcribed from the live API's own error messages) and are snapped client-side before a paid request.
 
-| Model | Platform | Audio | Mode | Notes |
-|------|------|------|------|------|
-| **Seedance 2.5** ⭐ | Atlas Cloud | Native | T2V / I2V / ref / first-last | ByteDance flagship, native audio & speech, 4–30s, default for one-tap full film |
-| **Seedance 2.0** | Atlas Cloud | Native | T2V / I2V / ref / first-last | Native audio, 4–15s, up to 1440p |
-| **MiniMax H3** 🆕 | Atlas Cloud | Native stereo | T2V / I2V / ref / first-last | Hailuo 3.0 omni-modal (launched 2026-07-31), 2K, 4–15s, mixed image/video/audio references |
-| **Kling O3** 🆕 | Atlas Cloud | Native | T2V / I2V / ref / first-last | Kuaishou omni-modal MVL, multi-shot narrative, 3–15s |
-| **Veo 3.1** 🆕 | Atlas Cloud / fal.ai | Native | T2V / I2V / first-last | Google flagship, 4/6/8s, up to 4K |
-| **Wan 2.7** 🆕 | Atlas Cloud | Native | T2V / I2V / ref / first-last | Multi-shot narrative + AV sync, voice-clone references |
-| **Seedance 2.0 Mini** 🆕 | Atlas Cloud | Native | T2V / I2V / ref / first-last | Lightweight & economical for high-volume output |
-| **Kling 3.0 Pro** | fal.ai / Atlas Cloud | Native | T2V / I2V | Kling, multi-shot + face binding |
-| **Vidu Q3 Pro** | Atlas Cloud | - | T2V / I2V / first-last | First/last-frame transitions (transition magic) |
-| **Hailuo 2.3** | Atlas Cloud / fal.ai | - | T2V / I2V | MiniMax, lifelike motion physics, 6/10s |
-| **Luma Ray 2** | fal.ai | - | T2V / I2V | Realistic motion & physics |
-| **Seedance 1.5 Pro** | Volcengine / Atlas Cloud | - | T2V / I2V | ByteDance, cinematic quality |
-| **Wanxiang 2.6** | Alibaba Bailian | - | I2V | Strong product image-to-video |
+### Video
 
-> The table above is the built-in curated set (with capability guards). With Atlas Cloud enabled, the settings page also **dynamically discovers 200+ video models** across the catalog (Youchuan, HappyHorse, Grok Imagine, Gemini Omni Flash… with per-request pricing shown), and request bodies are built from each model's published schema at submit time — new platform models need no app upgrade.
+| Model | Audio | Duration | Resolution | Notes |
+|-------|-------|----------|------------|-------|
+| **MiniMax H3** ⭐ default | Native (no switch) | 1–15s | 480p / 720p | Speech and ambience in one pass; first/last frame pair, ≤9 reference images, ≤3 reference audio |
+| **MiniMax H3 Max** | Native (no switch) | 5–15s | 480p / 720p | Higher tier, steadier picture, 16:9 only |
+| **Seedance 2.5** | Switchable | 4–30s | 480p–1080p | Up to 30s per shot; 30 reference images / 10 videos / 10 audio — best for replication and multi-subject |
+| **Seedance 2.0** | Switchable | 4–15s | 480p–1080p | Widest multimodal references, incl. reference video and extension |
+| **Seedance 2.0 Fast / Mini** | Switchable | 4–15s | 480p / 720p | Fast is quicker, Mini is cheapest |
+| **Sora 2 / Sora 2 Pro** | Native (no switch) | 10–15s / 15–25s | 720p / 1080p | The image is a style reference, not a strict first frame |
+| **Wan 2.6 / 2.6 Flash** | Switchable | 5 / 10 / 15s | 480p–1080p | The image IS the first frame |
 
-### Image generation
+### Image
 
-| Model | Platform | Notes |
-|------|------|------|
-| **GPT Image 2** ⭐ | Atlas Cloud | OpenAI's latest, any resolution, great product texture, natural-language edits (background/lighting/text) |
-| **Nano Banana 2** | Atlas Cloud | Google, strong-consistency image editing |
-| **FLUX.2 Pro** | fal.ai | Latest-gen high-quality generation |
-| **Recraft V4 Pro** | fal.ai | Strong design styling |
-| **Seedream 5.0 Lite** | Volcengine / Atlas Cloud | ByteDance, CJK-optimized, edit to relight while locking the subject |
-| **Wanxiang** | Alibaba Bailian | Product-scene friendly |
+| Model | Quality tier | Notes |
+|-------|:---:|-------|
+| **GPT Image 2** ⭐ default | ✅ | Faithful product rendering, adjustable quality (defaults to `low`, the cheapest tier for drafting) |
+| **GPT Image 2 VIP** | ✅ | Same model on a priority lane |
+| **GPT Image 1.5 / 1** | ✅ | Previous generations, cheaper, usable as fallback |
+| **Nano Banana / Pro / 2 / 2 Lite** | - | Fast, good for bulk drafts; Pro does 4K, Lite is 1K-only and cheapest |
 
-> T2V = text-to-video, I2V = image-to-video. Audio-capable models output narrated video directly; others output silent.
-> For commerce, prefer **edit-class models** (GPT Image 2 / Seedream edit) to relight the product background while locking the subject from being altered.
+> For commerce, prefer **image-to-image** on the original product photo (pass `reference_urls`) so the product itself is never repainted.
+> Native model audio and external TTS are an either/or: with a model like H3 that renders speech itself, there is nothing left for a dubbing pass to add.
 
 ---
 

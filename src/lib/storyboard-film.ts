@@ -13,7 +13,7 @@
  */
 import type { Shot, ScriptCharacter } from "@/lib/db/schema";
 import { stripPauseMarks } from "@/lib/voice-markup";
-import { getVideoParamSpec } from "@/lib/providers/atlas-video-params";
+import { findVideoModel } from "@/lib/providers/prism-catalog";
 
 /** Seedance 2.5 duration bounds (schema: integer 4-30 seconds) */
 export const FILM_MIN_SECONDS = 4;
@@ -103,7 +103,7 @@ export interface ReferenceQuotaCheck {
  * sheet = 10 refs against Seedance's 9-image cap.
  */
 export function referenceQuotaCheck(referenceImageCount: number, modelId: string): ReferenceQuotaCheck {
-  const limit = getVideoParamSpec(modelId)?.maxReferenceImages;
+  const limit = findVideoModel(modelId)?.maxReferenceImages;
   if (limit === undefined) return { ok: true, count: referenceImageCount };
   return { ok: referenceImageCount <= limit, count: referenceImageCount, limit };
 }

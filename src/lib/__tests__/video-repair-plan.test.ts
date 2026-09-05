@@ -58,15 +58,14 @@ describe("video repair planning", () => {
     ], 8)).toHaveLength(4);
   });
 
-  it("previews an Atlas reference repair with explicit local-splice fallbacks", () => {
+  it("previews a reference repair with explicit local-splice fallbacks", () => {
     const preview = buildVideoRepairPreview({
       operationId: "op-1",
       sourceAssetId: "asset-1",
       reviewId: "review-1",
       shotId: 2,
-      provider: "atlas-cloud",
-      model: "bytedance/seedance-2.0/image-to-video",
-      supportsAudio: true,
+      provider: "prism",
+      model: "seedance2.0",
       sourceDuration: 8,
       report,
       contract,
@@ -77,7 +76,7 @@ describe("video repair planning", () => {
       pricePerCall: 0.42,
     });
     expect(preview.executable).toBe(true);
-    expect(preview.summary.model).toBe("bytedance/seedance-2.0/reference-to-video");
+    expect(preview.summary.model).toBe("seedance2.0");
     expect(preview.summary.effectiveScope).toBe("full-frame");
     expect(preview.summary.estimatedCostUsd).toBe(0.42);
     expect(preview.summary.warnings).toEqual(expect.arrayContaining([
@@ -92,7 +91,7 @@ describe("video repair planning", () => {
   it("rejects a summary whose confirmed window was changed", () => {
     const preview = buildVideoRepairPreview({
       operationId: "op-2", sourceAssetId: "asset-1", reviewId: "review-1", shotId: 2,
-      provider: "atlas-cloud", model: "bytedance/seedance-2.0/reference-to-video",
+      provider: "prism", model: "seedance2.0",
       sourceDuration: 8, report, contract, sourceUploadAvailable: true,
     });
     expect(sanitizeVideoRepairSummary({ ...preview.summary, window: { start: 0, end: 8 } })).toBeNull();

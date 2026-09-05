@@ -8,9 +8,9 @@
  * Two provider behaviours the naive `max_tokens: 1` probe got wrong:
  *
  *  1. Some backends turn "the completion hit its token cap" into a 400 instead of returning a
- *     truncated message with `finish_reason: "length"`. Pollinations (azure-openai upstream) answers
- *     `400 … Could not finish the message because max_tokens or model output limit was reached`, so a
- *     1-token probe could NEVER pass there, no matter how valid the key was.
+ *     truncated message with `finish_reason: "length"`, answering
+ *     `400 … Could not finish the message because max_tokens or model output limit was reached`,
+ *     so a 1-token probe could NEVER pass there, no matter how valid the key was.
  *  2. Reasoning models reject `max_tokens` outright ("use max_completion_tokens instead").
  *
  * Both are answered the same way: retry once without any cap. If the cap-related rejection survives
@@ -18,8 +18,8 @@
  * the probe passes and carries a warning instead of a red cross.
  */
 
-import { explainLLMStatus, isLegacyPollinations, isTokenCapRejection, type LLMMessagePair } from "@/lib/llm-error";
-import { listModels, modelListHint, normalizeChatBase } from "@/lib/llm-models";
+import { explainLLMStatus, isTokenCapRejection, type LLMMessagePair } from "@/lib/llm-error";
+import { listModels, modelListHint, normalizeBase } from "@/lib/llm-models";
 
 /** Probe completion budget. Large enough that no provider treats it as "cannot produce output". */
 export const PROBE_MAX_TOKENS = 64;
@@ -75,13 +75,8 @@ async function probeCompletion(
  */
 export async function probeLLMEndpoint(input: ProbeInput): Promise<ProbeOutcome> {
   const fetchImpl = input.fetchImpl ?? fetch;
-  const base = normalizeChatBase(input.baseUrl);
+  const base = normalizeBase(input.baseUrl);
   const model = input.model;
-
-  // Known-dead endpoint: fail fast with migration steps instead of probing it.
-  if (isLegacyPollinations(base)) {
-    return { ok: false, status: 402, error: explainLLMStatus(402, { baseUrl: base, model }) };
-  }
 
   // No model configured yet — fall back to key-level validation.
   if (!model) {

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { extractJSON } from "@/lib/script-engine/generator";
 import { buildPublishPrompt, buildCommentKit, type CommentKit } from "@/lib/publish-pack";
 import { apiError, errText } from "@/lib/api-error";
-import { createLLMClient, llmErrorPair, withLLMErrors } from "@/lib/llm-error";
+import { llmErrorPair } from "@/lib/llm-error";
+import { completeText } from "@/lib/llm-call";
 
 /**
  * Generate publish copy: 3 titles, #hashtags, a one-line promotional caption, plus the
@@ -21,26 +22,18 @@ export async function POST(req: NextRequest) {
       return apiError(req, "请先配置 LLM", "Please configure the LLM first");
     }
 
-    const client = createLLMClient(llmConfig);
     const en = locale === "en";
     const prompt = buildPublishPrompt({ productName, category, productDescription, platform }, en ? "en" : "zh");
 
-    const resp = await withLLMErrors(
-      () =>
-        client.chat.completions.create({
-          model: llmConfig.model,
-          messages: [
-            { role: "system", content: en ? "You only output JSON, no explanation." : "你只输出 JSON，不输出任何解释。" },
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.9,
-          max_tokens: 1200,
-        }),
-      llmConfig,
-    );
-
-    const content = resp.choices[0]?.message?.content;
-    if (!content) throw new Error("LLM 未返回内容");
+    const content = await completeText(llmConfig, {
+      messages: [
+        { role: "system", content: en ? "You only output JSON, no explanation." : "你只输出 JSON，不输出任何解释。" },
+        { role: "user", content: prompt },
+      ],
+      temperature: 0.9,
+      maxOutputTokens: 1200,
+    });
+    if (!content.trim()) throw new Error("LLM 未返回内容");
 
     const parsed = JSON.parse(extractJSON(content)) as {
       titles?: string[];

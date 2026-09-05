@@ -17,7 +17,7 @@ import { JUDGE_META, type JudgeReport, autoApplicableRewrites, autoApplicableDes
 import { useTemplateStore } from "@/lib/stores/template-store";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useCharacterStore } from "@/lib/stores/project-store";
-import { resolveDefaultModelTarget, buildImageOptions, buildVideoOptions, toEditVariant } from "@/lib/gen-params";
+import { resolveModelTarget, buildImageOptions, buildVideoOptions } from "@/lib/gen-params";
 import { useT, useLocale } from "@/lib/i18n";
 import { STAGE_LABEL_KEYS } from "@/lib/pipeline-stages";
 import { friendlyError } from "@/lib/friendly-error";
@@ -76,9 +76,6 @@ export default function ScriptPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState("");
   const { llm } = useSettingsStore();
-  // beginner/director split: simple mode swaps the 3-column editor for a read-and-go card
-  const uiMode = useSettingsStore((st) => st.uiMode);
-  const setUiMode = useSettingsStore((st) => st.setUiMode);
   // judge panel: four narrow judges tear the lines apart before generation money is spent
   const [judging, setJudging] = useState(false);
   const [judgeReport, setJudgeReport] = useState<JudgeReport | null>(null);
@@ -576,10 +573,8 @@ export default function ScriptPage() {
       // resolve the configured default image + video models to their providers
       setAiFilmStage(t("aiFilmResolve"));
       const s = useSettingsStore.getState();
-      const [imgTarget, vidTarget] = await Promise.all([
-        resolveDefaultModelTarget(s.providers, s.defaultImageModel, s.customModels, "image"),
-        resolveDefaultModelTarget(s.providers, s.defaultVideoModel, s.customModels, "video"),
-      ]);
+      const imgTarget = resolveModelTarget(s.media, s.defaultImageModel);
+      const vidTarget = resolveModelTarget(s.media, s.defaultVideoModel);
       if (!imgTarget || !vidTarget) throw new Error(t("aiFilmNeedModels"));
       // identity/product anchors: presenter sheet (picked at creation) + first product photo
       const presenter = presenterLib.find((c) => c.id === presenterParam);
@@ -599,8 +594,9 @@ export default function ScriptPage() {
               provider: imgTarget.provider,
               model: imgTarget.model,
               apiKey: imgTarget.apiKey,
+              apiSecret: imgTarget.apiSecret,
               baseUrl: imgTarget.baseUrl,
-              options: buildImageOptions(s.imageParams ? { ...s.imageParams, aspectRatio: "1:1", count: 1 } : undefined),
+              options: buildImageOptions(s.imageParams ? { ...s.imageParams, aspectRatio: "1:1", count: 1 } : undefined, s.imageQuality),
             }),
           });
           const sheetData = await sheetRes.json().catch(() => ({}));
@@ -620,12 +616,13 @@ export default function ScriptPage() {
         body: JSON.stringify({
           scriptId: currentScript.id,
           provider: imgTarget.provider,
-          model: sheet || productRef ? toEditVariant(imgTarget.model) : imgTarget.model,
+          model: imgTarget.model,
           apiKey: imgTarget.apiKey,
+          apiSecret: imgTarget.apiSecret,
           baseUrl: imgTarget.baseUrl,
           ...(sheet && { characterSheetUrl: sheet }),
           ...(productRef && { productImageUrl: productRef }),
-          options: buildImageOptions(s.imageParams ? { ...s.imageParams, aspectRatio: "9:16", count: 1 } : undefined),
+          options: buildImageOptions(s.imageParams ? { ...s.imageParams, aspectRatio: "9:16", count: 1 } : undefined, s.imageQuality),
         }),
       });
       const gridData = await gridRes.json().catch(() => ({}));
@@ -641,6 +638,7 @@ export default function ScriptPage() {
             ? vidTarget.model
             : "bytedance/seedance-2.5/reference-to-video",
           apiKey: vidTarget.apiKey,
+          apiSecret: vidTarget.apiSecret,
           baseUrl: vidTarget.baseUrl,
           ...(sheet && { characterSheetUrl: sheet }),
           options: buildVideoOptions(s.videoParams ? { ...s.videoParams, aspectRatio: "9:16" } : undefined),
@@ -805,7 +803,7 @@ export default function ScriptPage() {
             <div className="mb-4 flex flex-col items-center gap-2">
               <p className="text-sm text-destructive">{genError}</p>
               {/* most generation errors are LLM-config related — offer a direct jump to Settings */}
-              <Link href="/settings?tab=llm" className="text-xs text-primary underline underline-offset-2 hover:text-primary/80">
+              <Link href="/settings?tab=connect" className="text-xs text-primary underline underline-offset-2 hover:text-primary/80">
                 {t("goToSettings")}
               </Link>
             </div>
@@ -936,70 +934,44 @@ export default function ScriptPage() {
             </div>
           </div>
         )}
-        {uiMode === "simple" ? (
-          /* Beginner view: script text + one big button. No storyboard, no panels. */
-          <div className="mx-auto max-w-2xl space-y-4">
-            <div className="text-center">
-              <h2 className="text-xl font-bold">{t("simpleTitle")}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t("simpleSubtitle")}</p>
-            </div>
-            <Card className="surface-panel">
-              <CardContent className="p-5">
-                <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="min-w-0 truncate text-sm font-semibold">{currentScript?.title}</h3>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {currentScript ? `${currentScript.totalDuration}s` : ""}
-                  </span>
-                </div>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-                  {currentScript?.shots.map((sh) => sh.voiceover).filter(Boolean).join("\n\n")}
-                </p>
-              </CardContent>
-            </Card>
-            {(autoFinishError || aiFilmError) && (
-              <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-xs text-destructive">
-                {autoFinishError || aiFilmError}
-              </div>
-            )}
-            <div className="flex flex-col items-center gap-3">
-              {/* two finishing paths, primary = what was chosen on the studio card; the AI one
-                  is the single paid click (billed to the user's own model platform) */}
-              <div className="grid w-full gap-2 sm:grid-cols-2">
-                <Button
-                  size="lg"
-                  variant={genPref === "ai" ? "outline" : "default"}
-                  className={`w-full ${genPref === "ai" ? "" : "brand-fill text-white"}`}
-                  disabled={autoFinishing || aiFilming || !currentScript}
-                  onClick={autoFinish}
-                >
-                  {autoFinishing ? (autoFinishStage || t("autoFinish")) : <><LuZap className="size-4" aria-hidden="true" />{t("autoFinish")}</>}
-                </Button>
-                <Button
-                  size="lg"
-                  variant={genPref === "ai" ? "default" : "outline"}
-                  className={`w-full ${genPref === "ai" ? "brand-fill text-white -order-1" : ""}`}
-                  disabled={autoFinishing || aiFilming || !currentScript}
-                  onClick={runAiFilm}
-                >
-                  {t("aiFilmCta")}
-                </Button>
-              </div>
-              <p className="text-center text-xs text-muted-foreground">{t("autoFinishHint")}</p>
-              <p className="text-center text-xs text-muted-foreground/80">{t("aiFilmCostNote")}</p>
-              {/* quality reassurance: both paths run the judge panel automatically — Lite mode
-                  hides the operation, never the quality features */}
-              <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground/80"><LuScale className="size-3.5" aria-hidden="true" />{t("autoJudgeNote")}</p>
-              <div className="flex items-center gap-3">
-                <Button variant="outline" size="sm" className="text-xs" disabled={isGenerating} onClick={() => setRegenConfirmOpen(true)}>
-                  {t("regenerate")}
-                </Button>
-                <Button variant="ghost" size="sm" className="text-xs text-muted-foreground" onClick={() => setUiMode("pro")}>
-                  {t("simpleGoPro")}
-                </Button>
-              </div>
-            </div>
+        {/* Finishing actions. The old beginner view existed to make these two buttons
+            unmissable; keeping them pinned above the workbench achieves the same thing without
+            hiding the storyboard from anyone. */}
+        <div className="mb-6 rounded-xl border border-border/50 bg-muted/10 p-4">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <Button
+              size="lg"
+              variant={genPref === "ai" ? "outline" : "default"}
+              className={`w-full ${genPref === "ai" ? "" : "brand-fill text-white"}`}
+              disabled={autoFinishing || aiFilming || !currentScript}
+              onClick={autoFinish}
+            >
+              {autoFinishing ? (autoFinishStage || t("autoFinish")) : <><LuZap className="size-4" aria-hidden="true" />{t("autoFinish")}</>}
+            </Button>
+            <Button
+              size="lg"
+              variant={genPref === "ai" ? "default" : "outline"}
+              className={`w-full ${genPref === "ai" ? "brand-fill text-white -order-1" : ""}`}
+              disabled={autoFinishing || aiFilming || !currentScript}
+              onClick={runAiFilm}
+            >
+              {aiFilming ? (aiFilmStage || t("aiFilmCta")) : t("aiFilmCta")}
+            </Button>
           </div>
-        ) : (
+          <div className="mt-2.5 space-y-1 text-center text-xs text-muted-foreground">
+            <p>{t("autoFinishHint")}</p>
+            <p className="text-muted-foreground/80">{t("aiFilmCostNote")}</p>
+            <p className="flex items-center justify-center gap-1.5 text-muted-foreground/80">
+              <LuScale className="size-3.5" aria-hidden="true" />{t("autoJudgeNote")}
+            </p>
+          </div>
+          {(autoFinishError || aiFilmError) && (
+            <div className="mt-3 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2.5 text-xs text-destructive">
+              {autoFinishError || aiFilmError}
+            </div>
+          )}
+        </div>
+
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(320px,0.8fr)_minmax(0,2.2fr)]">
           {/* left panel: script option selection */}
           <div className="lg:col-span-1">
@@ -1216,7 +1188,7 @@ export default function ScriptPage() {
               {genError && (
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-2.5 text-xs text-destructive">
                   <span>{genError}</span>
-                  <Link href="/settings?tab=llm" className="shrink-0 text-primary underline underline-offset-2 hover:text-primary/80">
+                  <Link href="/settings?tab=connect" className="shrink-0 text-primary underline underline-offset-2 hover:text-primary/80">
                     {t("goToSettings")}
                   </Link>
                 </div>
@@ -1422,7 +1394,6 @@ export default function ScriptPage() {
             </Tabs>
           </div>
         </div>
-        )}
       </main>
 
       {/* save template dialog */}

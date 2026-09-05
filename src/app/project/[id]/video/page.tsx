@@ -122,7 +122,7 @@ export default function VideoPage() {
   const t = useT("video");
   const locale = useLocale();
   const { id } = useParams<{ id: string }>();
-  const { defaultResolution, defaultAspectRatio, tts, providers } = useSettingsStore();
+  const { defaultResolution, defaultAspectRatio, tts } = useSettingsStore();
   const [clips, setClips] = useState<VideoClipItem[]>([]);
   // 分镜缩略图：shotId → 素材文件路径（在时间线里直接预览每段画面）
   const [thumbs, setThumbs] = useState<Record<number, string>>({});
@@ -157,7 +157,7 @@ export default function VideoPage() {
   const [bgm, setBgm] = useState<{ path: string; name: string } | null>(null);
   const [bgmUploading, setBgmUploading] = useState(false);
   // 是否已配置付费 TTS（否则配音走免费 Edge keyless TTS）
-  const paidTtsReady = isPaidTTSReady(tts, providers);
+  const paidTtsReady = isPaidTTSReady(tts);
   // 免费配音试听状态
   const [previewingVoice, setPreviewingVoice] = useState(false);
 
@@ -450,7 +450,7 @@ export default function VideoPage() {
             ...(!config.voiceGround && { voiceGround: false }),
             // uploaded BGM stays fixed across combos; otherwise the mood dimension picks the free track
             ...(bgm?.path ? { bgmPath: bgm.path } : { freeBgm: true, bgmMood: combo.bgm }),
-            ...(config.ttsEnabled && paidTtsReady && { ttsConfig: resolveTTSConfig(tts, providers) }),
+            ...(config.ttsEnabled && paidTtsReady && { ttsConfig: resolveTTSConfig(tts) }),
             ...(config.ttsEnabled && !paidTtsReady && { freeTts: { enabled: true, voice: config.freeVoice } }),
           }),
         });
@@ -521,7 +521,7 @@ export default function VideoPage() {
           // 开启配音时：已配付费 TTS 走付费；否则走免费 Edge keyless TTS（无需 Key），合成为每镜生成口播音轨
           ...(config.ttsEnabled && paidTtsReady && {
             // 解析后的完整配置（含平台、复用的 Key、默认 baseUrl/模型/音色、可选 GroupId）
-            ttsConfig: resolveTTSConfig(tts, providers),
+            ttsConfig: resolveTTSConfig(tts),
           }),
           ...(config.ttsEnabled && !paidTtsReady && {
             freeTts: { enabled: true, voice: config.freeVoice },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useSettingsStore } from "@/lib/stores/settings-store";
-import { mergeCustomModels, buildVideoOptions } from "@/lib/gen-params";
+import { buildVideoOptions, resolveModelTarget } from "@/lib/gen-params";
 import { referenceModelFor, buildReplicatePrompt, REPLICATE_MAX_REF_SEC, type ReplicateShot } from "@/lib/replicate-plan";
 import { useT } from "@/lib/i18n";
 import { LuCheck, LuImage, LuLoaderCircle, LuPlus, LuX, LuZap } from "react-icons/lu";
@@ -40,17 +40,10 @@ interface RefAnalysis {
 }
 
 /** resolved provider target for the default video model (same pattern as the assets page) */
-interface VideoModelTarget {
-  provider: string;
-  model: string;
-  apiKey: string;
-  baseUrl?: string;
-}
-
 export default function ClonePage() {
   const t = useT("clone");
   const router = useRouter();
-  const { llm, providers, defaultVideoModel, customModels, videoParams } = useSettingsStore();
+  const { llm, media, defaultVideoModel, videoParams } = useSettingsStore();
 
   // video URL and analysis state
   const [videoUrl, setVideoUrl] = useState("");
@@ -71,8 +64,7 @@ export default function ClonePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState("");
 
-  // model-tier one-shot replication state (Seedance reference-to-video)
-  const [videoModelTarget, setVideoModelTarget] = useState<VideoModelTarget | null>(null);
+  // model-tier one-shot replication state (reference-to-video capable models)
   const [isReplicating, setIsReplicating] = useState(false);
   const [replicateError, setReplicateError] = useState("");
   const [replicateResult, setReplicateResult] = useState<{ url: string; projectId: string } | null>(null);
@@ -89,38 +81,8 @@ export default function ClonePage() {
     if (word) setTrendFrom(word.slice(0, 60));
   }, []);
 
-  // resolve the provider for the default video model (drives the model-tier replicate button)
-  useEffect(() => {
-    let cancelled = false;
-    const enabled = Object.entries(providers)
-      .filter(([, p]) => p.enabled && p.apiKey)
-      .map(([name, p]) => ({ name, apiKey: p.apiKey, baseUrl: p.baseUrl }));
-    if (enabled.length === 0 || !defaultVideoModel) {
-      setVideoModelTarget(null);
-      return;
-    }
-    (async () => {
-      try {
-        const res = await fetch("/api/ai/models", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ providers: enabled, mediaType: "video" }),
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        const merged = mergeCustomModels(data.models ?? [], customModels, "video", new Set(enabled.map((e) => e.name)));
-        const model = merged.find((m) => m.id === defaultVideoModel);
-        if (cancelled || !model) return;
-        const prov = enabled.find((e) => e.name === model.provider);
-        if (prov) setVideoModelTarget({ provider: prov.name, model: defaultVideoModel, apiKey: prov.apiKey, baseUrl: prov.baseUrl });
-      } catch {
-        // model-tier button simply stays disabled
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [providers, defaultVideoModel, customModels]);
+  // Drives the model-tier replicate button. A pure derivation now: one gateway, static catalog.
+  const videoModelTarget = useMemo(() => resolveModelTarget(media, defaultVideoModel), [media, defaultVideoModel]);
 
   /**
    * Analyze the reference. With an uploaded video file this is REAL analysis:
@@ -230,6 +192,7 @@ export default function ClonePage() {
           provider: videoModelTarget.provider,
           model: refModel,
           apiKey: videoModelTarget.apiKey,
+          apiSecret: videoModelTarget.apiSecret,
           baseUrl: videoModelTarget.baseUrl,
           mode: "video-to-video",
           prompt: buildReplicatePrompt({ productName, sellingPoints: productFeatures, imageCount: paths.length }),
@@ -716,7 +679,7 @@ export default function ClonePage() {
                         onClick={handleModelReplicate}
                         title={
                           videoModelTarget
-                            ? `${videoModelTarget.provider} · ${referenceModelFor(videoModelTarget.model) ?? videoModelTarget.model}`
+                            ? `${videoModelTarget.model}`
                             : undefined
                         }
                       >

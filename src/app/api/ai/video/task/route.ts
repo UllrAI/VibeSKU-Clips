@@ -12,7 +12,7 @@ import type { TaskStatusEnum } from "@/lib/providers/types";
 //   wait=true: block until the task reaches a terminal state (resume flow)
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { provider: providerName, apiKey, baseUrl, taskId, wait } = body;
+  const { provider: providerName, apiKey, apiSecret, baseUrl, taskId, wait } = body;
 
   if (!providerName || !taskId) {
     return apiError(req, "缺少必要参数（provider / taskId）", "Missing required parameters (provider / taskId)");
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     s === "completed" ? "completed" : s === "failed" || s === "cancelled" ? "failed" : "processing";
 
   try {
-    const provider = createProvider({ name: providerName, apiKey, baseUrl });
+    const provider = createProvider({ name: providerName, apiKey, apiSecret, baseUrl });
 
     try {
       const status = wait && provider.waitForTask

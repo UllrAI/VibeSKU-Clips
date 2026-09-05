@@ -11,7 +11,7 @@ import { LuPlus, LuTrash2, LuUser, LuStar } from "react-icons/lu";
 import { useT } from "@/lib/i18n";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useCharacterStore, type Character } from "@/lib/stores/project-store";
-import { resolveDefaultModelTarget, buildImageOptions } from "@/lib/gen-params";
+import { resolveModelTarget, buildImageOptions } from "@/lib/gen-params";
 
 /* eslint-disable @next/next/no-img-element -- sheet previews are local uploads served by our own API */
 
@@ -30,7 +30,7 @@ import { resolveDefaultModelTarget, buildImageOptions } from "@/lib/gen-params";
 export function PresenterManager() {
   const t = useT("settings");
   const { characters, addCharacter, updateCharacter, removeCharacter } = useCharacterStore();
-  const { providers, defaultImageModel, customModels, imageParams } = useSettingsStore();
+  const { media, defaultImageModel, imageParams, imageQuality } = useSettingsStore();
   const [isCreating, setIsCreating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", description: "", appearance: "", voiceStyle: "" });
@@ -51,7 +51,7 @@ export function PresenterManager() {
     setSheetGenIds((prev) => new Set(prev).add(char.id));
     setSheetNotice(null);
     try {
-      const target = await resolveDefaultModelTarget(providers, defaultImageModel, customModels, "image");
+      const target = resolveModelTarget(media, defaultImageModel);
       if (!target) throw new Error(t("characterSheetNoModel"));
       const res = await fetch("/api/characters/sheet", {
         method: "POST",
@@ -62,9 +62,10 @@ export function PresenterManager() {
           provider: target.provider,
           model: target.model,
           apiKey: target.apiKey,
+          apiSecret: target.apiSecret,
           baseUrl: target.baseUrl,
           // the sheet is a square 2x2 grid, regardless of the user's video aspect default
-          options: buildImageOptions(imageParams ? { ...imageParams, aspectRatio: "1:1", count: 1 } : undefined),
+          options: buildImageOptions(imageParams ? { ...imageParams, aspectRatio: "1:1", count: 1 } : undefined, imageQuality),
         }),
       });
       const data = await res.json();

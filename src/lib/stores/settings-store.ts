@@ -5,11 +5,17 @@ import { DEFAULT_TTS_PROVIDER, type TTSProvider } from "@/lib/tts-presets";
 import {
   DEFAULT_IMAGE_PARAMS,
   DEFAULT_VIDEO_PARAMS,
-  type CustomModel,
   type ImageGenParams,
   type VideoGenParams,
 } from "@/lib/gen-params";
-import { ATLAS_BASE_URL, ATLAS_LLM_BASE_URL, ATLAS_ONEKEY_MODELS, fillAtlasModelDefaults } from "@/lib/atlas-onekey";
+import {
+  DEFAULT_IMAGE_MODEL,
+  DEFAULT_IMAGE_QUALITY,
+  DEFAULT_VIDEO_MODEL,
+  PRISM_IMAGE_MODELS,
+  PRISM_VIDEO_MODELS,
+  type PrismImageQuality,
+} from "@/lib/providers/prism-catalog";
 import type { MotionIntensity, MotionRealismTier } from "@/lib/motion-prompt";
 import {
   isProductionProfileId,
@@ -17,173 +23,155 @@ import {
   type ProductionProfileId,
 } from "@/lib/production-profiles";
 
-// AI Provider 配置
-export interface ProviderSetting {
-  enabled: boolean;
+/**
+ * Prism credentials — the app's single media platform.
+ *
+ * There is no `enabled` flag and no platform list: media generation is either configured or it
+ * is not, and "configured" means both halves of the credential pair are present. Earlier
+ * versions asked users to pick from seven platforms before they could make anything, which is
+ * the onboarding cost issue #1 set out to remove.
+ */
+export interface MediaSetting {
   apiKey: string;
+  apiSecret: string;
+  /** Override the Prism gateway (staging or self-hosted). Blank = the production default. */
   baseUrl?: string;
 }
 
-// LLM 配置
+/** Script + vision model. Any OpenAI-compatible endpoint; OpenRouter is the recommended one. */
 export interface LLMSetting {
-  provider: string; // 自定义名称
+  /** Display label for the chosen preset, or a user-supplied name for a custom endpoint. */
+  provider: string;
   baseUrl: string;
   apiKey: string;
   model: string;
-  visionModel?: string; // 视觉分析模型
+  /** Model used to read product photos; falls back to `model` when blank. */
+  visionModel?: string;
 }
 
-// TTS 配音配置（多平台：OpenAI 兼容 / Atlas / MiniMax / fal.ai）
+/** Optional voiceover. The default video model already renders its own audio. */
 export interface TTSSetting {
   enabled: boolean;
-  /** 平台，缺省 "openai"（旧配置无此字段时按 openai 处理） */
   provider?: TTSProvider;
   baseUrl: string;
   apiKey: string;
   model: string;
   voice: string;
   speed?: number;
-  /** MiniMax 国内端点的 GroupId（可选） */
+  /** GroupId required by MiniMax's domestic endpoint. */
   groupId?: string;
 }
 
 export interface SettingsState {
-  // AI 平台配置
-  providers: Record<string, ProviderSetting>;
-  // LLM 配置
+  media: MediaSetting;
   llm: LLMSetting;
-  // TTS 配音配置
   tts: TTSSetting;
-  // 默认生图模型
   defaultImageModel: string;
-  // 默认生视频模型
   defaultVideoModel: string;
-  // 默认分辨率
+  /** Quality tier for the gpt-image-* family. Drafts are cheap on purpose. */
+  imageQuality: PrismImageQuality;
   defaultResolution: "720p" | "1080p";
-  // 默认画面比例
   defaultAspectRatio: "9:16" | "16:9" | "1:1";
-  // 用户自定义模型（挂在已有平台上的任意 model id）
-  customModels: CustomModel[];
-  // 图片生成全局默认参数
   imageParams: ImageGenParams;
-  // 视频生成全局默认参数
   videoParams: VideoGenParams;
-  // i2v 运镜强度档位（轻/中/强，作用于 motion prompt 的运镜幅度措辞）
   motionIntensity: MotionIntensity;
-  // i2v 物理真实感层档位（auto=全层默认 / constraints=仅品类约束 / off=关闭）
   motionRealism: MotionRealismTier;
-  // i2v 接缝模式（pin=下一镜关键帧钉尾帧[默认] / tail=用上一镜真实尾帧当首帧续拍 / off=不链）
+  /** Keyframe chaining: pin the next shot's first frame, continue from the real tail, or neither. */
   chainMode: "pin" | "tail" | "off";
-  // 全局画面风格 Look（look-presets.ts 预设 id，"none"=不加；同时注入生图 prompt 与 i2v 光线锚点）
+  /** Global look preset id from look-presets.ts; "none" adds nothing. */
   visualLook: string;
-  // UI complexity mode: "simple" keeps only the happy path (beginner default),
-  // "pro" reveals the director panel, per-shot camera tools, template workshop etc.
-  uiMode: "simple" | "pro";
-  // 面向创作目标的当前生产方案（原子更新下方 provider-agnostic 参数）
   activeProductionProfile: ProductionProfileId;
-  // 界面语言（首次按系统语言自动判定，可手动切换）
   locale: Locale;
-  // 语言来源：auto=跟随系统语言自动判定，user=用户手动选过（不再自动覆盖）
+  /** `auto` follows the system language until the user picks one themselves. */
   localeSource: "auto" | "user";
 
-  // Actions
   setLocale: (locale: Locale) => void;
-  // 自动判定结果应用（仅在 localeSource==="auto" 时由初始化器调用，不改变 source）
   applyAutoLocale: (locale: Locale) => void;
-  setProvider: (name: string, setting: ProviderSetting) => void;
+  setMedia: (media: MediaSetting) => void;
   setLLM: (llm: LLMSetting) => void;
   setTTS: (tts: TTSSetting) => void;
   setDefaultImageModel: (model: string) => void;
   setDefaultVideoModel: (model: string) => void;
+  setImageQuality: (quality: PrismImageQuality) => void;
   setDefaultResolution: (resolution: "720p" | "1080p") => void;
   setDefaultAspectRatio: (ratio: "9:16" | "16:9" | "1:1") => void;
-  addCustomModel: (model: CustomModel) => void;
-  removeCustomModel: (id: string) => void;
   setImageParams: (params: ImageGenParams) => void;
   setVideoParams: (params: VideoGenParams) => void;
   setMotionIntensity: (intensity: MotionIntensity) => void;
   setMotionRealism: (tier: MotionRealismTier) => void;
   setChainMode: (mode: "pin" | "tail" | "off") => void;
   setVisualLook: (look: string) => void;
-  setUiMode: (mode: "simple" | "pro") => void;
   applyProductionProfile: (profile: ProductionProfileId) => void;
-  /** 一个 Atlas Key 一键接入：脚本+看图+生图+生视频+配音全配好（不覆盖用户已选模型/已开的配音） */
-  applyAtlasOneKey: (apiKey: string) => void;
 }
 
-/** Pollinations 的新端点（旧的 text.pollinations.ai 免 Key 接口已停用） */
-const POLLINATIONS_BASE_URL = "https://gen.pollinations.ai/v1";
+/** True when media generation can actually run. Both halves of the pair are required. */
+export function isMediaReady(media: MediaSetting | undefined): boolean {
+  return Boolean(media?.apiKey?.trim() && media?.apiSecret?.trim());
+}
+
+const PRISM_IMAGE_IDS = new Set(PRISM_IMAGE_MODELS.map((m) => m.id));
+const PRISM_VIDEO_IDS = new Set(PRISM_VIDEO_MODELS.map((m) => m.id));
 
 /**
- * 持久化设置的版本迁移（纯函数，可单测）。
+ * Migration to the Prism-only settings shape (v6).
  *
- * v1：清洗历史版本预设写入的失效模型名（旧预设填过不存在的模型 ID，"测试连接"只验 Key
- * 不验模型名所以一直显示正常，直到生成脚本才报 Model Not Exist——issue #12 用户即此场景）。
- * 只在 baseUrl 匹配对应官方端点时改写，避免误伤自建代理上的同名自定义模型。
- *
- * v2：Pollinations 免 Key 免费文本接口（text.pollinations.ai/openai）已停用，实测只返回
- * 402/502（issue #19：用户装完选 Pollinations，一生成就报 402 Payment Required，Mac/Win 都一样）。
- * 把地址迁到官方新端点 gen.pollinations.ai/v1，并清掉老预设写入的占位 Key "pollinations"——
- * 新端点必须用注册领取的真 Key，留着占位值只会把 401 伪装成"已配置"。清空后设置页会明确提示填 Key。
- *
- * v3：Ollama 预设的 localhost 改成 127.0.0.1。Windows 上 localhost 会先解析到 ::1，而 Ollama 默认
- * 只监听 127.0.0.1，用户会看到一个无从排查的"连不上"（issue #19 追问）。同端口同机，改写无副作用。
+ * Everything platform-specific is dropped rather than translated: an Atlas or fal key cannot be
+ * used against Prism, and a model id like `bytedance/seedance-2.0/text-to-video` has no Prism
+ * equivalent that is safe to guess — guessing wrong bills the user for a model they did not
+ * choose. Stale ids are therefore reset to the defaults, and the LLM block is preserved intact
+ * because any OpenAI-compatible endpoint still works exactly as it did.
  */
-export function migrateSettings(state: SettingsState): SettingsState {
-  const llm = state?.llm;
-  if (llm?.baseUrl) {
-    const fixes: Array<{ hostRe: RegExp; from: string; to: string }> = [
-      { hostRe: /api\.deepseek\.com/i, from: "deepseek-v3.2", to: "deepseek-v4-flash" },
-      { hostRe: /volces\.com/i, from: "doubao-seed-2.0-pro", to: "doubao-seed-2-0-pro-260215" },
-      // Atlas one-key's old default: v3.2's thinking mode leaks reasoning text into JSON output
-      // and breaks script generation (2026-08 field test) — move to the clean-JSON V4 flagship.
-      // Only the exact old default is migrated; a model the user picked themselves stays put.
-      { hostRe: /api\.atlascloud\.ai/i, from: "deepseek-ai/deepseek-v3.2", to: "deepseek-ai/deepseek-v4-pro" },
-    ];
-    for (const f of fixes) {
-      if (!f.hostRe.test(llm.baseUrl)) continue;
-      if (llm.model === f.from) llm.model = f.to;
-      if (llm.visionModel === f.from) llm.visionModel = f.to;
-    }
+export function migrateSettings(persisted: unknown): SettingsState {
+  const state = (persisted ?? {}) as SettingsState & {
+    providers?: Record<string, { apiKey?: string }>;
+    customModels?: unknown;
+  };
 
-    // Atlas one-key used to write the media base into the LLM slot, so every script generation
-    // 404'd on a model that does exist (issue #24). Move those installs onto the chat gateway.
-    if (/^https?:\/\/api\.atlascloud\.ai\/api\/v1\/?$/i.test(llm.baseUrl)) {
-      llm.baseUrl = ATLAS_LLM_BASE_URL;
-    }
+  delete state.providers;
+  delete state.customModels;
 
-    if (/text\.pollinations\.ai/i.test(llm.baseUrl)) {
-      llm.baseUrl = POLLINATIONS_BASE_URL;
-      if (llm.apiKey === "pollinations") llm.apiKey = "";
-    }
+  state.media = {
+    apiKey: state.media?.apiKey ?? "",
+    apiSecret: state.media?.apiSecret ?? "",
+    ...(state.media?.baseUrl ? { baseUrl: state.media.baseUrl } : {}),
+  };
 
-    llm.baseUrl = llm.baseUrl.replace(/^(https?:\/\/)localhost(:11434\b)/i, "$1127.0.0.1$2");
+  // A model id from the old multi-platform catalog is not a Prism model id.
+  if (!PRISM_IMAGE_IDS.has(state.defaultImageModel)) state.defaultImageModel = DEFAULT_IMAGE_MODEL;
+  if (!PRISM_VIDEO_IDS.has(state.defaultVideoModel)) state.defaultVideoModel = DEFAULT_VIDEO_MODEL;
+  if (!state.imageQuality) state.imageQuality = DEFAULT_IMAGE_QUALITY;
+
+  // Retired script endpoints. The LLM block is otherwise preserved: any OpenAI-compatible
+  // endpoint still works exactly as it did.
+  if (state.llm) {
+    // On Windows `localhost` resolves to ::1 first while Ollama binds 127.0.0.1 only, so the
+    // hostname form fails to connect for a reason the user cannot see (issue #19 follow-up).
+    if (/^http:\/\/localhost:11434(\/|$)/i.test(state.llm.baseUrl || "")) {
+      state.llm = { ...state.llm, baseUrl: state.llm.baseUrl.replace("localhost", "127.0.0.1") };
+    }
+    // Pollinations retired its keyless text API and Atlas Cloud is no longer a supported gateway;
+    // both leave an endpoint that can only ever fail, so they are cleared rather than rewritten.
+    if (/pollinations\.ai|atlascloud\.ai/i.test(state.llm.baseUrl || "")) {
+      state.llm = { ...state.llm, baseUrl: "", apiKey: "", model: "", visionModel: "" };
+    }
   }
-  if (!isProductionProfileId(state?.activeProductionProfile)) {
-    state.activeProductionProfile = "balanced";
+
+  // The Atlas and fal.ai voices borrowed their key from a platform that no longer exists, so a
+  // persisted config naming either of them is unusable rather than merely stale.
+  const retiredVoice = state.tts?.provider as string | undefined;
+  if (state.tts && (retiredVoice === "atlas" || retiredVoice === "falai")) {
+    state.tts = { ...state.tts, enabled: false, provider: DEFAULT_TTS_PROVIDER, apiKey: "", baseUrl: "", model: "", voice: "" };
   }
+
+  if (!isProductionProfileId(state.activeProductionProfile)) state.activeProductionProfile = "balanced";
   return state;
 }
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      providers: {
-        "atlas-cloud": { enabled: false, apiKey: "" },
-        "fal-ai": { enabled: false, apiKey: "" },
-        replicate: { enabled: false, apiKey: "" },
-        volcengine: { enabled: false, apiKey: "" },
-        alibaba: { enabled: false, apiKey: "" },
-        siliconflow: { enabled: false, apiKey: "" },
-        openai: { enabled: false, apiKey: "" },
-      },
-      llm: {
-        provider: "",
-        baseUrl: "",
-        apiKey: "",
-        model: "",
-        visionModel: "",
-      },
+      media: { apiKey: "", apiSecret: "" },
+      llm: { provider: "", baseUrl: "", apiKey: "", model: "", visionModel: "" },
       tts: {
         enabled: false,
         provider: DEFAULT_TTS_PROVIDER,
@@ -193,91 +181,46 @@ export const useSettingsStore = create<SettingsState>()(
         voice: "",
         speed: 1,
       },
-      defaultImageModel: "",
-      defaultVideoModel: "",
-      defaultResolution: "1080p",
+      defaultImageModel: DEFAULT_IMAGE_MODEL,
+      defaultVideoModel: DEFAULT_VIDEO_MODEL,
+      imageQuality: DEFAULT_IMAGE_QUALITY,
+      defaultResolution: "720p",
       defaultAspectRatio: "9:16",
-      customModels: [],
       imageParams: DEFAULT_IMAGE_PARAMS,
       videoParams: DEFAULT_VIDEO_PARAMS,
       motionIntensity: "normal",
       motionRealism: "auto",
       chainMode: "pin",
       visualLook: "none",
-      uiMode: "simple",
       activeProductionProfile: "balanced",
       locale: DEFAULT_LOCALE,
       localeSource: "auto",
 
-      // 用户手动切换：记为 user，之后不再被自动判定覆盖
       setLocale: (locale) => set({ locale, localeSource: "user" }),
-      // 自动判定应用：保持 source=auto，跟随系统语言
       applyAutoLocale: (locale) => set({ locale }),
-      setProvider: (name, setting) =>
-        set((state) => ({
-          providers: { ...state.providers, [name]: setting },
-        })),
+      setMedia: (media) => set({ media }),
       setLLM: (llm) => set({ llm }),
       setTTS: (tts) => set({ tts }),
       setDefaultImageModel: (model) => set({ defaultImageModel: model }),
       setDefaultVideoModel: (model) => set({ defaultVideoModel: model }),
+      setImageQuality: (quality) => set({ imageQuality: quality }),
       setDefaultResolution: (resolution) => set({ defaultResolution: resolution }),
       setDefaultAspectRatio: (ratio) => set({ defaultAspectRatio: ratio }),
-      addCustomModel: (model) =>
-        set((state) => ({ customModels: [...state.customModels, model] })),
-      removeCustomModel: (id) =>
-        set((state) => ({ customModels: state.customModels.filter((m) => m.id !== id) })),
       setImageParams: (params) => set({ imageParams: params }),
       setVideoParams: (params) => set({ videoParams: params }),
       setMotionIntensity: (intensity) => set({ motionIntensity: intensity }),
       setMotionRealism: (tier) => set({ motionRealism: tier }),
       setChainMode: (mode) => set({ chainMode: mode }),
       setVisualLook: (look) => set({ visualLook: look }),
-      setUiMode: (mode) => set({ uiMode: mode }),
-      applyProductionProfile: (profile) =>
-        set((state) => productionProfilePatch(profile, state)),
-      // 一个 Atlas Key 一键接入全套：LLM 脚本 + Vision 看图 + 生图 + 生视频 + Atlas 配音
-      applyAtlasOneKey: (apiKey) =>
-        set((state) => {
-          const key = apiKey.trim();
-          const def = fillAtlasModelDefaults({
-            image: state.defaultImageModel,
-            video: state.defaultVideoModel,
-          });
-          return {
-            llm: {
-              provider: "Atlas Cloud",
-              // chat gateway, not ATLAS_BASE_URL — the media base 404s every chat call (issue #24)
-              baseUrl: ATLAS_LLM_BASE_URL,
-              apiKey: key,
-              model: ATLAS_ONEKEY_MODELS.llm,
-              visionModel: ATLAS_ONEKEY_MODELS.vision,
-            },
-            providers: {
-              ...state.providers,
-              "atlas-cloud": { ...state.providers["atlas-cloud"], enabled: true, apiKey: key },
-            },
-            defaultImageModel: def.image,
-            defaultVideoModel: def.video,
-            // 配音：之前没开过才默认接 Atlas TTS（复用同一个 Key），已配则保持不动
-            tts: state.tts.enabled
-              ? state.tts
-              : { ...state.tts, enabled: true, provider: "atlas", baseUrl: ATLAS_BASE_URL, model: "", voice: "" },
-          };
-        }),
+      applyProductionProfile: (profile) => set((state) => productionProfilePatch(profile, state)),
     }),
     {
       name: "daihuo-jianshou-settings",
-      // v1：清洗历史版本预设写入的失效模型名（旧预设填过不存在的模型 ID，"测试连接"只验 Key
-      // 不验模型名所以一直显示正常，直到生成脚本才报 Model Not Exist——issue #12 用户即此场景）。
-      // 只在 baseUrl 匹配对应官方端点时改写，避免误伤自建代理上的同名自定义模型。
-      // v2：把已停用的 Pollinations 免 Key 地址迁到新端点（见 migrateSettings 注释）。
-      // v3：Ollama 的 localhost:11434 改写成 127.0.0.1:11434（Windows 上 ::1 连不通）。
-      // v4：补充面向创作目标的生产方案；旧设置迁移到兼顾质量与成本的 balanced。
-      // v5：Atlas 一键接入曾把「素材网关」/api/v1 写进 LLM 地址，导致写脚本必 404（issue #24），
-      // 迁到 OpenAI 兼容的聊天网关 /v1。
-      version: 5,
-      migrate: (persisted) => migrateSettings(persisted as SettingsState),
+      // v6: collapse the seven-platform media config onto Prism, drop custom models, and reset
+      // model ids that belonged to the old catalog. See migrateSettings for why nothing is
+      // translated across.
+      version: 6,
+      migrate: migrateSettings,
     }
   )
 );

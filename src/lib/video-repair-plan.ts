@@ -196,11 +196,10 @@ export function buildVideoRepairPreview(input: {
   sourceUploadAvailable: boolean;
   pricePerCall?: number;
 }): VideoRepairPreview {
-  const initialCapabilities = getVideoModelCapabilities(input.model, input.supportsAudio, input.provider);
-  const effectiveModel = input.provider === "atlas-cloud" && initialCapabilities.referenceVideo === true
-    ? input.model.replace(/\/(?:text|image)-to-video$/, "/reference-to-video")
-    : input.model;
-  const capabilities = getVideoModelCapabilities(effectiveModel, input.supportsAudio, input.provider);
+  // Prism model ids are flat ("seedance2.0"), so there is no per-mode sibling endpoint to remap
+  // onto — one id covers text, image and reference workflows and the body decides which runs.
+  const effectiveModel = input.model;
+  const capabilities = getVideoModelCapabilities(effectiveModel);
   const { window, hasTimedEvidence } = deriveRepairWindow(input.sourceDuration, input.report, input.requestedWindow);
   const requestedScope: RepairScope = input.requestedScope === "region" ? "region" : "temporal";
   const requestedRegion = requestedScope === "region" ? sanitizeRepairRegion(input.requestedRegion) : undefined;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiError } from "@/lib/api-error";
-import { createLLMClient, llmErrorPair, withLLMErrors } from "@/lib/llm-error";
-import { reasoningParams } from "@/lib/script-engine/generator";
+import { llmErrorPair } from "@/lib/llm-error";
+import { completeText } from "@/lib/llm-call";
 import { sanitizeCustomAdTemplate, AD_TEMPLATE_GROUPS } from "@/lib/ad-templates";
 import { CAMERA_PRESETS } from "@/lib/camera-presets";
 import { LOOK_PRESETS } from "@/lib/look-presets";
@@ -82,21 +82,13 @@ export async function POST(req: NextRequest) {
 
   try {
     // shared factory: keyless endpoints accept a placeholder key; SDK retries + free-pool 402 retry
-    const client = createLLMClient(llmConfig);
-    const response = await withLLMErrors(
-      () =>
-        client.chat.completions.create({
-          model: llmConfig.model,
-          messages: [
-            { role: "system", content: "你是资深电商短视频导演，只输出 JSON。" },
-            { role: "user", content: buildPrompt(productName, category, sellingPoints) },
-          ],
-          temperature: 0.8,
-          ...reasoningParams(llmConfig.baseUrl),
-        }),
-      llmConfig,
-    );
-    const text = response.choices[0]?.message?.content ?? "";
+    const text = await completeText(llmConfig, {
+      messages: [
+        { role: "system", content: "你是资深电商短视频导演，只输出 JSON。" },
+        { role: "user", content: buildPrompt(productName, category, sellingPoints) },
+      ],
+      temperature: 0.8,
+    });
     const start = text.indexOf("{");
     const end = text.lastIndexOf("}");
     if (start === -1 || end <= start) {

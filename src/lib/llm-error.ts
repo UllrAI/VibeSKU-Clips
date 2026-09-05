@@ -1,24 +1,26 @@
 /**
- * LLM client factory + failure messages for OpenAI-compatible endpoints.
+ * Script-model client factory + failure messages, on the Vercel AI SDK.
  *
- * Retry logic and error classification are NOT hand-rolled here — both come from the official `openai`
- * SDK, which already ships exponential backoff with jitter, honours `retry-after` / `retry-after-ms`,
- * and exposes a typed error hierarchy (AuthenticationError / NotFoundError / RateLimitError / …).
- * This module only supplies the two things the SDK cannot know:
+ * One transport for every endpoint: `@ai-sdk/openai-compatible` speaks the chat-completions
+ * dialect that OpenRouter, OpenAI, DeepSeek, Moonshot, Ark, GLM and a local Ollama all serve, so
+ * "支持 OpenRouter" and "支持 OpenAI 兼容" are the same code path with a different base URL.
  *
- *  1. That HTTP 402 is retryable on a free shared pool. The SDK retries 408/409/429/5xx; 402 normally
- *     means "top up your account" so it correctly refuses to retry it. On Pollinations' free tier 402
- *     instead means "the shared pool ran dry this second" and clears on its own — verified live: the
- *     same request returned 200, then 402, then 502 within a minute. We flip those responses to
- *     retryable via the SDK's own `x-should-retry` / `retry-after-ms` response-header protocol, so the
- *     retrying itself stays inside the SDK.
+ * Retries and error classification come from the SDK — it already ships exponential backoff and a
+ * typed `APICallError` carrying status, body and retryability. Two things it cannot know are
+ * supplied here:
+ *
+ *  1. That some 400s are OUR fault, not the request's. Every generation call ships a completion
+ *     cap and, on some endpoints, a JSON-mode flag; a model whose ceiling is lower, or that wants
+ *     `max_completion_tokens`, or that has never heard of `response_format`, answers 400. Those
+ *     are replayed once without the offending field rather than surfaced as "bad request".
  *  2. Wording. Issue #19 reported the app as simply "broken" because the only feedback was
- *     `LLM 请求失败（模型: openai-fast，地址: https://text.pollinations.ai/openai）: 402 "402 Payment
- *     Required"` — a status code names the failure but not the fix. Each branch below names the fix.
+ *     `LLM 请求失败（模型: …）: 402`. A status code names the failure but not the fix; each branch
+ *     below names the fix.
  */
 
-import OpenAI, { APIConnectionError, APIConnectionTimeoutError } from "openai";
-import { listModels, modelListHint, normalizeChatBase } from "@/lib/llm-models";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { APICallError, type LanguageModel } from "ai";
+import { listModels, modelListHint, normalizeBase } from "@/lib/llm-models";
 
 /** Endpoint + model a call was aimed at (used to tailor the hint). */
 export interface LLMTarget {
@@ -47,16 +49,6 @@ export class LLMRequestError extends Error {
   }
 }
 
-/** True when the endpoint is Pollinations — its free tier gets both the 402 retry and its own hint. */
-export function isPollinations(baseUrl?: string): boolean {
-  return /pollinations\.ai/i.test(baseUrl || "");
-}
-
-/** True when the endpoint is the retired keyless Pollinations text API (dead as of 2026-08). */
-export function isLegacyPollinations(baseUrl?: string): boolean {
-  return /text\.pollinations\.ai/i.test(baseUrl || "");
-}
-
 /**
  * True when a 4xx blames the completion-token budget rather than the request itself: either the
  * completion hit its cap ("could not finish the message…") or the model refuses `max_tokens` and
@@ -65,37 +57,6 @@ export function isLegacyPollinations(baseUrl?: string): boolean {
 export function isTokenCapRejection(text: string | undefined): boolean {
   if (!text) return false;
   return /max_tokens|max_completion_tokens|max_output_tokens|output limit|could not finish the message/i.test(text);
-}
-
-/**
- * Wait before re-trying a drained free pool. Deliberately longer than the SDK's default 0.5s/1s/2s
- * ladder: Pollinations' anonymous tier admits roughly one request per 15s, so a sub-second retry is
- * guaranteed to hit the same wall.
- */
-export const FREE_POOL_RETRY_MS = 5000;
-
-/**
- * fetch wrapper that marks free-pool 402s as retryable using the SDK's own header protocol
- * (`x-should-retry: true` + `retry-after-ms`), letting the SDK do the backoff, jitter and attempt
- * accounting. Exported for tests.
- */
-export function freePoolRetryFetch(
-  baseFetch: typeof fetch = fetch,
-): (url: RequestInfo | URL, init?: RequestInit) => Promise<Response> {
-  return async (url, init) => {
-    const res = await baseFetch(url, init);
-    if (res.status !== 402) return res;
-    // The retired keyless host will 402 forever — retrying it only makes the user wait ~90s for the
-    // same message. Leave it terminal so the "switch endpoints" guidance shows up after one attempt.
-    if (isLegacyPollinations(String(typeof url === "string" ? url : url instanceof URL ? url.href : url.url))) return res;
-    const headers = new Headers(res.headers);
-    headers.set("x-should-retry", "true");
-    if (!headers.has("retry-after") && !headers.has("retry-after-ms")) {
-      headers.set("retry-after-ms", String(FREE_POOL_RETRY_MS));
-    }
-    // Re-wrap rather than mutate: Response.headers is immutable. Body is streamed through untouched.
-    return new Response(res.body, { status: res.status, statusText: res.statusText, headers });
-  };
 }
 
 /**
@@ -118,13 +79,10 @@ function withoutTokenCap(body: string, providerMessage: string): string | undefi
 /**
  * fetch wrapper that replays a request once without our completion cap when the provider rejected it.
  *
- * Every generation call ships a fixed `max_tokens: 16000`. That number is a guess about someone
- * else's model: a provider whose ceiling is lower answers 400 ("max_tokens is greater than the
- * maximum allowed"), and a reasoning model answers 400 ("use max_completion_tokens instead"). Both
- * are our parameter's fault, not the user's — retrying without the cap lets the provider apply its
- * own default and the call succeeds. Preventive: the same class of 400 that made the connection test
- * unpassable on Pollinations (issue #19) can reach the generation path through any provider whose
- * output ceiling is below 16000.
+ * The cap is a guess about someone else's model: a provider whose ceiling is lower answers 400
+ * ("max_tokens is greater than the maximum allowed"), and a reasoning model answers 400 ("use
+ * max_completion_tokens instead"). Both are our parameter's fault — retrying without the cap lets
+ * the provider apply its own default and the call succeeds.
  */
 export function tokenCapRetryFetch(
   baseFetch: typeof fetch = fetch,
@@ -154,10 +112,8 @@ export function tokenCapRetryFetch(
  * specific model objects. Only for prompts whose expected top level is an OBJECT (json_object
  * forbids top-level arrays), and the prompt must mention "JSON" (all of ours do).
  */
-export function jsonModeParams(baseUrl?: string): { response_format?: { type: "json_object" } } {
-  return /deepseek|openai\.com|moonshot|bigmodel\.cn|atlascloud|siliconflow|dashscope/i.test(baseUrl || "")
-    ? { response_format: { type: "json_object" } }
-    : {};
+export function supportsJsonMode(baseUrl?: string): boolean {
+  return /openrouter|deepseek|openai\.com|moonshot|bigmodel\.cn|siliconflow|dashscope|volces/i.test(baseUrl || "");
 }
 
 /**
@@ -200,30 +156,48 @@ export function optionalParamRetryFetch(
   };
 }
 
+/** OpenRouter attributes traffic by these headers and shows the app name on the user's dashboard. */
+const OPENROUTER_HEADERS = {
+  "HTTP-Referer": "https://clips.vibesku.com",
+  "X-Title": "VibeSKU Clips",
+};
+
+export interface LLMModelOptions {
+  /** Ask the provider to enforce JSON output, where the endpoint understands the flag. */
+  jsonMode?: boolean;
+}
+
 /**
- * Build an OpenAI-compatible client with this project's shared reliability settings.
- * Free/keyless endpoints (Pollinations, Ollama) accept any non-empty key; the SDK requires one.
+ * Build a language model for any OpenAI-compatible endpoint, with this project's reliability
+ * settings already applied.
+ *
+ * Free/keyless endpoints (a local Ollama) accept any non-empty key, and the SDK requires one.
  */
-export function createLLMClient(config: LLMClientConfig): OpenAI {
-  // 402 is only worth retrying on the anonymous shared pool, where it means "the pool ran dry this
-  // second". With a real key it means "this key's daily pollen is spent" — that clears tomorrow, not
-  // in 5s, so retrying would just make the user wait 15s for the same message.
-  const retryFreePool402 = isPollinations(config.baseUrl) && !config.apiKey;
-  return new OpenAI({
-    // normalized so Atlas' media base pasted into the LLM field still reaches the chat gateway
-    baseURL: config.baseUrl ? normalizeChatBase(config.baseUrl) : config.baseUrl,
+export function createLLMModel(config: LLMClientConfig, options: LLMModelOptions = {}): LanguageModel {
+  const baseURL = config.baseUrl ? normalizeBase(config.baseUrl) : "";
+  const jsonMode = options.jsonMode === true && supportsJsonMode(baseURL);
+  const provider = createOpenAICompatible({
+    name: "script-model",
+    baseURL,
     apiKey: config.apiKey || "no-key",
-    // SDK default is 2; free/shared endpoints flap enough to be worth one more attempt.
-    maxRetries: 3,
-    // Cap recovery and optional-param recovery apply everywhere (our params, our problem); the
-    // 402 hook only where 402 is genuinely transient. Composed so one wrapper feeds the other.
-    fetch: optionalParamRetryFetch(tokenCapRetryFetch(retryFreePool402 ? freePoolRetryFetch() : fetch)),
+    ...(/openrouter/i.test(baseURL) ? { headers: OPENROUTER_HEADERS } : {}),
+    // Cap recovery and optional-param recovery both apply everywhere: they only ever undo
+    // parameters this app added. Composed so one wrapper feeds the other.
+    fetch: optionalParamRetryFetch(tokenCapRetryFetch()),
+    // `response_format` has no first-class slot in a plain text generation, and it must not be
+    // set for endpoints that would 400 on it — injecting it here keeps the decision in one place.
+    ...(jsonMode
+      ? { transformRequestBody: (body: Record<string, unknown>) => ({ ...body, response_format: { type: "json_object" } }) }
+      : {}),
   });
+  return provider(config.model || "");
 }
 
 /** HTTP status of a failed call, when the error carries one. */
 export function llmErrorStatus(err: unknown): number | undefined {
-  const status = (err as { status?: unknown })?.status;
+  const status = APICallError.isInstance(err)
+    ? err.statusCode
+    : (err as { status?: unknown; statusCode?: unknown })?.statusCode ?? (err as { status?: unknown })?.status;
   return typeof status === "number" && status >= 100 && status < 600 ? status : undefined;
 }
 
@@ -246,7 +220,6 @@ export interface LLMMessagePair {
  */
 export function explainLLMStatus(status: number | undefined, target: LLMTarget = {}): LLMMessagePair {
   const model = target.model || "?";
-  const baseUrl = target.baseUrl || "?";
 
   if (status === 401 || status === 403) {
     return {
@@ -255,18 +228,6 @@ export function explainLLMStatus(status: number | undefined, target: LLMTarget =
     };
   }
   if (status === 402) {
-    if (isLegacyPollinations(baseUrl)) {
-      return {
-        zh: "Pollinations 的免 Key 免费文本接口已停用（现在只会返回 402/502）：请到设置里重新点一次 Pollinations 预设，把地址换成 https://gen.pollinations.ai/v1，并到 https://enter.pollinations.ai/keys 免费注册领 Key 填入；也可改用「Ollama 本地」完全离线免费，或填自己的厂商 Key",
-        en: "Pollinations' keyless free text API is retired (it now only returns 402/502): re-apply the Pollinations preset in Settings to switch the endpoint to https://gen.pollinations.ai/v1 and paste a free key from https://enter.pollinations.ai/keys — or switch to local Ollama, or use your own provider key",
-      };
-    }
-    if (isPollinations(baseUrl)) {
-      return {
-        zh: "Pollinations 额度不足（免费额度按天发放，用完即停）：请到 https://enter.pollinations.ai/keys 查看或领取额度，或改用「Ollama 本地」/ 自己的厂商 Key",
-        en: "Pollinations credit exhausted (free pollen is granted daily and stops when spent): check https://enter.pollinations.ai/keys, or switch to local Ollama / your own provider key",
-      };
-    }
     return {
       zh: "接口返回「需要付费」：该账户余额或额度已用尽，请充值后重试，或在设置里换一个渠道",
       en: "The endpoint returned Payment Required: this account is out of credit — top it up or switch provider in Settings",
@@ -291,9 +252,9 @@ export function explainLLMStatus(status: number | undefined, target: LLMTarget =
     };
   }
   if (status === 400 || status === 422) {
-    // Some backends (Pollinations' azure-openai upstream) report "the completion hit its token cap"
-    // as a 400 instead of returning truncated text, so a 400 here often means the model ran out of
-    // output room mid-script — telling the user to "try another model name" would be wrong advice.
+    // Some backends report "the completion hit its token cap" as a 400 instead of returning
+    // truncated text, so a 400 here often means the model ran out of output room mid-script —
+    // telling the user to "try another model name" would be wrong advice.
     if (isTokenCapRejection(target.detail)) {
       return {
         zh: "模型输出长度不够，本次生成中途被打断：请缩短视频时长或减少分镜数量，也可在设置里换一个输出更充裕的模型（免费/公共模型的输出上限通常很小）",
@@ -314,17 +275,26 @@ export function explainLLMStatus(status: number | undefined, target: LLMTarget =
   return { zh: "LLM 请求失败", en: "LLM request failed" };
 }
 
+/** A failure that never reached the endpoint: DNS, refused connection, TLS, or a timeout. */
+function isConnectionFailure(err: unknown): boolean {
+  if (APICallError.isInstance(err)) return err.statusCode === undefined;
+  const name = (err as { name?: string })?.name;
+  return name === "TypeError" || name === "FetchError" || name === "TimeoutError";
+}
+
 /**
  * Turn a provider error into an actionable explanation in both locales.
- * Connection-level failures come from the SDK's typed errors (no HTTP status exists for them);
- * everything else is keyed off the status via explainLLMStatus.
+ * Connection-level failures carry no HTTP status; everything else is keyed off the status.
  */
 export function explainLLMError(err: unknown, target: LLMTarget = {}): { zh: string; en: string; status?: number } {
   const status = llmErrorStatus(err);
   const detail = rawDetail(err);
-  // Match on the untruncated message (providers bury the useful phrase behind a JSON envelope) but
-  // still show the trimmed one.
-  const full = target.detail ?? (err instanceof Error ? err.message : String(err ?? ""));
+  // Match on the untruncated body (providers bury the useful phrase behind a JSON envelope) but
+  // still show the trimmed message.
+  const full =
+    target.detail ??
+    (APICallError.isInstance(err) ? err.responseBody : undefined) ??
+    (err instanceof Error ? err.message : String(err ?? ""));
   const model = target.model || "?";
   const baseUrl = target.baseUrl || "?";
   const withCtx = ({ zh, en }: LLMMessagePair) => ({
@@ -333,13 +303,7 @@ export function explainLLMError(err: unknown, target: LLMTarget = {}): { zh: str
     status,
   });
 
-  if (err instanceof APIConnectionTimeoutError) {
-    return withCtx({
-      zh: "请求超时：网络不稳或该端点响应过慢，请重试；国内访问海外端点建议配置代理",
-      en: "Request timed out: unstable network or a slow endpoint — retry, and consider a proxy for overseas endpoints",
-    });
-  }
-  if (err instanceof APIConnectionError) {
+  if (status === undefined && isConnectionFailure(err)) {
     return withCtx({
       zh: "连不上这个 API 地址：请检查网络/代理是否可访问该域名；本地 Ollama 需先启动服务（ollama serve）",
       en: "Cannot reach the API endpoint: check network/proxy access to this host; a local Ollama needs `ollama serve` running",
@@ -357,14 +321,14 @@ export function toLLMRequestError(err: unknown, target: LLMTarget = {}): LLMRequ
 
 /**
  * Run an LLM call and relabel any provider error with actionable text.
- * No retry loop of our own — the SDK client from `createLLMClient` already retried.
+ * No retry loop of our own — the SDK already retried.
  * User-initiated aborts pass through untouched so callers can tell "cancelled" from "failed".
  */
 export async function withLLMErrors<T>(fn: () => Promise<T>, target: LLMClientConfig = {}): Promise<T> {
   try {
     return await fn();
   } catch (err) {
-    if ((err as { name?: string })?.name === "APIUserAbortError" || (err as { name?: string })?.name === "AbortError") throw err;
+    if ((err as { name?: string })?.name === "AbortError") throw err;
     const wrapped = toLLMRequestError(err, target);
     // A wrong model name is the most common misconfiguration and the least self-evident: one extra
     // GET /models turns "model not found" into "here is what this endpoint actually serves". Only on

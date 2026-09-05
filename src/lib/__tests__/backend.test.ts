@@ -1,8 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
 import { buildUserPrompt, buildBatchPrompt } from "@/lib/script-engine/prompts";
 import type { ScriptGenerationInput } from "@/lib/script-engine/prompts";
-import { extractJSON, parseScriptResponse, reasoningParams, batchCountFor } from "@/lib/script-engine/generator";
+import { extractJSON, parseScriptResponse } from "@/lib/script-engine/generator";
+import { completeJson, thinkingParams } from "@/lib/llm-call";
+import { LLMRequestError } from "@/lib/llm-error";
 import { buildComposeCommand, buildComposeInvocation, resolveChineseFontFamily, wrapCaption, composeErrorMessage, buildDrawtext, type ComposeConfig } from "@/lib/video-composer/composer";
+
+/** Fake providers started by the completeJson tests; closed after each case. */
+const servers: Server[] = [];
+afterEach(() => {
+  for (const s of servers.splice(0)) s.close();
+});
 
 // ==================== Prompt build tests ====================
 
@@ -535,34 +545,19 @@ describe("buildComposeInvocation（shell-free 执行形态：修 Windows 合成�
 
 // ==================== Script generator JSON parsing tests ====================
 
-describe("reasoningParams（按端点驯服推理/思考模型）", () => {
-  it("Pollinations 端点 → 注入 reasoning_effort:low（否则推理模型耗尽输出预算、content 返空）", () => {
-    expect(reasoningParams("https://text.pollinations.ai/openai")).toEqual({ reasoning_effort: "low" });
-    expect(reasoningParams("https://TEXT.POLLINATIONS.AI/openai")).toEqual({ reasoning_effort: "low" });
-  });
+describe("thinkingParams（按端点驯服混合思考模型）", () => {
   it("DashScope/SiliconFlow（Qwen3 混合思考）→ enable_thinking:false 关掉思考", () => {
-    expect(reasoningParams("https://dashscope.aliyuncs.com/compatible-mode/v1")).toEqual({ enable_thinking: false });
-    expect(reasoningParams("https://api.siliconflow.cn/v1")).toEqual({ enable_thinking: false });
+    expect(thinkingParams("https://dashscope.aliyuncs.com/compatible-mode/v1")).toEqual({ enable_thinking: false });
+    expect(thinkingParams("https://api.siliconflow.cn/v1")).toEqual({ enable_thinking: false });
   });
   it("智谱 bigmodel.cn（GLM 混合思考）→ thinking:{type:disabled}", () => {
-    expect(reasoningParams("https://open.bigmodel.cn/api/paas/v4")).toEqual({ thinking: { type: "disabled" } });
+    expect(thinkingParams("https://open.bigmodel.cn/api/paas/v4")).toEqual({ thinking: { type: "disabled" } });
   });
-  it("其它端点（真 OpenAI/本地）→ 不注入（OpenAI 对不认识的参数会 400 拒绝）", () => {
-    expect(reasoningParams("https://api.openai.com/v1")).toEqual({});
-    expect(reasoningParams("http://localhost:11434/v1")).toEqual({});
-    expect(reasoningParams("")).toEqual({});
-  });
-});
-
-describe("batchCountFor（Pollinations 低输出上限 → 只生成1套,避免多套截断）", () => {
-  it("Pollinations → 1（3套约7500字符会超输出上限被截断成非法JSON）", () => {
-    expect(batchCountFor("https://text.pollinations.ai/openai")).toBe(1);
-    expect(batchCountFor("https://text.pollinations.ai/openai", 5)).toBe(1); // 无视请求数,强制1
-  });
-  it("其它端点 → 保持请求的套数（默认3）", () => {
-    expect(batchCountFor("https://api.openai.com/v1")).toBe(3);
-    expect(batchCountFor("http://localhost:11434/v1", 5)).toBe(5);
-    expect(batchCountFor("")).toBe(3);
+  it("其它端点（OpenAI/OpenRouter/本地）→ 不注入（OpenAI 对不认识的参数会 400 拒绝）", () => {
+    expect(thinkingParams("https://api.openai.com/v1")).toEqual({});
+    expect(thinkingParams("https://openrouter.ai/api/v1")).toEqual({});
+    expect(thinkingParams("http://127.0.0.1:11434/v1")).toEqual({});
+    expect(thinkingParams("")).toEqual({});
   });
 });
 
@@ -833,53 +828,71 @@ describe("extractJSON（推理模型 <think> 痕迹清理，防思考文本弄�
   });
 });
 
-describe("completeWithJsonRetry（解析失败带着报错重问一次；能力性失败不重试）", () => {
-  type FakeCreate = (params: { messages: { role: string; content: string }[] }) => Promise<{
-    choices: { message: { content: string } }[];
-  }>;
-  const fakeClient = (create: FakeCreate) =>
-    ({ chat: { completions: { create } } }) as unknown as import("openai").default;
-  const reply = (content: string) => ({ choices: [{ message: { content } }] });
+describe("completeJson（解析失败带着报错重问一次；能力性失败不重试）", () => {
+  /** A fake OpenAI-compatible endpoint that replies with the given contents, in order. */
+  async function serveReplies(replies: string[]) {
+    const seen: Array<{ role: string; content: unknown }[]> = [];
+    const server = createServer((req, res) => {
+      let raw = "";
+      req.on("data", (c) => (raw += c));
+      req.on("end", () => {
+        const body = JSON.parse(raw || "{}");
+        seen.push(body.messages);
+        const content = replies[Math.min(seen.length, replies.length) - 1];
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(
+          JSON.stringify({
+            id: "x",
+            model: body.model,
+            choices: [{ index: 0, message: { role: "assistant", content }, finish_reason: "stop" }],
+            usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+          })
+        );
+      });
+    });
+    servers.push(server);
+    await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
+    const port = (server.address() as AddressInfo).port;
+    return { baseUrl: `http://127.0.0.1:${port}/v1`, seen };
+  }
+
+  const ask = { messages: [{ role: "user" as const, content: "写JSON" }] };
 
   it("第一次输出坏 JSON → 带解析错误重问 → 第二次成功", async () => {
-    const seen: { role: string; content: string }[][] = [];
-    const client = fakeClient(async ({ messages }) => {
-      seen.push(messages);
-      return seen.length === 1 ? reply("这不是JSON") : reply('{"ok":true}');
-    });
-    const { completeWithJsonRetry } = await import("@/lib/script-engine/generator");
-    const out = await completeWithJsonRetry(client, { model: "m", messages: [{ role: "user", content: "写JSON" }] }, {}, (c) => {
-      return JSON.parse(extractJSON(c)) as { ok: boolean };
-    });
+    const { baseUrl, seen } = await serveReplies(["这不是JSON", '{"ok":true}']);
+    const out = await completeJson(
+      { baseUrl, apiKey: "k", model: "m" },
+      ask,
+      (c) => JSON.parse(extractJSON(c)) as { ok: boolean }
+    );
     expect(out).toEqual({ ok: true });
     // 第二轮 messages 追加了 assistant 原文 + 纠错指令
     expect(seen[1]).toHaveLength(3);
-    expect(seen[1][1]).toMatchObject({ role: "assistant", content: "这不是JSON" });
-    expect(seen[1][2].content).toContain("无法解析");
+    expect(seen[1][1]).toMatchObject({ role: "assistant" });
+    expect(String(seen[1][2].content)).toContain("无法解析");
   });
 
-  it("两次都失败 → 抛最后一次解析错误", async () => {
-    const client = fakeClient(async () => reply("还是不是JSON"));
-    const { completeWithJsonRetry } = await import("@/lib/script-engine/generator");
-    await expect(
-      completeWithJsonRetry(client, { model: "m", messages: [{ role: "user", content: "x" }] }, {}, (c) => JSON.parse(c)),
-    ).rejects.toThrow();
+  it("两次都失败 → 抛最后一次解析错误，且只问两次", async () => {
+    const { baseUrl, seen } = await serveReplies(["还是不是JSON"]);
+    await expect(completeJson({ baseUrl, apiKey: "k", model: "m" }, ask, (c) => JSON.parse(c))).rejects.toThrow();
+    expect(seen).toHaveLength(2);
   });
 
   it("LLMRequestError（模型能力判定）不重试直接抛", async () => {
-    let calls = 0;
-    const client = fakeClient(async () => {
-      calls++;
-      return reply('{"shots":[]}');
-    });
-    const { completeWithJsonRetry } = await import("@/lib/script-engine/generator");
-    const { LLMRequestError } = await import("@/lib/llm-error");
+    const { baseUrl, seen } = await serveReplies(['{"shots":[]}']);
     await expect(
-      completeWithJsonRetry(client, { model: "m", messages: [{ role: "user", content: "x" }] }, {}, () => {
+      completeJson({ baseUrl, apiKey: "k", model: "m" }, ask, () => {
         throw new LLMRequestError("模型太弱", "model too weak");
-      }),
+      })
     ).rejects.toThrow("模型太弱");
-    expect(calls).toBe(1);
+    expect(seen).toHaveLength(1);
+  });
+
+  it("空回复不当成解析失败反复重问，直接报「未返回有效内容」", async () => {
+    const { baseUrl } = await serveReplies(["   "]);
+    await expect(completeJson({ baseUrl, apiKey: "k", model: "m" }, ask, (c) => JSON.parse(c))).rejects.toThrow(
+      "未返回有效内容"
+    );
   });
 });
 

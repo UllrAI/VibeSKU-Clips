@@ -847,7 +847,7 @@ export default function BatchPage() {
                 {configError && (
                   <p className="mt-2 text-xs leading-5 text-destructive" aria-live="polite">
                     {configError}
-                    <Link href="/settings?tab=llm" className="ml-1 underline underline-offset-2 hover:text-foreground">
+                    <Link href="/settings?tab=connect" className="ml-1 underline underline-offset-2 hover:text-foreground">
                       {t("errorNoLlmCta")}
                     </Link>
                   </p>

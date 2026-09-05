@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { useLocale, useT } from "@/lib/i18n";
 import { getVideoModelCapabilities } from "@/lib/model-capabilities";
 import type { Model } from "@/lib/providers/types";
-import type { ProviderSetting } from "@/lib/stores/settings-store";
+import type { MediaSetting } from "@/lib/stores/settings-store";
+import { resolveModelTarget } from "@/lib/gen-params";
 import type { RepairScope, TimedKeyframe, VideoRepairPreview, VideoRepairWarning } from "@/lib/video-repair-plan";
 
 interface AnchorOption {
@@ -35,19 +36,18 @@ export function VideoRepairPanel(props: {
   currentModel?: string | null;
   defaultVideoModel: string;
   models: Model[];
-  providers: Record<string, ProviderSetting>;
+  media: MediaSetting;
   anchors: AnchorOption[];
   onComplete: () => Promise<void> | void;
 }) {
   const t = useT("production");
   const locale = useLocale();
-  const repairModels = useMemo(() => props.models.filter((model) => {
-    if (model.mediaType !== "video" || model.provider !== "atlas-cloud" || !props.providers[model.provider]?.apiKey) return false;
-    const capabilities = getVideoModelCapabilities(model.id, model.supportsAudio, model.provider);
-    const isReferenceEndpoint = model.modes.includes("video-to-video");
-    const hasKnownReferenceSibling = /\/(?:text|image)-to-video$/.test(model.id) && capabilities.referenceVideo === true;
-    return capabilities.referenceVideo === true && (isReferenceEndpoint || hasKnownReferenceSibling);
-  }), [props.models, props.providers]);
+  // Repair rewrites a clip from the clip itself, so only models that take a reference video
+  // qualify — on Prism that is the Seedance family.
+  const repairModels = useMemo(
+    () => props.models.filter((model) => model.mediaType === "video" && getVideoModelCapabilities(model.id).referenceVideo),
+    [props.models]
+  );
   const preferred = useMemo(() => repairModels.find((model) => model.id === props.defaultVideoModel)
     ?? repairModels.find((model) => model.id === props.currentModel)
     ?? repairModels[0], [props.currentModel, props.defaultVideoModel, repairModels]);
@@ -110,8 +110,8 @@ export function VideoRepairPanel(props: {
 
   const execute = async () => {
     if (!selectedModel || !preview || !confirmed) return;
-    const provider = props.providers[selectedModel.provider];
-    if (!provider?.apiKey) return;
+    const target = resolveModelTarget(props.media, selectedModel.id);
+    if (!target) return;
     setBusy("execute"); setMessage("");
     try {
       const response = await fetch(`/api/project/${props.projectId}/repair`, {
@@ -123,8 +123,9 @@ export function VideoRepairPanel(props: {
           operationId: preview.summary.operationId,
           planHash: preview.summary.planHash,
           confirmed: true,
-          apiKey: provider.apiKey,
-          baseUrl: provider.baseUrl,
+          apiKey: target.apiKey,
+          apiSecret: target.apiSecret,
+          baseUrl: target.baseUrl,
         }),
       });
       const data = await response.json();
