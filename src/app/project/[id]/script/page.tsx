@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { LuWand, LuClock, LuImage, LuArrowRight, LuBookmarkPlus, LuLoaderCircle, LuTriangleAlert, LuCircleCheck, LuCircleX, LuPencil, LuFilm, LuZap, LuScale, LuMic, LuPause } from "react-icons/lu";
 import { checkScriptCompliance } from "@/lib/ad-compliance";
@@ -15,9 +15,10 @@ import { Input } from "@/components/ui/input";
 import type { Shot } from "@/lib/db/schema";
 import { JUDGE_META, type JudgeReport, autoApplicableRewrites, autoApplicableDescriptionRewrites } from "@/lib/script-judge";
 import { useTemplateStore } from "@/lib/stores/template-store";
-import { useSettingsStore } from "@/lib/stores/settings-store";
+import { isLLMReady, useSettingsStore } from "@/lib/stores/settings-store";
 import { useCharacterStore } from "@/lib/stores/project-store";
 import { resolveModelTarget, buildImageOptions, buildVideoOptions } from "@/lib/gen-params";
+import { filmModelFor } from "@/lib/storyboard-film";
 import { useT, useLocale } from "@/lib/i18n";
 import { STAGE_LABEL_KEYS } from "@/lib/pipeline-stages";
 import { friendlyError } from "@/lib/friendly-error";
@@ -84,7 +85,7 @@ export default function ScriptPage() {
   const [judgeApplied, setJudgeApplied] = useState(false);
 
   // fetch real scripts by projectId (stored in the scripts table)
-  const loadScripts = async () => {
+  const loadScripts = useCallback(async () => {
     setLoading(true);
     try {
       const [scriptsRes, projectRes] = await Promise.all([
@@ -128,12 +129,12 @@ export default function ScriptPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, t]);
 
   // empty-state "generate script" click: topic projects use the de-commercialized script engine, commerce projects use the product script engine
   const handleGenerate = async () => {
     if (!projectMeta) return;
-    if (!llm.apiKey) {
+    if (!isLLMReady(llm)) {
       setGenError(t("errorNoLlm"));
       return;
     }
@@ -184,60 +185,8 @@ export default function ScriptPage() {
   };
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const [scriptsRes, projectRes] = await Promise.all([
-          fetch(`/api/project/${id}/scripts`),
-          fetch(`/api/project/${id}`),
-        ]);
-        const dbScripts: DbScript[] = scriptsRes.ok ? await scriptsRes.json() : [];
-        if (projectRes.ok) {
-          const proj = await projectRes.json();
-          if (!cancelled) {
-            setProjectName(proj.name ?? proj.productName ?? "");
-            setProjectMeta({
-              productName: proj.productName ?? "",
-              category: proj.productCategory ?? "",
-              description: proj.productDescription ?? "",
-              productImages: Array.isArray(proj.productImages) ? proj.productImages : [],
-              videoMode: proj.videoMode ?? "product_closeup",
-              contentType: proj.contentType ?? "product",
-              topic: proj.topic ?? "",
-            });
-          }
-        }
-        if (cancelled) return;
-        if (Array.isArray(dbScripts) && dbScripts.length > 0) {
-          setScripts(
-            dbScripts.map((s) => ({
-              id: s.id,
-              title: s.title ?? t("untitledScript"),
-              styleType: s.styleType,
-              totalDuration: s.totalDuration ?? 0,
-              shots: s.shots ?? [],
-            }))
-          );
-          // default to the script marked as selected
-          const selIdx = dbScripts.findIndex((s) => s.selected);
-          setSelectedScript(selIdx >= 0 ? selIdx : 0);
-        } else {
-          // no real scripts: stay empty so the render layer shows the "generate" empty state
-          // (fixes issue #3: old logic fell back to the Debao demo data, so users opening their own
-          //  projects saw someone else's demo and thought "I can't find the task I created")
-          setScripts([]);
-        }
-      } catch {
-        if (!cancelled) setScripts([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [id, t]);
+    void loadScripts();
+  }, [loadScripts]);
 
   const currentScript = scripts[selectedScript];
   // pre-render ad compliance scan: rule-check the current script's voiceover and text overlays; warn on risky terms (non-blocking)
@@ -634,9 +583,7 @@ export default function ScriptPage() {
         body: JSON.stringify({
           scriptId: currentScript.id,
           provider: vidTarget.provider,
-          model: vidTarget.model.includes("/reference-to-video")
-            ? vidTarget.model
-            : "bytedance/seedance-2.5/reference-to-video",
+          model: filmModelFor(vidTarget.model),
           apiKey: vidTarget.apiKey,
           apiSecret: vidTarget.apiSecret,
           baseUrl: vidTarget.baseUrl,
@@ -1068,25 +1015,6 @@ export default function ScriptPage() {
                       </>
                     ) : (
                       <><LuScale className="size-4" aria-hidden="true" />{t("judgeButton")}</>
-                    )}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="text-sm"
-                    disabled={autoFinishing}
-                    onClick={autoFinish}
-                    title={t("autoFinishHint")}
-                  >
-                    {autoFinishing ? (
-                      <>
-                        <LuLoaderCircle className="w-4 h-4 mr-1 animate-spin" />
-                        {autoFinishStage || t("autoFinish")}
-                      </>
-                    ) : (
-                      <>
-                        <LuWand className="w-4 h-4 mr-1" />
-                        {t("autoFinish")}
-                      </>
                     )}
                   </Button>
                   <Link href={`/project/${id}/assets`}>

@@ -52,3 +52,22 @@ export const LLM_PRESETS: LLMPreset[] = [
 
 /** The preset a fresh install is steered towards. */
 export const RECOMMENDED_PRESET = LLM_PRESETS[0];
+
+/**
+ * The settings after picking a preset. The user's own key survives a switch between keyed
+ * endpoints; a placeholder key from a keyless preset does not, so a real endpoint never looks
+ * configured with `ollama` in the key field.
+ */
+export function applyLLMPreset<T extends { apiKey: string; model: string; visionModel?: string }>(
+  preset: LLMPreset,
+  current: T,
+): T & { baseUrl: string } {
+  const placeholder = LLM_PRESETS.some((p) => p.apiKey !== undefined && p.apiKey === current.apiKey);
+  return {
+    ...current,
+    baseUrl: preset.baseUrl,
+    model: preset.model,
+    visionModel: preset.visionModel ?? preset.model,
+    apiKey: preset.apiKey ?? (placeholder ? "" : current.apiKey),
+  };
+}

@@ -4,6 +4,8 @@ import {
   dialogueDensityWarnings,
   filmTotalSeconds,
   filmRequestSeconds,
+  filmModelFor,
+  FILM_DEFAULT_MODEL,
   FILM_MAX_SECONDS,
 } from "@/lib/storyboard-film";
 import type { Shot, ScriptCharacter } from "@/lib/db/schema";
@@ -250,5 +252,18 @@ describe("referenceQuotaCheck（付费前参考图配额闸）", () => {
   it("目录里没有的模型不拦（拿不准就放行，判断留给服务端）", async () => {
     const { referenceQuotaCheck } = await import("@/lib/storyboard-film");
     expect(referenceQuotaCheck(99, "some/unknown-model")).toEqual({ ok: true, count: 99 });
+  });
+});
+
+describe("filmModelFor（整片只交给能吃参考包的模型）", () => {
+  it("默认模型是 Prism 目录里的平铺 id，不是旧的路径式 id", () => {
+    expect(FILM_DEFAULT_MODEL).toBe("seedance2.5");
+  });
+
+  it("配置的模型支持参考视频就沿用，否则回退到默认", () => {
+    expect(filmModelFor("seedance2.0")).toBe("seedance2.0");
+    expect(filmModelFor("minimax-h3")).toBe(FILM_DEFAULT_MODEL);
+    expect(filmModelFor("bytedance/seedance-2.5/reference-to-video")).toBe(FILM_DEFAULT_MODEL);
+    expect(filmModelFor(undefined)).toBe(FILM_DEFAULT_MODEL);
   });
 });

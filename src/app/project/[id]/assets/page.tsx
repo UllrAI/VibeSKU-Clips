@@ -39,6 +39,7 @@ import { ProjectHeader } from "@/components/project-header";
 import { DisclosureSection } from "@/components/disclosure-section";
 import { ModelCapabilityPreflight } from "@/components/model-capability-preflight";
 import { getVideoModelCapabilities } from "@/lib/model-capabilities";
+import { filmModelFor } from "@/lib/storyboard-film";
 import {
   checkPromptConsistency,
   compileCreativePrompt,
@@ -847,10 +848,7 @@ export default function AssetsPage() {
         body: JSON.stringify({
           scriptId,
           provider: videoModelTarget.provider,
-          // an explicitly configured reference-to-video model wins; anything else upgrades to the 2.5 film default
-          model: videoModelTarget.model.includes("/reference-to-video")
-            ? videoModelTarget.model
-            : "bytedance/seedance-2.5/reference-to-video",
+          model: filmModelFor(videoModelTarget.model),
           apiKey: videoModelTarget.apiKey,
           apiSecret: videoModelTarget.apiSecret,
           baseUrl: videoModelTarget.baseUrl,
@@ -1233,7 +1231,7 @@ export default function AssetsPage() {
         {pendingTasks.length > 0 && (
           <div className="mb-6 p-4 rounded-xl bg-primary/8 border border-primary/25">
             <div className="flex items-start gap-3">
-              <LuLoaderCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <LuLoaderCircle className="w-5 h-5 text-primary shrink-0 mt-0.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground">
                   {t("pendingTasksTitle", { n: pendingTasks.length })}

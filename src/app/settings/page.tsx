@@ -18,10 +18,9 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { GenerationSettings } from "@/components/generation-settings";
 import { PresenterManager } from "@/components/presenter-manager";
-import { BrandSettings } from "@/components/settings/brand-settings";
 import { ModelPicker } from "@/components/settings/model-picker";
 import { useT } from "@/lib/i18n";
-import { LLM_PRESETS, OPENROUTER_KEYS_URL } from "@/lib/llm-presets";
+import { LLM_PRESETS, OPENROUTER_KEYS_URL, applyLLMPreset } from "@/lib/llm-presets";
 import {
   DEFAULT_IMAGE_QUALITY,
   PRISM_IMAGE_MODELS,
@@ -29,7 +28,7 @@ import {
   type PrismImageQuality,
 } from "@/lib/providers/prism-catalog";
 import { PRISM_CONSOLE_URL } from "@/lib/providers/prism";
-import { isMediaReady, useSettingsStore } from "@/lib/stores/settings-store";
+import { isLLMReady, isMediaReady, useSettingsStore } from "@/lib/stores/settings-store";
 import {
   OPENAI_TTS_PRESETS,
   TTS_PROVIDERS,
@@ -62,17 +61,6 @@ const SECTIONS = [
 type SectionId = (typeof SECTIONS)[number]["id"];
 const SECTION_IDS: string[] = SECTIONS.map((section) => section.id);
 
-const resolutionOptions = [
-  { value: "720p", label: "720p (1280x720)" },
-  { value: "1080p", label: "1080p (1920x1080)" },
-];
-
-const aspectRatioOptions = [
-  { value: "9:16", labelKey: "aspect916" },
-  { value: "16:9", labelKey: "aspect169" },
-  { value: "1:1", labelKey: "aspect11" },
-];
-
 export default function SettingsPage() {
   const t = useT("settings");
   const {
@@ -88,10 +76,6 @@ export default function SettingsPage() {
     setDefaultVideoModel,
     imageQuality,
     setImageQuality,
-    defaultResolution,
-    setDefaultResolution,
-    defaultAspectRatio,
-    setDefaultAspectRatio,
   } = useSettingsStore();
 
   const [section, setSection] = useState<SectionId>("connect");
@@ -107,7 +91,7 @@ export default function SettingsPage() {
   };
 
   const mediaReady = isMediaReady(media);
-  const llmReady = Boolean(llm.apiKey.trim() && llm.baseUrl.trim() && llm.model.trim());
+  const llmReady = isLLMReady(llm);
 
   return (
     <div className="page-canvas min-h-screen">
@@ -224,49 +208,6 @@ export default function SettingsPage() {
                           </SelectContent>
                         </Select>
                       </Field>
-
-                      <Field label={t("defaultResolution")}>
-                        <Select
-                          value={defaultResolution}
-                          onValueChange={(value) => setDefaultResolution(value as "720p" | "1080p")}
-                        >
-                          <SelectTrigger className="w-full" aria-label={t("defaultResolution")}>
-                            <SelectValue>
-                              {(value: string) => resolutionOptions.find((o) => o.value === value)?.label ?? value}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {resolutionOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {option.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
-
-                      <Field label={t("defaultAspectRatio")}>
-                        <Select
-                          value={defaultAspectRatio}
-                          onValueChange={(value) => setDefaultAspectRatio(value as "9:16" | "16:9" | "1:1")}
-                        >
-                          <SelectTrigger className="w-full" aria-label={t("defaultAspectRatio")}>
-                            <SelectValue>
-                              {(value: string) => {
-                                const option = aspectRatioOptions.find((o) => o.value === value);
-                                return option ? t(option.labelKey) : value;
-                              }}
-                            </SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {aspectRatioOptions.map((option) => (
-                              <SelectItem key={option.value} value={option.value}>
-                                {t(option.labelKey)}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </Field>
                     </div>
                     <p className="text-xs text-muted-foreground">{t("modelLimitsHint")}</p>
                   </CardContent>
@@ -283,10 +224,6 @@ export default function SettingsPage() {
                 <div>
                   <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabCharacters")}</h2>
                   <PresenterManager />
-                </div>
-                <div>
-                  <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabBrand")}</h2>
-                  <BrandSettings />
                 </div>
                 <Diagnostics />
               </section>
@@ -496,15 +433,7 @@ function ConnectSection({
                 <button
                   key={preset.label}
                   type="button"
-                  onClick={() =>
-                    setLLM({
-                      ...llm,
-                      baseUrl: preset.baseUrl,
-                      model: preset.model,
-                      visionModel: preset.visionModel ?? preset.model,
-                      ...(preset.apiKey ? { apiKey: preset.apiKey } : {}),
-                    })
-                  }
+                  onClick={() => setLLM(applyLLMPreset(preset, llm))}
                   className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-background px-2.5 py-1 text-xs transition-colors hover:border-primary/40 hover:text-primary"
                 >
                   {preset.label}
@@ -636,7 +565,9 @@ function VoiceSection({
         body: JSON.stringify({ text: t("ttsSample"), ttsConfig: resolveTTSConfig(tts) }),
       });
       if (!response.ok) throw new Error("preview failed");
-      const audio = new Audio(URL.createObjectURL(await response.blob()));
+      const url = URL.createObjectURL(await response.blob());
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
       await audio.play();
       setStatus("idle");
     } catch {

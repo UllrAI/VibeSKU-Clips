@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useSettingsStore } from "@/lib/stores/settings-store";
+import { isLLMReady, useSettingsStore } from "@/lib/stores/settings-store";
 import { buildPublishPack, buildAiDeclaration, type CommentKit } from "@/lib/publish-pack";
 import { buildShopLink } from "@/lib/shop-link";
 import { useT, useLocale } from "@/lib/i18n";
@@ -16,13 +16,13 @@ import { PerformanceFeedback } from "@/components/performance-feedback";
 
 // platform export config (planned feature, for display). name uses an i18n key (nameKey) resolved to the translated text at render time
 const platformConfigs = [
-  { id: "douyin", nameKey: "platformDouyin", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-rose-600" },
-  { id: "kuaishou", nameKey: "platformKuaishou", ratio: "9:16", resolution: "1080p", subtitle: "贴边框", color: "bg-primary" },
-  { id: "xiaohongshu", nameKey: "platformXiaohongshu", ratio: "3:4", resolution: "1440p", subtitle: "手写字体", color: "bg-destructive" },
-  { id: "shipinhao", nameKey: "platformShipinhao", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-success" },
-  { id: "tiktok", nameKey: "platformTiktok", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-slate-800" },
-  { id: "reels", nameKey: "platformReels", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-rose-600" },
-  { id: "shorts", nameKey: "platformShorts", ratio: "9:16", resolution: "1080p", subtitle: "居中+描边", color: "bg-destructive" },
+  { id: "douyin", nameKey: "platformDouyin", ratio: "9:16", resolution: "1080p", color: "bg-rose-600" },
+  { id: "kuaishou", nameKey: "platformKuaishou", ratio: "9:16", resolution: "1080p", color: "bg-primary" },
+  { id: "xiaohongshu", nameKey: "platformXiaohongshu", ratio: "3:4", resolution: "1440p", color: "bg-destructive" },
+  { id: "shipinhao", nameKey: "platformShipinhao", ratio: "9:16", resolution: "1080p", color: "bg-success" },
+  { id: "tiktok", nameKey: "platformTiktok", ratio: "9:16", resolution: "1080p", color: "bg-slate-800" },
+  { id: "reels", nameKey: "platformReels", ratio: "9:16", resolution: "1080p", color: "bg-rose-600" },
+  { id: "shorts", nameKey: "platformShorts", ratio: "9:16", resolution: "1080p", color: "bg-destructive" },
 ];
 
 // A/B variant presets: re-render one video per preset using existing params (subtitle style + BGM mood) to compare which converts better in ads (no key required throughout)
@@ -267,7 +267,7 @@ export default function ExportPage() {
   };
 
   const genDub = async () => {
-    if (!llm.apiKey) { setTool("dub", { error: t("moreDubNeedLlm") }); return; }
+    if (!isLLMReady(llm)) { setTool("dub", { error: t("moreDubNeedLlm") }); return; }
     setTool("dub", { loading: true, error: undefined, note: undefined });
     try {
       const r = await fetch(`/api/project/${id}/dub`, {
@@ -288,7 +288,7 @@ export default function ExportPage() {
     // creator can paste a trackable link wherever the platform allows (bio / cart / description)
     const shopLink = buildShopLink(productMeta?.shopUrl, { affiliateCode: productMeta?.affiliateCode });
     // LLM not configured: fall back to the key-free template copy pack so users can still "copy and publish" (with LLM configured, the AI path below produces better copy)
-    if (!llm.apiKey) {
+    if (!isLLMReady(llm)) {
       const pack = buildPublishPack({
         productName: productMeta?.productName || projectName,
         category: productMeta?.category,
@@ -423,7 +423,7 @@ export default function ExportPage() {
   };
 
   const dateStr = composition?.createdAt
-    ? new Date(composition.createdAt).toLocaleDateString("zh-CN")
+    ? new Date(composition.createdAt).toLocaleDateString(locale === "en" ? "en-US" : "zh-CN")
     : "";
 
   // slim context strip (shared by loading, empty and normal states); global chrome lives in AppShell

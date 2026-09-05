@@ -108,7 +108,7 @@ describe("preflight", () => {
 
   it("warns before dropping reference conditioning the model cannot take", () => {
     const result = preflightVideoGeneration({
-      modelId: "sora2",
+      modelId: "wan2.6",
       resolution: "720p",
       aspectRatio: "9:16",
       chainMode: "off",

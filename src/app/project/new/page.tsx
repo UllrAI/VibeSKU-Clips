@@ -8,7 +8,7 @@ import { useCharacterStore } from "@/lib/stores/project-store";
 import { useTemplateStore } from "@/lib/stores/template-store";
 import { useProductLibraryStore, type ProductItem } from "@/lib/stores/product-library-store";
 import { getExampleProducts, type ExampleProduct } from "@/lib/examples";
-import { useSettingsStore } from "@/lib/stores/settings-store";
+import { isLLMReady, useSettingsStore } from "@/lib/stores/settings-store";
 import { AD_TEMPLATE_GROUPS, listAdTemplates, getAdTemplate, adTemplateScriptDirective, adTemplateStorageKey, recommendAdTemplates, encodeStoredAdTemplate, exportAdTemplateShare, exportAdTemplatePack, AD_TEMPLATE_EDIT_VOCAB, CUSTOM_AD_TEMPLATE_ID, type AdTemplate, type AdTemplateGroupId, type AdTemplateCategory } from "@/lib/ad-templates";
 import { CAMERA_PRESETS } from "@/lib/camera-presets";
 import { LOOK_PRESETS } from "@/lib/look-presets";
@@ -110,7 +110,7 @@ export default function NewProjectPage() {
 
   // check LLM API configuration status
   const { llm, setVisualLook } = useSettingsStore();
-  const isLLMConfigured = llm.apiKey.length > 0;
+  const isLLMConfigured = isLLMReady(llm);
 
   // form state
   const [productName, setProductName] = useState("");
@@ -526,7 +526,7 @@ export default function NewProjectPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: `${productName} 推广`,
+          name: t("projectName", { name: productName }),
           productName,
           productCategory: category,
           productDescription: sellingPoints,

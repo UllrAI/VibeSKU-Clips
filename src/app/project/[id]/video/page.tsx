@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { LuArrowLeft, LuPlay, LuChevronDown, LuArrowRight, LuLoaderCircle, LuMic, LuCircleAlert, LuFilm, LuFlaskConical, LuCheck, LuRefreshCw, LuX } from "react-icons/lu";
+import { Switch } from "@/components/ui/switch";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import { resolveTTSConfig, isPaidTTSReady, getTTSProviderMeta } from "@/lib/tts-presets";
 import Link from "next/link";
@@ -40,11 +41,9 @@ interface VideoClipItem {
 // 合成配置
 interface ComposeConfig {
   ttsEnabled: boolean;
-  ttsVoice: string;
   /** 免费 TTS 音色（未配置付费 TTS 时使用） */
   freeVoice: string;
   bgm: string;
-  subtitleSize: number;
   subtitlePosition: "bottom" | "center" | "top";
   aspectRatio: "9:16" | "16:9" | "1:1";
   resolution: "720p" | "1080p";
@@ -82,13 +81,13 @@ const bgmOptions = [
   { value: "emotional", labelKey: "bgmEmotional" },
 ];
 
-// 转场标签（值为 i18n key）
-const transitionLabels: Record<string, string> = {
-  ai_start_end: "transitionAiStartEnd",
-  ai_reference: "transitionAiReference",
-  direct_concat: "transitionDirectConcat",
-  ffmpeg_fade: "transitionFfmpegFade",
-};
+// The cut only knows two things at compose time: a hard cut or a crossfade. AI seam handling
+// happened at generation, so anything that is not a crossfade renders as a hard cut.
+const transitionOptions = [
+  { value: "direct_concat", labelKey: "transitionDirectConcat" },
+  { value: "ffmpeg_fade", labelKey: "transitionFfmpegFade" },
+] as const;
+const transitionValue = (transition: VideoClipItem["transition"]) => (transition === "ffmpeg_fade" ? "ffmpeg_fade" : "direct_concat");
 
 // 镜头类型标签（labelKey 为 i18n key）
 const shotTypeLabels: Record<Shot["type"], { labelKey: string; color: string }> = {
@@ -122,7 +121,7 @@ export default function VideoPage() {
   const t = useT("video");
   const locale = useLocale();
   const { id } = useParams<{ id: string }>();
-  const { defaultResolution, defaultAspectRatio, tts } = useSettingsStore();
+  const { videoParams, tts } = useSettingsStore();
   const [clips, setClips] = useState<VideoClipItem[]>([]);
   // 分镜缩略图：shotId → 素材文件路径（在时间线里直接预览每段画面）
   const [thumbs, setThumbs] = useState<Record<number, string>>({});
@@ -131,10 +130,8 @@ export default function VideoPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [config, setConfig] = useState<ComposeConfig>({
     ttsEnabled: true,
-    ttsVoice: "female-gentle",
     freeVoice: "zh-CN-XiaoxiaoNeural",
     bgm: "upbeat",
-    subtitleSize: 24,
     subtitlePosition: "bottom",
     aspectRatio: "9:16",
     resolution: "1080p",
@@ -153,18 +150,21 @@ export default function VideoPage() {
   const [composeDone, setComposeDone] = useState(false);
   const [composeError, setComposeError] = useState<string | null>(null);
   const [outputUrl, setOutputUrl] = useState<string | null>(null);
-  // 背景音乐
+  // 背景音乐：上传的文件优先于情绪配乐
   const [bgm, setBgm] = useState<{ path: string; name: string } | null>(null);
   const [bgmUploading, setBgmUploading] = useState(false);
+  const [bgmError, setBgmError] = useState<string | null>(null);
   // 是否已配置付费 TTS（否则配音走免费 Edge keyless TTS）
   const paidTtsReady = isPaidTTSReady(tts);
   // 免费配音试听状态
   const [previewingVoice, setPreviewingVoice] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   // 试听免费音色：合成一小段并播放
   const previewFreeVoice = async () => {
     if (previewingVoice) return;
     setPreviewingVoice(true);
+    setPreviewError(null);
     try {
       const res = await fetch("/api/tts/free", {
         method: "POST",
@@ -172,19 +172,19 @@ export default function VideoPage() {
         body: JSON.stringify({ voice: config.freeVoice, text: t("ttsPreviewText") }),
       });
       if (!res.ok) throw new Error(t("errorPreviewFailed"));
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(await res.blob());
       const audio = new Audio(url);
       audio.onended = () => URL.revokeObjectURL(url);
       await audio.play();
-    } catch {
-      /* 试听失败静默（不阻断主流程） */
+    } catch (e) {
+      setPreviewError(e instanceof Error ? e.message : t("errorPreviewFailed"));
     } finally {
       setPreviewingVoice(false);
     }
   };
   const uploadBgm = async (file: File) => {
     setBgmUploading(true);
+    setBgmError(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
@@ -192,8 +192,8 @@ export default function VideoPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t("errorUploadFailed"));
       setBgm({ path: data.path, name: data.name });
-    } catch {
-      setBgm(null);
+    } catch (e) {
+      setBgmError(e instanceof Error ? e.message : t("errorUploadFailed"));
     } finally {
       setBgmUploading(false);
     }
@@ -261,10 +261,10 @@ export default function VideoPage() {
     };
   }, [id, t]);
 
-  // 用设置里的默认分辨率/比例初始化一次
+  // 画面比例/分辨率沿用设置里的视频默认值
   useEffect(() => {
-    setConfig((c) => ({ ...c, resolution: defaultResolution, aspectRatio: defaultAspectRatio }));
-  }, [defaultResolution, defaultAspectRatio]);
+    setConfig((c) => ({ ...c, resolution: videoParams.resolution, aspectRatio: videoParams.aspectRatio }));
+  }, [videoParams.resolution, videoParams.aspectRatio]);
 
   // Production-console preview hand-off: select the existing real fast profile
   // (720p / veryfast / CRF 26) without touching any paid generation stage.
@@ -423,7 +423,63 @@ export default function VideoPage() {
     });
   };
 
-  /** Run the matrix: sequential compose per combo, each polled by its own compositionId. */
+  /**
+   * One compose request from the current settings. The matrix swaps in its own caption preset,
+   * BGM mood, label and hook copy; everything else is shared with the plain render.
+   */
+  const composeBody = (variant: { captionPreset?: string; bgmMood?: string; label?: string; hookShot?: Shot } = {}) => ({
+    resolution: config.resolution,
+    renderPreset: config.renderPreset,
+    aspectRatio: config.aspectRatio,
+    subtitlePosition: config.subtitlePosition,
+    captionPreset: variant.captionPreset ?? config.captionPreset,
+    transitionOverrides: clips.map((c) => ({ shotId: c.shotId, transition: transitionValue(c.transition) })),
+    ...(variant.label && { label: variant.label }),
+    // hook variant: in-memory voiceover override for shot 1 (the stored script stays untouched)
+    ...(variant.hookShot && { voiceoverOverrides: [{ shotId: variant.hookShot.shotId, voiceover: variant.hookShot.voiceover ?? "" }] }),
+    ...(config.ctaEnabled && config.ctaText.trim() && { ctaText: config.ctaText.trim() }),
+    ...(config.productCard && { productCard: true }),
+    ...(config.bgmDuck && { bgmDuck: true }),
+    ...(!config.voiceGround && { voiceGround: false }),
+    // an uploaded track always wins; otherwise a free CC track is picked by mood
+    ...(bgm?.path
+      ? { bgmPath: bgm.path }
+      : (variant.bgmMood ?? config.bgm) !== "none" && { freeBgm: true, bgmMood: variant.bgmMood ?? config.bgm }),
+    // paid TTS when configured, otherwise the keyless Edge voice
+    ...(config.ttsEnabled && paidTtsReady && { ttsConfig: resolveTTSConfig(tts) }),
+    ...(config.ttsEnabled && !paidTtsReady && { freeTts: { enabled: true, voice: config.freeVoice } }),
+  });
+
+  /** Submit a render, then poll THAT composition by id until it lands (5 min cap). */
+  const compose = async (body: ReturnType<typeof composeBody>): Promise<string> => {
+    const res = await fetch(`/api/project/${id}/compose`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.compositionId) throw new Error(data.error || t("errorComposeFailed"));
+    return new Promise((resolve, reject) => {
+      const stop = (fn: () => void) => {
+        clearInterval(poll);
+        clearTimeout(timeout);
+        fn();
+      };
+      const poll = setInterval(async () => {
+        try {
+          const r = await fetch(`/api/project/${id}/compose?compositionId=${data.compositionId}`);
+          const c = (await r.json()).composition;
+          if (c?.status === "done" && c.url) stop(() => resolve(c.url));
+          else if (c?.status === "failed") stop(() => reject(new Error(t("errorComposeAssets"))));
+        } catch {
+          // transient poll failure — keep trying until the timeout
+        }
+      }, 3000);
+      const timeout = setTimeout(() => stop(() => reject(new Error(t("errorComposeTimeout")))), 300000);
+    });
+  };
+
+  /** Run the matrix: sequential compose per combo. */
   const runMatrix = async () => {
     if (matrixRunning || matrixCombos.length === 0) return;
     setMatrixRunning(true);
@@ -431,55 +487,8 @@ export default function VideoPage() {
     for (let i = 0; i < matrixCombos.length; i++) {
       const combo = matrixCombos[i];
       try {
-        // hook variant: in-memory voiceover override for shot 1 (the stored script stays untouched)
         const variant = combo.hookKey === "base" ? undefined : hookVariants.find((v) => v.hookId === combo.hookKey);
-        const hookShot = variant?.script.shots[0];
-        const res = await fetch(`/api/project/${id}/compose`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            resolution: config.resolution,
-            renderPreset: config.renderPreset,
-            aspectRatio: config.aspectRatio,
-            label: combo.label,
-            ...(hookShot && { voiceoverOverrides: [{ shotId: hookShot.shotId, voiceover: hookShot.voiceover ?? "" }] }),
-            ...(config.ctaEnabled && config.ctaText.trim() && { ctaText: config.ctaText.trim() }),
-            ...(config.productCard && { productCard: true }),
-            captionPreset: combo.caption,
-            ...(config.bgmDuck && { bgmDuck: true }),
-            ...(!config.voiceGround && { voiceGround: false }),
-            // uploaded BGM stays fixed across combos; otherwise the mood dimension picks the free track
-            ...(bgm?.path ? { bgmPath: bgm.path } : { freeBgm: true, bgmMood: combo.bgm }),
-            ...(config.ttsEnabled && paidTtsReady && { ttsConfig: resolveTTSConfig(tts) }),
-            ...(config.ttsEnabled && !paidTtsReady && { freeTts: { enabled: true, voice: config.freeVoice } }),
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.compositionId) throw new Error(data.error || "compose failed");
-        // poll THIS composition by id (avoids the latest-row race across sequential renders)
-        const url: string = await new Promise((resolve, reject) => {
-          const poll = setInterval(async () => {
-            try {
-              const r = await fetch(`/api/project/${id}/compose?compositionId=${data.compositionId}`);
-              const d = await r.json();
-              const c = d.composition;
-              if (!c) return;
-              if (c.status === "done" && c.url) {
-                clearInterval(poll);
-                resolve(c.url);
-              } else if (c.status === "failed") {
-                clearInterval(poll);
-                reject(new Error("failed"));
-              }
-            } catch {
-              // transient poll failure — keep trying until the outer timeout
-            }
-          }, 3000);
-          setTimeout(() => {
-            clearInterval(poll);
-            reject(new Error("timeout"));
-          }, 300000);
-        });
+        const url = await compose(composeBody({ captionPreset: combo.caption, bgmMood: combo.bgm, label: combo.label, hookShot: variant?.script.shots[0] }));
         setMatrixResults((prev) => prev.map((r, idx) => (idx === i ? { ...r, status: "done", url } : r)));
       } catch {
         setMatrixResults((prev) => prev.map((r, idx) => (idx === i ? { ...r, status: "failed" } : r)));
@@ -502,61 +511,7 @@ export default function VideoPage() {
     }, 200);
 
     try {
-      // 提交合成任务（后台异步），随后轮询状态
-      const res = await fetch(`/api/project/${id}/compose`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resolution: config.resolution,
-          renderPreset: config.renderPreset,
-          aspectRatio: config.aspectRatio,
-          ...(config.ctaEnabled && config.ctaText.trim() && { ctaText: config.ctaText.trim() }),
-          ...(config.productCard && { productCard: true }),
-          ...(config.captionPreset !== "standard" && { captionPreset: config.captionPreset }),
-          ...(config.bgmDuck && { bgmDuck: true }),
-          ...(bgm?.path && { bgmPath: bgm.path }),
-          ...(!config.voiceGround && { voiceGround: false }),
-          // 没上传 BGM 且选了非 none 的配乐情绪 → 自动取一条该情绪的免费 CC 配乐（之前这里漏发，下拉形同虚设）
-          ...(!bgm?.path && config.bgm !== "none" && { freeBgm: true, bgmMood: config.bgm }),
-          // 开启配音时：已配付费 TTS 走付费；否则走免费 Edge keyless TTS（无需 Key），合成为每镜生成口播音轨
-          ...(config.ttsEnabled && paidTtsReady && {
-            // 解析后的完整配置（含平台、复用的 Key、默认 baseUrl/模型/音色、可选 GroupId）
-            ttsConfig: resolveTTSConfig(tts),
-          }),
-          ...(config.ttsEnabled && !paidTtsReady && {
-            freeTts: { enabled: true, voice: config.freeVoice },
-          }),
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || t("errorComposeFailed"));
-
-      // 轮询合成状态，直到 done / failed（后台任务，避免长视频请求超时）
-      const url: string = await new Promise((resolve, reject) => {
-        const poll = setInterval(async () => {
-          try {
-            const r = await fetch(`/api/project/${id}/compose`);
-            const d = await r.json();
-            const c = d.composition;
-            if (!c) return;
-            if (c.status === "done" && c.url) {
-              clearInterval(poll);
-              resolve(c.url);
-            } else if (c.status === "failed") {
-              clearInterval(poll);
-              reject(new Error(t("errorComposeAssets")));
-            }
-          } catch {
-            // 单次轮询失败忽略，继续重试
-          }
-        }, 3000);
-        // 兜底超时：5 分钟
-        setTimeout(() => {
-          clearInterval(poll);
-          reject(new Error(t("errorComposeTimeout")));
-        }, 300000);
-      });
-
+      const url = await compose(composeBody());
       clearInterval(timer);
       setComposeProgress(100);
       setOutputUrl(url);
@@ -574,8 +529,6 @@ export default function VideoPage() {
 
   return (
     <div className="min-h-screen page-canvas">
-      {/* project context strip: name + CLICKABLE step navigation — replaces the legacy
-          inline non-clickable stepper this page carried while owned by a parallel session */}
       <ProjectHeader projectName={projectName || t("defaultProjectName")} pageTitle={t("timelineTitle")} />
 
       <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
@@ -674,20 +627,20 @@ export default function VideoPage() {
                       </CardContent>
                     </Card>
 
-                    {/* 转场选择器（最后一个片段后面不显示） */}
+                    {/* the cut into the NEXT clip (stored on that clip); hidden after the last one */}
                     {index < clips.length - 1 && (
                       <div className="flex items-center justify-center py-1.5">
                         <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-muted/20 border border-border/30">
                           <LuChevronDown className="w-3 h-3 text-muted-foreground" />
                           <select
-                            value={clip.transition}
-                            onChange={(e) => updateTransition(clip.shotId, e.target.value)}
+                            value={transitionValue(clips[index + 1].transition)}
+                            aria-label={t("transitionLabel")}
+                            onChange={(e) => updateTransition(clips[index + 1].shotId, e.target.value)}
                             className="text-[11px] text-muted-foreground bg-transparent border-none outline-none cursor-pointer"
                           >
-                            <option value="ai_start_end">{t(transitionLabels.ai_start_end)}</option>
-                            <option value="ai_reference">{t(transitionLabels.ai_reference)}</option>
-                            <option value="direct_concat">{t(transitionLabels.direct_concat)}</option>
-                            <option value="ffmpeg_fade">{t(transitionLabels.ffmpeg_fade)}</option>
+                            {transitionOptions.map((o) => (
+                              <option key={o.value} value={o.value}>{t(o.labelKey)}</option>
+                            ))}
                           </select>
                         </div>
                       </div>
@@ -759,16 +712,11 @@ export default function VideoPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{t("ttsEnableLabel")}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={config.ttsEnabled}
+<Switch
+                    checked={config.ttsEnabled}
                     aria-label={t("ttsEnableLabel")}
-                    onClick={() => setConfig((c) => ({ ...c, ttsEnabled: !c.ttsEnabled }))}
-                    className={`relative h-6 w-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${config.ttsEnabled ? "bg-primary" : "bg-muted"}`}
-                  >
-                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${config.ttsEnabled ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
+                    onCheckedChange={(ttsEnabled) => setConfig((c) => ({ ...c, ttsEnabled }))}
+                  />
                 </div>
                 {config.ttsEnabled && paidTtsReady && (
                   <p className="text-[11px] text-muted-foreground">
@@ -796,12 +744,14 @@ export default function VideoPage() {
                       </SelectContent>
                     </Select>
                     <button
+                      type="button"
                       onClick={previewFreeVoice}
                       disabled={previewingVoice}
                       className="text-[11px] text-primary hover:underline disabled:opacity-50"
                     >
                       {previewingVoice ? t("ttsPreviewing") : t("ttsPreviewCta")}
                     </button>
+                    {previewError && <p className="text-[11px] text-destructive" role="alert">{previewError}</p>}
                   </div>
                 )}
               </CardContent>
@@ -811,7 +761,26 @@ export default function VideoPage() {
             <Card className="surface-panel">
               <CardContent className="p-4 space-y-3">
                 <Label className="text-sm font-medium">{t("bgmSectionLabel")}</Label>
-                <Select value={config.bgm} onValueChange={(v) => setConfig((c) => ({ ...c, bgm: v ?? c.bgm }))}>
+                {/* an uploaded track replaces the mood picker; remove it to go back to free mood tracks */}
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-border/40 bg-muted/10 p-2.5">
+                  <p className="min-w-0 truncate text-[11px] text-muted-foreground">{bgm ? t("bgmSelected", { name: bgm.name }) : t("bgmUploadHint")}</p>
+                  <div className="flex shrink-0 items-center gap-1">
+                    {bgm && (
+                      <button type="button" onClick={() => setBgm(null)} aria-label={t("bgmRemove")} title={t("bgmRemove")} className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/50 hover:text-foreground">
+                        <LuX className="size-3.5" aria-hidden="true" />
+                      </button>
+                    )}
+                    <label>
+                      <input type="file" accept="audio/*" className="hidden" disabled={isComposing || bgmUploading}
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadBgm(f); e.target.value = ""; }} />
+                      <span className={`inline-flex h-8 cursor-pointer items-center rounded-md border border-border/60 px-3 text-xs hover:border-primary/50 ${(isComposing || bgmUploading) ? "pointer-events-none opacity-50" : ""}`}>
+                        {bgmUploading ? t("bgmUploading") : bgm ? t("bgmReplace") : t("bgmUploadCta")}
+                      </span>
+                    </label>
+                  </div>
+                </div>
+                {bgmError && <p className="text-[11px] text-destructive" role="alert">{bgmError}</p>}
+                {!bgm && <Select value={config.bgm} onValueChange={(v) => setConfig((c) => ({ ...c, bgm: v ?? c.bgm }))}>
                   <SelectTrigger className="bg-muted/30 border-border/50 text-xs">
                     {/* Base UI 的 Select.Value 默认显示原始 value，用函数子节点映射为中文标签 */}
                     <SelectValue>
@@ -828,34 +797,24 @@ export default function VideoPage() {
                       </SelectItem>
                     ))}
                   </SelectContent>
-                </Select>
+                </Select>}
                 {/* 旁白闪避：旁白一响压低 BGM、停顿回升，旁白更清晰 */}
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-xs text-muted-foreground">{t("bgmDuckLabel")}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={config.bgmDuck}
+<Switch
+                    checked={config.bgmDuck}
                     aria-label={t("bgmDuckLabel")}
-                    onClick={() => setConfig((c) => ({ ...c, bgmDuck: !c.bgmDuck }))}
-                    className={`relative h-6 w-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${config.bgmDuck ? "bg-primary" : "bg-muted"}`}
-                  >
-                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${config.bgmDuck ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
+                    onCheckedChange={(bgmDuck) => setConfig((c) => ({ ...c, bgmDuck }))}
+                  />
                 </div>
                 {/* 人声落地：TTS 旁白过手机麦频段+AGC 压缩+房间底噪垫底，摆脱「播音棚干声」感（原生模型人声不经过此链） */}
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-xs text-muted-foreground">{t("voiceGroundLabel")}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={config.voiceGround}
+<Switch
+                    checked={config.voiceGround}
                     aria-label={t("voiceGroundLabel")}
-                    onClick={() => setConfig((c) => ({ ...c, voiceGround: !c.voiceGround }))}
-                    className={`relative h-6 w-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${config.voiceGround ? "bg-primary" : "bg-muted"}`}
-                  >
-                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${config.voiceGround ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
+                    onCheckedChange={(voiceGround) => setConfig((c) => ({ ...c, voiceGround }))}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -868,6 +827,8 @@ export default function VideoPage() {
                   {(["bottom", "center", "top"] as const).map((pos) => (
                     <button
                       key={pos}
+                      type="button"
+                      aria-pressed={config.subtitlePosition === pos}
                       onClick={() => setConfig((c) => ({ ...c, subtitlePosition: pos }))}
                       className={`h-9 rounded-md border text-xs transition-colors ${
                         config.subtitlePosition === pos
@@ -908,22 +869,14 @@ export default function VideoPage() {
                 <Label className="text-sm font-medium">{t("complianceLabel")}</Label>
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{t("ctaLabel")}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={config.ctaEnabled}
+                  <Switch
+                    checked={config.ctaEnabled}
                     aria-label={t("ctaLabel")}
-                    onClick={() =>
-                      setConfig((c) => {
-                        const enabling = !c.ctaEnabled;
-                        // 开启且文案为空时，用当前语言的 placeholder 预填，保留一键便利又随语言走
-                        return { ...c, ctaEnabled: enabling, ctaText: enabling && !c.ctaText.trim() ? t("ctaPlaceholder") : c.ctaText };
-                      })
+                    // enabling with empty copy pre-fills the placeholder in the current language
+                    onCheckedChange={(ctaEnabled) =>
+                      setConfig((c) => ({ ...c, ctaEnabled, ctaText: ctaEnabled && !c.ctaText.trim() ? t("ctaPlaceholder") : c.ctaText }))
                     }
-                    className={`relative h-6 w-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${config.ctaEnabled ? "bg-primary" : "bg-muted"}`}
-                  >
-                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${config.ctaEnabled ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
+                  />
                 </div>
                 {config.ctaEnabled && (
                   <Input
@@ -935,16 +888,11 @@ export default function VideoPage() {
                 )}
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">{t("productCardLabel")}</span>
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={config.productCard}
+<Switch
+                    checked={config.productCard}
                     aria-label={t("productCardLabel")}
-                    onClick={() => setConfig((c) => ({ ...c, productCard: !c.productCard }))}
-                    className={`relative h-6 w-11 rounded-full outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${config.productCard ? "bg-primary" : "bg-muted"}`}
-                  >
-                    <div className={`absolute top-1 h-4 w-4 rounded-full bg-white transition-transform ${config.productCard ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
+                    onCheckedChange={(productCard) => setConfig((c) => ({ ...c, productCard }))}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -1019,21 +967,6 @@ export default function VideoPage() {
 
             {/* 合成按钮 */}
             <div className="space-y-3">
-              {/* 背景音乐（可选，合成时混入并自动压低让位配音） */}
-              <div className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-muted/10">
-                <div className="min-w-0">
-                  <p className="text-xs font-medium">{t("bgmOptionalTitle")}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">{bgm ? t("bgmSelected", { name: bgm.name }) : t("bgmUploadHint")}</p>
-                </div>
-                <label className="shrink-0">
-                  <input type="file" accept="audio/*" className="hidden" disabled={isComposing || bgmUploading}
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadBgm(f); e.target.value = ""; }} />
-                  <span className={`inline-flex items-center h-8 px-3 rounded-md border border-border/60 text-xs cursor-pointer hover:border-primary/50 ${(isComposing || bgmUploading) ? "opacity-50 pointer-events-none" : ""}`}>
-                    {bgmUploading ? t("bgmUploading") : bgm ? t("bgmReplace") : t("bgmUploadCta")}
-                  </span>
-                </label>
-              </div>
-
               {/* 合成进度 */}
               {(isComposing || composeDone) && (
                 <div>

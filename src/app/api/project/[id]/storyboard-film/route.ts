@@ -14,15 +14,13 @@ import {
   filmTotalSeconds,
   filmRequestSeconds,
   referenceQuotaCheck,
+  filmModelFor,
   FILM_MAX_SECONDS,
 } from "@/lib/storyboard-film";
 import { toRemoteUsableImage } from "@/lib/remote-image";
 import { probeMedia } from "@/lib/media-probe";
 import { recordAiTask, updateAiTask } from "@/lib/ai-tasks";
 import { apiError, errText } from "@/lib/api-error";
-
-/** Default model for the one-call film pass — Seedance 2.5 reference-to-video (4-30s, native speech) */
-const DEFAULT_FILM_MODEL = "bytedance/seedance-2.5/reference-to-video";
 
 const IMAGE_EXT_RE = /\.(png|jpe?g|webp|bmp|gif)$/i;
 
@@ -68,6 +66,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (!scriptId) {
       return apiError(req, "缺少 scriptId", "Missing scriptId", 400);
     }
+    const filmModel = filmModelFor(model);
 
     const db = getDb();
     const [script] = await db
@@ -108,7 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         shotCount: shots.length,
         seconds: filmRequestSeconds(shots),
         referenceImages: plannedRefs,
-        referenceQuota: referenceQuotaCheck(plannedRefs, model || DEFAULT_FILM_MODEL),
+        referenceQuota: referenceQuotaCheck(plannedRefs, filmModel),
         dialogueWarnings: dialogueDensityWarnings(shots),
       });
     }
@@ -145,7 +144,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const refInputs = [...(characterSheetUrl ? [characterSheetUrl] : []), ...keyframes];
     // pre-spend quota gate: a reference count over the model's schema limit is a guaranteed
     // upstream rejection — block BEFORE the paid submit instead of paying to find out
-    const quota = referenceQuotaCheck(refInputs.length, model || DEFAULT_FILM_MODEL);
+    const quota = referenceQuotaCheck(refInputs.length, filmModel);
     if (!quota.ok) {
       return apiError(
         req,
@@ -168,7 +167,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const opts = (options ?? {}) as { width?: number; height?: number };
     const videoOptions = {
       ...(options ?? {}),
-      modelId: model || DEFAULT_FILM_MODEL,
+      modelId: filmModel,
       mode: "video-to-video" as const,
       prompt,
       referenceImageUrls,
@@ -183,7 +182,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // legacy single-phase path for providers without two-phase task support
     if (!provider.submitVideoTask || !provider.waitForTask) {
       const result = await provider.generateVideo(videoOptions);
-      const saved = await persistFilm(id, result.videoUrls?.[0], model || DEFAULT_FILM_MODEL);
+      const saved = await persistFilm(id, result.videoUrls?.[0], filmModel);
       return NextResponse.json({ ...saved, taskId: result.taskId, modelId: result.modelId, seconds: duration, dialogueWarnings });
     }
 
@@ -267,7 +266,7 @@ async function persistFilm(projectId: string, videoUrl: string | undefined, mode
       ...(probe?.duration ? { duration: Math.round(probe.duration * 1000) } : {}),
       // one-call native generation: no badge burned in — the release gate reports this honestly
       aigcBadge: false,
-      label: `九宫格整片 · ${model.split("/").slice(0, 2).pop() ?? model}`.slice(0, 60),
+      label: `九宫格整片 · ${model}`.slice(0, 60),
       status: "done",
     })
     .returning();

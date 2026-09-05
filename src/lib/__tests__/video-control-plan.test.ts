@@ -102,7 +102,7 @@ describe("video control plan", () => {
 
   it("drops what the model cannot take and says so, instead of failing at the provider", () => {
     const plan = buildVideoControlPlan({
-      modelId: "sora2",
+      modelId: "wan2.6",
       firstFrameUrl: "https://e.com/key.png",
       lastFrameUrl: "https://e.com/end.png",
       characterReferenceUrl: "https://e.com/person.png",

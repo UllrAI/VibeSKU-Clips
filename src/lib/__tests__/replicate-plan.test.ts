@@ -81,7 +81,6 @@ describe("referenceModelFor 模型映射", () => {
 
   it("无 reference 变体的家族 → undefined（UI 据此禁用按钮）", () => {
     expect(referenceModelFor("minimax-h3")).toBeUndefined();
-    expect(referenceModelFor("sora2")).toBeUndefined();
     expect(referenceModelFor("wan2.6")).toBeUndefined();
     expect(referenceModelFor("my-org/unknown")).toBeUndefined();
     expect(referenceModelFor(undefined)).toBeUndefined();

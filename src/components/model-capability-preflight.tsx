@@ -1,15 +1,13 @@
 "use client";
 
-import { useMemo } from "react";
-import { LuCheck, LuCircleHelp, LuSlidersHorizontal, LuTriangleAlert } from "react-icons/lu";
+import { LuCheck, LuSlidersHorizontal, LuTriangleAlert } from "react-icons/lu";
 import type { GenAspectRatio, GenResolution } from "@/lib/gen-params";
 import { preflightVideoGeneration } from "@/lib/model-capabilities";
 import { useT } from "@/lib/i18n";
 
+/** What the chosen model will really do with the current settings, shown before any paid call. */
 export function ModelCapabilityPreflight(props: {
   modelId: string;
-  provider?: string;
-  supportsAudio?: boolean;
   duration?: number;
   resolution: GenResolution;
   aspectRatio: GenAspectRatio;
@@ -19,7 +17,7 @@ export function ModelCapabilityPreflight(props: {
   referenceAudioCount?: number;
 }) {
   const t = useT("assets");
-  const result = useMemo(() => preflightVideoGeneration(props), [props]);
+  const result = preflightVideoGeneration(props);
   const caps = result.capabilities;
   const badges = [
     ["imageToVideo", caps.imageToVideo],
@@ -45,8 +43,8 @@ export function ModelCapabilityPreflight(props: {
         </div>
         <div className="flex flex-wrap gap-1.5">
           {badges.map(([key, supported]) => (
-            <span key={key} className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] ${supported === true ? "border-success/25 bg-success/8 text-success" : supported === false ? "border-border/50 text-muted-foreground/60" : "border-warning/20 text-warning"}`}>
-              {supported === true ? <LuCheck className="h-3 w-3" aria-hidden="true" /> : supported === null ? <LuCircleHelp className="h-3 w-3" aria-hidden="true" /> : null}
+            <span key={key} className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[10px] ${supported ? "border-success/25 bg-success/8 text-success" : "border-border/50 text-muted-foreground/60"}`}>
+              {supported && <LuCheck className="h-3 w-3" aria-hidden="true" />}
               {t(`cap_${key}`)}
             </span>
           ))}
