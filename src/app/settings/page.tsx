@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useState } from "react";
+import { ChevronDown, Clapperboard, MessageSquare, Mic2, Check, TriangleAlert } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import {
   Select,
   SelectContent,
@@ -12,1397 +15,847 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { LuUpload, LuPalette, LuZap, LuCheck, LuTriangleAlert, LuX } from "react-icons/lu";
-import {
-  Atom,
-  Box,
-  ChevronDown,
-  Cpu,
-  Eye,
-  EyeOff,
-  Flame,
-  Globe2,
-  ImageIcon,
-  MessageSquare,
-  Mic2,
-  ShieldCheck,
-  Store,
-  Terminal,
-  Video,
-  Zap,
-} from "lucide-react";
-import { ATLAS_KEYS_URL } from "@/lib/atlas-onekey";
-import { useT } from "@/lib/i18n";
-import { useSettingsStore } from "@/lib/stores/settings-store";
-import { useBrandStore } from "@/lib/stores/brand-store";
-import {
-  TTS_PROVIDERS,
-  OPENAI_TTS_PRESETS,
-  getTTSProviderMeta,
-  resolveTTSConfig,
-  isPaidTTSReady,
-  type TTSProvider,
-} from "@/lib/tts-presets";
-import { mergeCustomModels } from "@/lib/gen-params";
-import { LLM_PRESETS } from "@/lib/llm-presets";
-import { ModelPicker } from "@/components/settings/model-picker";
+import { Switch } from "@/components/ui/switch";
 import { GenerationSettings } from "@/components/generation-settings";
 import { PresenterManager } from "@/components/presenter-manager";
+import { BrandSettings } from "@/components/settings/brand-settings";
+import { ModelPicker } from "@/components/settings/model-picker";
+import { useT } from "@/lib/i18n";
+import { LLM_PRESETS, OPENROUTER_KEYS_URL } from "@/lib/llm-presets";
+import {
+  DEFAULT_IMAGE_QUALITY,
+  PRISM_IMAGE_MODELS,
+  PRISM_VIDEO_MODELS,
+  type PrismImageQuality,
+} from "@/lib/providers/prism-catalog";
+import { PRISM_CONSOLE_URL } from "@/lib/providers/prism";
+import { isMediaReady, useSettingsStore } from "@/lib/stores/settings-store";
+import {
+  OPENAI_TTS_PRESETS,
+  TTS_PROVIDERS,
+  getTTSProviderMeta,
+  isPaidTTSReady,
+  resolveTTSConfig,
+  type TTSProvider,
+} from "@/lib/tts-presets";
 
-// default resolution options
+/**
+ * Settings, in the order someone actually needs them.
+ *
+ * Four sections replace the previous seven tabs, and the first one answers the only question a
+ * new install has: what do I have to connect before this works? Issue #1's finding was that the
+ * old page asked people to understand the app's internal model architecture — seven platforms,
+ * per-capability model pickers, a voice whose key came from a platform chosen in another tab —
+ * before they could make anything. Media is now one credential pair, and everything that is a
+ * refinement rather than a prerequisite sits under "advanced".
+ */
+
+const IMAGE_QUALITIES: PrismImageQuality[] = ["low", "medium", "high", "auto"];
+
+const SECTIONS = [
+  { id: "connect", labelKey: "tabConnect" },
+  { id: "generation", labelKey: "tabGeneration" },
+  { id: "voice", labelKey: "tabTts" },
+  { id: "advanced", labelKey: "tabAdvanced" },
+] as const;
+
+type SectionId = (typeof SECTIONS)[number]["id"];
+const SECTION_IDS: string[] = SECTIONS.map((section) => section.id);
+
 const resolutionOptions = [
   { value: "720p", label: "720p (1280x720)" },
   { value: "1080p", label: "1080p (1920x1080)" },
 ];
 
-// default aspect ratio options (labelKey is rendered per language inside the component)
 const aspectRatioOptions = [
   { value: "9:16", labelKey: "aspect916" },
   { value: "16:9", labelKey: "aspect169" },
   { value: "1:1", labelKey: "aspect11" },
 ];
 
-// Settings sections, in display order (id doubles as the ?tab= value)
-const SETTINGS_SECTIONS = [
-  { id: "providers", labelKey: "tabProviders" },
-  { id: "llm", labelKey: "tabLlm" },
-  { id: "image", labelKey: "tabImage" },
-  { id: "video", labelKey: "tabVideo" },
-  { id: "tts", labelKey: "tabTts" },
-  { id: "characters", labelKey: "tabCharacters" },
-  { id: "brand", labelKey: "tabBrand" },
-];
-const SETTINGS_TABS: string[] = SETTINGS_SECTIONS.map((s) => s.id);
-
-// AI platform configuration list
-const AI_PROVIDERS = [
-  {
-    key: "atlas-cloud",
-    name: "Atlas Cloud",
-    descKey: "providerAtlasDesc",
-    tipKey: "providerAtlasTip",
-    icon: <Globe2 className="size-5" />,
-    iconBg: "bg-primary",
-  },
-  {
-    key: "fal-ai",
-    name: "fal.ai",
-    descKey: "providerFalDesc",
-    tipKey: "providerFalTip",
-    icon: <Zap className="size-5" />,
-    iconBg: "bg-rose-600",
-  },
-  {
-    key: "replicate",
-    name: "Replicate",
-    descKey: "providerReplicateDesc",
-    tipKey: "providerReplicateTip",
-    icon: <Terminal className="size-5" />,
-    iconBg: "bg-stone-700",
-  },
-  {
-    key: "volcengine",
-    name: "火山引擎",
-    descKey: "providerVolcengineDesc",
-    tipKey: "providerVolcengineTip",
-    icon: <Flame className="size-5" />,
-    iconBg: "bg-primary",
-  },
-  {
-    key: "alibaba",
-    name: "阿里百炼",
-    descKey: "providerAlibabaDesc",
-    tipKey: "providerAlibabaTip",
-    icon: <Box className="size-5" />,
-    iconBg: "bg-warning",
-  },
-  {
-    key: "siliconflow",
-    name: "硅基流动",
-    descKey: "providerSiliconflowDesc",
-    tipKey: "providerSiliconflowTip",
-    icon: <Cpu className="size-5" />,
-    iconBg: "bg-success",
-  },
-  {
-    key: "openai",
-    name: "OpenAI",
-    descKey: "providerOpenaiDesc",
-    tipKey: "providerOpenaiTip",
-    icon: <Atom className="size-5" />,
-    iconBg: "bg-stone-800",
-  },
-];
-
-// Map Chinese vendor names by key to i18n display names (English users would otherwise see hard-coded Chinese like "火山引擎/阿里百炼/硅基流动").
-// Only overrides vendors with Chinese names; others (Atlas Cloud/OpenAI, etc.) already use English brand names and use platform.name directly.
-// Note: platform.name is still used as the identity for enabledNames custom model filtering, so we only change the display, not name.
-const PROVIDER_NAME_KEYS: Record<string, string> = {
-  volcengine: "providerVolcengineName",
-  alibaba: "providerAlibabaName",
-  siliconflow: "providerSiliconflowName",
-};
-
-// password input field with show/hide toggle
-function PasswordInput({
-  value,
-  onChange,
-  placeholder,
-  className,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  className?: string;
-}) {
-  const t = useT("settings");
-  const [visible, setVisible] = useState(false);
-
-  return (
-    <div className={`relative ${className ?? ""}`}>
-      <Input
-        type={visible ? "text" : "password"}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="pr-10 font-mono text-xs"
-      />
-      <button
-        type="button"
-        onClick={() => setVisible(!visible)}
-        aria-label={t(visible ? "hideSecret" : "showSecret")}
-        title={t(visible ? "hideSecret" : "showSecret")}
-        className="absolute right-1.5 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        {visible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-      </button>
-    </div>
-  );
-}
-
-// custom toggle switch component
-function Toggle({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
-        checked ? "bg-primary" : "bg-muted"
-      }`}
-    >
-      <span
-        className={`pointer-events-none inline-block h-5 w-5 rounded-full border border-black/10 bg-white transition-transform duration-200 ${
-          checked ? "translate-x-5" : "translate-x-0"
-        }`}
-      />
-    </button>
-  );
-}
-
 export default function SettingsPage() {
   const t = useT("settings");
-  // read settings from store
   const {
-    providers,
+    media,
+    setMedia,
     llm,
-    tts,
-    defaultResolution,
-    defaultAspectRatio,
-    defaultImageModel,
-    defaultVideoModel,
-    customModels,
-    setProvider,
     setLLM,
+    tts,
     setTTS,
-    setDefaultResolution,
-    setDefaultAspectRatio,
+    defaultImageModel,
     setDefaultImageModel,
+    defaultVideoModel,
     setDefaultVideoModel,
-    applyAtlasOneKey,
+    imageQuality,
+    setImageQuality,
+    defaultResolution,
+    setDefaultResolution,
+    defaultAspectRatio,
+    setDefaultAspectRatio,
   } = useSettingsStore();
 
-  // one-click Atlas onboarding: a single Key auto-configures LLM/image-gen/video-gen/TTS
-  const [atlasOneKey, setAtlasOneKey] = useState("");
-  const [atlasApplied, setAtlasApplied] = useState(false);
-  const applyOneKey = () => {
-    if (!atlasOneKey.trim()) return;
-    applyAtlasOneKey(atlasOneKey.trim());
-    setAtlasApplied(true);
-  };
-
-  // TTS preview playback state
-  const [ttsTestStatus, setTtsTestStatus] = useState<"idle" | "testing" | "error">("idle");
-  const testTTS = async () => {
-    setTtsTestStatus("testing");
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        // send the fully resolved config (including per-platform reused Key / default baseUrl / model)
-        body: JSON.stringify({ text: t("ttsSample"), ttsConfig: resolveTTSConfig(tts, providers) }),
-      });
-      if (!res.ok) throw new Error();
-      const blob = await res.blob();
-      new Audio(URL.createObjectURL(blob)).play();
-      setTtsTestStatus("idle");
-    } catch {
-      setTtsTestStatus("error");
-    }
-  };
-
-  // AI platform key connectivity test (real auth probe, not a fake test)
-  const [providerTest, setProviderTest] = useState<Record<string, { state: "idle" | "testing" | "ok" | "invalid" | "unknown"; msg?: string }>>({});
-  const testProvider = async (key: string) => {
-    const p = providers[key];
-    if (!p?.apiKey) return;
-    setProviderTest((s) => ({ ...s, [key]: { state: "testing" } }));
-    try {
-      const res = await fetch("/api/ai/test-provider", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: key, apiKey: p.apiKey, baseUrl: p.baseUrl }),
-      });
-      const data = await res.json();
-      setProviderTest((s) => ({ ...s, [key]: { state: data.status ?? "unknown", msg: data.message } }));
-    } catch {
-      setProviderTest((s) => ({ ...s, [key]: { state: "unknown", msg: t("connectFailed") } }));
-    }
-  };
-
-  // TTS provider metadata / ready state / reset model, voice, and baseUrl to provider defaults when switching providers
-  const ttsMeta = getTTSProviderMeta(tts.provider);
-  const ttsReady = isPaidTTSReady(tts, providers);
-  const onChangeTTSProvider = (provider: TTSProvider) => {
-    const meta = getTTSProviderMeta(provider);
-    setTTS({ ...tts, provider, baseUrl: meta.baseUrl, model: meta.defaultModel, voice: meta.defaultVoice });
-  };
-
-  // save feedback state
-
-  // available model list (fetched from backend aggregated by enabled providers)
-  const [imageModels, setImageModels] = useState<{ id: string; name: string; provider: string }[]>([]);
-  const [videoModels, setVideoModels] = useState<{ id: string; name: string; provider: string }[]>([]);
-  const [modelsLoading, setModelsLoading] = useState(false);
-
-  // providers that are enabled and have an API key (used to fetch model list)
-  const enabledProviders = Object.entries(providers)
-    .filter(([, p]) => p.enabled && p.apiKey)
-    .map(([name, p]) => ({ name, apiKey: p.apiKey, baseUrl: p.baseUrl }));
-  // use provider name set as dependency to avoid re-fetching on every render
-  const enabledKey = enabledProviders.map((p) => p.name).sort().join(",");
-
-  // fetch available image/video models when enabled providers change
+  const [section, setSection] = useState<SectionId>("connect");
   useEffect(() => {
-    if (enabledProviders.length === 0) {
-      setImageModels([]);
-      setVideoModels([]);
-      return;
-    }
-    let cancelled = false;
-    setModelsLoading(true);
-    const fetchModels = async (mediaType: "image" | "video") => {
-      const res = await fetch("/api/ai/models", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ providers: enabledProviders, mediaType }),
-      });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.models ?? [];
-    };
-    Promise.all([fetchModels("image"), fetchModels("video")])
-      .then(([imgs, vids]) => {
-        if (cancelled) return;
-        setImageModels(imgs);
-        setVideoModels(vids);
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setModelsLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabledKey]);
-
-  // merge user custom models into dropdowns (enabled providers only), so custom models can be selected as default
-  const enabledNames = new Set(enabledProviders.map((p) => p.name));
-  const imageModelOptions = mergeCustomModels(imageModels, customModels, "image", enabledNames);
-  const videoModelOptions = mergeCustomModels(videoModels, customModels, "video", enabledNames);
-
-  // auto-select a default model after enabling a provider: if nothing is selected (or the selection is gone) and options exist, fall back to the first one
-  // — prevents the beginner trap of "set up a Key but generation fails because no default model was chosen"
-  const imageIds = imageModelOptions.map((m) => m.id).join(",");
-  const videoIds = videoModelOptions.map((m) => m.id).join(",");
-  useEffect(() => {
-    if (imageModelOptions.length && !imageModelOptions.some((m) => m.id === defaultImageModel)) {
-      setDefaultImageModel(imageModelOptions[0].id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imageIds]);
-  useEffect(() => {
-    if (videoModelOptions.length && !videoModelOptions.some((m) => m.id === defaultVideoModel)) {
-      setDefaultVideoModel(videoModelOptions[0].id);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoIds]);
-
-  // LLM connection test state
-  const [llmTestStatus, setLlmTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
-
-  // Active tab, synced with ?tab= so "go to settings" links can deep-link a section
-  const [tab, setTab] = useState("providers");
-  useEffect(() => {
-    const q = new URLSearchParams(window.location.search).get("tab");
-    if (q && SETTINGS_TABS.includes(q)) setTab(q);
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    if (requested && SECTION_IDS.includes(requested)) setSection(requested as SectionId);
   }, []);
-  const switchTab = (v: string) => {
-    setTab(v);
+  const switchSection = (next: SectionId) => {
+    setSection(next);
     const url = new URL(window.location.href);
-    url.searchParams.set("tab", v);
+    url.searchParams.set("tab", next);
     window.history.replaceState(null, "", url.toString());
   };
 
-  // 系统诊断信息（/api/health），报障截图用
-  const [diagnostics, setDiagnostics] = useState("");
-  const loadDiagnostics = async () => {
-    try {
-      const res = await fetch("/api/health");
-      setDiagnostics(JSON.stringify(await res.json(), null, 2));
-    } catch (e) {
-      setDiagnostics(String(e));
-    }
-  };
-
-  // test LLM connection
-  const [llmTestError, setLlmTestError] = useState("");
-  // 连接通过但仍有值得知道的事（例如该模型输出上限极小）——绿灯照给，附一行提醒
-  const [llmTestWarning, setLlmTestWarning] = useState("");
-  const testLLMConnection = async () => {
-    setLlmTestStatus("testing");
-    setLlmTestError("");
-    setLlmTestWarning("");
-    try {
-      // use server-side test: browser direct calls to provider APIs would be blocked by CORS and falsely report failure
-      const res = await fetch("/api/llm/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model }),
-      });
-      const data = await res.json().catch(() => ({ ok: false }));
-      setLlmTestStatus(data.ok ? "success" : "error");
-      if (!data.ok) setLlmTestError(data.error || t("connectFailed"));
-      if (data.warning) setLlmTestWarning(data.warning);
-    } catch (e) {
-      setLlmTestStatus("error");
-      setLlmTestError(e instanceof Error ? e.message : t("connectFailed"));
-    }
-    // 成功 5 秒后收起；失败保持到下一次测试——可行动的报错往往有两三行，5 秒读不完（issue #19 追问）
-    setTimeout(() => setLlmTestStatus((s) => (s === "error" ? s : "idle")), 5000);
-  };
-
-  // compute AI provider configuration status
-  const hasAnyProvider = Object.values(providers).some(p => p.enabled && p.apiKey);
-
+  const mediaReady = isMediaReady(media);
+  const llmReady = Boolean(llm.apiKey.trim() && llm.baseUrl.trim() && llm.model.trim());
 
   return (
-    <div className="min-h-screen page-canvas">
-      <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-        {/* page title */}
-        <header className="mb-8 border-b border-border/60 pb-6">
+    <div className="page-canvas min-h-screen">
+      <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+        <header className="mb-6 border-b border-border/60 pb-6">
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{t("pageTitle")}</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {t("pageSubtitle")}
-          </p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">{t("pageSubtitle")}</p>
         </header>
 
-        <div className="mb-8 grid items-stretch gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-
-        {/* configuration status banner: surfaces missing setup right at the top (the footer summary is easy to miss) */}
-        {(!llm.apiKey || !hasAnyProvider) && (
-          <div className="rounded-2xl border border-warning/40 bg-warning/10 p-5">
-            <div className="flex items-center gap-2 mb-1.5">
-              <LuTriangleAlert className="w-4 h-4 shrink-0 text-warning" />
-              <h2 className="font-semibold text-sm text-warning dark:text-warning">{t("configBannerTitle")}</h2>
-            </div>
-            <ul className="space-y-1 text-xs text-warning dark:text-warning/90">
-              {!llm.apiKey && <li>{t("llmNotConfigured")}</li>}
-              {!hasAnyProvider && <li>{t("noProvider")}</li>}
-            </ul>
-          </div>
-        )}
-
-        {/* beginner one-click setup: a single Atlas Key auto-configures LLM/image-gen/video-gen/TTS, skipping manual item-by-item setup */}
-        <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 lg:[&:only-child]:col-span-2">
-          <div className="flex items-center gap-2 mb-1">
-            <LuZap className="w-4 h-4 text-primary" />
-            <h2 className="font-semibold text-sm">{t("oneKeyTitle")}</h2>
-          </div>
-          <p className="text-xs text-muted-foreground mb-3">{t("oneKeyDesc")}</p>
-          {atlasApplied ? (
-            <div className="flex items-center gap-2 text-sm text-success">
-              <LuCheck className="w-4 h-4 shrink-0" />
-              <span>{t("oneKeyDone")}</span>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Input
-                type="password"
-                value={atlasOneKey}
-                onChange={(e) => setAtlasOneKey(e.target.value)}
-                placeholder={t("oneKeyPlaceholder")}
-                aria-label={t("oneKeyPlaceholder")}
-                className="flex-1"
-              />
-              <Button onClick={applyOneKey} disabled={!atlasOneKey.trim()} className="brand-fill text-white border-0 shrink-0">
-                <LuZap className="w-4 h-4 mr-1.5" />
-                {t("oneKeyCta")}
-              </Button>
-            </div>
-          )}
-          <a href={ATLAS_KEYS_URL} target="_blank" rel="noreferrer" className="inline-block mt-2 text-xs text-primary hover:underline">
-            {t("oneKeyGetKey")}
-          </a>
-        </div>
-        </div>
-
-        {/* tabs */}
-        <div className="md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:items-start md:gap-6 lg:gap-8">
-          {/* Section rail: vertical on desktop (native settings-window feel), horizontal scroll on mobile */}
-          <nav aria-label={t("pageTitle")} className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-2 md:sticky md:top-6 md:mb-0 md:flex-col">
-            {SETTINGS_SECTIONS.map((sec) => (
+        <div className="md:grid md:grid-cols-[12rem_minmax(0,1fr)] md:items-start md:gap-6 lg:gap-8">
+          <nav
+            aria-label={t("pageTitle")}
+            className="mb-6 flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-2 md:sticky md:top-6 md:mb-0 md:flex-col"
+          >
+            {SECTIONS.map((item) => (
               <button
-                key={sec.id}
+                key={item.id}
                 type="button"
-                onClick={() => switchTab(sec.id)}
-                className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                  tab === sec.id
+                onClick={() => switchSection(item.id)}
+                aria-current={section === item.id ? "page" : undefined}
+                className={`flex items-center justify-between gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                  section === item.id
                     ? "bg-primary/15 font-medium text-primary"
                     : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                 }`}
               >
-                {t(sec.labelKey)}
+                {t(item.labelKey)}
+                {/* Only the script model is genuinely required; Prism is optional if you stay on
+                    the free stock path, so a missing Prism key is not a warning. */}
+                {item.id === "connect" && !llmReady && (
+                  <TriangleAlert className="size-3.5 shrink-0 text-warning" aria-hidden="true" />
+                )}
               </button>
             ))}
           </nav>
 
-          {/* Tab 1: AI provider configuration */}
-          {tab === "providers" && (
-          <section className="min-w-0 flex-1">
-            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabProviders")}</h2>
-            <div className="grid gap-4 2xl:grid-cols-2">
-              {AI_PROVIDERS.map((platform) => {
-                const provider = providers[platform.key] ?? {
-                  enabled: false,
-                  apiKey: "",
-                };
+          <div className="min-w-0 flex-1">
+            {section === "connect" && (
+              <ConnectSection
+                media={media}
+                setMedia={setMedia}
+                llm={llm}
+                setLLM={setLLM}
+                mediaReady={mediaReady}
+                llmReady={llmReady}
+              />
+            )}
 
-                return (
-                  <Card key={platform.key} className="surface-panel h-full">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        {/* provider info */}
-                        <div className="flex items-start gap-3 flex-1 min-w-0">
-                          <div
-                            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${platform.iconBg} text-white`}
-                          >
-                            {platform.icon}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h3 className="font-semibold text-sm">
-                                {PROVIDER_NAME_KEYS[platform.key] ? t(PROVIDER_NAME_KEYS[platform.key]) : platform.name}
-                              </h3>
-                              {provider.enabled && (
-                                <span className="inline-flex items-center rounded-full bg-success/15 px-2 py-0.5 text-xs text-success">
-                                  {t("providerEnabled")}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground leading-relaxed">
-                              {t(platform.descKey)}
-                            </p>
-                            <p className="text-[11px] text-muted-foreground/70 mt-0.5">{t(platform.tipKey)}</p>
-                          </div>
-                        </div>
-
-                        {/* enable toggle */}
-                        <Toggle
-                          checked={provider.enabled}
-                          label={t("toggleProvider", { name: PROVIDER_NAME_KEYS[platform.key] ? t(PROVIDER_NAME_KEYS[platform.key]) : platform.name })}
-                          onChange={(enabled) =>
-                            setProvider(platform.key, {
-                              ...provider,
-                              enabled,
-                            })
-                          }
-                        />
-                      </div>
-
-                      {provider.enabled && (
-                      <>
-                      {/* API Key input */}
-                      <div className="mt-4 border-t border-border/50 pt-4">
-                        <Label className="text-xs text-muted-foreground mb-1.5">
-                          API Key
-                        </Label>
-                        <PasswordInput
-                          value={provider.apiKey}
-                          onChange={(apiKey) =>
-                            setProvider(platform.key, {
-                              ...provider,
-                              apiKey,
-                            })
-                          }
-                          placeholder={t("apiKeyPlaceholder", { name: platform.name })}
-                        />
-                        {/* Key connectivity test uses a real auth probe. */}
-                        <div className="mt-2 flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-xs h-7"
-                            disabled={!provider.apiKey || providerTest[platform.key]?.state === "testing"}
-                            onClick={() => testProvider(platform.key)}
-                          >
-                            {providerTest[platform.key]?.state === "testing" ? t("llmTestTesting") : t("llmTestButton")}
-                          </Button>
-                          {(() => {
-                            const r = providerTest[platform.key];
-                            if (!r || r.state === "idle" || r.state === "testing") return null;
-                            const color = r.state === "ok" ? "text-success" : r.state === "invalid" ? "text-destructive" : "text-warning";
-                            const StatusIcon = r.state === "ok" ? LuCheck : r.state === "invalid" ? LuX : LuTriangleAlert;
-                            return <span className={`inline-flex items-center gap-1 text-xs ${color}`}><StatusIcon className="size-3.5" />{r.msg}</span>;
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* custom endpoint (proxy/self-hosted, optional) — collapsed by default so beginners are not disturbed */}
-                      <details className="mt-3">
-                        <summary className="text-xs text-muted-foreground/70 cursor-pointer list-none select-none hover:text-muted-foreground">
-                          {t("providerBaseUrlLabel")}
-                        </summary>
-                        <div className="mt-2">
-                          <Input
-                            value={provider.baseUrl ?? ""}
-                            onChange={(e) =>
-                              setProvider(platform.key, {
-                                ...provider,
-                                baseUrl: e.target.value || undefined,
-                              })
-                            }
-                            placeholder={t("providerBaseUrlPlaceholder")}
-                            className="font-mono text-xs"
-                          />
-                        </div>
-                      </details>
-                      </>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          </section>
-          )}
-
-          {/* Tab 2: LLM configuration */}
-          {tab === "llm" && (
-          <section className="min-w-0 flex-1">
-            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabLlm")}</h2>
-            <div className="space-y-6">
-              {/* LLM Provider configuration */}
-              <Card className="surface-panel">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-4">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                      <MessageSquare className="size-4" />
-                    </div>
-                    <h3 className="font-semibold text-sm">{t("llmProvider")}</h3>
-                  </div>
-
-                  {/* quick presets */}
-                  <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border/50">
-                    <p className="text-xs text-muted-foreground mb-2">{t("llmPresetHint")}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {LLM_PRESETS.map((preset) => (
-                        <button
-                          key={preset.label}
-                          onClick={() => setLLM({ ...llm, baseUrl: preset.baseUrl, model: preset.model, visionModel: preset.model, ...(preset.apiKey ? { apiKey: preset.apiKey } : {}) })}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs border border-border/50 bg-background hover:border-primary/40 hover:text-primary transition-colors"
-                        >
-                          {preset.label}
-                          {preset.tipKey && (
-                            <span className="text-[10px] text-muted-foreground/70">({t(preset.tipKey as Parameters<typeof t>[0])})</span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="grid gap-4">
-                    {/* API base URL */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {t("llmBaseUrlLabel")}
-                      </Label>
-                      <Input
-                        value={llm.baseUrl}
-                        onChange={(e) =>
-                          setLLM({ ...llm, baseUrl: e.target.value })
-                        }
-                        placeholder="https://api.openai.com/v1"
-                        className="font-mono text-xs"
-                      />
-                    </div>
-
-                    {/* API Key */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {t("apiKeyLabel")}
-                      </Label>
-                      <PasswordInput
-                        value={llm.apiKey}
-                        onChange={(apiKey) => setLLM({ ...llm, apiKey })}
-                        placeholder={t("llmApiKeyPlaceholder")}
-                      />
-                      {/* Pollinations 已改为「注册领每日免费额度」，直接把领 Key 的地址摆在输入框下面 */}
-                      {/pollinations\.ai/i.test(llm.baseUrl) && (
-                        <p className="text-xs text-muted-foreground">
-                          {t("pollinationsKeyHint")}{" "}
-                          <a
-                            href="https://enter.pollinations.ai/keys"
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-primary underline underline-offset-2"
-                          >
-                            enter.pollinations.ai/keys
-                          </a>
-                        </p>
-                      )}
-                    </div>
-
-                    {/* model name */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">
-                          {t("llmTextModel")}
-                        </Label>
-                        <Input
-                          value={llm.model}
-                          onChange={(e) =>
-                            setLLM({ ...llm, model: e.target.value })
-                          }
-                          placeholder="gpt-4o"
-                          className="font-mono text-xs"
-                        />
-                        {/* 模型名靠手打是最常见的错配来源，本地 Ollama 还必须带 :tag（issue #19 追问） */}
-                        <ModelPicker
-                          baseUrl={llm.baseUrl}
-                          apiKey={llm.apiKey}
-                          onPick={(model) => setLLM({ ...llm, model })}
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">
-                          {t("llmVisionModel")}
-                        </Label>
-                        <Input
-                          value={llm.visionModel ?? ""}
-                          onChange={(e) =>
-                            setLLM({
-                              ...llm,
-                              visionModel: e.target.value || undefined,
-                            })
-                          }
-                          placeholder="gpt-4o"
-                          className="font-mono text-xs"
-                        />
-                        <ModelPicker
-                          baseUrl={llm.baseUrl}
-                          apiKey={llm.apiKey}
-                          onPick={(visionModel) => setLLM({ ...llm, visionModel })}
-                        />
-                      </div>
-                    </div>
-                    {/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\]):11434/i.test(llm.baseUrl) && (
-                      <p className="text-xs text-muted-foreground -mt-2">{t("ollamaModelHint")}</p>
-                    )}
-
-                    {/* test connection button */}
-                    <div className="pt-3 mt-3 border-t border-border/50">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={testLLMConnection}
-                        disabled={!llm.apiKey || !llm.baseUrl || llmTestStatus === "testing"}
-                        className={`text-xs ${
-                          llmTestStatus === "success"
-                            ? "text-success"
-                            : llmTestStatus === "error"
-                            ? "text-destructive"
-                            : ""
-                        }`}
-                      >
-                        {llmTestStatus === "testing" ? t("llmTestTesting")
-                         : llmTestStatus === "success" ? t("llmTestSuccess")
-                         : llmTestStatus === "error" ? t("llmTestError")
-                         : t("llmTestButton")}
-                      </Button>
-                      {!llm.apiKey && (
-                        <span className="text-xs text-muted-foreground ml-2">{t("llmFillKeyFirst")}</span>
-                      )}
-                      {llmTestStatus === "error" && llmTestError && (
-                        <p className="mt-2 text-xs text-destructive break-all">{llmTestError}</p>
-                      )}
-                      {llmTestWarning && (
-                        <p className="mt-2 text-xs text-warning break-all">{llmTestWarning}</p>
-                      )}
-                      <p className="mt-2 text-[11px] text-muted-foreground">{t("llmTestTip")}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </section>
-          )}
-
-          {/* Tab: TTS voice-over */}
-          {tab === "tts" && (
-          <section className="min-w-0 flex-1">
-            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabTts")}</h2>
-            <div className="space-y-6">
-              {/* TTS voiceover */}
-              <Card className="surface-panel">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between mb-4">
+            {section === "generation" && (
+              <section className="space-y-6">
+                <h2 className="text-lg font-semibold tracking-tight">{t("tabGeneration")}</h2>
+                <Card className="surface-panel">
+                  <CardContent className="space-y-4 p-5">
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white">
-                        <Mic2 className="size-4" />
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                        <Clapperboard className="size-4" />
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-sm">{t("ttsTitle")}</h3>
-                        <p className="text-xs text-muted-foreground">{t("ttsSubtitle")}</p>
-                      </div>
+                      <h3 className="text-sm font-semibold">{t("defaultsCardTitle")}</h3>
                     </div>
-                    <Toggle label={t("toggleTts")} checked={tts.enabled} onChange={(v) => setTTS({ ...tts, enabled: v })} />
-                  </div>
 
-                  {tts.enabled && (
-                    <div className="space-y-4">
-                      {/* TTS provider selection */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-muted-foreground">{t("ttsProviderLabel")}</Label>
-                        <Select value={tts.provider ?? "openai"} onValueChange={(v) => onChangeTTSProvider((v ?? "openai") as TTSProvider)}>
-                          <SelectTrigger className="w-full" aria-label={t("ttsProviderLabel")}>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label={t("defaultVideoModel")}>
+                        <Select value={defaultVideoModel} onValueChange={(value) => setDefaultVideoModel(value ?? "")}>
+                          <SelectTrigger className="w-full" aria-label={t("defaultVideoModel")}>
                             <SelectValue>
-                              {(value: string) => TTS_PROVIDERS.find((p) => p.value === value)?.label ?? t("ttsProviderFallback")}
+                              {(value: string) =>
+                                PRISM_VIDEO_MODELS.find((model) => model.id === value)?.name ?? t("selectVideoModel")
+                              }
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            {TTS_PROVIDERS.map((p) => (
-                              <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
+                            {PRISM_VIDEO_MODELS.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name} · {model.note}
+                              </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        {ttsMeta.hint && <p className="text-[11px] text-muted-foreground/80">{ttsMeta.hint}</p>}
-                      </div>
+                      </Field>
 
-                      {ttsMeta.value === "openai" ? (
-                        <>
-                          {/* OpenAI-compatible: quick presets + baseUrl + Key + free model/voice */}
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-2">{t("ttsPresetHint")}</p>
-                            <div className="flex flex-wrap gap-2">
-                              {OPENAI_TTS_PRESETS.map((p) => (
-                                <button
-                                  key={p.label}
-                                  onClick={() => setTTS({ ...tts, baseUrl: p.baseUrl, model: p.model, voice: p.voice })}
-                                  className="px-2.5 h-7 rounded-md border border-border/60 bg-muted/20 text-xs hover:border-primary/50 hover:text-primary transition-colors"
-                                >
-                                  {p.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">{t("ttsBaseUrlLabel")}</Label>
-                            <Input value={tts.baseUrl} onChange={(e) => setTTS({ ...tts, baseUrl: e.target.value })} placeholder="https://api.siliconflow.cn/v1" className="font-mono text-xs" />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs text-muted-foreground">{t("apiKeyLabel")}</Label>
-                            <PasswordInput value={tts.apiKey} onChange={(apiKey) => setTTS({ ...tts, apiKey })} placeholder={t("ttsApiKeyPlaceholder")} />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">{t("ttsModelLabel")}</Label>
-                              <Input value={tts.model} onChange={(e) => setTTS({ ...tts, model: e.target.value })} placeholder="tts-1" className="font-mono text-xs" />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">{t("ttsVoiceLabel")}</Label>
-                              <Input value={tts.voice} onChange={(e) => setTTS({ ...tts, voice: e.target.value })} placeholder="alloy" className="font-mono text-xs" />
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          {/* Atlas / MiniMax / fal: Key (reused or custom) + optional GroupId/baseUrl + model/voice dropdowns */}
-                          {ttsMeta.keySource === "tts" ? (
-                            <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">{t("apiKeyLabel")}</Label>
-                              <PasswordInput value={tts.apiKey} onChange={(apiKey) => setTTS({ ...tts, apiKey })} placeholder={t("ttsApiKeyPlaceholderShort")} />
-                            </div>
-                          ) : (
-                            <div className="text-xs rounded-md border border-border/60 bg-muted/20 px-3 py-2">
-                              {providers[ttsMeta.keySource]?.apiKey ? (
-                                <span className="text-success">{t("ttsKeyReused")}</span>
-                              ) : (
-                                <span className="text-warning">{t("ttsKeyMissing")}</span>
-                              )}
-                            </div>
-                          )}
-                          {ttsMeta.editableBaseUrl && (
-                            <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">{t("ttsBaseUrlLabel")}</Label>
-                              <Input value={tts.baseUrl} onChange={(e) => setTTS({ ...tts, baseUrl: e.target.value })} placeholder={ttsMeta.baseUrl} className="font-mono text-xs" />
-                            </div>
-                          )}
-                          {ttsMeta.needsGroupId && (
-                            <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">{t("ttsGroupIdLabel")}</Label>
-                              <Input value={tts.groupId ?? ""} onChange={(e) => setTTS({ ...tts, groupId: e.target.value })} placeholder={t("ttsGroupIdPlaceholder")} className="font-mono text-xs" />
-                            </div>
-                          )}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {ttsMeta.models.length > 0 && (
-                              <div className="space-y-1.5">
-                                <Label className="text-xs text-muted-foreground">{t("ttsModelLabel")}</Label>
-                                <Select value={tts.model || ttsMeta.defaultModel} onValueChange={(v) => setTTS({ ...tts, model: v ?? ttsMeta.defaultModel })}>
-                                  <SelectTrigger className="w-full" aria-label={t("ttsModelLabel")}>
-                                    <SelectValue>{(value: string) => ttsMeta.models.find((o) => o.value === value)?.label ?? value}</SelectValue>
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {ttsMeta.models.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            )}
-                            <div className="space-y-1.5">
-                              <Label className="text-xs text-muted-foreground">{t("ttsVoiceLabel")}</Label>
-                              <Select value={tts.voice || ttsMeta.defaultVoice} onValueChange={(v) => setTTS({ ...tts, voice: v ?? ttsMeta.defaultVoice })}>
-                                <SelectTrigger className="w-full" aria-label={t("ttsVoiceLabel")}>
-                                  <SelectValue>{(value: string) => ttsMeta.voices.find((o) => o.value === value)?.label ?? value}</SelectValue>
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {ttsMeta.voices.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                        </>
-                      )}
+                      <Field label={t("defaultImageModel")}>
+                        <Select value={defaultImageModel} onValueChange={(value) => setDefaultImageModel(value ?? "")}>
+                          <SelectTrigger className="w-full" aria-label={t("defaultImageModel")}>
+                            <SelectValue>
+                              {(value: string) =>
+                                PRISM_IMAGE_MODELS.find((model) => model.id === value)?.name ?? t("selectImageModel")
+                              }
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PRISM_IMAGE_MODELS.map((model) => (
+                              <SelectItem key={model.id} value={model.id}>
+                                {model.name} · {model.note}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
 
-                      {/* preview playback */}
-                      <div className="pt-3 mt-1 border-t border-border/50">
-                        <Button variant="outline" size="sm" onClick={testTTS} disabled={!ttsReady || ttsTestStatus === "testing"} className={`text-xs ${ttsTestStatus === "error" ? "text-destructive" : ""}`}>
-                          {ttsTestStatus === "testing" ? t("ttsTesting") : ttsTestStatus === "error" ? t("ttsTestError") : t("ttsTestButton")}
-                        </Button>
-                        {!ttsReady && <span className="ml-2 text-[11px] text-muted-foreground">{t("ttsFillKeyFirst")}</span>}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </section>
-          )}
+                      <Field label={t("imageQualityLabel")} hint={t("imageQualityHint")}>
+                        <Select
+                          value={imageQuality ?? DEFAULT_IMAGE_QUALITY}
+                          onValueChange={(value) => setImageQuality((value ?? DEFAULT_IMAGE_QUALITY) as PrismImageQuality)}
+                        >
+                          <SelectTrigger className="w-full" aria-label={t("imageQualityLabel")}>
+                            <SelectValue>{(value: string) => t(`imageQuality_${value}`)}</SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {IMAGE_QUALITIES.map((quality) => (
+                              <SelectItem key={quality} value={quality}>
+                                {t(`imageQuality_${quality}`)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
 
-          {/* Tab: image generation — pick the default model (keys live under Platform keys) */}
-          {tab === "image" && (
-          <section className="min-w-0 flex-1">
-            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabImage")}</h2>
-            <div className="space-y-6">
-              <Card className="surface-panel">
-                <CardContent className="p-5">
-                  <h3 className="font-semibold text-sm mb-4">{t("imageCardTitle")}</h3>
-                  <div className="grid grid-cols-1 gap-4">
-                    {/* default image generation model */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {t("defaultImageModel")}
-                      </Label>
-                      <Select
-                        value={defaultImageModel}
-                        onValueChange={(val) => setDefaultImageModel(val ?? "")}
-                        disabled={imageModelOptions.length === 0}
-                      >
-                        <SelectTrigger className="w-full" aria-label={t("defaultImageModel")}>
-                          {/* Base UI Select.Value shows the raw value by default; use a function child to map it to the model name */}
-                          <SelectValue>
-                            {(value: string) =>
-                              imageModelOptions.find((m) => m.id === value)?.name ??
-                              (modelsLoading ? t("modelsLoading") : enabledProviders.length === 0 ? t("enableProviderFirst") : t("selectImageModel"))
-                            }
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {imageModelOptions.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name}{m.custom ? t("customModelSuffix") : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground">{t("modelsFromProvidersHint")}</p>
-                </CardContent>
-              </Card>
-            </div>
-          </section>
-          )}
+                      <Field label={t("defaultResolution")}>
+                        <Select
+                          value={defaultResolution}
+                          onValueChange={(value) => setDefaultResolution(value as "720p" | "1080p")}
+                        >
+                          <SelectTrigger className="w-full" aria-label={t("defaultResolution")}>
+                            <SelectValue>
+                              {(value: string) => resolutionOptions.find((o) => o.value === value)?.label ?? value}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {resolutionOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
 
-          {/* Tab: video generation — default model + output format */}
-          {tab === "video" && (
-          <section className="min-w-0 flex-1">
-            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabVideo")}</h2>
-            <div className="space-y-6">
-              <Card className="surface-panel">
-                <CardContent className="p-5">
-                  <h3 className="font-semibold text-sm mb-4">{t("videoCardTitle")}</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* default video generation model */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {t("defaultVideoModel")}
-                      </Label>
-                      <Select
-                        value={defaultVideoModel}
-                        onValueChange={(val) => setDefaultVideoModel(val ?? "")}
-                        disabled={videoModelOptions.length === 0}
-                      >
-                        <SelectTrigger className="w-full" aria-label={t("defaultVideoModel")}>
-                          {/* Base UI Select.Value shows the raw value by default; use a function child to map it to the model name */}
-                          <SelectValue>
-                            {(value: string) =>
-                              videoModelOptions.find((m) => m.id === value)?.name ??
-                              (modelsLoading ? t("modelsLoading") : enabledProviders.length === 0 ? t("enableProviderFirst") : t("selectVideoModel"))
-                            }
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {videoModelOptions.map((m) => (
-                            <SelectItem key={m.id} value={m.id}>
-                              {m.name}{m.custom ? t("customModelSuffix") : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Field label={t("defaultAspectRatio")}>
+                        <Select
+                          value={defaultAspectRatio}
+                          onValueChange={(value) => setDefaultAspectRatio(value as "9:16" | "16:9" | "1:1")}
+                        >
+                          <SelectTrigger className="w-full" aria-label={t("defaultAspectRatio")}>
+                            <SelectValue>
+                              {(value: string) => {
+                                const option = aspectRatioOptions.find((o) => o.value === value);
+                                return option ? t(option.labelKey) : value;
+                              }}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {aspectRatioOptions.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {t(option.labelKey)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </Field>
                     </div>
-                    {/* default resolution */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {t("defaultResolution")}
-                      </Label>
-                      <Select
-                        value={defaultResolution}
-                        onValueChange={(val) =>
-                          setDefaultResolution(val as "720p" | "1080p")
-                        }
-                      >
-                        <SelectTrigger className="w-full" aria-label={t("defaultResolution")}>
-                          {/* Base UI Select.Value shows the raw value by default; use a function child to map it to a label */}
-                          <SelectValue>
-                            {(value: string) => resolutionOptions.find((o) => o.value === value)?.label ?? value}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {resolutionOptions.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {o.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    {/* default aspect ratio */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs text-muted-foreground">
-                        {t("defaultAspectRatio")}
-                      </Label>
-                      <Select
-                        value={defaultAspectRatio}
-                        onValueChange={(val) =>
-                          setDefaultAspectRatio(
-                            val as "9:16" | "16:9" | "1:1"
-                          )
-                        }
-                      >
-                        <SelectTrigger className="w-full" aria-label={t("defaultAspectRatio")}>
-                          {/* Base UI Select.Value shows the raw value by default; use a function child to map it to a language-specific label */}
-                          <SelectValue>
-                            {(value: string) => {
-                              const o = aspectRatioOptions.find((o) => o.value === value);
-                              return o ? t(o.labelKey) : value;
-                            }}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {aspectRatioOptions.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>
-                              {t(o.labelKey)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground">{t("modelsFromProvidersHint")}</p>
-                </CardContent>
-              </Card>
-            </div>
-          </section>
-          )}
-          {/* Tab 3: character management */}
-          {tab === "characters" && (
-          <section className="min-w-0 flex-1">
-            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabCharacters")}</h2>
-            <PresenterManager />
-          </section>
-          )}
-          {/* Tab 4: brand settings */}
-          {tab === "brand" && (
-          <section className="min-w-0 flex-1">
-            <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabBrand")}</h2>
-            <BrandSettings />
-          </section>
-          )}
-        </div>
+                    <p className="text-xs text-muted-foreground">{t("modelLimitsHint")}</p>
+                  </CardContent>
+                </Card>
 
-        {/* custom model endpoints + generation params (advanced, cross-cutting, collapsed) */}
-        <div className="mt-6">
-              {/* custom model endpoints + generation params (advanced, collapsed by default, does not disturb beginners) */}
-              <details className="group rounded-xl border border-border/50 bg-card/30">
-                <summary className="flex items-center justify-between cursor-pointer list-none select-none px-5 py-3.5 text-sm font-medium text-muted-foreground hover:text-foreground">
-                  <span>{t("advancedSection")}</span>
-                  <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-                </summary>
-                <div className="px-1 pb-1 space-y-4">
-                  <GenerationSettings />
+                <GenerationSettings />
+              </section>
+            )}
+
+            {section === "voice" && <VoiceSection tts={tts} setTTS={setTTS} />}
+
+            {section === "advanced" && (
+              <section className="space-y-8">
+                <div>
+                  <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabCharacters")}</h2>
+                  <PresenterManager />
                 </div>
-              </details>
+                <div>
+                  <h2 className="mb-4 text-lg font-semibold tracking-tight">{t("tabBrand")}</h2>
+                  <BrandSettings />
+                </div>
+                <Diagnostics />
+              </section>
+            )}
+          </div>
         </div>
 
         {/* zustand persists every change instantly — say so instead of showing a fake save button */}
         <p className="mt-8 text-xs text-muted-foreground">{t("autoSaveHint")}</p>
-
-        {/* 系统诊断：报障时让用户点开截图/复制，一次拿到版本、数据库、迁移、ffmpeg 状态（折叠，不与设置项抢注意力） */}
-        <details className="group mt-4 rounded-lg border border-border/40">
-          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
-            <span>{t("diagnosticsTitle")}</span>
-            <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="px-4 pb-4">
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={loadDiagnostics}>
-                {diagnostics ? t("diagnosticsRefresh") : t("diagnosticsShow")}
-              </Button>
-              {diagnostics && (
-                <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(diagnostics)}>
-                  {t("diagnosticsCopy")}
-                </Button>
-              )}
-            </div>
-            {diagnostics && (
-              <pre className="mt-3 max-h-64 overflow-auto rounded bg-muted/30 p-3 text-xs leading-relaxed whitespace-pre-wrap break-all">{diagnostics}</pre>
-            )}
-            <p className="mt-2 text-xs text-muted-foreground">{t("diagnosticsHint")}</p>
-          </div>
-        </details>
       </main>
     </div>
   );
 }
 
-// ==================== character management component ====================
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      {children}
+      {hint && <p className="text-[11px] text-muted-foreground/80">{hint}</p>}
+    </div>
+  );
+}
 
-// ==================== brand settings component ====================
+// ==================== connect ====================
 
-// watermark position options (labelKey is rendered per language inside the component)
-const WATERMARK_POSITIONS = [
-  { value: "top-left" as const, labelKey: "brandPositionTopLeft" },
-  { value: "top-right" as const, labelKey: "brandPositionTopRight" },
-  { value: "bottom-left" as const, labelKey: "brandPositionBottomLeft" },
-  { value: "bottom-right" as const, labelKey: "brandPositionBottomRight" },
-] as const;
+type ConnectionStatus = "idle" | "testing" | "ok" | "invalid" | "unknown";
 
-function BrandSettings() {
+function ConnectSection({
+  media,
+  setMedia,
+  llm,
+  setLLM,
+  mediaReady,
+  llmReady,
+}: {
+  media: ReturnType<typeof useSettingsStore.getState>["media"];
+  setMedia: (media: ReturnType<typeof useSettingsStore.getState>["media"]) => void;
+  llm: ReturnType<typeof useSettingsStore.getState>["llm"];
+  setLLM: (llm: ReturnType<typeof useSettingsStore.getState>["llm"]) => void;
+  mediaReady: boolean;
+  llmReady: boolean;
+}) {
   const t = useT("settings");
-  const { brand, updateBrand, updateWatermark } = useBrandStore();
+  const [mediaStatus, setMediaStatus] = useState<ConnectionStatus>("idle");
+  const [mediaMessage, setMediaMessage] = useState("");
+  const [llmStatus, setLlmStatus] = useState<ConnectionStatus>("idle");
+  const [llmMessage, setLlmMessage] = useState("");
+  const [llmWarning, setLlmWarning] = useState("");
+
+  const testMedia = async () => {
+    setMediaStatus("testing");
+    setMediaMessage("");
+    try {
+      const response = await fetch("/api/ai/test-provider", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiKey: media.apiKey, apiSecret: media.apiSecret, baseUrl: media.baseUrl }),
+      });
+      const data = (await response.json().catch(() => ({ status: "unknown" }))) as {
+        status?: ConnectionStatus;
+        message?: string;
+      };
+      setMediaStatus(data.status === "ok" || data.status === "invalid" ? data.status : "unknown");
+      setMediaMessage(data.message ?? "");
+    } catch (error) {
+      setMediaStatus("unknown");
+      setMediaMessage(error instanceof Error ? error.message : t("connectFailed"));
+    }
+  };
+
+  const testLLM = async () => {
+    setLlmStatus("testing");
+    setLlmMessage("");
+    setLlmWarning("");
+    try {
+      // Server-side: a browser calling a provider directly is blocked by CORS and would report a
+      // working endpoint as broken.
+      const response = await fetch("/api/llm/test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ baseUrl: llm.baseUrl, apiKey: llm.apiKey, model: llm.model }),
+      });
+      const data = (await response.json().catch(() => ({ ok: false }))) as {
+        ok?: boolean;
+        error?: string;
+        warning?: string;
+      };
+      setLlmStatus(data.ok ? "ok" : "invalid");
+      if (!data.ok) setLlmMessage(data.error || t("connectFailed"));
+      if (data.warning) setLlmWarning(data.warning);
+    } catch (error) {
+      setLlmStatus("invalid");
+      setLlmMessage(error instanceof Error ? error.message : t("connectFailed"));
+    }
+  };
 
   return (
-    <div className="space-y-6">
-      {/* shop basic info */}
+    <section className="space-y-6">
+      <h2 className="text-lg font-semibold tracking-tight">{t("tabConnect")}</h2>
+
+      {/* What the app costs, stated once and plainly. Issue #1: "免费" was ambiguous enough that
+          people could not tell which parts needed paying for. */}
+      <div className="rounded-2xl border border-border/60 bg-muted/20 p-5">
+        <h3 className="mb-2 text-sm font-semibold">{t("costTitle")}</h3>
+        <ul className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+          <li>· {t("costApp")}</li>
+          <li>· {t("costStock")}</li>
+          <li>· {t("costScript")}</li>
+          <li>· {t("costMedia")}</li>
+        </ul>
+      </div>
+
+      {/* Media. One credential pair, and the app's recommended connection. */}
       <Card className="surface-panel">
-        <CardContent className="p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Store className="size-4" />
-            </div>
-            <h3 className="font-semibold text-sm">{t("brandShopTitle")}</h3>
-          </div>
-
-          <div className="grid gap-4">
-            {/* shop name */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t("brandNameLabel")}</Label>
-              <Input
-                value={brand.name}
-                onChange={(e) => updateBrand({ name: e.target.value })}
-                placeholder={t("brandNamePlaceholder")}
-                className="text-sm"
-              />
-            </div>
-
-            {/* Logo upload area */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">Logo</Label>
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border-2 border-dashed border-border bg-muted/30 overflow-hidden">
-                  {brand.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- user-selected local preview
-                    <img
-                      src={brand.logoUrl}
-                      alt={t("brandLogoAlt")}
-                      className="h-full w-full object-contain"
-                    />
-                  ) : (
-                    <ImageIcon className="size-6 text-muted-foreground/50" />
-                  )}
-                </div>
-                <div className="flex flex-col gap-2">
-                  <label className="cursor-pointer">
-                    <input
-                      type="file"
-                      aria-label={t("brandUploadLogo")}
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          // convert the selected image to a Data URL for storage
-                          const reader = new FileReader();
-                          reader.onload = (ev) => {
-                            updateBrand({ logoUrl: ev.target?.result as string });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                    <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors">
-                      <LuUpload className="w-3 h-3" />
-                      {t("brandUploadLogo")}
-                    </span>
-                  </label>
-                  {brand.logoUrl && (
-                    <button
-                      onClick={() => updateBrand({ logoUrl: undefined })}
-                      className="text-xs text-destructive hover:underline text-left"
-                    >
-                      {t("brandRemove")}
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* brand color settings */}
-      <Card className="surface-panel">
-        <CardContent className="p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-600 text-white">
-              <LuPalette className="w-4 h-4" />
-            </div>
-            <h3 className="font-semibold text-sm">{t("brandColorTitle")}</h3>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* primary color */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t("brandPrimaryColor")}</Label>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <input
-                    type="color"
-                    aria-label={t("brandPrimaryColor")}
-                    value={brand.primaryColor}
-                    onChange={(e) => updateBrand({ primaryColor: e.target.value })}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <div
-                    className="h-9 w-9 rounded-lg border border-border"
-                    style={{ backgroundColor: brand.primaryColor }}
-                  />
-                </div>
-                <Input
-                  aria-label={t("brandPrimaryColor")}
-                  value={brand.primaryColor}
-                  onChange={(e) => updateBrand({ primaryColor: e.target.value })}
-                  className="font-mono text-xs uppercase flex-1"
-                  maxLength={7}
-                />
-              </div>
-            </div>
-
-            {/* secondary color */}
-            <div className="space-y-1.5">
-              <Label className="text-xs text-muted-foreground">{t("brandSecondaryColor")}</Label>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <input
-                    type="color"
-                    aria-label={t("brandSecondaryColor")}
-                    value={brand.secondaryColor}
-                    onChange={(e) => updateBrand({ secondaryColor: e.target.value })}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  />
-                  <div
-                    className="h-9 w-9 rounded-lg border border-border"
-                    style={{ backgroundColor: brand.secondaryColor }}
-                  />
-                </div>
-                <Input
-                  aria-label={t("brandSecondaryColor")}
-                  value={brand.secondaryColor}
-                  onChange={(e) => updateBrand({ secondaryColor: e.target.value })}
-                  className="font-mono text-xs uppercase flex-1"
-                  maxLength={7}
-                />
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* watermark settings */}
-      <Card className="surface-panel">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-4">
+        <CardContent className="space-y-4 p-5">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-warning text-primary-foreground">
-                <ShieldCheck className="size-4" />
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Clapperboard className="size-4" />
               </div>
-              <h3 className="font-semibold text-sm">{t("brandWatermarkTitle")}</h3>
+              <div>
+                <h3 className="text-sm font-semibold">{t("mediaTitle")}</h3>
+                <p className="text-xs text-muted-foreground">{t("mediaSubtitle")}</p>
+              </div>
             </div>
-            <Toggle
-              label={t("toggleWatermark")}
-              checked={brand.watermark.enabled}
-              onChange={(enabled) => updateWatermark({ enabled })}
-            />
+            <StatusBadge ready={mediaReady} t={t} />
           </div>
 
-          {brand.watermark.enabled && (
-            <div className="space-y-4 pt-2">
-              {/* watermark position */}
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("brandWatermarkPosition")}</Label>
-                <div className="grid grid-cols-4 gap-2">
-                  {WATERMARK_POSITIONS.map((pos) => (
-                    <button
-                      key={pos.value}
-                      onClick={() => updateWatermark({ position: pos.value })}
-                      className={`h-9 rounded-lg border text-xs font-medium transition-colors ${
-                        brand.watermark.position === pos.value
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border bg-background hover:bg-accent text-muted-foreground"
-                      }`}
-                    >
-                      {t(pos.labelKey)}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("mediaKeyLabel")}>
+              <PasswordInput
+                value={media.apiKey}
+                onChange={(apiKey) => setMedia({ ...media, apiKey })}
+                placeholder={t("mediaKeyPlaceholder")}
+              />
+            </Field>
+            <Field label={t("mediaSecretLabel")}>
+              <PasswordInput
+                value={media.apiSecret}
+                onChange={(apiSecret) => setMedia({ ...media, apiSecret })}
+                placeholder={t("mediaSecretPlaceholder")}
+              />
+            </Field>
+          </div>
 
-              {/* opacity */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground">{t("brandWatermarkOpacity")}</Label>
-                  <span className="text-xs text-muted-foreground font-mono">
-                    {Math.round(brand.watermark.opacity * 100)}%
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  aria-label={t("brandWatermarkOpacity")}
-                  min="10"
-                  max="100"
-                  step="5"
-                  value={Math.round(brand.watermark.opacity * 100)}
-                  onChange={(e) =>
-                    updateWatermark({ opacity: Number(e.target.value) / 100 })
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="outline" size="sm" onClick={testMedia} disabled={!mediaReady || mediaStatus === "testing"}>
+              {mediaStatus === "testing" ? t("connectTesting") : t("connectTest")}
+            </Button>
+            <a
+              href={PRISM_CONSOLE_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-primary underline underline-offset-2"
+            >
+              {t("mediaGetKey")}
+            </a>
+            {mediaStatus !== "idle" && mediaStatus !== "testing" && (
+              <span
+                className={`text-xs ${mediaStatus === "ok" ? "text-success" : mediaStatus === "invalid" ? "text-destructive" : "text-warning"}`}
+              >
+                {mediaMessage}
+              </span>
+            )}
+          </div>
+
+          <details className="group rounded-lg border border-border/50">
+            <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
+              <span>{t("mediaAdvanced")}</span>
+              <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="px-3 pb-3">
+              <Field label={t("mediaBaseUrlLabel")} hint={t("mediaBaseUrlHint")}>
+                <Input
+                  value={media.baseUrl ?? ""}
+                  onChange={(event) => setMedia({ ...media, baseUrl: event.target.value || undefined })}
+                  placeholder="https://prism.ullrai.com/api/v1"
+                  className="font-mono text-xs"
+                />
+              </Field>
+            </div>
+          </details>
+        </CardContent>
+      </Card>
+
+      {/* Script model. Any OpenAI-compatible endpoint; OpenRouter listed first. */}
+      <Card className="surface-panel">
+        <CardContent className="space-y-4 p-5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <MessageSquare className="size-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold">{t("llmProvider")}</h3>
+                <p className="text-xs text-muted-foreground">{t("llmSubtitle")}</p>
+              </div>
+            </div>
+            <StatusBadge ready={llmReady} t={t} />
+          </div>
+
+          <div className="rounded-lg border border-border/50 bg-muted/40 p-3">
+            <p className="mb-2 text-xs text-muted-foreground">{t("llmPresetHint")}</p>
+            <div className="flex flex-wrap gap-2">
+              {LLM_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() =>
+                    setLLM({
+                      ...llm,
+                      baseUrl: preset.baseUrl,
+                      model: preset.model,
+                      visionModel: preset.visionModel ?? preset.model,
+                      ...(preset.apiKey ? { apiKey: preset.apiKey } : {}),
+                    })
                   }
-                  className="w-full h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
-                />
-                <div className="flex justify-between text-[10px] text-muted-foreground/50">
-                  <span>10%</span>
-                  <span>100%</span>
-                </div>
-              </div>
+                  className="inline-flex items-center gap-1 rounded-md border border-border/50 bg-background px-2.5 py-1 text-xs transition-colors hover:border-primary/40 hover:text-primary"
+                >
+                  {preset.label}
+                  {preset.tipKey && (
+                    <span className="text-[10px] text-muted-foreground/70">
+                      ({t(preset.tipKey)})
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
+          </div>
+
+          <Field label={t("llmBaseUrlLabel")}>
+            <Input
+              value={llm.baseUrl}
+              onChange={(event) => setLLM({ ...llm, baseUrl: event.target.value })}
+              placeholder="https://openrouter.ai/api/v1"
+              className="font-mono text-xs"
+            />
+          </Field>
+
+          <Field label={t("apiKeyLabel")}>
+            <PasswordInput
+              value={llm.apiKey}
+              onChange={(apiKey) => setLLM({ ...llm, apiKey })}
+              placeholder={t("llmApiKeyPlaceholder")}
+            />
+            {/openrouter/i.test(llm.baseUrl) && (
+              <a
+                href={OPENROUTER_KEYS_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-primary underline underline-offset-2"
+              >
+                {t("llmGetKey")}
+              </a>
+            )}
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label={t("llmTextModel")}>
+              <Input
+                value={llm.model}
+                onChange={(event) => setLLM({ ...llm, model: event.target.value })}
+                placeholder="openai/gpt-5.4"
+                className="font-mono text-xs"
+              />
+              {/* A hand-typed model name is the single most common misconfiguration, and a local
+                  Ollama additionally requires the :tag (issue #19 follow-up). */}
+              <ModelPicker baseUrl={llm.baseUrl} apiKey={llm.apiKey} onPick={(model) => setLLM({ ...llm, model })} />
+            </Field>
+            <Field label={t("llmVisionModel")} hint={t("llmVisionHint")}>
+              <Input
+                value={llm.visionModel ?? ""}
+                onChange={(event) => setLLM({ ...llm, visionModel: event.target.value || undefined })}
+                placeholder="openai/gpt-5.4"
+                className="font-mono text-xs"
+              />
+              <ModelPicker
+                baseUrl={llm.baseUrl}
+                apiKey={llm.apiKey}
+                onPick={(visionModel) => setLLM({ ...llm, visionModel })}
+              />
+            </Field>
+          </div>
+          {/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\]):11434/i.test(llm.baseUrl) && (
+            <p className="text-xs text-muted-foreground">{t("ollamaModelHint")}</p>
           )}
+
+          <div className="flex flex-wrap items-center gap-3 border-t border-border/50 pt-3">
+            <Button variant="outline" size="sm" onClick={testLLM} disabled={!llmReady || llmStatus === "testing"}>
+              {llmStatus === "testing" ? t("connectTesting") : t("connectTest")}
+            </Button>
+            {llmStatus === "ok" && <span className="text-xs text-success">{t("connectOk")}</span>}
+          </div>
+          {llmStatus === "invalid" && llmMessage && (
+            <p className="break-all text-xs text-destructive">{llmMessage}</p>
+          )}
+          {llmWarning && <p className="break-all text-xs text-warning">{llmWarning}</p>}
+          <p className="text-[11px] text-muted-foreground">{t("llmTestTip")}</p>
         </CardContent>
       </Card>
+    </section>
+  );
+}
 
-      {/* outro settings */}
+function StatusBadge({ ready, t }: { ready: boolean; t: ReturnType<typeof useT> }) {
+  return ready ? (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-success/10 px-2 py-0.5 text-xs text-success">
+      <Check className="size-3" aria-hidden="true" />
+      {t("statusReady")}
+    </span>
+  ) : (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-warning/10 px-2 py-0.5 text-xs text-warning">
+      <TriangleAlert className="size-3" aria-hidden="true" />
+      {t("statusMissing")}
+    </span>
+  );
+}
+
+// ==================== voice ====================
+
+function VoiceSection({
+  tts,
+  setTTS,
+}: {
+  tts: ReturnType<typeof useSettingsStore.getState>["tts"];
+  setTTS: (tts: ReturnType<typeof useSettingsStore.getState>["tts"]) => void;
+}) {
+  const t = useT("settings");
+  const meta = getTTSProviderMeta(tts.provider);
+  const ready = isPaidTTSReady(tts);
+  const [status, setStatus] = useState<"idle" | "testing" | "error">("idle");
+
+  // Switching platform resets the fields that only make sense for the previous one — a MiniMax
+  // voice id sent to an OpenAI-compatible endpoint is a failure with no visible cause.
+  const changeProvider = (provider: TTSProvider) => {
+    const next = getTTSProviderMeta(provider);
+    setTTS({ ...tts, provider, baseUrl: next.baseUrl, model: next.defaultModel, voice: next.defaultVoice });
+  };
+
+  const preview = async () => {
+    setStatus("testing");
+    try {
+      const response = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: t("ttsSample"), ttsConfig: resolveTTSConfig(tts) }),
+      });
+      if (!response.ok) throw new Error("preview failed");
+      const audio = new Audio(URL.createObjectURL(await response.blob()));
+      await audio.play();
+      setStatus("idle");
+    } catch {
+      setStatus("error");
+    }
+  };
+
+  return (
+    <section className="space-y-6">
+      <h2 className="text-lg font-semibold tracking-tight">{t("tabTts")}</h2>
       <Card className="surface-panel">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between mb-4">
+        <CardContent className="space-y-4 p-5">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white">
-                <Video className="size-4" />
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Mic2 className="size-4" />
               </div>
-              <h3 className="font-semibold text-sm">{t("brandOutroTitle")}</h3>
+              <div>
+                <h3 className="text-sm font-semibold">{t("ttsTitle")}</h3>
+                <p className="text-xs text-muted-foreground">{t("ttsSubtitle")}</p>
+              </div>
             </div>
-            <Toggle
-              label={t("toggleOutro")}
-              checked={brand.outroEnabled}
-              onChange={(enabled) => updateBrand({ outroEnabled: enabled })}
+            <Switch
+              aria-label={t("toggleTts")}
+              checked={tts.enabled}
+              onCheckedChange={(enabled) => setTTS({ ...tts, enabled })}
             />
           </div>
 
-          {brand.outroEnabled && (
-            <div className="space-y-1.5 pt-2">
-              <Label className="text-xs text-muted-foreground">{t("brandOutroTextLabel")}</Label>
-              <Textarea
-                value={brand.outroText ?? ""}
-                onChange={(e) => updateBrand({ outroText: e.target.value })}
-                placeholder={t("brandOutroTextPlaceholder")}
-                rows={2}
-                className="text-sm resize-none"
-              />
-              <p className="text-[11px] text-muted-foreground/60">
-                {t("brandOutroTip")}
-              </p>
+          {tts.enabled ? (
+            <div className="space-y-4">
+              <Field label={t("ttsProviderLabel")} hint={meta.hint}>
+                <Select
+                  value={tts.provider ?? "openai"}
+                  onValueChange={(value) => changeProvider((value ?? "openai") as TTSProvider)}
+                >
+                  <SelectTrigger className="w-full" aria-label={t("ttsProviderLabel")}>
+                    <SelectValue>
+                      {(value: string) => TTS_PROVIDERS.find((p) => p.value === value)?.label ?? value}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TTS_PROVIDERS.map((provider) => (
+                      <SelectItem key={provider.value} value={provider.value}>
+                        {provider.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+
+              {meta.value === "openai" && (
+                <div>
+                  <p className="mb-2 text-xs text-muted-foreground">{t("ttsPresetHint")}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {OPENAI_TTS_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => setTTS({ ...tts, baseUrl: preset.baseUrl, model: preset.model, voice: preset.voice })}
+                        className="h-7 rounded-md border border-border/60 bg-muted/20 px-2.5 text-xs transition-colors hover:border-primary/50 hover:text-primary"
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Field label={t("apiKeyLabel")}>
+                <PasswordInput
+                  value={tts.apiKey}
+                  onChange={(apiKey) => setTTS({ ...tts, apiKey })}
+                  placeholder={t("ttsApiKeyPlaceholder")}
+                />
+              </Field>
+
+              {meta.editableBaseUrl && (
+                <Field label={t("ttsBaseUrlLabel")}>
+                  <Input
+                    value={tts.baseUrl}
+                    onChange={(event) => setTTS({ ...tts, baseUrl: event.target.value })}
+                    placeholder={meta.baseUrl}
+                    className="font-mono text-xs"
+                  />
+                </Field>
+              )}
+
+              {meta.needsGroupId && (
+                <Field label={t("ttsGroupIdLabel")}>
+                  <Input
+                    value={tts.groupId ?? ""}
+                    onChange={(event) => setTTS({ ...tts, groupId: event.target.value })}
+                    placeholder={t("ttsGroupIdPlaceholder")}
+                    className="font-mono text-xs"
+                  />
+                </Field>
+              )}
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label={t("ttsModelLabel")}>
+                  {meta.models.length > 0 ? (
+                    <Select
+                      value={tts.model || meta.defaultModel}
+                      onValueChange={(value) => setTTS({ ...tts, model: value ?? meta.defaultModel })}
+                    >
+                      <SelectTrigger className="w-full" aria-label={t("ttsModelLabel")}>
+                        <SelectValue>
+                          {(value: string) => meta.models.find((o) => o.value === value)?.label ?? value}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {meta.models.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={tts.model}
+                      onChange={(event) => setTTS({ ...tts, model: event.target.value })}
+                      placeholder={meta.defaultModel}
+                      className="font-mono text-xs"
+                    />
+                  )}
+                </Field>
+                <Field label={t("ttsVoiceLabel")}>
+                  {meta.voices.length > 0 ? (
+                    <Select
+                      value={tts.voice || meta.defaultVoice}
+                      onValueChange={(value) => setTTS({ ...tts, voice: value ?? meta.defaultVoice })}
+                    >
+                      <SelectTrigger className="w-full" aria-label={t("ttsVoiceLabel")}>
+                        <SelectValue>
+                          {(value: string) => meta.voices.find((o) => o.value === value)?.label ?? value}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {meta.voices.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={tts.voice}
+                      onChange={(event) => setTTS({ ...tts, voice: event.target.value })}
+                      placeholder={meta.defaultVoice}
+                      className="font-mono text-xs"
+                    />
+                  )}
+                </Field>
+              </div>
+
+              <div className="flex items-center gap-3 border-t border-border/50 pt-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={preview}
+                  disabled={!ready || status === "testing"}
+                  className={status === "error" ? "text-destructive" : ""}
+                >
+                  {status === "testing" ? t("ttsTesting") : status === "error" ? t("ttsTestError") : t("ttsTestButton")}
+                </Button>
+                {!ready && <span className="text-[11px] text-muted-foreground">{t("ttsFillKeyFirst")}</span>}
+              </div>
             </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">{t("ttsDisabledHint")}</p>
           )}
         </CardContent>
       </Card>
-    </div>
+    </section>
+  );
+}
+
+// ==================== diagnostics ====================
+
+function Diagnostics() {
+  const t = useT("settings");
+  const [report, setReport] = useState("");
+
+  const load = async () => {
+    try {
+      const response = await fetch("/api/health");
+      setReport(JSON.stringify(await response.json(), null, 2));
+    } catch (error) {
+      setReport(String(error));
+    }
+  };
+
+  return (
+    <details className="group rounded-lg border border-border/40">
+      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground">
+        <span>{t("diagnosticsTitle")}</span>
+        <ChevronDown className="size-4 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="px-4 pb-4">
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={load}>
+            {report ? t("diagnosticsRefresh") : t("diagnosticsShow")}
+          </Button>
+          {report && (
+            <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(report)}>
+              {t("diagnosticsCopy")}
+            </Button>
+          )}
+        </div>
+        {report && (
+          <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-all rounded bg-muted/30 p-3 text-xs leading-relaxed">
+            {report}
+          </pre>
+        )}
+        <p className="mt-2 text-xs text-muted-foreground">{t("diagnosticsHint")}</p>
+      </div>
+    </details>
   );
 }

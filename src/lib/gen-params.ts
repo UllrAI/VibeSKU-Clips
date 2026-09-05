@@ -1,62 +1,38 @@
 /**
- * Pure logic layer for image/video generation "custom parameters" + "custom model endpoints"
- * (shared between frontend and backend, no server-only dependencies).
+ * Pure mapping between the global defaults a user sets once and the per-request options the
+ * provider layer understands (shared by client and server, no server-only dependencies).
  *
- * - Custom models: users can attach any model id on an existing platform (atlas-cloud / fal-ai / replicate…).
- *   The backend /api/ai/image|video already forwards the model to the provider as-is, so adding one entry
- *   makes it immediately selectable from the dropdown.
- * - Custom parameters: maps global defaults from Settings (aspect ratio / resolution / steps / guidance /
- *   duration / fps / seed / negative prompt) into the ImageOptions/VideoOptions fields that providers understand,
- *   and attaches them to generation request options.
+ * Aspect ratio and resolution are stored as human choices ("9:16", "1080p") and converted to
+ * pixels here; the provider converts them back to whatever vocabulary its model uses. Keeping
+ * the round trip in two named places beats scattering `width > height` checks through the app.
  */
 
 export type GenAspectRatio = "9:16" | "16:9" | "1:1";
 export type GenResolution = "720p" | "1080p";
 export type GenMediaType = "image" | "video";
 
-/** User-defined custom model (any model id mounted on an existing platform) */
-export interface CustomModel {
-  /** Locally unique id */
-  id: string;
-  /** Owning platform identifier (matches the key in settings.providers, e.g. "fal-ai") */
-  provider: string;
-  /** Real model id (forwarded as-is to the backend / provider) */
-  modelId: string;
-  /** Display name */
-  name: string;
-  mediaType: GenMediaType;
-  /** Whether the video model natively includes audio (saves TTS for commerce videos) */
-  supportsAudio?: boolean;
-}
-
-/** Global default parameters for image generation */
+/**
+ * Global defaults for image generation.
+ *
+ * Deliberately short: these are exactly the knobs Prism's `/image-gen` reads. Inference steps,
+ * guidance scale and seed used to live here for platforms that took them — the image endpoint
+ * has no such fields, and a control that silently does nothing is worse than no control.
+ */
 export interface ImageGenParams {
   aspectRatio: GenAspectRatio;
-  /** Number of images to generate */
+  /** How many images one generate action produces. */
   count: number;
-  /** Inference steps (leave empty to use the platform default) */
-  steps?: number;
-  /** Guidance scale (leave empty to use the platform default) */
-  guidanceScale?: number;
-  /** Random seed (leave empty to randomize each time) */
-  seed?: number;
-  /** Negative prompt */
   negativePrompt?: string;
 }
 
-/** Global default parameters for video generation */
+/** Global defaults for video generation — again, only what `/video-gen` actually reads. */
 export interface VideoGenParams {
   aspectRatio: GenAspectRatio;
   resolution: GenResolution;
-  /** Duration in seconds (leave empty to use the platform default) */
+  /** Seconds; snapped to the chosen model's allowed values before the call. */
   duration?: number;
-  /** Frame rate (leave empty to use the platform default) */
-  fps?: number;
-  /** Motion strength 0~1 (leave empty to use the platform default) */
-  motionStrength?: number;
-  /** Random seed (leave empty to randomize each time) */
+  /** Leave empty to randomize each time. */
   seed?: number;
-  /** Negative prompt */
   negativePrompt?: string;
 }
 
@@ -67,8 +43,10 @@ export const DEFAULT_IMAGE_PARAMS: ImageGenParams = {
 
 export const DEFAULT_VIDEO_PARAMS: VideoGenParams = {
   aspectRatio: "9:16",
-  resolution: "1080p",
-  duration: 5,
+  // The default model (MiniMax H3) tops out at 720p, so 1080p here would only ever be
+  // silently snapped back down — better to state the truth the user will actually get.
+  resolution: "720p",
+  duration: 6,
 };
 
 export const ASPECT_RATIO_OPTIONS: { value: GenAspectRatio; label: string }[] = [
@@ -110,17 +88,19 @@ export function videoSize(resolution: GenResolution, aspect: GenAspectRatio): { 
   }
 }
 
-/** Maps image parameters to the options object expected by /api/ai/image (field names aligned with ImageOptions) */
-export function buildImageOptions(p: ImageGenParams | undefined): Record<string, unknown> {
+/**
+ * Maps image parameters to the options object expected by /api/ai/image (field names aligned
+ * with ImageOptions). `quality` comes from its own setting rather than from ImageGenParams
+ * because it is a cost decision made once, not a per-shot framing choice.
+ */
+export function buildImageOptions(p: ImageGenParams | undefined, quality?: string): Record<string, unknown> {
   const params = p ?? DEFAULT_IMAGE_PARAMS;
   const { width, height } = imageSize(params.aspectRatio);
   return {
     width,
     height,
     count: params.count ?? 1,
-    ...(params.steps != null && { steps: params.steps }),
-    ...(params.guidanceScale != null && { guidanceScale: params.guidanceScale }),
-    ...(params.seed != null && { seed: params.seed }),
+    ...(quality ? { quality } : {}),
     ...(params.negativePrompt ? { negativePrompt: params.negativePrompt } : {}),
   };
 }
@@ -133,107 +113,44 @@ export function buildVideoOptions(p: VideoGenParams | undefined): Record<string,
     width,
     height,
     ...(params.duration != null && { duration: params.duration }),
-    ...(params.fps != null && { fps: params.fps }),
-    ...(params.motionStrength != null && { motionStrength: params.motionStrength }),
     ...(params.seed != null && { seed: params.seed }),
     ...(params.negativePrompt ? { negativePrompt: params.negativePrompt } : {}),
   };
 }
 
-/** Map a text-to-image model to its edit / image-to-image variant (product-fidelity redraw with reference images) */
-export function toEditVariant(modelId: string): string {
-  if (modelId === "openai/gpt-image-2") return "openai/gpt-image-2/image-to-image";
-  if (modelId === "fal-ai/gpt-image-1.5") return "fal-ai/gpt-image-1.5/edit";
-  // Replicate FLUX text-to-image → Kontext edit model
-  if (modelId.startsWith("black-forest-labs/flux") && !modelId.includes("kontext")) {
-    return "black-forest-labs/flux-kontext-pro";
-  }
-  // other models (Seedream / Tongyi Wanxiang, etc.) mostly support reference-image image-to-image natively, keep the original model
-  return modelId;
-}
-
-/** A resolved generation target: which provider (with key) serves the chosen model */
+/** A resolved generation target: the Prism credentials plus the model to bill against. */
 export interface GenModelTarget {
-  provider: string;
+  provider: "prism";
   model: string;
   apiKey: string;
+  apiSecret: string;
+  baseUrl?: string;
+}
+
+/** Just enough of MediaSetting to resolve a target, without importing the store into server code. */
+interface MediaLike {
+  apiKey?: string;
+  apiSecret?: string;
   baseUrl?: string;
 }
 
 /**
- * Resolve the configured default model to its provider + key by asking
- * /api/ai/models (same flow the assets page uses). Returns null when nothing
- * is configured — callers surface their own "configure a provider" message.
+ * Resolve the configured model to a callable target, or null when media is not set up yet.
+ *
+ * This used to be an async round trip to /api/ai/models, because the model's owning platform
+ * could only be discovered by asking every configured platform for its catalog. With one
+ * gateway and a static catalog there is nothing to discover, so callers get a plain value and
+ * lose a network hop on every generate.
  */
-export async function resolveDefaultModelTarget(
-  providers: Record<string, { enabled?: boolean; apiKey?: string; baseUrl?: string }>,
-  defaultModel: string | undefined,
-  customModels: CustomModel[],
-  mediaType: GenMediaType
-): Promise<GenModelTarget | null> {
-  const enabled = Object.entries(providers)
-    .filter(([, p]) => p.enabled && p.apiKey)
-    .map(([name, p]) => ({ name, apiKey: p.apiKey!, baseUrl: p.baseUrl }));
-  if (enabled.length === 0 || !defaultModel) return null;
-  try {
-    const res = await fetch("/api/ai/models", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ providers: enabled, mediaType }),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const merged = mergeCustomModels(data.models ?? [], customModels, mediaType, new Set(enabled.map((e) => e.name)));
-    const model = merged.find((m) => m.id === defaultModel);
-    if (!model) return null;
-    const prov = enabled.find((e) => e.name === model.provider);
-    return prov ? { provider: prov.name, model: defaultModel, apiKey: prov.apiKey, baseUrl: prov.baseUrl } : null;
-  } catch {
-    return null;
-  }
-}
-
-/** Model list entry (a subset of fields aligned with the Model returned by /api/ai/models; mediaType may be omitted for official list items) */
-export interface ModelLike {
-  id: string;
-  name: string;
-  provider: string;
-  mediaType?: GenMediaType;
-  modes?: string[];
-  supportsAudio?: boolean;
-  /** Marked as user-defined (UI may add a badge / distinguish the source) */
-  custom?: boolean;
-}
-
-/** Custom model → model list entry (reused by the dropdown and generation logic to resolve the platform Key/baseUrl) */
-export function customModelToModelLike(cm: CustomModel): ModelLike {
+export function resolveModelTarget(media: MediaLike | undefined, model: string | undefined): GenModelTarget | null {
+  const apiKey = media?.apiKey?.trim();
+  const apiSecret = media?.apiSecret?.trim();
+  if (!apiKey || !apiSecret || !model) return null;
   return {
-    id: cm.modelId,
-    name: cm.name,
-    provider: cm.provider,
-    mediaType: cm.mediaType,
-    modes: cm.mediaType === "image" ? ["text-to-image", "image-to-image"] : ["text-to-video", "image-to-video"],
-    supportsAudio: cm.supportsAudio,
-    custom: true,
+    provider: "prism",
+    model,
+    apiKey,
+    apiSecret,
+    ...(media?.baseUrl?.trim() ? { baseUrl: media.baseUrl.trim() } : {}),
   };
-}
-
-/**
- * Merges custom models into the model list fetched from /api/ai/models (filtered by mediaType, deduplicated).
- * Only retains custom models whose provider is enabled, to avoid selecting a platform with no API key configured.
- * fetched uses a minimal structured type, compatible with the { id, name, provider } shape of official lists everywhere.
- */
-export function mergeCustomModels(
-  fetched: ReadonlyArray<{ id: string; name: string; provider: string }>,
-  customModels: CustomModel[] | undefined,
-  mediaType: GenMediaType,
-  enabledProviders?: Set<string>
-): ModelLike[] {
-  const extras = (customModels ?? [])
-    .filter((cm) => cm.mediaType === mediaType)
-    .filter((cm) => !enabledProviders || enabledProviders.has(cm.provider))
-    .map(customModelToModelLike)
-    // Remove entries whose id already exists in the official list
-    .filter((cm) => !fetched.some((m) => m.id === cm.id));
-  return [...fetched, ...extras];
 }

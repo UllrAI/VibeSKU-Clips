@@ -33,7 +33,7 @@ export default function ShowcasePage() {
             {t("introLead")}{t("introMeta", { style: sc.styleLabel, shots: sc.shots.length, duration: sc.totalDuration, resolution: sc.resolution, aspectRatio: sc.aspectRatio })}
             {t("introTail")}
           </>}
-          actions={<ButtonLink href="/project/new"><LuPlus className="h-4 w-4" />{t("makeSimilar")}</ButtonLink>}
+          actions={<ButtonLink href="/start"><LuPlus className="h-4 w-4" />{t("makeSimilar")}</ButtonLink>}
         />
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-5 lg:gap-10">

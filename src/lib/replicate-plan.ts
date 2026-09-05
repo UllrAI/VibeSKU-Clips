@@ -13,6 +13,8 @@
  * Pure functions, no I/O — the analyze route feeds in cut times from detectSceneTimes.
  */
 
+import { getVideoModelCapabilities } from "@/lib/model-capabilities";
+
 export interface ReplicateShot {
   /** 1-based shot index */
   index: number;
@@ -122,19 +124,14 @@ export function buildReplicatePrompt(input: { productName: string; sellingPoints
 }
 
 /**
- * Map a configured video model to its reference-to-video sibling. Families with a
- * reference variant on Atlas: Seedance 2.0 (incl. fast/mini), MiniMax H3, Wan 2.7,
- * Kling Video O3. Returns undefined when the model family can't replicate — the UI
- * disables the model-tier button with a hint.
+ * Whether the configured model can replicate a reference video at all.
+ *
+ * This used to rewrite a model id onto its `/reference-to-video` sibling, because each vendor
+ * exposed one endpoint per workflow. Prism model ids are flat — one id serves text, image and
+ * reference workflows, and the request body decides which runs — so the only question left is
+ * whether the model accepts reference videos. Returns the id unchanged when it does.
  */
-const REFERENCE_FAMILY_PATTERN =
-  /^(bytedance\/seedance-2\.0(?:-fast|-mini)?|minimax\/h3|alibaba\/wan-2\.7|kwaivgi\/kling-video-o3-(?:std|pro))\//;
-
 export function referenceModelFor(modelId: string | undefined): string | undefined {
   if (!modelId) return undefined;
-  const family = modelId.match(REFERENCE_FAMILY_PATTERN)?.[1];
-  if (!family) return undefined;
-  if (modelId === `${family}/reference-to-video`) return modelId;
-  if (/\/(?:text|image)-to-video$/.test(modelId)) return `${family}/reference-to-video`;
-  return undefined;
+  return getVideoModelCapabilities(modelId).referenceVideo ? modelId : undefined;
 }

@@ -1,55 +1,56 @@
 import { describe, expect, it } from "vitest";
 import { getVideoModelCapabilities, preflightVideoGeneration } from "@/lib/model-capabilities";
 
+/**
+ * The preflight is what tells someone "15s becomes 10s on this model" before they pay, so it has
+ * to mirror buildPrismVideoBody exactly. These tests pin the two halves together.
+ */
+
 describe("video model capabilities", () => {
-  it("normalizes a schema-backed image-to-video model", () => {
-    const caps = getVideoModelCapabilities("google/veo3.1/image-to-video");
+  it("reads H3's limits from the catalog", () => {
+    const caps = getVideoModelCapabilities("minimax-h3");
     expect(caps).toMatchObject({
       confidence: "known",
-      textToVideo: false,
+      textToVideo: true,
       imageToVideo: true,
-      referenceImages: false,
+      referenceImages: true,
       referenceVideo: false,
-      referenceAudio: false,
+      referenceAudio: true,
       lastFrame: true,
       nativeAudio: true,
-      durationValues: [4, 6, 8],
-    });
-  });
-
-  it("finds schema-backed reference siblings and their quotas", () => {
-    const caps = getVideoModelCapabilities("bytedance/seedance-2.5/image-to-video", true, "atlas-cloud");
-    expect(caps).toMatchObject({
-      referenceImages: true,
-      referenceVideo: true,
-      referenceAudio: true,
-      nativeAudio: true,
-      videoEdit: false,
-      temporalRetake: false,
-      regionMask: false,
-      multiKeyframes: false,
-      performanceReference: true,
     });
     expect(caps.maxReferenceImages).toBeGreaterThan(0);
+    expect(caps.resolutionValues).toEqual(["480p", "720p"]);
   });
 
-  it("does not invent a reference sibling for the fast-only family", () => {
-    const caps = getVideoModelCapabilities("bytedance/seedance-2.0-fast/image-to-video", false, "atlas-cloud");
-    expect(caps.referenceImages).toBe(false);
-    expect(caps.referenceVideo).toBe(false);
-  });
-
-  it("recognizes Volcengine multimodal reference and audio conditioning", () => {
-    const caps = getVideoModelCapabilities("doubao-seedance-2-0-pro-250528", true, "volcengine");
+  it("marks Seedance 2.5 as accepting video conditioning", () => {
+    const caps = getVideoModelCapabilities("seedance2.5");
     expect(caps).toMatchObject({
       referenceImages: true,
       referenceVideo: true,
       referenceAudio: true,
-      nativeAudio: true,
+      videoEdit: true,
+      performanceReference: true,
     });
   });
 
-  it("keeps unknown custom models permissive", () => {
+  it("never claims capabilities Prism's schema does not expose", () => {
+    const caps = getVideoModelCapabilities("minimax-h3");
+    expect(caps.temporalRetake).toBe(false);
+    expect(caps.regionMask).toBe(false);
+    expect(caps.multiKeyframes).toBe(false);
+  });
+
+  it("promises nothing for a model id that is not in the catalog", () => {
+    const caps = getVideoModelCapabilities("my-company/video-v9");
+    expect(caps.confidence).toBe("unknown");
+    expect(caps.lastFrame).toBe(false);
+    expect(caps.durationValues).toEqual([]);
+  });
+});
+
+describe("preflight", () => {
+  it("a stale model id from an older install reports capabilities-unknown, not a crash", () => {
     const result = preflightVideoGeneration({
       modelId: "my-company/video-v9",
       duration: 5,
@@ -58,66 +59,75 @@ describe("video model capabilities", () => {
       chainMode: "pin",
     });
     expect(result.capabilities.confidence).toBe("unknown");
-    expect(result.capabilities.lastFrame).toBeNull();
     expect(result.adjustments).toEqual([]);
     expect(result.warnings).toEqual(["capabilities-unknown"]);
   });
 
-  it("keeps provider-hosted custom models permissive when their mode is undeclared", () => {
+  it("previews the duration and resolution snapping H3 will apply", () => {
     const result = preflightVideoGeneration({
-      modelId: "my-company/video-v9",
-      provider: "atlas-cloud",
-      resolution: "1080p",
-      aspectRatio: "9:16",
-      chainMode: "off",
-      referenceImageCount: 2,
-    });
-    expect(result.capabilities.referenceImages).toBeNull();
-    expect(result.warnings).toEqual(["capabilities-unknown"]);
-  });
-
-  it("previews provider duration, resolution, ratio and tail-frame adaptation", () => {
-    const result = preflightVideoGeneration({
-      modelId: "minimax/hailuo-2.3/i2v-standard",
-      duration: 8,
+      modelId: "minimax-h3",
+      duration: 20,
       resolution: "1080p",
       aspectRatio: "9:16",
       chainMode: "pin",
     });
-    expect(result.adjustments).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: "duration", requested: 8, effective: 6 }),
-      expect.objectContaining({ field: "chainMode", effective: "off" }),
-    ]));
-  });
-
-  it("shows adaptive framing and tier mapping before generation", () => {
-    const result = preflightVideoGeneration({
-      modelId: "minimax/h3/image-to-video",
-      duration: 5,
-      resolution: "1080p",
-      aspectRatio: "9:16",
-      chainMode: "pin",
-    });
-    expect(result.adjustments).toEqual(expect.arrayContaining([
-      expect.objectContaining({ field: "resolution", effective: "2K" }),
-      expect.objectContaining({ field: "aspectRatio", effective: "adaptive" }),
-    ]));
+    expect(result.adjustments).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ field: "duration", requested: 20, effective: 15 }),
+        expect.objectContaining({ field: "resolution", requested: "1080p", effective: "720p" }),
+      ])
+    );
+    // H3 supports last_frame_url, so keyframe chaining survives
     expect(result.adjustments.some((item) => item.field === "chainMode")).toBe(false);
   });
 
-  it("warns before dropping unsupported reference conditioning", () => {
+  it("previews the forced 16:9 reframing of H3 Max", () => {
     const result = preflightVideoGeneration({
-      modelId: "google/veo3.1/image-to-video",
-      provider: "atlas-cloud",
-      resolution: "1080p",
+      modelId: "minimax-h3-max",
+      duration: 6,
+      resolution: "720p",
+      aspectRatio: "9:16",
+      chainMode: "off",
+    });
+    expect(result.adjustments).toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: "aspectRatio", requested: "9:16", effective: "16:9" })])
+    );
+  });
+
+  it("leaves a request the model already satisfies untouched", () => {
+    const result = preflightVideoGeneration({
+      modelId: "minimax-h3",
+      duration: 6,
+      resolution: "720p",
+      aspectRatio: "9:16",
+      chainMode: "pin",
+    });
+    expect(result.adjustments).toEqual([]);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it("warns before dropping reference conditioning the model cannot take", () => {
+    const result = preflightVideoGeneration({
+      modelId: "sora2",
+      resolution: "720p",
       aspectRatio: "9:16",
       chainMode: "off",
       referenceImageCount: 2,
       referenceAudioCount: 1,
     });
-    expect(result.warnings).toEqual(expect.arrayContaining([
-      "reference-conditioning-unavailable",
-      "reference-audio-unavailable",
-    ]));
+    expect(result.warnings).toEqual(
+      expect.arrayContaining(["reference-conditioning-unavailable", "reference-audio-unavailable"])
+    );
+  });
+
+  it("warns when more reference images are attached than the model accepts", () => {
+    const result = preflightVideoGeneration({
+      modelId: "minimax-h3",
+      resolution: "720p",
+      aspectRatio: "9:16",
+      chainMode: "off",
+      referenceImageCount: 30,
+    });
+    expect(result.warnings).toContain("reference-images-trimmed");
   });
 });

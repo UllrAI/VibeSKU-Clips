@@ -73,24 +73,17 @@ describe("buildReplicatePrompt 模型级提示词", () => {
 });
 
 describe("referenceModelFor 模型映射", () => {
-  it("Seedance 2.0 家族 i2v/t2v → reference 兄弟；reference 自身直通", () => {
-    expect(referenceModelFor("bytedance/seedance-2.0/image-to-video")).toBe("bytedance/seedance-2.0/reference-to-video");
-    expect(referenceModelFor("bytedance/seedance-2.0-fast/text-to-video")).toBe("bytedance/seedance-2.0-fast/reference-to-video");
-    expect(referenceModelFor("bytedance/seedance-2.0/reference-to-video")).toBe("bytedance/seedance-2.0/reference-to-video");
-  });
-
-  it("v0.8.76 新增家族：MiniMax H3 / 万相 2.7 / Kling O3 也能映射 reference 兄弟", () => {
-    expect(referenceModelFor("minimax/h3/image-to-video")).toBe("minimax/h3/reference-to-video");
-    expect(referenceModelFor("minimax/h3/text-to-video")).toBe("minimax/h3/reference-to-video");
-    expect(referenceModelFor("alibaba/wan-2.7/image-to-video")).toBe("alibaba/wan-2.7/reference-to-video");
-    expect(referenceModelFor("kwaivgi/kling-video-o3-std/text-to-video")).toBe("kwaivgi/kling-video-o3-std/reference-to-video");
-    expect(referenceModelFor("minimax/h3/reference-to-video")).toBe("minimax/h3/reference-to-video");
+  it("目录里支持参考视频的模型直通（Prism 一个模型 id 覆盖全部输入形态）", () => {
+    expect(referenceModelFor("seedance2.5")).toBe("seedance2.5");
+    expect(referenceModelFor("seedance2.0")).toBe("seedance2.0");
+    expect(referenceModelFor("seedance2.0-fast")).toBe("seedance2.0-fast");
   });
 
   it("无 reference 变体的家族 → undefined（UI 据此禁用按钮）", () => {
-    expect(referenceModelFor("kwaivgi/kling-v3.0-pro/image-to-video")).toBeUndefined();
-    expect(referenceModelFor("bytedance/seedance-v1.5-pro/image-to-video")).toBeUndefined();
-    expect(referenceModelFor("minimax/hailuo-2.3/i2v-standard")).toBeUndefined();
+    expect(referenceModelFor("minimax-h3")).toBeUndefined();
+    expect(referenceModelFor("sora2")).toBeUndefined();
+    expect(referenceModelFor("wan2.6")).toBeUndefined();
+    expect(referenceModelFor("my-org/unknown")).toBeUndefined();
     expect(referenceModelFor(undefined)).toBeUndefined();
   });
 

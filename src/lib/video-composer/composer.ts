@@ -3,7 +3,12 @@ import { getDataDir } from "@/lib/paths";
 import { ffmpegBin } from "@/lib/ffmpeg-path";
 import { mkdir, writeFile, rm } from "fs/promises";
 import { existsSync } from "fs";
-import type { TransitionMode } from "./transitions";
+/**
+ * How one clip meets the next. Only `ffmpeg_fade` changes what the composer renders; the AI
+ * modes are decided upstream at generation time (a pinned last frame, or a reference frame),
+ * so by the time clips reach here they are already cut to butt together.
+ */
+export type TransitionMode = "ai_start_end" | "ai_reference" | "direct_concat" | "ffmpeg_fade";
 import { MOTIONS, DEFAULT_MOTION } from "./motions";
 import { safeEncodeParams } from "@/lib/compose-presets";
 import { createLimiter } from "@/lib/concurrency";

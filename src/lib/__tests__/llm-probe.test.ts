@@ -1,31 +1,33 @@
 // @vitest-environment node
-// （openai SDK 在浏览器环境会拒绝构造以防 Key 泄漏；这些代码本就只跑在服务端）
 /**
- * 连接探针 + 模型发现 —— issue #19 追问的两个新故障，都用「按真实报文复刻的假 provider」端到端验证：
+ * Connection probe + model discovery, verified against fake providers that reproduce the exact
+ * responses real ones send.
  *
- *  1) Pollinations（上游 azure-openai）把「输出到达 token 上限」当成 400 返回，而不是截断内容。
- *     旧探针固定发 max_tokens:1，于是 Key 再正确也永远测不通：用户拿着刚领的 Key 看到「连接失败」。
- *  2) 本机 Ollama 的模型名带 :tag（`ollama pull qwen2.5:7b-instruct`），预设写的是裸名 `qwen2.5`，
- *     用户只能看到一个 404，无从知道自己装的模型到底叫什么。
+ * Two failures this file exists for:
+ *  1) Some backends turn "the completion hit its token cap" into a 400 instead of returning a
+ *     truncated message. The old probe always sent `max_tokens: 1`, so on those endpoints a
+ *     perfectly valid key could never test green — the user saw "connection failed" holding a
+ *     key they had just been issued.
+ *  2) A local Ollama's model names carry a tag (`ollama pull qwen2.5:7b-instruct`) while the
+ *     preset writes the bare name, and all the user got back was a 404 with no way to learn what
+ *     they had actually installed.
  */
 import { describe, it, expect, afterEach } from "vitest";
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
-import OpenAI from "openai";
 import { probeLLMEndpoint, PROBE_MAX_TOKENS } from "@/lib/llm-probe";
-import { listModels, modelListHint, isOllama, normalizeBase, normalizeChatBase } from "@/lib/llm-models";
-import { LLMRequestError, createLLMClient, explainLLMStatus, isTokenCapRejection, withLLMErrors } from "@/lib/llm-error";
+import { listModels, modelListHint, isOllama, normalizeBase } from "@/lib/llm-models";
+import { explainLLMStatus, isTokenCapRejection } from "@/lib/llm-error";
 import { LLM_PRESETS } from "@/lib/llm-presets";
-import { ATLAS_BASE_URL, ATLAS_LLM_BASE_URL } from "@/lib/atlas-onekey";
 import { migrateSettings, type SettingsState } from "@/lib/stores/settings-store";
 import { settings } from "@/lib/i18n/messages/settings";
 
-/** Pollinations 实测报文（issue #19 追问截图里的原文）。 */
+/** A real cap-rejection body, as an azure-openai-backed gateway returns it. */
 const CAP_ERROR_BODY = JSON.stringify({
   success: false,
   error: {
     message:
-      '400 Bad Request: azure-openai error: Could not finish the message because max_tokens or model output limit was reached. Please try again with higher max_tokens.',
+      "400 Bad Request: azure-openai error: Could not finish the message because max_tokens or model output limit was reached. Please try again with higher max_tokens.",
   },
 });
 
@@ -34,7 +36,7 @@ afterEach(() => {
   for (const s of servers.splice(0)) s.close();
 });
 
-/** 起一个假 provider，返回 baseUrl。 */
+/** Start a fake provider and return its baseUrl. */
 async function serve(handler: (req: IncomingMessage, res: ServerResponse, body: string) => void): Promise<string> {
   const server = createServer((req, res) => {
     let raw = "";
@@ -53,16 +55,16 @@ const json = (res: ServerResponse, status: number, body: unknown) => {
 const CHAT_OK = { id: "x", choices: [{ index: 0, message: { role: "assistant", content: "hi" }, finish_reason: "stop" }] };
 
 describe("探针：把「输出上限」类 400 和真正的配置错误分开", () => {
-  it("Pollinations 式 provider（带 max_tokens 就 400）→ 去掉上限重试一次即通过", async () => {
+  it("带 max_tokens 就 400 的 provider → 去掉上限重试一次即通过", async () => {
     const seen: Array<Record<string, unknown>> = [];
-    const base = await serve((req, res, body) => {
+    const base = await serve((_req, res, body) => {
       const parsed = JSON.parse(body || "{}");
       seen.push(parsed);
       if (parsed.max_tokens !== undefined) return json(res, 400, CAP_ERROR_BODY);
       json(res, 200, CHAT_OK);
     });
 
-    const out = await probeLLMEndpoint({ baseUrl: base, apiKey: "real-key", model: "openai-fast" });
+    const out = await probeLLMEndpoint({ baseUrl: base, apiKey: "real-key", model: "some-model" });
 
     expect(out.ok).toBe(true); // 这正是修复前必然红叉的场景
     expect(out.warning).toBeUndefined();
@@ -72,10 +74,12 @@ describe("探针：把「输出上限」类 400 和真正的配置错误分开",
   });
 
   it("推理模型式 provider（拒收 max_tokens，要求 max_completion_tokens）→ 同一条兜底路径救回", async () => {
-    const base = await serve((req, res, body) => {
+    const base = await serve((_req, res, body) => {
       if (JSON.parse(body || "{}").max_tokens !== undefined) {
         return json(res, 400, {
-          error: { message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead." },
+          error: {
+            message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead.",
+          },
         });
       }
       json(res, 200, CHAT_OK);
@@ -113,18 +117,6 @@ describe("探针：把「输出上限」类 400 和真正的配置错误分开",
     expect(out.error?.zh).toContain("API Key");
   });
 
-  it("已停用的 Pollinations 免 Key 地址：不发请求就判失败并给迁移指引", async () => {
-    const out = await probeLLMEndpoint({
-      baseUrl: "https://text.pollinations.ai/openai",
-      apiKey: "x",
-      model: "openai-fast",
-      fetchImpl: () => Promise.reject(new Error("不该发出任何请求")),
-    });
-    expect(out.ok).toBe(false);
-    expect(out.status).toBe(402);
-    expect(out.error?.zh).toContain("gen.pollinations.ai/v1");
-  });
-
   it("未填模型名时退回 Key 级校验（GET /models）", async () => {
     const hit: string[] = [];
     const base = await serve((req, res) => {
@@ -143,85 +135,6 @@ describe("探针：把「输出上限」类 400 和真正的配置错误分开",
     });
     await probeLLMEndpoint({ baseUrl: `${base}/`, apiKey: "k", model: "m" });
     expect(paths[0]).toBe("/v1/chat/completions");
-  });
-});
-
-// 生成路径固定发 max_tokens:16000，这是我们对「别人家模型上限」的一个猜测。猜错时厂商会 400，
-// 而这跟用户填的东西毫无关系——预防性地去掉上限重试一次，让厂商用自己的默认值。
-describe("生成路径：厂商嫌我们的 max_tokens 不合法时自动去掉重试（预防，非用户可修）", () => {
-  const okBody = { id: "x", choices: [{ index: 0, message: { role: "assistant", content: "成了" }, finish_reason: "stop" }] };
-
-  it("上限超过厂商天花板 → 去掉 max_tokens 重试，调用方直接拿到成功结果", async () => {
-    const bodies: Array<Record<string, unknown>> = [];
-    const base = await serve((_req, res, body) => {
-      const parsed = JSON.parse(body || "{}");
-      bodies.push(parsed);
-      if (parsed.max_tokens !== undefined) {
-        return json(res, 400, { error: { message: "max_tokens is greater than the maximum allowed (8192) for this model" } });
-      }
-      json(res, 200, okBody);
-    });
-    const client = createLLMClient({ baseUrl: base, apiKey: "k", model: "m" });
-    const res = await client.chat.completions.create({ model: "m", messages: [{ role: "user", content: "hi" }], max_tokens: 16000 });
-    expect(res.choices[0].message.content).toBe("成了");
-    expect(bodies).toHaveLength(2);
-    expect(bodies[1].max_tokens).toBeUndefined();
-  });
-
-  it("推理模型嫌字段名不对 → 改名成 max_completion_tokens 而不是丢掉限额", async () => {
-    const bodies: Array<Record<string, unknown>> = [];
-    const base = await serve((_req, res, body) => {
-      const parsed = JSON.parse(body || "{}");
-      bodies.push(parsed);
-      if (parsed.max_tokens !== undefined) {
-        return json(res, 400, { error: { message: "Unsupported parameter: 'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead." } });
-      }
-      json(res, 200, okBody);
-    });
-    const client = createLLMClient({ baseUrl: base, apiKey: "k", model: "o5" });
-    await client.chat.completions.create({ model: "o5", messages: [{ role: "user", content: "hi" }], max_tokens: 16000 });
-    expect(bodies[1].max_tokens).toBeUndefined();
-    expect(bodies[1].max_completion_tokens).toBe(16000);
-  });
-
-  it("与上限无关的 400 原样抛出：不重试、报错内容完整保留（读 body 不能把报文吃掉）", async () => {
-    let calls = 0;
-    const base = await serve((_req, res) => {
-      calls++;
-      json(res, 400, { error: { message: "Invalid value for 'temperature'" } });
-    });
-    const client = createLLMClient({ baseUrl: base, apiKey: "k", model: "m" });
-    const err = await client.chat.completions
-      .create({ model: "m", messages: [{ role: "user", content: "hi" }], max_tokens: 16000 })
-      .catch((e) => e);
-    expect(calls).toBe(1);
-    expect(err.status).toBe(400);
-    expect(String(err.message)).toContain("temperature");
-  });
-
-  it("没带 max_tokens 的请求不受影响（少读一次 body，流式响应不能被碰）", async () => {
-    let calls = 0;
-    const base = await serve((_req, res) => {
-      calls++;
-      json(res, 200, okBody);
-    });
-    const client = createLLMClient({ baseUrl: base, apiKey: "k", model: "m" });
-    const res = await client.chat.completions.create({ model: "m", messages: [{ role: "user", content: "hi" }] });
-    expect(res.choices[0].message.content).toBe("成了");
-    expect(calls).toBe(1);
-  });
-
-  it("流式请求成功时响应体原样透传（错误分支绝不能把 SSE 流读掉）", async () => {
-    const base = await serve((_req, res) => {
-      res.writeHead(200, { "content-type": "text/event-stream" });
-      res.write(`data: ${JSON.stringify({ id: "x", choices: [{ index: 0, delta: { content: "流" } }] })}\n\n`);
-      res.end("data: [DONE]\n\n");
-    });
-    const client = createLLMClient({ baseUrl: base, apiKey: "k", model: "m" });
-    const stream = await client.chat.completions.create({ model: "m", messages: [{ role: "user", content: "hi" }], max_tokens: 16000, stream: true });
-    let out = "";
-    for await (const chunk of stream) out += chunk.choices[0]?.delta?.content ?? "";
-    expect(out).toBe("流");
   });
 });
 
@@ -253,17 +166,6 @@ describe("探针：模型名写错时，直接说出这个地址上真正有哪�
     const out = await probeLLMEndpoint({ baseUrl: base, apiKey: "k", model: "nope" });
     expect(out.ok).toBe(false);
     expect(out.error?.zh).toContain("模型名");
-  });
-
-  it("生成路径（不只是设置页）同样会带出可用模型列表", async () => {
-    const base = await ollamaLike();
-    const client = new OpenAI({ baseURL: base, apiKey: "ollama", maxRetries: 0 });
-    const err = await withLLMErrors(
-      () => client.chat.completions.create({ model: "qwen2.5", messages: [{ role: "user", content: "hi" }] }),
-      { baseUrl: base, apiKey: "ollama", model: "qwen2.5" },
-    ).catch((e) => e);
-    expect(err).toBeInstanceOf(LLMRequestError);
-    expect(err.zh).toContain("qwen2.5:7b-instruct");
   });
 });
 
@@ -300,7 +202,7 @@ describe("listModels / modelListHint", () => {
 
 describe("文案：400 要能区分「模型名写错」和「模型写不下」", () => {
   it("带输出上限特征的 400 → 让用户缩短内容/换模型，而不是去改模型名", () => {
-    const { zh, en } = explainLLMStatus(400, { detail: CAP_ERROR_BODY, model: "openai-fast" });
+    const { zh, en } = explainLLMStatus(400, { detail: CAP_ERROR_BODY, model: "some-model" });
     expect(zh).toContain("输出长度");
     expect(zh).not.toContain("模型名填错");
     expect(en).toMatch(/output budget/i);
@@ -319,16 +221,24 @@ describe("文案：400 要能区分「模型名写错」和「模型写不下」
 });
 
 describe("Ollama 预设与迁移（Windows 上 localhost 会先解析到 ::1，而 Ollama 只监听 127.0.0.1）", () => {
+  const build = (baseUrl: string) =>
+    migrateSettings({ llm: { provider: "", baseUrl, apiKey: "k", model: "m" } } as Partial<SettingsState>);
+
   it("预设用 127.0.0.1，不用 localhost", () => {
-    const p = LLM_PRESETS.find((x) => x.label === "Ollama 本地");
-    expect(p?.baseUrl).toBe("http://127.0.0.1:11434/v1");
+    expect(LLM_PRESETS.find((x) => x.label === "Ollama 本地")?.baseUrl).toBe("http://127.0.0.1:11434/v1");
   });
 
   it("老配置里的 localhost:11434 升级后自动改写，其它端口/域名不动", () => {
-    const build = (baseUrl: string): SettingsState => ({ llm: { provider: "", baseUrl, apiKey: "", model: "" } }) as SettingsState;
-    expect(migrateSettings(build("http://localhost:11434/v1")).llm.baseUrl).toBe("http://127.0.0.1:11434/v1");
-    expect(migrateSettings(build("http://localhost:3000/v1")).llm.baseUrl).toBe("http://localhost:3000/v1");
-    expect(migrateSettings(build("https://api.openai.com/v1")).llm.baseUrl).toBe("https://api.openai.com/v1");
+    expect(build("http://localhost:11434/v1").llm.baseUrl).toBe("http://127.0.0.1:11434/v1");
+    expect(build("http://localhost:3000/v1").llm.baseUrl).toBe("http://localhost:3000/v1");
+    expect(build("https://api.openai.com/v1").llm.baseUrl).toBe("https://api.openai.com/v1");
+  });
+
+  it("已停用的端点（Pollinations 免 Key、Atlas 网关）整段清空，而不是留一个必然失败的地址", () => {
+    const out = build("https://text.pollinations.ai/openai");
+    expect(out.llm.baseUrl).toBe("");
+    expect(out.llm.apiKey).toBe("");
+    expect(build("https://api.atlascloud.ai/v1").llm.baseUrl).toBe("");
   });
 
   it("模型选择器与 Ollama 提示的文案键中英齐全（缺键只会在用户点开时才露出）", () => {
@@ -336,44 +246,5 @@ describe("Ollama 预设与迁移（Windows 上 localhost 会先解析到 ::1，�
       expect(settings.zh, `zh:${key}`).toHaveProperty(key);
       expect(settings.en, `en:${key}`).toHaveProperty(key);
     }
-  });
-});
-
-/**
- * issue #24 —— Atlas 一键接入把「素材网关」(/api/v1) 写进了 LLM 地址，写脚本必挂在
- * `404 null`，而报错文案只会说「模型可能没上线」，用户于是去改一个本来就正确的模型名。
- * 两个网关同域不同路径，靠肉眼看不出差别，因此这里把「聊天必须走 /v1」钉成断言。
- */
-describe("Atlas 双网关：聊天走 /v1，素材走 /api/v1（issue #24）", () => {
-  it("素材网关被填进 LLM 地址时改写成聊天网关，含末尾斜杠与大小写", () => {
-    expect(normalizeChatBase(ATLAS_BASE_URL)).toBe(ATLAS_LLM_BASE_URL);
-    expect(normalizeChatBase("https://api.atlascloud.ai/api/v1/")).toBe(ATLAS_LLM_BASE_URL);
-    expect(normalizeChatBase("https://API.AtlasCloud.ai/api/v1")).toBe("https://API.AtlasCloud.ai/v1");
-  });
-
-  it("已经正确的地址、别家的 /api/v1、自建代理都不许被动到", () => {
-    expect(normalizeChatBase(ATLAS_LLM_BASE_URL)).toBe(ATLAS_LLM_BASE_URL);
-    expect(normalizeChatBase("https://openrouter.ai/api/v1")).toBe("https://openrouter.ai/api/v1");
-    expect(normalizeChatBase("https://dashscope.aliyuncs.com/api/v1")).toBe("https://dashscope.aliyuncs.com/api/v1");
-    expect(normalizeChatBase("https://my-proxy.example.com/api/v1")).toBe("https://my-proxy.example.com/api/v1");
-    // 同域但更深的路径不是网关根，别乱改
-    expect(normalizeChatBase("https://api.atlascloud.ai/api/v1/model")).toBe("https://api.atlascloud.ai/api/v1/model");
-  });
-
-  it("真正发请求的客户端拿到的是聊天网关", () => {
-    const client = createLLMClient({ baseUrl: ATLAS_BASE_URL, apiKey: "k", model: "deepseek-ai/deepseek-v4-pro" });
-    expect(client.baseURL).toBe(ATLAS_LLM_BASE_URL);
-  });
-
-  it("已经踩坑的旧安装升级后自愈；别家配置不受影响", () => {
-    const build = (baseUrl: string): SettingsState => ({ llm: { provider: "", baseUrl, apiKey: "", model: "" } }) as SettingsState;
-    expect(migrateSettings(build(ATLAS_BASE_URL)).llm.baseUrl).toBe(ATLAS_LLM_BASE_URL);
-    expect(migrateSettings(build(ATLAS_LLM_BASE_URL)).llm.baseUrl).toBe(ATLAS_LLM_BASE_URL);
-    expect(migrateSettings(build("https://openrouter.ai/api/v1")).llm.baseUrl).toBe("https://openrouter.ai/api/v1");
-  });
-
-  it("一键接入与设置页预设填的是同一个地址（两条路各写各的，就是这次故障的成因）", () => {
-    const preset = LLM_PRESETS.find((p) => /atlascloud/i.test(p.baseUrl));
-    expect(preset?.baseUrl).toBe(ATLAS_LLM_BASE_URL);
   });
 });

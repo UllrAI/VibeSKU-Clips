@@ -1,7 +1,6 @@
 import "server-only";
 
-import type OpenAI from "openai";
-import { createLLMClient, jsonModeParams, withLLMErrors } from "@/lib/llm-error";
+import { completeText, imagePart } from "@/lib/llm-call";
 import type { LLMConfig } from "@/lib/script-engine/generator";
 import {
   buildQualityEvaluationPrompt,
@@ -20,24 +19,23 @@ export async function evaluateGenerationQuality(input: {
   sampleContext?: string;
 }): Promise<GenerationQualityReport> {
   const model = input.config.visionModel || input.config.model;
-  const client = createLLMClient({ ...input.config, model });
-  const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
-    { type: "text", text: buildQualityEvaluationPrompt(input.contract, input.locale, input.sampleContext) },
-    { type: "image_url", image_url: { url: input.outputImageDataUrl, detail: "high" } },
-    ...(input.referenceImageUrls ?? []).slice(0, 4).map((url): OpenAI.Chat.Completions.ChatCompletionContentPart => ({
-      type: "image_url",
-      image_url: { url, detail: "high" },
-    })),
-  ];
-  const response = await withLLMErrors(
-    () => client.chat.completions.create({
-      model,
-      messages: [{ role: "user", content }],
-      temperature: 0.1,
-      max_tokens: 3500,
-      ...jsonModeParams(input.config.baseUrl),
-    }),
+  const text = await completeText(
     { ...input.config, model },
+    {
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: buildQualityEvaluationPrompt(input.contract, input.locale, input.sampleContext) },
+            imagePart(input.outputImageDataUrl),
+            ...(input.referenceImageUrls ?? []).slice(0, 4).map(imagePart),
+          ],
+        },
+      ],
+      temperature: 0.1,
+      maxOutputTokens: 3500,
+      jsonMode: true,
+    },
   );
-  return parseGenerationQuality(response.choices[0]?.message?.content || "", input.contract);
+  return parseGenerationQuality(text, input.contract);
 }

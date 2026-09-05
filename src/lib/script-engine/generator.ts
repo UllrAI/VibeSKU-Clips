@@ -4,7 +4,6 @@
  * Supports custom LLM endpoints, streaming output, and product image analysis.
  */
 
-import OpenAI from "openai";
 import {
   SYSTEM_PROMPT,
   PRODUCT_ANALYSIS_PROMPT,
@@ -16,7 +15,8 @@ import {
   type TopicScriptInput,
 } from "./prompts";
 import type { Shot, ScriptCharacter } from "@/lib/db/schema";
-import { createLLMClient, withLLMErrors, LLMRequestError, jsonModeParams } from "@/lib/llm-error";
+import { completeJson, completeText, imagePart, streamCompletion, type ModelMessage } from "@/lib/llm-call";
+import { LLMRequestError } from "@/lib/llm-error";
 import { stripThinkBlocks } from "@/lib/llm-clean";
 
 // ==================== Type definitions ====================
@@ -96,47 +96,7 @@ export interface ProductAnalysisResult {
 
 // ==================== Utility functions ====================
 
-/** Create an OpenAI client (shared factory: SDK retries + free-pool 402 retry, see lib/llm-error) */
-function createClient(config: LLMConfig): OpenAI {
-  return createLLMClient(config);
-}
 
-/**
- * Extra request params that tame reasoning/thinking models per endpoint.
- *
- * - Pollinations: its only keyless (anonymous-tier) model is a reasoning model (GPT-OSS 20B) with a
- *   small output-token cap: on our large generation prompts it exhausts the entire budget on its
- *   reasoning trace and returns EMPTY content (finish_reason "length"). reasoning_effort:"low"
- *   makes it think minimally and actually emit the JSON.
- * - DashScope / SiliconFlow (Qwen3-family hybrids): `enable_thinking: false` turns the trace off at
- *   the source, so no <think> text can reach the JSON parser at all.
- * - Zhipu bigmodel.cn (GLM hybrids): same idea via their `thinking: {type:"disabled"}` shape.
- *
- * Scoped by baseUrl on purpose — real OpenAI 400s on params it doesn't know
- * (unsupported_parameter), so none of these may be sent globally. If a listed endpoint still
- * rejects the field for a specific model, optionalParamRetryFetch (llm-error.ts) replays without
- * it. Response-side stripThinkBlocks remains the catch-all for endpoints not listed here.
- */
-export function reasoningParams(
-  baseUrl: string,
-): { reasoning_effort?: "low"; enable_thinking?: boolean; thinking?: { type: "disabled" } } {
-  const url = baseUrl || "";
-  if (/pollinations\.ai/i.test(url)) return { reasoning_effort: "low" };
-  if (/dashscope|siliconflow/i.test(url)) return { enable_thinking: false };
-  if (/bigmodel\.cn/i.test(url)) return { thinking: { type: "disabled" } };
-  return {};
-}
-
-/**
- * How many script variants to request in one batch call.
- * Pollinations' anonymous tier caps output tokens low: 3 full commerce scripts (~7500 chars) overflow
- * that cap and truncate to invalid JSON, so keyless generation would fail entirely. Request a single
- * complete script instead — one valid script beats three truncated ones, and the user can regenerate
- * for more variants. Other endpoints keep the requested batch size. Scoped to Pollinations by baseUrl.
- */
-export function batchCountFor(baseUrl: string, requested = 3): number {
-  return /pollinations\.ai/i.test(baseUrl || "") ? 1 : requested;
-}
 
 /**
  * Extract JSON from LLM output text.
@@ -286,49 +246,6 @@ function validateScript(raw: Record<string, unknown>, fallbackStyleType: string)
 
 // ==================== Core functionality ====================
 
-/**
- * Non-streaming chat call with ONE parse-driven retry ("repair first, then re-ask" — the last
- * rung of the JSON-robustness ladder): when the reply survives transport but fails to parse — bad JSON,
- * missing shots — the model gets its own output back plus the parse error and one chance to fix
- * it. Network/HTTP retries stay inside the SDK client; LLMRequestError parse failures are
- * capability verdicts ("this model can't write scripts"), not format slips, so they never retry.
- * Exported for reuse by other JSON-shaped call sites (judge panel).
- */
-export async function completeWithJsonRetry<T>(
-  client: OpenAI,
-  params: Omit<OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming, "stream">,
-  cfg: { baseUrl?: string; apiKey?: string; model?: string },
-  parse: (content: string) => T,
-): Promise<T> {
-  let messages = params.messages;
-  let lastErr: unknown;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const response = await withLLMErrors(
-      () => client.chat.completions.create({ ...params, messages }),
-      cfg,
-    );
-    const content = response.choices[0]?.message?.content;
-    if (!content) throw new Error("LLM 未返回有效内容");
-    try {
-      return parse(content);
-    } catch (err) {
-      if (err instanceof LLMRequestError) throw err;
-      lastErr = err;
-      if (attempt === 0) {
-        const detail = (err instanceof Error ? err.message : String(err)).slice(0, 300);
-        messages = [
-          ...messages,
-          { role: "assistant", content },
-          {
-            role: "user",
-            content: `你上一次的输出无法解析（错误：${detail}）。请严格按之前的要求重新输出完整、合法的 JSON，只输出 JSON 本身，禁止任何解释文字或 markdown 代码块。`,
-          },
-        ];
-      }
-    }
-  }
-  throw lastErr;
-}
 
 /**
  * Generate e-commerce scripts (single call, returns complete result).
@@ -336,26 +253,20 @@ export async function completeWithJsonRetry<T>(
  * @returns Array of generated scripts
  */
 export async function generateScript(input: ScriptInput): Promise<GeneratedScript[]> {
-  const client = createClient(input.llmConfig);
-  const userPrompt = buildBatchPrompt(input, batchCountFor(input.llmConfig.baseUrl));
-
-  // Transient free-endpoint failures retry inside the client; unparseable replies retry once with
-  // the parse error echoed back. json_object mode is safe here: the batch prompt's top level is
-  // an object ({"scripts": [...]}).
-  return completeWithJsonRetry(
-    client,
+  // Transport failures retry inside the SDK; an unparseable reply retries once with the parse
+  // error echoed back. JSON mode is safe here: the batch prompt's top level is an object
+  // ({"scripts": [...]}), and json_object forbids a top-level array.
+  return completeJson(
+    input.llmConfig,
     {
-      model: input.llmConfig.model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
+        { role: "user", content: buildBatchPrompt(input, 3) },
       ],
       temperature: 0.8,
-      max_tokens: 16000,
-      ...reasoningParams(input.llmConfig.baseUrl),
-      ...jsonModeParams(input.llmConfig.baseUrl),
+      maxOutputTokens: 16000,
+      jsonMode: true,
     },
-    input.llmConfig,
     (content) => parseScriptResponse(content, input.styleType),
   );
 }
@@ -373,24 +284,18 @@ export interface TopicScriptGenInput extends TopicScriptInput {
  * @returns Array of generated scripts (includes stockKeywords, ready to feed directly into stock-fill for media matching)
  */
 export async function generateTopicScript(input: TopicScriptGenInput): Promise<GeneratedScript[]> {
-  const client = createClient(input.llmConfig);
-  const userPrompt = buildTopicBatchPrompt(input, batchCountFor(input.llmConfig.baseUrl, input.count ?? 3));
-
   // Topic-based videos have no e-commerce style concept; fall back uniformly to "custom"
-  return completeWithJsonRetry(
-    client,
+  return completeJson(
+    input.llmConfig,
     {
-      model: input.llmConfig.model,
       messages: [
         { role: "system", content: TOPIC_SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
+        { role: "user", content: buildTopicBatchPrompt(input, input.count ?? 3) },
       ],
       temperature: 0.85,
-      max_tokens: 16000,
-      ...reasoningParams(input.llmConfig.baseUrl),
-      ...jsonModeParams(input.llmConfig.baseUrl),
+      maxOutputTokens: 16000,
+      jsonMode: true,
     },
-    input.llmConfig,
     (content) => parseScriptResponse(content, "custom"),
   );
 }
@@ -401,22 +306,16 @@ export async function generateTopicScript(input: TopicScriptGenInput): Promise<G
  * @returns A single generated script
  */
 export async function generateSingleScript(input: ScriptInput): Promise<GeneratedScript> {
-  const client = createClient(input.llmConfig);
-  const userPrompt = buildUserPrompt(input);
-
-  return completeWithJsonRetry(
-    client,
+  return completeJson(
+    input.llmConfig,
     {
-      model: input.llmConfig.model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userPrompt },
+        { role: "user", content: buildUserPrompt(input) },
       ],
       temperature: 0.8,
-      ...reasoningParams(input.llmConfig.baseUrl),
-      ...jsonModeParams(input.llmConfig.baseUrl),
+      jsonMode: true,
     },
-    input.llmConfig,
     (content) => {
       const jsonStr = extractJSON(content);
       let parsed: Record<string, unknown>;
@@ -428,6 +327,14 @@ export async function generateSingleScript(input: ScriptInput): Promise<Generate
       return validateScript(parsed, input.styleType);
     },
   );
+}
+
+/** The system + user pair both streaming entry points send. */
+function scriptMessages(input: ScriptInput): ModelMessage[] {
+  return [
+    { role: "system", content: SYSTEM_PROMPT },
+    { role: "user", content: buildUserPrompt(input) },
+  ];
 }
 
 /**
@@ -444,35 +351,18 @@ export function generateScriptStream(
   const abortController = new AbortController();
 
   const run = async () => {
-    const client = createClient(input.llmConfig);
-    const userPrompt = buildUserPrompt(input);
-
     let fullContent = "";
 
     try {
-      const stream = await withLLMErrors(
-        () =>
-          client.chat.completions.create({
-            model: input.llmConfig.model,
-            messages: [
-              { role: "system", content: SYSTEM_PROMPT },
-              { role: "user", content: userPrompt },
-            ],
-            temperature: 0.8,
-            stream: true,
-            ...reasoningParams(input.llmConfig.baseUrl),
-          }, {
-            signal: abortController.signal,
-          }),
-        input.llmConfig,
-      );
+      const stream = streamCompletion(input.llmConfig, {
+        messages: scriptMessages(input),
+        temperature: 0.8,
+        abortSignal: abortController.signal,
+      });
 
-      for await (const chunk of stream) {
-        const delta = chunk.choices[0]?.delta?.content;
-        if (delta) {
-          fullContent += delta;
-          callbacks.onToken?.(delta);
-        }
+      for await (const delta of stream) {
+        fullContent += delta;
+        callbacks.onToken?.(delta);
       }
 
       // Parse the complete result after streaming finishes
@@ -500,32 +390,13 @@ export function createScriptStream(input: ScriptInput): ReadableStream<Uint8Arra
 
   return new ReadableStream({
     async start(controller) {
-      const client = createClient(input.llmConfig);
-      const userPrompt = buildUserPrompt(input);
-
       try {
-        const stream = await withLLMErrors(
-          () =>
-            client.chat.completions.create({
-              model: input.llmConfig.model,
-              messages: [
-                { role: "system", content: SYSTEM_PROMPT },
-                { role: "user", content: userPrompt },
-              ],
-              temperature: 0.8,
-              stream: true,
-              ...reasoningParams(input.llmConfig.baseUrl),
-            }),
-          input.llmConfig,
-        );
-
-        for await (const chunk of stream) {
-          const delta = chunk.choices[0]?.delta?.content;
-          if (delta) {
-            controller.enqueue(encoder.encode(delta));
-          }
+        for await (const delta of streamCompletion(input.llmConfig, {
+          messages: scriptMessages(input),
+          temperature: 0.8,
+        })) {
+          controller.enqueue(encoder.encode(delta));
         }
-
         controller.close();
       } catch (error) {
         controller.error(error);
@@ -547,37 +418,20 @@ export async function analyzeProduct(
   imageUrls: string[],
   config: LLMConfig,
 ): Promise<string> {
-  const client = createClient(config);
   const model = config.visionModel || config.model;
-
-  // Build message content with images
-  const imageContent: OpenAI.Chat.Completions.ChatCompletionContentPart[] = imageUrls.map(
-    (url) => ({
-      type: "image_url" as const,
-      image_url: { url, detail: "high" as const },
-    }),
-  );
-
-  const response = await withLLMErrors(
-    () =>
-      client.chat.completions.create({
-        model,
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: PRODUCT_ANALYSIS_PROMPT },
-              ...imageContent,
-            ],
-          },
-        ],
-        temperature: 0.3,
-        max_tokens: 2000,
-      }),
+  return completeText(
     { ...config, model },
+    {
+      messages: [
+        {
+          role: "user",
+          content: [{ type: "text", text: PRODUCT_ANALYSIS_PROMPT }, ...imageUrls.map(imagePart)],
+        },
+      ],
+      temperature: 0.3,
+      maxOutputTokens: 2000,
+    },
   );
-
-  return response.choices[0]?.message?.content || "";
 }
 
 /**

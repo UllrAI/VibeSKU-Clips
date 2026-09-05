@@ -20,7 +20,6 @@ import {
   type ProductItem,
 } from "@/lib/stores/product-library-store";
 import { getExampleProducts } from "@/lib/examples";
-import { useSettingsStore } from "@/lib/stores/settings-store";
 import { useT, useLocale } from "@/lib/i18n";
 import { PageContainer, PageHeader } from "@/components/page-layout";
 
@@ -51,8 +50,6 @@ const categoryLabelKeyMap: Record<string, string> = Object.fromEntries(
 
 export default function ProductsPage() {
   const t = useT("products");
-  // "make video" destination depends on the workspace mode (single beginner path vs. full form)
-  const uiMode = useSettingsStore((s) => s.uiMode);
   const locale = useLocale();
   const { products, addProduct, updateProduct, removeProduct } =
     useProductLibraryStore();
@@ -730,7 +727,7 @@ export default function ProductsPage() {
                           <Button type="button" variant="ghost" size="icon-sm" onClick={() => handleDelete(product)} aria-label={`${t("deleteProduct")}：${product.name}`} className="text-muted-foreground hover:text-destructive">
                             <LuTrash2 className="h-4 w-4" />
                           </Button>
-                          <ButtonLink href={`${uiMode === "pro" ? "/project/new" : "/start"}?productId=${product.id}`} size="sm" className="ml-1">
+                          <ButtonLink href={`/start?productId=${product.id}`} size="sm" className="ml-1">
                             <LuVideo className="w-3.5 h-3.5 mr-1.5" />
                             {t("makeVideo")}
                           </ButtonLink>

@@ -32,6 +32,11 @@ export interface ProviderConfig {
   name: string
   /** API key */
   apiKey: string
+  /**
+   * API secret, for platforms that authenticate with a key/secret pair rather than a bearer
+   * token (Prism sends both as `X-API-Key` / `X-API-Secret`).
+   */
+  apiSecret?: string
   /** API base URL */
   baseUrl: string
   /** Request timeout in milliseconds; default 30000 */
@@ -86,12 +91,11 @@ export interface ImageOptions {
   referenceImageUrl?: string
   /** Multiple reference images (multi-image edit models, e.g. gpt-image-2/edit: character sheet + product photo) */
   referenceImageUrls?: string[]
-  /** Guidance scale; controls how closely the output follows the prompt */
-  guidanceScale?: number
-  /** Number of inference steps */
-  steps?: number
-  /** Random seed */
-  seed?: number
+  /**
+   * Quality tier, for models that expose one (`low` | `medium` | `high` | `auto`). Higher tiers
+   * cost more and take longer, so this is a user setting rather than a per-call decision.
+   */
+  quality?: string
   /** Additional parameters */
   extra?: Record<string, unknown>
 }
@@ -130,31 +134,24 @@ export interface VideoOptions {
   height?: number
   /** Video duration (seconds) */
   duration?: number
-  /** Frame rate */
-  fps?: number
   /** First-frame image URL (image-to-video mode) */
   firstFrameUrl?: string
-  /** Last-frame image URL (supported by some platforms) */
+  /** Last-frame image URL, for the models whose catalog entry declares `lastFrame`. */
   lastFrameUrl?: string
-  /** Reference video URL (video-to-video mode) */
-  referenceVideoUrl?: string
-  /** Reference video URLs (multimodal reference-to-video, e.g. Seedance 2.0: ≤3 videos, ≤15s total) */
+  /** Reference videos. Trimmed to the model's `maxReferenceVideos` before the call. */
   referenceVideoUrls?: string[]
-  /** Reference image URLs (multimodal reference-to-video, e.g. Seedance 2.0: ≤9 images) */
+  /** Reference images (identity sheet, product photo, previous-shot continuity). */
   referenceImageUrls?: string[]
-  /** Motion strength; controls the magnitude of motion in the video */
-  motionStrength?: number
-  /** Guidance scale */
-  guidanceScale?: number
   /** Random seed */
   seed?: number
-  /** Voiceover script (models that support audio will produce a video with narration) */
-  voiceover?: string
-  /** Audio prompt (describes sound effects / music style; supported by some models) */
-  audioPrompt?: string
-  /** Whether to enable audio generation */
+  /**
+   * Whether to render an audio track. Only sent for models that expose a switch — the ones with
+   * unconditional native audio reject the field. What the audio should CONTAIN is carried in the
+   * prompt itself (see buildVideoControlPlan's audio direction), because no model here takes a
+   * separate narration field.
+   */
   audioEnabled?: boolean
-  /** Reference audio URLs (voice/timbre reference for audio-capable models; Ark caps at 3) */
+  /** Reference audio, for voice/timbre conditioning on models that accept it. */
   referenceAudioUrls?: string[]
   /** Additional parameters */
   extra?: Record<string, unknown>

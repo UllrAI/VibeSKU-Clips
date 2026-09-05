@@ -2,34 +2,36 @@ import { describe, it, expect } from "vitest";
 import { settings } from "@/lib/i18n/messages/settings";
 
 /**
- * Audit-fix regression: the settings page previously hard-coded Chinese provider names
- * (Volcengine / Alibaba Bailian / SiliconFlow) and "network error" strings, which English
- * users saw as raw Chinese. These are now i18n keys; this suite guards that the keys exist
- * in both zh and en, and that the en values contain no Chinese characters.
+ * Audit-fix regression: the settings page used to hard-code Chinese strings, which English users
+ * saw raw. Rather than pinning the handful of keys that caused it back then — most of which have
+ * since been deleted along with the multi-platform settings page — this guards the invariant
+ * itself: every key exists in both locales, and no English value leaks Chinese.
  */
-describe("settings i18n 厂商名/错误无中文泄漏（审计修复）", () => {
+describe("settings i18n：两种语言键齐全，英文无中文泄漏", () => {
   const en = settings.en as Record<string, string>;
   const zh = settings.zh as Record<string, string>;
 
-  it("3 个厂商名键 + connectFailed 在 zh/en 都存在", () => {
-    for (const k of ["providerVolcengineName", "providerAlibabaName", "providerSiliconflowName", "connectFailed"]) {
-      expect(zh[k]).toBeTruthy();
-      expect(en[k]).toBeTruthy();
+  it("zh 和 en 的键完全一致（缺键在客户端渲染时才会露出，测试是唯一的拦截点）", () => {
+    expect(Object.keys(en).sort()).toEqual(Object.keys(zh).sort());
+  });
+
+  it("每个键都有非空文案", () => {
+    for (const key of Object.keys(zh)) {
+      expect(zh[key], `zh:${key}`).toBeTruthy();
+      expect(en[key], `en:${key}`).toBeTruthy();
     }
   });
 
-  it("en 厂商名是英文品牌、不含中文（否则英文用户仍见中文）", () => {
-    expect(en.providerVolcengineName).toBe("Volcengine");
-    expect(en.providerAlibabaName).toBe("Alibaba Bailian");
-    expect(en.providerSiliconflowName).toBe("SiliconFlow");
-    for (const k of ["providerVolcengineName", "providerAlibabaName", "providerSiliconflowName"]) {
-      expect(/[一-鿿]/.test(en[k])).toBe(false);
+  it("en 文案不含中文字符", () => {
+    for (const [key, value] of Object.entries(en)) {
+      expect(/[一-鿿]/.test(value), `en:${key} → ${value}`).toBe(false);
     }
   });
 
-  it("zh 厂商名保持中文原名", () => {
-    expect(zh.providerVolcengineName).toBe("火山引擎");
-    expect(zh.providerAlibabaName).toBe("阿里百炼");
-    expect(zh.providerSiliconflowName).toBe("硅基流动");
+  it("连接失败等通用提示两种语言都在", () => {
+    for (const key of ["connectFailed", "connectTest", "statusReady", "statusMissing"]) {
+      expect(zh[key]).toBeTruthy();
+      expect(en[key]).toBeTruthy();
+    }
   });
 });

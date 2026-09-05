@@ -46,7 +46,7 @@ Drive VibeSKU Clips’ text-to-video pipeline from any MCP client (Claude Deskto
 | 变量 | 必需 | 说明 |
 |------|:---:|------|
 | `VIBESKU_CLIPS_BASE_URL` | — | VibeSKU Clips 实例地址，默认 `http://localhost:3000` |
-| `VIBESKU_CLIPS_LLM_BASE_URL` | 写脚本时 | OpenAI 兼容接口，如 `https://api.atlascloud.ai/v1` |
+| `VIBESKU_CLIPS_LLM_BASE_URL` | 写脚本时 | OpenAI 兼容接口，如 `https://openrouter.ai/api/v1` |
 | `VIBESKU_CLIPS_LLM_API_KEY` | 写脚本时 | LLM Key |
 | `VIBESKU_CLIPS_LLM_MODEL` | 写脚本时 | 模型名，如 `deepseek-ai/deepseek-v4-pro` |
 | `VIBESKU_CLIPS_PEXELS_KEY` | — | 配了才用 Pexels 实拍**视频** B-roll（免费申请） |
@@ -64,7 +64,7 @@ Drive VibeSKU Clips’ text-to-video pipeline from any MCP client (Claude Deskto
       "args": ["/绝对路径/vibesku-clips/mcp/vibesku-clips-mcp.mjs"],
       "env": {
         "VIBESKU_CLIPS_BASE_URL": "http://localhost:3000",
-        "VIBESKU_CLIPS_LLM_BASE_URL": "https://api.atlascloud.ai/v1",
+        "VIBESKU_CLIPS_LLM_BASE_URL": "https://openrouter.ai/api/v1",
         "VIBESKU_CLIPS_LLM_API_KEY": "sk-...",
         "VIBESKU_CLIPS_LLM_MODEL": "deepseek-ai/deepseek-v4-pro"
       }
@@ -92,7 +92,7 @@ claude mcp add vibesku-clips -- node /绝对路径/vibesku-clips/mcp/vibesku-cli
       "args": ["-y", "vibesku-clips-mcp"],
       "env": {
         "VIBESKU_CLIPS_BASE_URL": "http://localhost:3000",
-        "VIBESKU_CLIPS_LLM_BASE_URL": "https://api.atlascloud.ai/v1",
+        "VIBESKU_CLIPS_LLM_BASE_URL": "https://openrouter.ai/api/v1",
         "VIBESKU_CLIPS_LLM_API_KEY": "sk-...",
         "VIBESKU_CLIPS_LLM_MODEL": "deepseek-ai/deepseek-v4-pro"
       }

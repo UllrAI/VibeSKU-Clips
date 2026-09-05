@@ -19,7 +19,7 @@ Still stuck afterwards → [open an Issue](https://github.com/UllrAI/VibeSKU-Cli
 5. [Step 3 — Your first video in 3 minutes (free quick cut, $0)](#5-step-3--your-first-video-in-3-minutes-free-quick-cut-0)
 6. [Step 4 — Download, publishing copy, AI labeling](#6-step-4--download-publishing-copy-ai-labeling)
 7. [Next level 1 — AI-generated film (read before you spend)](#7-next-level-1--ai-generated-film-read-before-you-spend)
-8. [Next level 2 — Pro mode, page by page](#8-next-level-2--pro-mode-page-by-page)
+8. [Next level 2 — the four-step workspace, page by page](#8-next-level-2--the-four-step-workspace-page-by-page)
 9. [Next level 3 — Products / batch / clone a hit / daily posting](#9-next-level-3--products--batch--clone-a-hit--daily-posting)
 10. [Next level 4 — Let an AI assistant or the CLI make videos for you](#10-next-level-4--let-an-ai-assistant-or-the-cli-make-videos-for-you)
 11. [Troubleshooting table](#11-troubleshooting-table)
@@ -76,7 +76,7 @@ Still stuck afterwards → [open an Issue](https://github.com/UllrAI/VibeSKU-Cli
 | **Storyboard grid** | One image generation paints every shot into a single 3×3 grid, so character, outfit, room and lighting match naturally; each cell is then cropped into a shot keyframe. |
 | **One-tap full film** | All keyframes go to the video model at once, producing the whole film with native cuts and lines spoken in the character's own voice. |
 | **Judge panel** | Four narrow, bad-tempered judges (pacing / spoken voice / freshness / structure) tear the lines apart and rewrite them **before** anything costs money. Free. |
-| **Lite / Pro mode** | Toggle at the bottom of the sidebar. Lite keeps the single one-tap path; Pro unlocks storyboard and all pro tools. |
+| **Progressive disclosure** | One creation path. It asks only for content and output mode; storyboard, director desk and production profile are folded in place — open them when you want them, no mode to switch. |
 | **AI labeling** | Chinese platforms require AI content to be labeled. VibeSKU Clips **does it by default** (opening badge + file metadata) — nothing for you to configure. |
 
 ---
@@ -228,24 +228,26 @@ Pick one of the three routes below.
 
 ---
 
-### 4.1 Route A (easiest) — Atlas Cloud, one key for everything
+### 4.1 Route A (easiest) — OpenRouter, one key for 400+ models
 
-One key covers **script + image + video + voice-over**, so upgrading to AI films later needs no second setup.
+One key reaches every frontier model; switching later means editing a single field.
 
-1. On the workspace, click **Start generating** — an inline card appears: "Connect Atlas Cloud and start now" (or go to **Settings → "Recommended · One key does it all"** at the top);
-2. Click **"No key? Get one free in a minute"** (or open the sign-up page directly: https://www.atlascloud.ai?ref=JPM683 ), register, copy the API key;
-3. Back in VibeSKU Clips, paste it and click **Connect & start**;
-4. The green **"Atlas Cloud connected"** message means the LLM / image / video / voice-over models are already wired up — nothing else to configure.
+1. Sign up at https://openrouter.ai/keys, add a few dollars of credit, create an API key and copy it (**it's shown only once**);
+2. VibeSKU Clips → **Settings → Connect**, and in the "Script model" card click the **OpenRouter** quick preset — baseUrl and model name fill themselves in;
+3. Paste your key into **API key**;
+4. Click **Test connection**. **Connection works** means done (settings **save as you type** — there's no Save button to hunt for).
+
+> You can also just hit "Create project and draft script" on the create page: with no key set, the connect panel opens right there, and generation continues once you fill it in.
 
 ---
 
 ### 4.2 Route B (cheapest) — DeepSeek, fill three fields
 
-1. Sign up at https://platform.deepseek.com, add a few dollars of credit, create an API key and copy it (**it's shown only once**);
-2. VibeSKU Clips → **Settings → "Script model" tab**;
+1. Sign up at https://platform.deepseek.com, add a few dollars of credit, create an API key and copy it;
+2. VibeSKU Clips → **Settings → Connect**;
 3. Click the **DeepSeek** quick preset — baseUrl and model name fill themselves in;
 4. Paste your key into **API key**;
-5. Click **Test connection**. **Connected ✓** means done (settings **save as you type** — there's no Save button to hunt for).
+5. Click **Test connection** → done.
 
 ---
 
@@ -255,9 +257,11 @@ For the technically comfortable with a decent machine: the model runs on your ow
 
 1. Install Ollama from https://ollama.com;
 2. Run `ollama pull qwen2.5` (or any model you prefer);
-3. VibeSKU Clips → Settings → Script model → click the **`Ollama 本地`** preset (preset labels keep their original names in both languages);
+3. VibeSKU Clips → Settings → Connect → click the **`Ollama 本地`** preset (preset labels keep their original names in both languages);
 4. Write the model name in full including the tag, e.g. `qwen2.5:7b-instruct`; unsure? click **Read available models** to list what's installed;
 5. **Test connection** → done.
+
+> Use a 7B-or-larger instruct model. A 0.5B/1.5B model cannot produce a structured script and will be rejected with a message telling you to switch.
 
 ---
 
@@ -265,29 +269,39 @@ For the technically comfortable with a decent machine: the model runs on your ow
 
 | Preset | baseUrl | Default model | Note |
 |---|---|---|---|
-| Atlas Cloud | `https://api.atlascloud.ai/v1` | `deepseek-ai/deepseek-v4-pro` | Recommended, covers the whole pipeline |
-| OpenRouter | `https://openrouter.ai/api/v1` | `openai/gpt-4o` | One key, 400+ models |
+| OpenRouter | `https://openrouter.ai/api/v1` | `openai/gpt-5.4` | Recommended — one key, 400+ models |
+| OpenAI | `https://api.openai.com/v1` | `gpt-5.4` | |
 | DeepSeek | `https://api.deepseek.com` | `deepseek-v4-flash` | Cheap |
 | Kimi | `https://api.moonshot.cn/v1` | `kimi-k2.5` | |
 | Zhipu GLM (`智谱 GLM`) | `https://open.bigmodel.cn/api/paas/v4` | `glm-5-turbo` | |
 | MiniMax | `https://api.minimax.chat/v1` | `MiniMax-M2.7` | |
 | Doubao (`豆包`, Volcengine Ark) | `https://ark.cn-beijing.volces.com/api/v3` | `doubao-seed-2-0-pro-260215` | |
-| OpenAI | `https://api.openai.com/v1` | `gpt-5.4` | |
 | Ollama local (`Ollama 本地`) | `http://127.0.0.1:11434/v1` | `qwen2.5` | Free, offline |
 
-> Any OpenAI-compatible endpoint works — fill in baseUrl + key + model name yourself, custom model IDs included.
+> Any OpenAI-compatible endpoint works — fill in baseUrl + key + model name yourself.
 
 ### 4.5 "Test connection" failed?
 
 | Message | Usually means | Fix |
 |---|---|---|
-| Connection failed ✗ / 401 | Wrong key, or a stray space when pasting | Re-copy the key, check leading/trailing spaces |
+| Connection failed / 401 | Wrong key, or a stray space when pasting | Re-copy the key, check leading/trailing spaces |
 | 402 / insufficient balance | No credit on the platform | Top up |
 | 404 / model not found | Model name typo | Click **Read available models** and pick from the list |
-| 404 on Atlas Cloud | baseUrl points at the media gateway `…/api/v1` | The script-model field needs `https://api.atlascloud.ai/v1` (`/api/v1` only serves image/video/TTS); v0.8.94+ repairs old settings automatically |
-| Timeout | Network can't reach that platform | Switch platform, or set a proxy endpoint in the custom baseUrl field |
+| Timeout | Network can't reach that platform | Switch platform, or set a proxy endpoint in the baseUrl field |
 
 > The test runs **server-side**, so browser CORS is never the cause. It's almost always baseUrl, key, or model name.
+
+---
+
+### 4.6 Want AI to draw the visuals? Add a Prism key pair
+
+Skip this if you only use free stock footage. For AI images and video, go to **Settings → Connect → "Images & video · Prism"**:
+
+1. Sign up at https://prism.ullrai.com and get both an **API key** and an **API secret** (both are required);
+2. Paste them into the two fields and click **Test connection** — the test reads a task id that cannot exist, so **nothing is generated and nothing is billed**;
+3. The models live under **Settings → Generation** and are already chosen for you: video **MiniMax H3** (renders speech and ambience in the same pass) and image **GPT Image 2** (quality defaults to Low, the cheapest tier for drafting).
+
+> One key/secret pair covers every image and video model — no per-platform setup. Generations are billed to your own Prism account; VibeSKU Clips itself is free.
 
 ---
 
@@ -334,7 +348,7 @@ This page is the **free confirmation gate**: the script is already written at no
 - Not happy → **Regenerate** (still free);
 - Happy → **Free quick cut** ($0);
 - Want AI visuals → **Generate with AI** (billing starts here — see [section 7](#7-next-level-1--ai-generated-film-read-before-you-spend));
-- Want to fine-tune every shot → **Open Pro mode →** (see [section 8](#8-next-level-2--pro-mode-page-by-page)).
+- Want to fine-tune every shot → **Edit shot by shot →** (see [section 8](#8-next-level-2--the-four-step-workspace-page-by-page)).
 
 After you choose the free quick cut it runs itself: **judge panel rewrites weak lines (free) → footage matching (free stock — video first, image as fallback) → free voice-over + subtitles → local composition**. Usually 1–3 minutes.
 
@@ -392,8 +406,7 @@ Free quick cut uses real stock footage. When you want the product on camera, a n
 
 The free path needs only the LLM key. The AI path also needs an **image model** and a **video model**:
 
-- On Atlas Cloud: already done by the single key — **nothing to do**;
-- On other platforms: **Settings → "Platform keys"** for the key, then pick a default under the **"Image model"** and **"Video model"** tabs (model lists load at runtime once a valid key is present).
+**Settings → Connect → "Images & video · Prism"**, fill in the API key and API secret (see [section 4.6](#46-want-ai-to-draw-the-visuals-add-a-prism-key-pair)). The models live under **Settings → Generation** and are already chosen — the defaults work as they are.
 
 If something's missing, clicking the AI option tells you exactly what to configure instead of failing halfway.
 
@@ -426,14 +439,14 @@ No.
 
 - **Free path:** retry as much as you like, it costs nothing;
 - **AI path:** a two-phase task table means **already-submitted cloud jobs can be reclaimed from the assets page** — you're not charged twice;
-- Any failed step can be finished manually in Pro mode, or you can fall back to the free quick cut.
+- Any failed step can be finished manually, or you can fall back to the free quick cut.
 
 ---
 
-## 8. Next level 2 — Pro mode, page by page
+## 8. Next level 2 — the four-step workspace, page by page
 
 **How to switch:** the **Lite ⇄ Pro** toggle at the bottom of the sidebar.
-Pro mode adds a four-step bar to every project: **Script → Assets → Video → Export**.
+Every project gets a four-step bar: **Script → Assets → Video → Export**. Advanced controls are folded in place on each page — open them when you need them, no mode to switch.
 
 ### 8.1 Script page
 
@@ -477,7 +490,7 @@ Then hit **Start compose**, and at 100% click **Next: export video**.
 
 ### 8.4 Export page
 
-Same page as [section 6](#6-step-4--download-publishing-copy-ai-labeling) — Lite and Pro mode share it.
+Same page as [section 6](#6-step-4--download-publishing-copy-ai-labeling).
 
 ---
 
@@ -486,7 +499,7 @@ Same page as [section 6](#6-step-4--download-publishing-copy-ai-labeling) — Li
 | Feature | Where | How |
 |---|---|---|
 | **Products** | Sidebar → Products | Store products you sell often and reuse them without re-uploading |
-| **Batch** | Sidebar → Batch (Pro mode) | Select several products + one shared config → they render one after another; run ten overnight before a sale |
+| **Batch** | Sidebar → Toolbox → Batch | Select several products + one shared config → they render one after another; run ten overnight before a sale |
 | **Clone a hit** | Sidebar → Clone a hit | Paste a viral video URL → load its high-converting structure → upload your product → regenerate in the same structure. ⚠️ Mind the source's licensing; you take the risk |
 | **What to post today** | Workspace trends block | Live trending topics (politics filtered out); each has a "Remix" shortcut into Clone a hit |
 | **Daily · pick by persona** | Workspace | Enter persona keywords → "Pick today's one" → "Start generating" |
@@ -504,7 +517,7 @@ Same page as [section 6](#6-step-4--download-publishing-copy-ai-labeling) — Li
 ```bash
 # macOS / Linux
 export VIBESKU_CLIPS_BASE_URL="http://localhost:3000"
-export VIBESKU_CLIPS_LLM_BASE_URL="https://api.atlascloud.ai/v1"
+export VIBESKU_CLIPS_LLM_BASE_URL="https://openrouter.ai/api/v1"
 export VIBESKU_CLIPS_LLM_API_KEY="sk-your-key"
 export VIBESKU_CLIPS_LLM_MODEL="deepseek-ai/deepseek-v4-pro"
 ```
@@ -512,7 +525,7 @@ export VIBESKU_CLIPS_LLM_MODEL="deepseek-ai/deepseek-v4-pro"
 ```powershell
 # Windows PowerShell
 $env:VIBESKU_CLIPS_BASE_URL="http://localhost:3000"
-$env:VIBESKU_CLIPS_LLM_BASE_URL="https://api.atlascloud.ai/v1"
+$env:VIBESKU_CLIPS_LLM_BASE_URL="https://openrouter.ai/api/v1"
 $env:VIBESKU_CLIPS_LLM_API_KEY="sk-your-key"
 $env:VIBESKU_CLIPS_LLM_MODEL="deepseek-ai/deepseek-v4-pro"
 ```
@@ -554,7 +567,7 @@ Add to your MCP config (Claude Desktop: `claude_desktop_config.json`; Cursor: `~
       "args": ["/absolute/path/vibesku-clips/mcp/vibesku-clips-mcp.mjs"],
       "env": {
         "VIBESKU_CLIPS_BASE_URL": "http://localhost:3000",
-        "VIBESKU_CLIPS_LLM_BASE_URL": "https://api.atlascloud.ai/v1",
+        "VIBESKU_CLIPS_LLM_BASE_URL": "https://openrouter.ai/api/v1",
         "VIBESKU_CLIPS_LLM_API_KEY": "sk-...",
         "VIBESKU_CLIPS_LLM_MODEL": "deepseek-ai/deepseek-v4-pro"
       }
@@ -593,8 +606,8 @@ Then just say "make a vertical product video from this link with VibeSKU Clips".
 | "No LLM configured — add an API key in Settings" | No script key | See [section 4](#4-step-2--add-one-key-for-script-writing-the-only-required-setup) |
 | "Script generation failed. Check your LLM settings" | Bad key / no credit / wrong model name | Settings → Script model → **Test connection** for the real error |
 | "No default image model configured" | AI path missing an image model | Settings → **Image model** → pick a default |
-| "No image/video model configured yet" | AI film missing models | Pick one under **Image model** and **Video model** (or connect Atlas with one key) |
-| Model dropdown is empty | That platform's key is missing or invalid | Fill the key under **Platform keys**; the model list appears automatically |
+| "Prism is not connected yet" | AI film has no visual model | Settings → Connect → add the Prism API key + secret |
+| Generation rejected with 422 | A parameter is outside the model's allowed range | The error names the valid values; adjust duration / ratio / resolution under Settings → Generation |
 
 ### 11.3 Generation / output
 
@@ -602,7 +615,7 @@ Then just say "make a vertical product video from this link with VibeSKU Clips".
 |---|---|---|
 | "Couldn't fetch product info from that link" | Site blocks scraping or has an unusual structure | Use **Upload product photo** instead |
 | Stuck on "generating" for a long time | Platform queue or slow network | AI films legitimately take 3–6 min; past ~10, check the assets page to reclaim the job |
-| Auto-finish failed | One step failed | Switch to manual editing in Pro mode, or fall back to the free quick cut |
+| Auto-finish failed | One step failed | Switch to manual editing, or fall back to the free quick cut |
 | Video has no sound | TTS is off | Video page → **Voiceover (TTS)** → enable auto voice-over |
 | Subtitles show as boxes | No CJK font in a custom environment | Use the official Docker image (fonts bundled), or install a CJK font |
 | Compose fails with a `drawtext` error | Your FFmpeg build lacks the drawtext filter | Install FFmpeg from your package manager (`brew`/`apt`) rather than a static build without harfbuzz |

@@ -3,11 +3,6 @@ import type { NamespaceMessages } from "../config";
 // start 命名空间词条（落地页「先做后配」/start）
 export const start: NamespaceMessages = {
   zh: {
-    // 顶部导航
-    navProducts: "商品库",
-    navBatch: "批量",
-    navClone: "爆款复刻",
-    navSettings: "设置",
     // 主视觉
     eyebrow: "带货短视频工作台",
     h1Lead: "丢张商品图，",
@@ -79,28 +74,11 @@ export const start: NamespaceMessages = {
     profileAutoModel: "智能选择",
     profileNeedsSetup: "待配置",
     profileLocalCompose: "FFmpeg 本地渲染",
-    profileModelWarning: "当前方案还缺少生图或视频模型，开始时可能无法完成 AI 画面。",
+    profileModelWarning: "还没连上 Prism，AI 画面这一步会跑不起来。",
     profileConfigure: "去补齐配置",
-    // 未配 Key 提示
-    keyboxText: "脚本和生成画面需要连接模型服务。可用 Atlas Cloud 同时配置脚本、图片、视频和配音。",
-    keyboxCta: "配置 API Key",
-    // Atlas 一键接入（落地页内联，免跳设置）
-    atlasBadge: "一个 Key",
-    atlasTitle: "连接 Atlas Cloud",
-    atlasDesc: "一次配置脚本、图片、视频和配音模型。",
-    atlasGetKey: "没有 Key？1 分钟免费获取",
-    atlasKeyPlaceholder: "粘贴 Atlas Cloud API Key",
-    atlasConnectStart: "连接并开始",
-    atlasConnecting: "连接中…",
-    atlasUseOther: "想用别的平台（OpenAI / DeepSeek…）？前往完整设置",
-    atlasKeyInvalid: "Key 无效或无权限，请检查后重试",
-    atlasConnectFailed: "连接失败，请检查网络后重试",
-    atlasDismiss: "稍后再说",
     // 主按钮 + 安心文案
     ctaStart: "创建项目并生成脚本",
     busyDefault: "生成中…",
-    reassureLead: "尚未连接模型服务？开始时可配置 ",
-    reassureTail: "，用于脚本、图片、视频和配音。",
     // 生成阶段提示
     stageCreate: "创建项目…",
     stageUpload: "上传商品图…",
@@ -146,33 +124,39 @@ export const start: NamespaceMessages = {
     dailyPickedMatched: "已按人设选中「{topic}」，点「开始生成」直接出片",
     dailyPickedFallback: "今日热榜没有匹配人设的热点，先给你榜一「{topic}」——也可以换个关键词再选",
     dailyDoneHint: "今日已选过「{topic}」，想再来一条直接再点",
-    dailyAutoHint: "想全自动日更？用 MCP/CLI 配 cron，README 有配方",
     // 最近项目
     recentLabel: "继续未完成的项目",
     recentAll: "查看全部",
-    guideTitle: "第一次用？三步出片",
-    guideStep1: "丢一张商品图，或用「一句话成片」说个主题（没素材点下面的示例商品）",
-    guideStep2: "确认脚本与生成方式；默认设置可以直接使用",
-    guideStep3: "检查素材和成片，再下载或继续编辑",
-    guideFoot: "免费素材和配音不要钱；用到 AI 生成画面时才需要配一次 Key。",
-    guideClose: "不再显示",
     untitledProject: "未命名项目",
     // 最近项目卡片的阶段标签（区别于上方 stage* 生成进行时文案）
     pjStageScript: "脚本",
     pjStageAssets: "素材",
     pjStageVideo: "合成",
     pjStageDone: "已完成",
-    // 高级入口
-    advLink: "高级设置 · 多平台 / 自定义模型 / 生成参数 ›",
     // 新建项目默认名（{name} 为商品名）
     projectName: "{name} 推广",
+
+    // 连接与高级入口
+    reassureFree: "免费素材链不花钱，只有写脚本会调用一次大模型。",
+    reassureAi: "AI 出画按次计费，走你自己的 Prism 账户；开始前会先确认。",
+    advancedProductionHint: "默认档位已经够用",
+    advOpenNew: "高级新建",
+    advOpenNewDesc: "品类、时长、脚本风格和广告模板都在这里。",
+    connectTitle: "先连一次，之后不用再填",
+    connectDesc: "Key 只存在这台设备的浏览器里，不会上传。",
+    connectLlmLabel: "脚本模型 Key（写脚本用）",
+    connectLlmPlaceholder: "粘贴 OpenRouter API Key",
+    connectMediaLabel: "Prism Key（AI 生图和生视频用）",
+    connectMediaKeyPlaceholder: "粘贴 Prism API Key",
+    connectMediaSecretPlaceholder: "粘贴 Prism API Secret",
+    connectGetKey: "去拿 Key ↗",
+    connectSubmit: "连接并开始",
+    connectChecking: "验证中…",
+    connectFailed: "连接失败，检查 Key 是否完整",
+    connectDismiss: "先不填",
+    connectUseSettings: "想用别的服务商？去设置里配 →",
   },
   en: {
-    // 顶部导航
-    navProducts: "Products",
-    navBatch: "Batch",
-    navClone: "Clone a hit",
-    navSettings: "Settings",
     // 主视觉
     eyebrow: "Commerce video workspace",
     h1Lead: "Drop a product photo, ",
@@ -244,28 +228,11 @@ export const start: NamespaceMessages = {
     profileAutoModel: "Smart select",
     profileNeedsSetup: "Not configured",
     profileLocalCompose: "Local FFmpeg render",
-    profileModelWarning: "This strategy still needs an image or video model before it can finish AI visuals.",
+    profileModelWarning: "Prism is not connected yet, so the AI visuals step cannot run.",
     profileConfigure: "Complete setup",
-    // 未配 Key 提示
-    keyboxText: "Scripts and generated visuals need a model service. Atlas Cloud can configure script, image, video, and voiceover together.",
-    keyboxCta: "Configure API key",
-    // Atlas 一键接入（落地页内联，免跳设置）
-    atlasBadge: "One key",
-    atlasTitle: "Connect Atlas Cloud",
-    atlasDesc: "Configure script, image, video, and voiceover models together.",
-    atlasGetKey: "No key? Get one free in a minute",
-    atlasKeyPlaceholder: "Paste your Atlas Cloud API key",
-    atlasConnectStart: "Connect & start",
-    atlasConnecting: "Connecting…",
-    atlasUseOther: "Prefer another platform (OpenAI / DeepSeek…)? Open full settings",
-    atlasKeyInvalid: "Key invalid or unauthorized — check and retry",
-    atlasConnectFailed: "Connection failed — check your network and retry",
-    atlasDismiss: "Maybe later",
     // 主按钮 + 安心文案
     ctaStart: "Create project and draft script",
     busyDefault: "Generating…",
-    reassureLead: "No model service connected? Configure ",
-    reassureTail: " when you start, for scripts, images, video, and voiceover.",
     // 生成阶段提示
     stageCreate: "Creating project…",
     stageUpload: "Uploading product photos…",
@@ -311,25 +278,36 @@ export const start: NamespaceMessages = {
     dailyPickedMatched: "Picked “{topic}” for your persona — hit “Start generating” to make it",
     dailyPickedFallback: "No trend matched your persona today, so here's #1: “{topic}” — or tweak the keywords and retry",
     dailyDoneHint: "Already picked “{topic}” today — tap again for another",
-    dailyAutoHint: "Want hands-free daily posts? Cron the MCP/CLI — recipe in the README",
     // 最近项目
     recentLabel: "Continue an unfinished project",
     recentAll: "View all",
-    guideTitle: "First time? Three steps to a video",
-    guideStep1: "Drop a product photo, or describe a topic via One-sentence video (no assets? tap an example below)",
-    guideStep2: "AI writes the script, fills the visuals and voices it \u2014 defaults just work",
-    guideStep3: "Wait 1\u20133 minutes, watch and download; open the editor only if you want to fine-tune",
-    guideFoot: "Free stock footage and voice-over cost nothing; a key is only needed once AI image/video generation kicks in.",
-    guideClose: "Dismiss",
     untitledProject: "Untitled project",
     // 最近项目卡片的阶段标签（区别于上方 stage* 生成进行时文案）
     pjStageScript: "Script",
     pjStageAssets: "Assets",
     pjStageVideo: "Compose",
     pjStageDone: "Done",
-    // 高级入口
-    advLink: "Advanced · multi-platform / custom models / generation params ›",
     // 新建项目默认名（{name} 为商品名）
     projectName: "{name} Promo",
+
+    // Connect & advanced entry
+    reassureFree: "The free stock path costs nothing — only the script calls a model, once.",
+    reassureAi: "AI visuals are billed per generation on your own Prism account, and confirmed before they run.",
+    advancedProductionHint: "The default profile is already fine",
+    advOpenNew: "Advanced creation",
+    advOpenNewDesc: "Category, duration, script style, and ad templates live here.",
+    connectTitle: "Connect once — you won't be asked again",
+    connectDesc: "Keys stay in this browser on this device and are never uploaded.",
+    connectLlmLabel: "Script model key (for writing the script)",
+    connectLlmPlaceholder: "Paste your OpenRouter API key",
+    connectMediaLabel: "Prism key (for AI images and video)",
+    connectMediaKeyPlaceholder: "Paste your Prism API key",
+    connectMediaSecretPlaceholder: "Paste your Prism API secret",
+    connectGetKey: "Get a key ↗",
+    connectSubmit: "Connect and start",
+    connectChecking: "Checking…",
+    connectFailed: "Connection failed — check that the key was pasted in full",
+    connectDismiss: "Not now",
+    connectUseSettings: "Prefer another provider? Configure it in settings →",
   },
 };

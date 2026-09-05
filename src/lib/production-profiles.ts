@@ -8,7 +8,6 @@ export interface ProductionProfile {
   id: ProductionProfileId;
   resolution: "720p" | "1080p";
   duration: number;
-  motionStrength: number;
   motionIntensity: MotionIntensity;
   motionRealism: MotionRealismTier;
   chainMode: "pin" | "tail" | "off";
@@ -24,7 +23,6 @@ export const PRODUCTION_PROFILES: Record<ProductionProfileId, ProductionProfile>
     id: "rapid",
     resolution: "720p",
     duration: 4,
-    motionStrength: 0.35,
     motionIntensity: "subtle",
     motionRealism: "constraints",
     chainMode: "off",
@@ -37,7 +35,6 @@ export const PRODUCTION_PROFILES: Record<ProductionProfileId, ProductionProfile>
     id: "balanced",
     resolution: "1080p",
     duration: 5,
-    motionStrength: 0.55,
     motionIntensity: "normal",
     motionRealism: "auto",
     chainMode: "pin",
@@ -50,7 +47,6 @@ export const PRODUCTION_PROFILES: Record<ProductionProfileId, ProductionProfile>
     id: "cinematic",
     resolution: "1080p",
     duration: 8,
-    motionStrength: 0.72,
     motionIntensity: "strong",
     motionRealism: "auto",
     chainMode: "tail",
@@ -83,7 +79,6 @@ export function productionProfilePatch(id: ProductionProfileId, current: Current
       aspectRatio,
       resolution: profile.resolution,
       duration: profile.duration,
-      motionStrength: profile.motionStrength,
     },
     motionIntensity: profile.motionIntensity,
     motionRealism: profile.motionRealism,

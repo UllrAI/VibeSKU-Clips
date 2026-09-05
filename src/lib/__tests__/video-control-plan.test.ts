@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { buildVideoControlPlan, sanitizeVideoControlSummary } from "@/lib/video-control-plan";
 
+/**
+ * The plan decides what actually reaches a paid request. Two failure shapes matter: silently
+ * dropping an identity reference (the shot comes back with the wrong face and the money is spent),
+ * and attaching something the model rejects (a 422 after the wait). Both are model-capability
+ * questions, so every case below is pinned to a real catalog entry.
+ */
+
 describe("video control plan", () => {
-  it("uses an Atlas reference sibling for a multi-subject pack", () => {
+  it("carries identity and product references alongside the keyframe", () => {
     const plan = buildVideoControlPlan({
-      provider: "atlas-cloud",
-      modelId: "bytedance/seedance-2.5/image-to-video",
-      supportsAudio: true,
+      modelId: "seedance2.5",
       firstFrameUrl: "https://e.com/key.png",
       characterReferenceUrl: "https://e.com/person.png",
       productReferenceUrl: "https://e.com/product.png",
@@ -16,22 +21,21 @@ describe("video control plan", () => {
 
     expect(plan).toMatchObject({
       strategy: "reference-pack",
-      mode: "video-to-video",
-      audioMode: "native",
-      voiceoverBound: true,
+      mode: "image-to-video",
       referenceCount: 3,
       referenceRoles: ["keyframe", "character", "product"],
       warnings: [],
     });
-    expect(plan.firstFrameUrl).toBeUndefined();
-    expect(plan.referenceInputs.map((item) => item.role)).toEqual(["keyframe", "character", "product"]);
-    expect(plan.promptSuffix).toContain("只自然说一遍");
+    // The keyframe stays a real first frame — references never displace the composition anchor.
+    expect(plan.firstFrameUrl).toBe("https://e.com/key.png");
+    expect(plan.referenceInputs.map((item) => item.role)).toEqual(["character", "product"]);
+    // @Image1 is the keyframe, so the reference map starts at @Image2.
+    expect(plan.promptSuffix).toContain("@Image2=人物身份");
   });
 
-  it("keeps identity references and carries the end frame as a target anchor", () => {
+  it("keeps the end frame and the identity reference at the same time", () => {
     const plan = buildVideoControlPlan({
-      provider: "atlas-cloud",
-      modelId: "bytedance/seedance-2.5/image-to-video",
+      modelId: "seedance2.5",
       firstFrameUrl: "https://e.com/key.png",
       lastFrameUrl: "https://e.com/end.png",
       characterReferenceUrl: "https://e.com/person.png",
@@ -41,79 +45,117 @@ describe("video control plan", () => {
 
     expect(plan).toMatchObject({
       strategy: "reference-pack",
-      mode: "video-to-video",
-      audioMode: "native",
       referenceCount: 3,
       referenceRoles: ["keyframe", "end-frame", "character"],
       warnings: [],
     });
-    expect(plan.referenceInputs.map((item) => item.role)).toEqual(["keyframe", "end-frame", "character"]);
+    expect(plan.lastFrameUrl).toBe("https://e.com/end.png");
+    expect(plan.promptSuffix).toContain("@Image3=character identity");
   });
 
-  it("keeps native start/end frames when only a soft continuity reference competes", () => {
+  it("H3 renders its own audio, so the voice-over is bound into the video request", () => {
     const plan = buildVideoControlPlan({
-      provider: "atlas-cloud",
-      modelId: "bytedance/seedance-2.5/image-to-video",
+      modelId: "minimax-h3",
       firstFrameUrl: "https://e.com/key.png",
-      lastFrameUrl: "https://e.com/end.png",
-      continuityReferenceUrl: "https://e.com/previous.png",
+      voiceover: "这个细节你一定没注意过。",
+      speakerVisible: true,
+      locale: "zh",
+    });
+    expect(plan.audioMode).toBe("native");
+    expect(plan.voiceoverBound).toBe(true);
+    expect(plan.audioPrompt).toContain("只自然说一遍");
+  });
+
+  it("Seedance renders audio behind a switch, so it counts as native too", () => {
+    const plan = buildVideoControlPlan({
+      modelId: "seedance2.0",
+      firstFrameUrl: "https://e.com/key.png",
+      voiceover: "hello",
       locale: "en",
     });
-    expect(plan).toMatchObject({
-      strategy: "keyframe",
-      mode: "image-to-video",
-      firstFrameUrl: "https://e.com/key.png",
-      lastFrameUrl: "https://e.com/end.png",
-      warnings: ["reference-pack-deferred-for-end-frame"],
-    });
+    expect(plan.audioMode).toBe("native");
+    expect(plan.voiceoverBound).toBe(true);
   });
 
-  it("attaches references and native audio alongside Volcengine frames", () => {
+  it("a model outside the catalog gets a post-production voice track instead of a silent shot", () => {
     const plan = buildVideoControlPlan({
-      provider: "volcengine",
-      modelId: "doubao-seedance-2-0-pro-250528",
-      supportsAudio: true,
+      modelId: "my-org/unknown",
       firstFrameUrl: "https://e.com/key.png",
-      continuityReferenceUrl: "https://e.com/tail.png",
+      voiceover: "hello",
+      locale: "en",
+    });
+    expect(plan.audioMode).toBe("post");
+    expect(plan.voiceoverBound).toBe(false);
+    expect(plan.audioPrompt).toBeUndefined();
+  });
+
+  it("a reference video makes it a video-to-video request", () => {
+    const plan = buildVideoControlPlan({
+      modelId: "seedance2.5",
+      firstFrameUrl: "https://e.com/key.png",
+      motionReferenceUrl: "https://e.com/move.mp4",
+      locale: "en",
+    });
+    expect(plan.mode).toBe("video-to-video");
+    expect(plan.referenceInputs.map((item) => item.mediaType)).toEqual(["video"]);
+  });
+
+  it("drops what the model cannot take and says so, instead of failing at the provider", () => {
+    const plan = buildVideoControlPlan({
+      modelId: "sora2",
+      firstFrameUrl: "https://e.com/key.png",
+      lastFrameUrl: "https://e.com/end.png",
+      characterReferenceUrl: "https://e.com/person.png",
+      motionReferenceUrl: "https://e.com/move.mp4",
       audioReferenceUrl: "https://e.com/voice.wav",
-      description: "a hand opens the box",
       locale: "en",
     });
-
-    expect(plan).toMatchObject({
-      strategy: "reference-pack",
-      mode: "image-to-video",
-      audioMode: "native",
-      referenceCount: 3,
-      referenceRoles: ["keyframe", "continuity", "audio"],
-    });
-    expect(plan.referenceInputs.map((item) => item.mediaType)).toEqual(["image", "audio"]);
-    expect(plan.promptSuffix).toContain("@Image2=previous-shot continuity");
+    expect(plan.referenceInputs).toEqual([]);
+    expect(plan.lastFrameUrl).toBeUndefined();
+    expect(plan.warnings).toEqual([
+      "reference-pack-unsupported",
+      "reference-video-unsupported",
+      "reference-audio-unsupported",
+      "end-frame-unsupported",
+    ]);
   });
 
   it("does not label a plain keyframe request as a reference pack", () => {
     const plan = buildVideoControlPlan({
-      provider: "volcengine",
-      modelId: "doubao-seedance-2-0-pro-250528",
+      modelId: "seedance2.0",
       firstFrameUrl: "https://e.com/key.png",
       locale: "zh",
     });
     expect(plan.strategy).toBe("keyframe");
     expect(plan.referenceCount).toBe(1);
+    expect(plan.referenceInputs).toEqual([]);
+  });
+
+  it("a continuity frame identical to the keyframe does not burn a second reference slot", () => {
+    const plan = buildVideoControlPlan({
+      modelId: "seedance2.5",
+      firstFrameUrl: "https://e.com/key.png",
+      continuityReferenceUrl: "https://e.com/key.png",
+      locale: "en",
+    });
+    expect(plan.referenceInputs).toEqual([]);
+    expect(plan.referenceCount).toBe(1);
   });
 
   it("sanitizes persisted summaries and drops unknown fields", () => {
-    expect(sanitizeVideoControlSummary({
-      version: 1,
-      strategy: "reference-pack",
-      mode: "video-to-video",
-      referenceRoles: ["keyframe", "character", "not-a-role"],
-      referenceCount: 999,
-      audioMode: "native",
-      voiceoverBound: true,
-      warnings: ["reference-pack-unsupported", "unknown"],
-      promptSuffix: "must not persist",
-    })).toEqual({
+    expect(
+      sanitizeVideoControlSummary({
+        version: 1,
+        strategy: "reference-pack",
+        mode: "video-to-video",
+        referenceRoles: ["keyframe", "character", "not-a-role"],
+        referenceCount: 999,
+        audioMode: "native",
+        voiceoverBound: true,
+        warnings: ["reference-pack-unsupported", "unknown"],
+        promptSuffix: "must not persist",
+      })
+    ).toEqual({
       version: 1,
       strategy: "reference-pack",
       mode: "video-to-video",

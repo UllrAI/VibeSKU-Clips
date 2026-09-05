@@ -52,6 +52,7 @@ import {
   type WorkflowStageId,
   type WorkflowStagePlan,
 } from "@/lib/production-system";
+import { prismModels } from "@/lib/providers/prism-catalog";
 import type { Model } from "@/lib/providers/types";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 import type { QcReport } from "@/lib/video-composer/qc";
@@ -155,9 +156,10 @@ export default function ProductionPage() {
   const { id } = useParams<{ id: string }>();
   const t = useT("production");
   const locale = useLocale();
-  const { providers, customModels, defaultImageModel, defaultVideoModel, chainMode, llm, setDefaultVideoModel } = useSettingsStore();
+  const { media, defaultImageModel, defaultVideoModel, chainMode, llm, setDefaultVideoModel } = useSettingsStore();
   const [overview, setOverview] = useState<ProductionOverview | null>(null);
-  const [models, setModels] = useState<Model[]>([]);
+  // The catalog is static, so there is nothing to fetch and nothing to fail.
+  const models = useMemo(() => prismModels(), []);
   const [workflow, setWorkflow] = useState<WorkflowStagePlan[]>([]);
   const [bible, setBible] = useState<VisualBible>(EMPTY_BIBLE);
   const [intent, setIntent] = useState<CreativeIntent>(EMPTY_INTENT);
@@ -201,18 +203,6 @@ export default function ProductionPage() {
       setLoading(true);
       try {
         await Promise.all([loadOverview(), loadQuality()]);
-        const enabled = Object.entries(providers).filter(([, value]) => value.enabled && value.apiKey).map(([name, value]) => ({ name, apiKey: value.apiKey, baseUrl: value.baseUrl }));
-        if (!enabled.length || cancelled) return;
-        const response = await fetch("/api/ai/models", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ providers: enabled }) });
-        const data = await response.json();
-        const fetched = response.ok && Array.isArray(data.models) ? data.models as Model[] : [];
-        const enabledNames = new Set(enabled.map((item) => item.name));
-        const extras: Model[] = customModels.filter((item) => enabledNames.has(item.provider) && !fetched.some((model) => model.id === item.modelId)).map((item) => ({
-          id: item.modelId, name: item.name, provider: item.provider, mediaType: item.mediaType, supportsAudio: item.supportsAudio,
-          modes: item.mediaType === "image" ? ["text-to-image", "image-to-image"] : ["text-to-video", "image-to-video"],
-          extra: { custom: true },
-        }));
-        if (!cancelled) setModels([...fetched, ...extras]);
       } catch (error) {
         if (!cancelled) setStatus(error instanceof Error ? error.message : t("loadFailed"));
       } finally {
@@ -220,11 +210,11 @@ export default function ProductionPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [customModels, loadOverview, loadQuality, providers, t]);
+  }, [loadOverview, loadQuality, t]);
 
   const videoModels = useMemo(() => models.filter((model) => model.mediaType === "video"), [models]);
   const routeDecision = useMemo(() => routeModel(videoModels.map((model) => {
-    const capability = getVideoModelCapabilities(model.id, model.supportsAudio);
+    const capability = getVideoModelCapabilities(model.id);
     const id = model.id.toLowerCase();
     const observed = modelQualityStats.find((stat) => stat.model === model.id);
     return {
@@ -486,7 +476,7 @@ export default function ProductionPage() {
                             currentModel={candidate.model}
                             defaultVideoModel={defaultVideoModel}
                             models={videoModels}
-                            providers={providers}
+                            media={media}
                             anchors={qualityCandidates.filter((item) => item.filePath && !/\.(mp4|webm|mov|m4v)$/i.test(item.filePath)).map((item) => ({ id: item.id, shotId: item.shotId, label: t("repairAnchorLabel", { shot: item.shotId, model: item.model || item.provider || item.type }) }))}
                             onComplete={async () => { setStatus(t("repairComplete")); await Promise.all([loadOverview(), loadQuality()]); }}
                           />}

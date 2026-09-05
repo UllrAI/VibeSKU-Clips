@@ -9,7 +9,7 @@
  *
  * Environment variables:
  *   VIBESKU_CLIPS_BASE_URL     VibeSKU Clips instance URL (default http://localhost:3000; run `pnpm dev` / `pnpm start` first)
- *   VIBESKU_CLIPS_LLM_BASE_URL LLM endpoint (OpenAI-compatible, e.g. https://api.atlascloud.ai/v1)
+ *   VIBESKU_CLIPS_LLM_BASE_URL LLM endpoint (OpenAI-compatible, e.g. https://openrouter.ai/api/v1)
  *   VIBESKU_CLIPS_LLM_API_KEY  LLM key (required for script generation; omitting it gives a clear prompt in create_video / generate_script)
  *   VIBESKU_CLIPS_LLM_MODEL    LLM model name (e.g. deepseek-ai/deepseek-v4-pro)
  */
@@ -178,7 +178,7 @@ async function api(path, { method = "GET", body, timeoutMs = 600000 } = {}) {
 function requireLlm() {
   if (!LLM.baseUrl || !LLM.apiKey || !LLM.model) {
     throw new Error(
-      "生成脚本需要 LLM。请为 MCP 服务设置环境变量：VIBESKU_CLIPS_LLM_BASE_URL、VIBESKU_CLIPS_LLM_API_KEY、VIBESKU_CLIPS_LLM_MODEL（OpenAI 兼容接口，如 Atlas Cloud / DeepSeek / OpenRouter）。",
+      "生成脚本需要 LLM。请为 MCP 服务设置环境变量：VIBESKU_CLIPS_LLM_BASE_URL、VIBESKU_CLIPS_LLM_API_KEY、VIBESKU_CLIPS_LLM_MODEL（OpenAI 兼容接口，如 OpenRouter / DeepSeek / 本地 Ollama）。",
     );
   }
 }

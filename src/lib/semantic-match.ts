@@ -10,15 +10,10 @@
  * allows a single queued request per IP), tiny JSON output. Any failure falls back to the heuristic —
  * semantic rerank must never break auto-fill.
  */
-import { reasoningParams } from "@/lib/script-engine/generator";
-import { createLLMClient, withLLMErrors } from "@/lib/llm-error";
+import { completeText, type LLMCallConfig } from "@/lib/llm-call";
 import { stripThinkBlocks } from "@/lib/llm-clean";
 
-export interface SemanticLLMConfig {
-  baseUrl: string;
-  apiKey?: string;
-  model: string;
-}
+export type SemanticLLMConfig = LLMCallConfig;
 
 export interface RerankShot {
   shotId: number;
@@ -91,18 +86,11 @@ export async function rerankShotCandidates(shots: RerankShot[], cfg: SemanticLLM
   const rankable = shots.filter((s) => s.candidates.length > 1);
   if (rankable.length === 0) return new Map();
   // shared factory: placeholder key for keyless endpoints, SDK retries + free-pool 402 retry
-  const client = createLLMClient(cfg);
-  const res = await withLLMErrors(
-    () =>
-      client.chat.completions.create({
-        model: cfg.model,
-        messages: [{ role: "user", content: buildRerankPrompt(rankable) }],
-        temperature: 0,
-        ...reasoningParams(cfg.baseUrl),
-      }),
-    cfg,
-  );
-  const picks = parseRerankPicks(res.choices?.[0]?.message?.content ?? "", rankable);
+  const text = await completeText(cfg, {
+    messages: [{ role: "user", content: buildRerankPrompt(rankable) }],
+    temperature: 0,
+  });
+  const picks = parseRerankPicks(text, rankable);
   if (!picks) throw new Error("语义配片解析失败（LLM 未返回可用的 JSON picks）");
   return picks;
 }

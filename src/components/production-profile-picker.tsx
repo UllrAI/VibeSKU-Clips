@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Clapperboard, Gauge, Sparkles, Zap } from "lucide-react";
 import { useT } from "@/lib/i18n";
 import { PRODUCTION_PROFILE_IDS, PRODUCTION_PROFILES, type ProductionProfileId } from "@/lib/production-profiles";
-import { useSettingsStore } from "@/lib/stores/settings-store";
+import { isMediaReady, useSettingsStore } from "@/lib/stores/settings-store";
 
 const ICONS = {
   rapid: Zap,
@@ -27,14 +27,16 @@ function Meter({ value, label }: { value: 1 | 2 | 3; label: string }) {
 
 export function ProductionProfilePicker() {
   const t = useT("start");
-  const { activeProductionProfile, applyProductionProfile, llm, defaultImageModel, defaultVideoModel } = useSettingsStore();
+  const { activeProductionProfile, applyProductionProfile, llm, media, defaultImageModel, defaultVideoModel } = useSettingsStore();
+  // The models always have a value (the catalog ships defaults), so what can actually be missing
+  // is the credential pair that lets either of them run.
+  const incomplete = !isMediaReady(media);
   const pipeline = [
     { key: "profileStageScript", value: llm.model || t("profileAutoModel") },
-    { key: "profileStageFrame", value: defaultImageModel || t("profileNeedsSetup") },
-    { key: "profileStageMotion", value: defaultVideoModel || t("profileNeedsSetup") },
+    { key: "profileStageFrame", value: incomplete ? t("profileNeedsSetup") : defaultImageModel },
+    { key: "profileStageMotion", value: incomplete ? t("profileNeedsSetup") : defaultVideoModel },
     { key: "profileStageCompose", value: t("profileLocalCompose") },
   ];
-  const incomplete = !defaultImageModel || !defaultVideoModel;
 
   return (
     <section className="mt-3 border-t border-border pt-3" aria-labelledby="production-profile-title">
@@ -47,7 +49,7 @@ export function ProductionProfilePicker() {
           </div>
           <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{t("profileDescription")}</p>
         </div>
-        <Link href="/settings?tab=video" className="inline-flex min-h-6 shrink-0 items-center text-[11px] text-primary hover:underline">
+        <Link href="/settings?tab=generation" className="inline-flex min-h-6 shrink-0 items-center text-[11px] text-primary hover:underline">
           {t("profileFineTune")}
         </Link>
       </div>
@@ -107,7 +109,7 @@ export function ProductionProfilePicker() {
 
       {incomplete && (
         <p className="mt-2.5 text-[11px] text-warning/90">
-          {t("profileModelWarning")} <Link href="/settings?tab=providers" className="inline-flex min-h-6 items-center font-medium underline underline-offset-2">{t("profileConfigure")}</Link>
+          {t("profileModelWarning")} <Link href="/settings?tab=connect" className="inline-flex min-h-6 items-center font-medium underline underline-offset-2">{t("profileConfigure")}</Link>
         </p>
       )}
     </section>

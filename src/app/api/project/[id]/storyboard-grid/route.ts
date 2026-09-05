@@ -65,11 +65,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return apiError(req, "无效的项目ID", "Invalid project id", 400);
     }
     const body = await req.json();
-    const { scriptId, provider: providerName, model, apiKey, baseUrl, options, characterSheetUrl, productImageUrl } = body as {
+    const { scriptId, provider: providerName, model, apiKey, apiSecret, baseUrl, options, characterSheetUrl, productImageUrl } = body as {
       scriptId?: string;
       provider?: string;
       model?: string;
       apiKey?: string;
+      apiSecret?: string;
       baseUrl?: string;
       options?: Record<string, unknown>;
       /** Presenter's multi-view sheet — locks the person's identity across all nine cells */
@@ -116,7 +117,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       characterSheet: !!characterSheetUrl,
       productImage: !!productImageUrl,
     });
-    const provider = createProvider({ name: providerName, apiKey, baseUrl: baseUrl ?? "" });
+    const provider = createProvider({ name: providerName, apiKey, apiSecret, baseUrl: baseUrl ?? "" });
     const result = await provider.generateImage({
       ...(options ?? {}),
       modelId: model,

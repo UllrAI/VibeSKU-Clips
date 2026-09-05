@@ -8,19 +8,13 @@
  * only audio and subtitles change. Pure prompt/parse logic is unit-testable; LLM calls reuse the same path as script generation.
  */
 
-import OpenAI from "openai";
 import { FREE_TTS_VOICES } from "@/lib/edge-tts";
 import { estimateDurationSec } from "@/lib/script-import";
-import { reasoningParams } from "@/lib/script-engine/generator";
-import { createLLMClient, withLLMErrors } from "@/lib/llm-error";
+import { completeText, type LLMCallConfig } from "@/lib/llm-call";
 import { stripThinkBlocks } from "@/lib/llm-clean";
 import type { Shot } from "@/lib/db/schema";
 
-export interface DubLLMConfig {
-  baseUrl: string;
-  apiKey: string;
-  model: string;
-}
+export type DubLLMConfig = LLMCallConfig;
 
 /** Target language code → human-readable name (used as the translation target passed to the LLM) */
 export const LANG_NAMES: Record<string, string> = {
@@ -84,26 +78,13 @@ export function parseTranslations(text: string, expectedCount: number): string[]
   return arr.map((s) => (s as string).trim());
 }
 
-function createClient(cfg: DubLLMConfig): OpenAI {
-  // Shared factory: keyless endpoints get a placeholder key, plus SDK retries + free-pool 402 retry
-  return createLLMClient(cfg);
-}
-
 /** Calls the LLM to batch-translate voiceovers into the target language; returns a same-length translated array (throws on parse failure). */
 export async function translateVoiceovers(voiceovers: string[], targetLang: string, cfg: DubLLMConfig): Promise<string[]> {
   if (!voiceovers.length) return [];
-  const client = createClient(cfg);
-  const res = await withLLMErrors(
-    () =>
-      client.chat.completions.create({
-        model: cfg.model,
-        messages: [{ role: "user", content: buildTranslatePrompt(voiceovers, targetLang) }],
-        temperature: 0.3,
-        ...reasoningParams(cfg.baseUrl),
-      }),
-    cfg,
-  );
-  const text = res.choices?.[0]?.message?.content ?? "";
+  const text = await completeText(cfg, {
+    messages: [{ role: "user", content: buildTranslatePrompt(voiceovers, targetLang) }],
+    temperature: 0.3,
+  });
   const out = parseTranslations(text, voiceovers.length);
   if (!out) throw new Error("翻译结果解析失败（LLM 未返回等长 JSON 数组），可换模型或重试");
   return out;

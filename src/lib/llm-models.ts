@@ -20,21 +20,6 @@ export function normalizeBase(baseUrl: string): string {
   return String(baseUrl).replace(/\/+$/, "");
 }
 
-/**
- * Rewrite Atlas Cloud's media base onto its chat base.
- *
- * Atlas serves two gateways on one host: media/predictions under `/api/v1` and the
- * OpenAI-compatible chat API under `/v1`. A chat request sent to `/api/v1` answers 404 with an
- * empty body, so the app reported "endpoint or model not found" for a model that is very much on
- * sale (issue #24) — and `/api/v1/models` lists media models keyed by `model`, not `id`, so even
- * the "here are the real model names" hint came back empty. The media base is what the Atlas key
- * console shows, so it keeps landing in the LLM field; repair it at the door rather than at every
- * call site. Host-scoped, so a self-hosted proxy that happens to serve `/api/v1` is left alone.
- */
-export function normalizeChatBase(baseUrl: string): string {
-  return normalizeBase(baseUrl).replace(/^(https?:\/\/api\.atlascloud\.ai)\/api\/v1$/i, "$1/v1");
-}
-
 /** True for a local Ollama endpoint — its model ids carry a `:tag` that must be typed in full. */
 export function isOllama(baseUrl?: string): boolean {
   return /:11434(\/|$)|\bollama\b/i.test(baseUrl || "");
@@ -50,7 +35,7 @@ export async function listModels(
   fetchImpl: typeof fetch = fetch,
 ): Promise<string[]> {
   try {
-    const res = await fetchImpl(`${normalizeChatBase(baseUrl)}/models`, {
+    const res = await fetchImpl(`${normalizeBase(baseUrl)}/models`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal: AbortSignal.timeout(MODELS_TIMEOUT_MS),
     });

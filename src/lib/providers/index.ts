@@ -1,146 +1,56 @@
 /**
- * AI Provider 工厂和注册中心
- * 统一管理所有已注册的 AI 平台 Provider
+ * Media provider factory.
+ *
+ * There is exactly one provider — Prism. It is itself a gateway that races and falls back
+ * across upstream vendors, so the per-vendor adapters this project used to carry (Atlas, fal,
+ * Replicate, Volcengine, Alibaba, SiliconFlow, OpenAI) were doing the same job twice, each with
+ * its own model-id vocabulary, its own quirks and its own key for the user to obtain.
+ *
+ * The factory shape is kept because ~20 API routes construct a provider from a request body,
+ * and because the `AIProvider` contract — two-phase submit/wait, task recovery — is what makes
+ * paid generation safe to resume. `createProvider` therefore still takes a name and validates
+ * it, rather than silently serving Prism for whatever a caller asks for.
  */
 
-import type { AIProvider, ProviderConfig, ProviderRegistration } from './types'
-import { AtlasCloudProvider } from './atlas-cloud'
-import { FalAIProvider } from './fal-ai'
-import { VolcEngineProvider } from './volcengine'
-import { ReplicateProvider } from './replicate'
-import { AlibabaProvider } from './alibaba'
-import { SiliconFlowProvider } from './siliconflow'
-import { OpenAIProvider } from './openai'
+import { PrismProvider } from './prism'
+import type { AIProvider, ProviderConfig } from './types'
 
-// ==================== Provider 注册表 ====================
-
-/** 已注册的 Provider 列表 */
-const providerRegistry: Map<string, ProviderRegistration> = new Map()
+/** The provider identifier stored in settings and sent by every generation request. */
+export const PROVIDER_NAME = 'prism'
 
 /**
- * 注册一个 Provider
- * @param registration Provider 注册信息
- */
-function registerProvider(registration: ProviderRegistration): void {
-  providerRegistry.set(registration.name, registration)
-}
-
-// 注册所有内置 Provider
-registerProvider({
-  name: 'atlas-cloud',
-  displayName: 'Atlas Cloud',
-  description: 'Atlas Cloud AI 平台，支持图片和视频生成',
-  factory: (config) => new AtlasCloudProvider(config),
-})
-
-registerProvider({
-  name: 'fal-ai',
-  displayName: 'fal.ai',
-  description: 'fal.ai 推理平台，支持 FLUX、Kling、Wan 等多种模型',
-  factory: (config) => new FalAIProvider(config),
-})
-
-registerProvider({
-  name: 'volcengine',
-  displayName: '火山引擎',
-  description: '字节跳动火山引擎，支持可灵（Kling）和豆包 Seedance 等模型',
-  factory: (config) => new VolcEngineProvider(config),
-})
-
-registerProvider({
-  name: 'alibaba',
-  displayName: '阿里百炼',
-  description: '阿里云百炼大模型平台，支持万相（Wan）视频生成和通义千问图片生成',
-  factory: (config) => new AlibabaProvider(config),
-})
-
-registerProvider({
-  name: 'siliconflow',
-  displayName: '硅基流动',
-  description: '硅基流动推理平台，支持 FLUX、SD3.5、万相等多种开源模型',
-  factory: (config) => new SiliconFlowProvider(config),
-})
-
-registerProvider({
-  name: 'replicate',
-  displayName: 'Replicate',
-  description: 'Replicate 模型聚合平台，支持 FLUX、Imagen、Kling、Seedance、Veo 等海量模型',
-  factory: (config) => new ReplicateProvider(config),
-})
-
-registerProvider({
-  name: 'openai',
-  displayName: 'OpenAI',
-  description: 'OpenAI 官方平台，支持 gpt-image-2 / gpt-image-1.5 图片生成与图生图编辑',
-  factory: (config) => new OpenAIProvider(config),
-})
-
-// ==================== 工厂函数 ====================
-
-/**
- * 创建 Provider 实例
- * @param config Provider 配置，必须包含 name 字段
- * @returns AI Provider 实例
- * @throws 如果指定的 Provider 不存在
+ * Create the media provider.
  *
- * @example
- * ```ts
- * const provider = createProvider({
- *   name: 'fal-ai',
- *   apiKey: 'your-api-key',
- *   baseUrl: 'https://queue.fal.run',
- * })
+ * Both halves of the credential pair are required here rather than at each of the ~20 call
+ * sites: a missing secret otherwise reaches Prism as an empty header and comes back as a bare
+ * 401, which reads like a wrong key and sends people to re-copy the one part that was fine.
  *
- * const result = await provider.generateImage({
- *   modelId: 'fal-ai/flux/dev',
- *   mode: 'text-to-image',
- *   prompt: '一个可爱的猫咪',
- * })
- * ```
+ * @throws when `config.name` is anything other than `prism` (a stale persisted setting), or
+ * when either credential is missing.
  */
 export function createProvider(config: ProviderConfig): AIProvider {
-  const registration = providerRegistry.get(config.name)
-
-  if (!registration) {
-    const available = Array.from(providerRegistry.keys()).join(', ')
-    throw new Error(
-      `未找到名为 "${config.name}" 的 Provider。可用的 Provider: ${available}`
-    )
+  if (config.name !== PROVIDER_NAME) {
+    throw new Error(`未知的媒体平台「${config.name}」，当前版本只支持 Prism`)
   }
-
-  return registration.factory(config)
+  if (!config.apiKey?.trim() || !config.apiSecret?.trim()) {
+    throw new Error('Prism 需要 API Key 和 API Secret 两项，请到设置里补全')
+  }
+  return new PrismProvider(config)
 }
 
 /**
- * 获取所有已注册的 Provider 信息
- * @returns Provider 注册信息列表
+ * Whether the gateway can ingest a file from this machine.
+ *
+ * Precise repair has to send the ORIGINAL clip back to the model, which only works if the
+ * provider offers upload; Prism fetches reference media by URL and offers none. Derived from the
+ * class rather than hand-maintained, so adding `uploadLocalMedia` is all it takes to flip.
  */
-export function getAvailableProviders(): Array<{
-  name: string
-  displayName: string
-  description: string
-}> {
-  return Array.from(providerRegistry.values()).map((reg) => ({
-    name: reg.name,
-    displayName: reg.displayName,
-    description: reg.description,
-  }))
-}
-
-/**
- * 动态注册自定义 Provider
- * @param registration Provider 注册信息
- */
-export function registerCustomProvider(registration: ProviderRegistration): void {
-  registerProvider(registration)
-}
-
-// ==================== 导出类型和类 ====================
+export const PROVIDER_UPLOADS_LOCAL_MEDIA =
+  typeof (PrismProvider.prototype as Partial<AIProvider>).uploadLocalMedia === 'function'
 
 export type {
   AIProvider,
   ProviderConfig,
-  ProviderRegistration,
   ImageOptions,
   ImageResult,
   VideoOptions,
@@ -153,9 +63,4 @@ export type {
 } from './types'
 
 export { BaseProvider, ProviderError } from './base'
-export { AtlasCloudProvider } from './atlas-cloud'
-export { FalAIProvider } from './fal-ai'
-export { VolcEngineProvider } from './volcengine'
-export { AlibabaProvider } from './alibaba'
-export { SiliconFlowProvider } from './siliconflow'
-export { OpenAIProvider } from './openai'
+export { PrismProvider, PRISM_DEFAULT_BASE_URL, PRISM_CONSOLE_URL } from './prism'

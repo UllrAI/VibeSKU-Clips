@@ -4,8 +4,8 @@ import { scripts } from "@/lib/db/schema";
 import { and, eq } from "drizzle-orm";
 import { buildJudgePrompt, parseJudgeResponse, type JudgeShotInput } from "@/lib/script-judge";
 import { styleNameMap } from "@/lib/script-engine/prompts";
-import { reasoningParams, completeWithJsonRetry } from "@/lib/script-engine/generator";
-import { createLLMClient, llmErrorPair, jsonModeParams } from "@/lib/llm-error";
+import { completeJson } from "@/lib/llm-call";
+import { llmErrorPair } from "@/lib/llm-error";
 import { apiError, errText } from "@/lib/api-error";
 
 /**
@@ -56,25 +56,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const styleLabel = script.styleType ? styleNameMap[script.styleType] : undefined;
     const prompt = buildJudgePrompt(shots, { styleLabel, styleType: script.styleType ?? undefined });
 
-    const client = createLLMClient({
-      baseUrl: llmConfig.baseUrl ?? "",
-      apiKey: llmConfig.apiKey ?? "",
-      model: llmConfig.model,
-    });
     // The judge gates every hands-off chain before money is spent: one unparseable reply used to
     // abort the whole run, so it gets JSON mode plus one parse-driven retry like generation does.
-    const report = await completeWithJsonRetry(
-      client,
+    const report = await completeJson(
+      { baseUrl: llmConfig.baseUrl ?? "", apiKey: llmConfig.apiKey ?? "", model: llmConfig.model },
       {
-        model: llmConfig.model!,
         messages: [{ role: "user", content: prompt }],
         // judges must be harsh and consistent, not creative — keep temperature low
         temperature: 0.3,
-        max_tokens: 8000,
-        ...reasoningParams(llmConfig.baseUrl ?? ""),
-        ...jsonModeParams(llmConfig.baseUrl ?? ""),
+        maxOutputTokens: 8000,
+        jsonMode: true,
       },
-      { baseUrl: llmConfig.baseUrl ?? "", apiKey: llmConfig.apiKey ?? "", model: llmConfig.model },
       (content) => parseJudgeResponse(content, shots),
     );
     return NextResponse.json(report);

@@ -5,8 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Box,
+  ChevronDown,
   ChevronLeft,
-  CirclePlus,
   Flame,
   Folder,
   House,
@@ -22,7 +22,7 @@ import {
 import { LanguageToggle } from "@/components/language-toggle";
 import { TaskCenter } from "@/components/task-center";
 import { useT } from "@/lib/i18n";
-import { useSettingsStore } from "@/lib/stores/settings-store";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,29 +36,28 @@ interface NavItem {
   key: string;
   href: string;
   icon: LucideIcon;
-  proOnly?: boolean;
 }
 
-const NAV_SECTIONS: { labelKey: string; items: NavItem[] }[] = [
-  {
-    labelKey: "navSectionCreate",
-    items: [
-      { key: "navHome", href: "/start", icon: House },
-      { key: "navNew", href: "/project/new", icon: CirclePlus, proOnly: true },
-      { key: "navClone", href: "/project/clone", icon: Flame },
-      { key: "navMediaLab", href: "/media-lab", icon: ScanLine, proOnly: true },
-      { key: "navBatch", href: "/batch", icon: Layers3, proOnly: true },
-    ],
-  },
-  {
-    labelKey: "navSectionLibrary",
-    items: [
-      { key: "navProjects", href: "/projects", icon: Folder },
-      { key: "navProducts", href: "/products", icon: Box },
-      { key: "navPresenters", href: "/presenters", icon: UserRound },
-    ],
-  },
+/**
+ * Two destinations, because there are two things a person comes here to do: make a video, or
+ * find one they already made. Everything else is a tool that serves one of those two and lives
+ * in the toolbox below, closed until someone goes looking (issue #1).
+ */
+const NAV_PRIMARY: NavItem[] = [
+  { key: "navHome", href: "/start", icon: House },
+  { key: "navProjects", href: "/projects", icon: Folder },
 ];
+
+/** Specialist entry points. Real capabilities, just not the first decision anyone has to make. */
+const NAV_TOOLS: NavItem[] = [
+  { key: "navClone", href: "/project/clone", icon: Flame },
+  { key: "navBatch", href: "/batch", icon: Layers3 },
+  { key: "navMediaLab", href: "/media-lab", icon: ScanLine },
+  { key: "navProducts", href: "/products", icon: Box },
+  { key: "navPresenters", href: "/presenters", icon: UserRound },
+];
+
+const NAV_ITEMS = [...NAV_PRIMARY, ...NAV_TOOLS];
 
 const NAV_COLLAPSED_KEY = "clipforge_nav_collapsed";
 const THEME_KEY = "clipforge_theme";
@@ -75,9 +74,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const t = useT("common");
   const pathname = usePathname();
   const router = useRouter();
-  const uiMode = useSettingsStore((state) => state.uiMode);
-  const setUiMode = useSettingsStore((state) => state.setUiMode);
   const [collapsed, setCollapsed] = useState(false);
+  // Open the toolbox automatically when the current page lives inside it, so the active item is
+  // never hidden behind a closed section.
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
 
   useEffect(() => {
@@ -124,17 +124,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const sections = NAV_SECTIONS.map((section) => ({
-    ...section,
-    items: section.items.filter((item) => uiMode === "pro" || !item.proOnly),
-  })).filter((section) => section.items.length > 0);
-  const visibleItems = sections.flatMap((section) => section.items);
-
-  const active = visibleItems.reduce<string | null>((best, item) => {
+  const active = NAV_ITEMS.reduce<string | null>((best, item) => {
     if (!pathname?.startsWith(item.href)) return best;
     return best && best.length >= item.href.length ? best : item.href;
   }, null);
   const settingsActive = pathname?.startsWith("/settings") ?? false;
+  const toolActive = NAV_TOOLS.some((item) => active === item.href);
 
   const navLink = (item: NavItem) => {
     const Icon = item.icon;
@@ -189,40 +184,25 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {!collapsed && <span className="text-base font-semibold tracking-tight">VibeSKU Clips</span>}
         </Link>
 
-        <nav aria-label={t("navMenu")} className={`flex-1 space-y-5 overflow-y-auto py-4 ${collapsed ? "px-2" : "px-3"}`}>
-          {sections.map((section) => (
-            <div key={section.labelKey} className="space-y-1">
-              {!collapsed && (
-                <div className="px-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground/70">
-                  {t(section.labelKey)}
-                </div>
-              )}
-              {section.items.map(navLink)}
-            </div>
-          ))}
+        <nav aria-label={t("navMenu")} className={`flex-1 space-y-4 overflow-y-auto py-4 ${collapsed ? "px-2" : "px-3"}`}>
+          <div className="space-y-1">{NAV_PRIMARY.map(navLink)}</div>
+
+          {collapsed ? (
+            <div className="space-y-1 border-t border-sidebar-border pt-3">{NAV_TOOLS.map(navLink)}</div>
+          ) : (
+            <Collapsible open={toolsOpen || toolActive} onOpenChange={setToolsOpen} className="border-t border-sidebar-border pt-3">
+              <CollapsibleTrigger className="flex w-full items-center justify-between px-3 pb-1 text-[11px] font-medium tracking-wide text-muted-foreground/70">
+                {t("navSectionTools")}
+                <ChevronDown data-chevron className="size-3.5" aria-hidden="true" />
+              </CollapsibleTrigger>
+              <CollapsiblePanel>
+                <div className="space-y-1 pt-1">{NAV_TOOLS.map(navLink)}</div>
+              </CollapsiblePanel>
+            </Collapsible>
+          )}
         </nav>
 
         <div className={`space-y-1 border-t border-sidebar-border py-3 ${collapsed ? "px-2" : "px-3"}`}>
-          {!collapsed && (
-            <div className="mb-2 flex rounded-lg border border-sidebar-border bg-background/30 p-0.5" title={t("uiModeTip")}>
-              {(["simple", "pro"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  aria-pressed={uiMode === mode}
-                  onClick={() => setUiMode(mode)}
-                  className={`min-h-8 flex-1 rounded-md px-2 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring/60 ${
-                    uiMode === mode
-                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {t(mode === "simple" ? "uiModeSimple" : "uiModePro")}
-                </button>
-              ))}
-            </div>
-          )}
-
           <div className={collapsed ? "flex justify-center" : ""}>
             <TaskCenter collapsed={collapsed} />
           </div>
@@ -275,7 +255,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Menu className="size-4" aria-hidden="true" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {visibleItems.map((item) => (
+                {NAV_ITEMS.map((item) => (
                   <DropdownMenuItem key={item.key} onClick={() => router.push(item.href)}>
                     {t(item.key)}
                   </DropdownMenuItem>

@@ -1,14 +1,17 @@
 /**
- * Paid TTS platform presets (pure data, shared between client and server, no server-only dependencies).
+ * Paid TTS presets (pure data, shared by client and server, no server-only dependencies).
  *
- * Unified "platform" dropdown: OpenAI-compatible / Atlas Cloud / MiniMax / fal.ai.
- * Atlas and fal reuse the API key already entered under the same provider in the "AI Platform" tab;
- * MiniMax has its own separate key (plus an optional GroupId).
- * Each platform provides default baseUrl/model/voice so the UI can conditionally render fields
- * and offer voice suggestions accordingly.
+ * Voiceover is optional now: the default video model renders its own audio, so this path exists
+ * for projects that want one consistent narrator across every shot, or a language the video
+ * model does not speak well.
+ *
+ * Every platform carries its own key. Two of them used to borrow the key from whichever media
+ * platform the user had configured, which meant the voice you could pick depended on a choice
+ * made in a different tab for a different purpose — exactly the kind of hidden coupling issue #1
+ * asked to remove.
  */
 
-export type TTSProvider = "openai" | "atlas" | "minimax" | "falai";
+export type TTSProvider = "openai" | "minimax";
 
 export interface TTSVoiceOption {
   value: string;
@@ -28,12 +31,6 @@ export interface TTSProviderMeta {
   defaultVoice: string;
   /** Suggested voice list */
   voices: TTSVoiceOption[];
-  /**
-   * Key source:
-   * - "tts": use the apiKey stored in the TTS config itself (OpenAI-compatible / MiniMax)
-   * - others: reuse the apiKey of the matching provider in the "AI Platform" store (atlas-cloud / fal-ai)
-   */
-  keySource: "tts" | "atlas-cloud" | "fal-ai";
   /** Whether a GroupId is required (needed for the MiniMax domestic endpoint api.minimax.chat) */
   needsGroupId?: boolean;
   /** Whether to expose a baseUrl input field (OpenAI-compatible and MiniMax support switching regional endpoints) */
@@ -58,26 +55,8 @@ export const TTS_PROVIDERS: TTSProviderMeta[] = [
     models: [],
     defaultVoice: "FunAudioLLM/CosyVoice2-0.5B:alex",
     voices: [],
-    keySource: "tts",
     editableBaseUrl: true,
     hint: "兼容 OpenAI tts-1、硅基流动 CosyVoice、火山方舟等所有 /audio/speech 端点。",
-  },
-  {
-    value: "atlas",
-    label: "Atlas Cloud (xAI TTS)",
-    baseUrl: "https://api.atlascloud.ai/api/v1",
-    defaultModel: "xai/tts-v1",
-    models: [{ value: "xai/tts-v1", label: "xAI TTS v1（多语高保真）" }],
-    defaultVoice: "eve",
-    voices: [
-      { value: "eve", label: "Eve · 多语女声（默认）" },
-      { value: "leo", label: "Leo · 多语男声" },
-      { value: "rex", label: "Rex · 多语男声" },
-      { value: "ara", label: "Ara · 多语女声" },
-      { value: "sal", label: "Sal · 多语男声" },
-    ],
-    keySource: "atlas-cloud",
-    hint: "复用「AI 平台」里 Atlas Cloud 的 Key（与生图/生视频同一个）。",
   },
   {
     value: "minimax",
@@ -101,33 +80,9 @@ export const TTS_PROVIDERS: TTSProviderMeta[] = [
       { value: "male-qn-jingying", label: "精英青年（男）" },
       { value: "audiobook_female_1", label: "有声书女声" },
     ],
-    keySource: "tts",
     needsGroupId: true,
     editableBaseUrl: true,
     hint: "海螺开放平台的 API Key + GroupId。国际版改 baseUrl 为 https://api.minimax.io/v1（可不填 GroupId）。",
-  },
-  {
-    value: "falai",
-    label: "fal.ai (MiniMax Speech-02)",
-    baseUrl: "https://queue.fal.run",
-    defaultModel: "fal-ai/minimax/speech-02-hd",
-    models: [
-      { value: "fal-ai/minimax/speech-02-hd", label: "MiniMax Speech-02 HD" },
-      { value: "fal-ai/minimax/speech-02-turbo", label: "MiniMax Speech-02 Turbo" },
-    ],
-    defaultVoice: "Wise_Woman",
-    voices: [
-      { value: "Wise_Woman", label: "睿智女声（默认）" },
-      { value: "Calm_Woman", label: "沉稳女声" },
-      { value: "Lively_Girl", label: "活力女声" },
-      { value: "Sweet_Girl_2", label: "甜美女声" },
-      { value: "Friendly_Person", label: "亲和声线" },
-      { value: "Deep_Voice_Man", label: "低沉男声" },
-      { value: "Casual_Guy", label: "随性男声" },
-      { value: "Patient_Man", label: "沉稳男声" },
-    ],
-    keySource: "fal-ai",
-    hint: "复用「AI 平台」里 fal.ai 的 Key（FAL_KEY）。",
   },
 ];
 
@@ -149,8 +104,6 @@ interface TTSSettingLike {
   speed?: number;
   groupId?: string;
 }
-type ProvidersLike = Record<string, { apiKey?: string; baseUrl?: string } | undefined>;
-
 /** Fully resolved TTS config used for actual requests / preview playback */
 export interface ResolvedTTSConfig {
   provider: TTSProvider;
@@ -162,21 +115,15 @@ export interface ResolvedTTSConfig {
   groupId?: string;
 }
 
-/**
- * Resolves the "platform selection + reused AI platform key" into a complete TTS config
- * ready to send to the backend.
- * Atlas/fal keys are taken from the providers store; OpenAI-compatible/MiniMax use the TTS's own key.
- */
-export function resolveTTSConfig(tts: TTSSettingLike | undefined, providers: ProvidersLike): ResolvedTTSConfig {
+/** Fill a partial TTS setting out to a complete, sendable config using the platform defaults. */
+export function resolveTTSConfig(tts: TTSSettingLike | undefined): ResolvedTTSConfig {
   const meta = getTTSProviderMeta(tts?.provider);
-  // baseUrl: for editable platforms use the user-provided value (fall back to default if blank); otherwise force the platform default
+  // Editable platforms honour a user-supplied endpoint; the rest are pinned to their own.
   const baseUrl = meta.editableBaseUrl ? (tts?.baseUrl || meta.baseUrl) : meta.baseUrl;
-  // apiKey: reuse the AI platform key or use the TTS-specific key
-  const apiKey = meta.keySource === "tts" ? (tts?.apiKey || "") : (providers?.[meta.keySource]?.apiKey || "");
   return {
+    apiKey: tts?.apiKey || "",
     provider: meta.value,
     baseUrl,
-    apiKey,
     model: tts?.model || meta.defaultModel,
     voice: tts?.voice || meta.defaultVoice,
     ...(tts?.speed != null && { speed: tts.speed }),
@@ -184,9 +131,9 @@ export function resolveTTSConfig(tts: TTSSettingLike | undefined, providers: Pro
   };
 }
 
-/** Whether paid TTS is ready (switch enabled + resolved key/model/voice all present) */
-export function isPaidTTSReady(tts: TTSSettingLike | undefined, providers: ProvidersLike): boolean {
+/** Whether paid TTS is ready (switch enabled + key/endpoint/model/voice all present). */
+export function isPaidTTSReady(tts: TTSSettingLike | undefined): boolean {
   if (!tts?.enabled) return false;
-  const c = resolveTTSConfig(tts, providers);
+  const c = resolveTTSConfig(tts);
   return Boolean(c.apiKey && c.baseUrl && c.model && c.voice);
 }

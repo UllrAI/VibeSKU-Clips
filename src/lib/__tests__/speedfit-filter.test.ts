@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildComposeInvocation, SPEEDFIT_MAX_RATIO, SPEEDFIT_MIN_RATIO, type ComposeConfig } from "@/lib/video-composer/composer";
 import { buildAssetRows, nextChainKeyframe } from "@/lib/assets-view";
-import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
 import { buildMotionPrompt } from "@/lib/motion-prompt";
 import type { Shot } from "@/lib/db/schema";
 
@@ -114,23 +113,6 @@ describe("链式首尾帧辅助函数", () => {
     expect(nextChainKeyframe(rows, 1)).toBe("/api/files/p/kf2.png");
   });
 
-  it("modelSupportsLastFrame：Seedance 2.0/2.5 家族与 ai_start_end 白名单支持，其他不支持", () => {
-    expect(modelSupportsLastFrame("bytedance/seedance-2.0-fast/image-to-video")).toBe(true);
-    expect(modelSupportsLastFrame("bytedance/seedance-2.0/image-to-video")).toBe(true);
-    // Seedance 2.5 schema exposes last_image too (verified via official MCP, 2026-08)
-    expect(modelSupportsLastFrame("bytedance/seedance-2.5/image-to-video")).toBe(true);
-    expect(modelSupportsLastFrame("vidu/q3-pro/start-end-to-video")).toBe(true);
-    // v0.8.76 new families with a pinned-last-frame param per published schema
-    expect(modelSupportsLastFrame("minimax/h3/image-to-video")).toBe(true);
-    expect(modelSupportsLastFrame("kwaivgi/kling-video-o3-std/image-to-video")).toBe(true);
-    expect(modelSupportsLastFrame("google/veo3.1/image-to-video")).toBe(true);
-    expect(modelSupportsLastFrame("alibaba/wan-2.7/image-to-video")).toBe(true);
-    expect(modelSupportsLastFrame("bytedance/seedance-2.0-mini/image-to-video")).toBe(true);
-    // Hailuo 2.3 has no last-frame param; Kling v3.0 never did
-    expect(modelSupportsLastFrame("minimax/hailuo-2.3/i2v-standard")).toBe(false);
-    expect(modelSupportsLastFrame("kwaivgi/kling-v3.0-std/image-to-video")).toBe(false);
-    expect(modelSupportsLastFrame("")).toBe(false);
-  });
 
   it("chainToNext 提示词：加入首尾帧过渡引导（中英）", () => {
     const zh = buildMotionPrompt({ shotType: "demo", description: "使用演示", chainToNext: true });

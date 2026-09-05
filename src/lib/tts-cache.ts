@@ -2,7 +2,7 @@
  * Content-addressed TTS audio cache.
  *
  * Re-composing a project used to regenerate every voiceover from scratch, which re-bills
- * paid TTS providers (atlas/minimax/fal/OpenAI-compatible) and hammers the free Edge TTS
+ * paid TTS providers (OpenAI-compatible / MiniMax) and hammers the free Edge TTS
  * endpoint (rate-limit / 403 risk). This module caches synthesized mp3 bytes on disk,
  * keyed by a stable hash over every parameter that affects the audio output
  * (provider / model / voice / speed / text …), so an unchanged shot reuses the previous

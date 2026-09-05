@@ -9,7 +9,7 @@ import { recordAiTask, updateAiTask } from "@/lib/ai-tasks";
 import { getDb } from "@/lib/db";
 import { assets, generationReviews } from "@/lib/db/schema";
 import { probeMedia } from "@/lib/media-probe";
-import { createProvider } from "@/lib/providers";
+import { createProvider, PROVIDER_UPLOADS_LOCAL_MEDIA } from "@/lib/providers";
 import { ProviderError } from "@/lib/providers/base";
 import { resolveUploadFilePath, toRemoteUsableImage } from "@/lib/remote-image";
 import {
@@ -45,6 +45,7 @@ interface RepairRequest {
   planHash?: string;
   confirmed?: boolean;
   apiKey?: string;
+  apiSecret?: string;
   baseUrl?: string;
   resultUrl?: string;
   plan?: unknown;
@@ -96,7 +97,11 @@ async function compilePreview(projectId: string, body: RepairRequest, forceOpera
     requestedScope: body.scope,
     requestedRegion: body.region,
     keyframes: requestedKeyframes,
-    sourceUploadAvailable: provider === "atlas-cloud",
+    // Precise repair needs the ORIGINAL clip back at the model, which means the gateway must be
+    // able to ingest a local file. Prism fetches reference media by URL and offers no upload, so
+    // this is false today: the preview still runs (free) and the panel explains the local-splice
+    // route instead of letting someone pay for a task that cannot include the source.
+    sourceUploadAvailable: PROVIDER_UPLOADS_LOCAL_MEDIA,
     pricePerCall: body.pricePerCall,
   });
   return { preview, context };
@@ -113,7 +118,7 @@ async function executeRepair(projectId: string, body: RepairRequest) {
   const { preview, context } = await compilePreview(projectId, body, body.operationId);
   if (preview.summary.planHash !== body.planHash) throw new Error("修复参数已变化，请重新预演并确认费用");
   if (!preview.executable) throw new Error("当前平台或模型不能安全执行这份修复计划");
-  const provider = createProvider({ name: preview.summary.provider, apiKey: body.apiKey.trim(), baseUrl: body.baseUrl || "" });
+  const provider = createProvider({ name: preview.summary.provider, apiKey: body.apiKey.trim(), apiSecret: body.apiSecret?.trim(), baseUrl: body.baseUrl || "" });
   if (!provider.uploadLocalMedia || !provider.submitVideoTask || !provider.waitForTask) {
     throw new Error("当前平台缺少可恢复的参考视频任务能力，未提交也未产生费用");
   }

@@ -5,6 +5,7 @@ import { toRemoteUsableImage, resolveUploadFilePath } from "@/lib/remote-image";
 import { apiError, errText } from "@/lib/api-error";
 import { recordAiTask, updateAiTask } from "@/lib/ai-tasks";
 import { sanitizeGenerationControlSummary } from "@/lib/video-repair-plan";
+import { findVideoModel } from "@/lib/providers/prism-catalog";
 
 // AI video generation.
 //
@@ -14,7 +15,7 @@ import { sanitizeGenerationControlSummary } from "@/lib/video-repair-plan";
 // so the client can resume via /api/ai/video/task instead of paying again.
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { provider: providerName, model, prompt, imageUrl, lastImageUrl, mode, apiKey, baseUrl, options, projectId, shotId, referenceVideoUrls, referenceImageUrls, referenceAudioUrls } = body;
+  const { provider: providerName, model, prompt, imageUrl, lastImageUrl, mode, apiKey, apiSecret, baseUrl, options, projectId, shotId, referenceVideoUrls, referenceImageUrls, referenceAudioUrls } = body;
   const controlPlan = sanitizeGenerationControlSummary(body.controlPlan);
 
   if (!providerName || !model) {
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const provider = createProvider({ name: providerName, apiKey, baseUrl });
+    const provider = createProvider({ name: providerName, apiKey, apiSecret, baseUrl });
 
     const firstFrameUrl = await toRemoteUsableImage(imageUrl);
     // Keyframe chaining: pin the clip's last frame to the next
@@ -34,14 +35,16 @@ export async function POST(req: NextRequest) {
     const lastFrameUrl = lastImageUrl ? await toRemoteUsableImage(lastImageUrl) : undefined;
 
     // Reference-to-video inputs (viral replication): reference IMAGES may travel as Base64
-    // like first frames, but reference VIDEOS must be real URLs — local /api/files paths
-    // are uploaded to the provider's temporary hosting first (Atlas /model/uploadMedia)
+    // like first frames, but reference VIDEOS and AUDIO must be reachable URLs — Prism fetches
+    // them itself, so a local /api/files path can only be used by a provider that offers its
+    // own temporary hosting.
+    const modelLimits = findVideoModel(model)
     let refVideos: string[] | undefined;
     let refImages: string[] | undefined;
     let refAudios: string[] | undefined;
     if (Array.isArray(referenceVideoUrls) && referenceVideoUrls.length > 0) {
       refVideos = [];
-      for (const ref of (referenceVideoUrls as unknown[]).slice(0, 3)) {
+      for (const ref of (referenceVideoUrls as unknown[]).slice(0, modelLimits?.maxReferenceVideos ?? 3)) {
         if (typeof ref !== "string" || !ref) continue;
         if (ref.startsWith("http")) {
           refVideos.push(ref);
@@ -55,14 +58,16 @@ export async function POST(req: NextRequest) {
       }
     }
     if (Array.isArray(referenceImageUrls) && referenceImageUrls.length > 0) {
-      const imageRefs = (referenceImageUrls as unknown[]).filter((ref): ref is string => typeof ref === "string" && Boolean(ref)).slice(0, 9);
+      const imageRefs = (referenceImageUrls as unknown[])
+        .filter((ref): ref is string => typeof ref === "string" && Boolean(ref))
+        .slice(0, modelLimits?.maxReferenceImages ?? 9);
       refImages = (await Promise.all(imageRefs.map(toRemoteUsableImage))).filter(
         (u): u is string => !!u
       );
     }
     if (Array.isArray(referenceAudioUrls) && referenceAudioUrls.length > 0) {
       refAudios = [];
-      for (const ref of (referenceAudioUrls as unknown[]).slice(0, 3)) {
+      for (const ref of (referenceAudioUrls as unknown[]).slice(0, modelLimits?.maxReferenceAudios ?? 3)) {
         if (typeof ref !== "string" || !ref) continue;
         if (ref.startsWith("http")) {
           refAudios.push(ref);

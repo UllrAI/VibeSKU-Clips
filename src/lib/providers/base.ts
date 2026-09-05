@@ -129,8 +129,11 @@ export abstract class BaseProvider implements AIProvider {
             await this.sleep(500 * Math.pow(2, attempt))
             continue
           }
+          const detail = this.formatErrorBody(errorBody)
           throw new ProviderError(
-            `API 请求失败: ${response.status} ${response.statusText} - ${errorBody}`,
+            detail
+              ? `${detail}（HTTP ${response.status}）`
+              : `API 请求失败: ${response.status} ${response.statusText}`,
             'API_ERROR',
             this.name,
             response.status
@@ -168,6 +171,18 @@ export abstract class BaseProvider implements AIProvider {
     }
     // should never reach here — fallback guard
     throw lastError instanceof Error ? lastError : new ProviderError('请求失败', 'UNKNOWN', this.name)
+  }
+
+  /**
+   * Turn a failed response's raw body into one readable sentence.
+   *
+   * The default is the body verbatim, which is only ever useful when the platform answers in
+   * plain text. Platforms that wrap their message in an envelope override this so the user
+   * reads "模型 minimax-h3 不支持时长 20 秒" instead of a pasted JSON blob. Returning an empty
+   * string falls back to the bare status line.
+   */
+  protected formatErrorBody(body: string): string {
+    return body.trim()
   }
 
   /**

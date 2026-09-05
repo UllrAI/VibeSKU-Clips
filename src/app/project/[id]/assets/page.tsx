@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useParams } from "next/navigation";
 import { LuZap, LuCheck, LuCircleAlert, LuCircleX, LuImage, LuArrowRight, LuLoaderCircle, LuTriangleAlert, LuUpload, LuScissors, LuVideo } from "react-icons/lu";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useSettingsStore } from "@/lib/stores/settings-store";
-import { mergeCustomModels, buildImageOptions, buildVideoOptions, toEditVariant } from "@/lib/gen-params";
+import { buildImageOptions, buildVideoOptions, resolveModelTarget } from "@/lib/gen-params";
 import { useCharacterStore } from "@/lib/stores/project-store";
 import type { Shot } from "@/lib/db/schema";
 import { buildAssetRows, shouldOfferStockFill, needsImageModelWarning, nextChainKeyframe, type AssetItem, chainByDefault } from "@/lib/assets-view";
@@ -29,7 +29,6 @@ import {
 } from "@/lib/camera-presets";
 import { LOOK_PRESETS, getLookPreset, lookImageSuffix } from "@/lib/look-presets";
 import { realFaceLine } from "@/lib/presenters";
-import { modelSupportsLastFrame } from "@/lib/video-composer/transitions";
 import {
   buildVideoControlPlan,
   sanitizeVideoControlSummary,
@@ -37,7 +36,9 @@ import {
 import type { GenerationControlSummary } from "@/lib/video-repair-plan";
 import { useT, useLocale } from "@/lib/i18n";
 import { ProjectHeader } from "@/components/project-header";
+import { DisclosureSection } from "@/components/disclosure-section";
 import { ModelCapabilityPreflight } from "@/components/model-capability-preflight";
+import { getVideoModelCapabilities } from "@/lib/model-capabilities";
 import {
   checkPromptConsistency,
   compileCreativePrompt,
@@ -56,15 +57,6 @@ const shotTypeLabels: Record<Shot["type"], { key: string; color: string }> = {
   social_proof: { key: "shotTypeSocialProof", color: "bg-chart-5/15 text-chart-5" },
   cta: { key: "shotTypeCta", color: "bg-warning/15 text-warning dark:text-warning" },
 };
-
-// platform info for the default image model (used when initiating generation requests)
-interface ImageModelTarget {
-  provider: string;
-  model: string;
-  apiKey: string;
-  baseUrl?: string;
-  supportsAudio?: boolean;
-}
 
 // persisted cloud AI task row (from /api/ai/tasks, issue #16 recovery flow)
 interface PendingAiTask {
@@ -85,10 +77,7 @@ export default function AssetsPage() {
   const tc = useT("common");
   const locale = useLocale();
   const { id } = useParams<{ id: string }>();
-  const { providers, defaultImageModel, defaultVideoModel, customModels, imageParams, videoParams, llm, motionIntensity, setMotionIntensity, motionRealism, setMotionRealism, chainMode, setChainMode, visualLook, setVisualLook } = useSettingsStore();
-  // beginner/director split: simple mode hides the director panel, the storyboard-grid button
-  // and per-shot camera tooling — beginners see shots + generate, nothing else
-  const uiMode = useSettingsStore((st) => st.uiMode);
+  const { media, defaultImageModel, defaultVideoModel, imageParams, imageQuality, videoParams, llm, motionIntensity, setMotionIntensity, motionRealism, setMotionRealism, chainMode, setChainMode, visualLook, setVisualLook } = useSettingsStore();
 
   const [assets, setAssets] = useState<AssetItem[]>([]);
   const [productImages, setProductImages] = useState<string[]>([]);
@@ -106,8 +95,6 @@ export default function AssetsPage() {
   // real tail frames of videos generated THIS session (shotId → extracted last-frame URL);
   // tail-chain mode starts the next shot from here for a pixel-continuous cut
   const lastFrameByShot = useRef(new Map<number, string>());
-  const [modelTarget, setModelTarget] = useState<ImageModelTarget | null>(null);
-  const [videoModelTarget, setVideoModelTarget] = useState<ImageModelTarget | null>(null);
   // shots currently being converted to motion
   const [motionShots, setMotionShots] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -138,6 +125,24 @@ export default function AssetsPage() {
   const { characters: presenterLib } = useCharacterStore();
   const [presenterId, setPresenterId] = useState("");
   const presenterSheet = presenterLib.find((c) => c.id === presenterId)?.referenceImages?.[0];
+
+  // Which model a generate call bills against. Resolving this used to require asking every
+  // configured platform for its catalog; with a single gateway it is a pure derivation of the
+  // credentials plus the chosen model id.
+  const modelTarget = useMemo(() => resolveModelTarget(media, defaultImageModel), [media, defaultImageModel]);
+  const videoModelTarget = useMemo(() => resolveModelTarget(media, defaultVideoModel), [media, defaultVideoModel]);
+  const videoCapabilities = useMemo(
+    () => (videoModelTarget ? getVideoModelCapabilities(videoModelTarget.model) : null),
+    [videoModelTarget]
+  );
+
+  // What the director desk is worth knowing while it stays shut: the settings that visibly
+  // change every generated shot, not the names of the controls behind them.
+  const directorSummary = [
+    `${t("lookLabel")} ${getLookPreset(visualLook) ? (locale === "zh" ? getLookPreset(visualLook)!.name.zh : getLookPreset(visualLook)!.name.en) : t("lookNone")}`,
+    `${t("motionIntensity")} ${t(`motionIntensity_${motionIntensity}`)}`,
+    `${t("chainMode")} ${t(`chainMode_${chainMode}`)}`,
+  ].join(" · ");
 
   const doneCount = assets.filter((a) => a.status === "done").length;
   const allDone = assets.length > 0 && doneCount === assets.length;
@@ -362,78 +367,6 @@ export default function AssetsPage() {
     }
   }, [id, isFillingStock, reloadAssets, t, llm.baseUrl, llm.apiKey, llm.model]);
 
-  // resolve the provider for the default image model (locate provider by model from /api/ai/models aggregated results)
-  useEffect(() => {
-    let cancelled = false;
-    const enabled = Object.entries(providers)
-      .filter(([, p]) => p.enabled && p.apiKey)
-      .map(([name, p]) => ({ name, apiKey: p.apiKey, baseUrl: p.baseUrl }));
-    if (enabled.length === 0 || !defaultImageModel) {
-      setModelTarget(null);
-      return;
-    }
-    (async () => {
-      try {
-        const res = await fetch("/api/ai/models", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ providers: enabled, mediaType: "image" }),
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        // merge user-defined custom models so they can also be resolved to their provider
-        const merged = mergeCustomModels(data.models ?? [], customModels, "image", new Set(enabled.map((e) => e.name)));
-        const model = merged.find((m) => m.id === defaultImageModel);
-        if (cancelled || !model) return;
-        const prov = enabled.find((e) => e.name === model.provider);
-        if (prov) {
-          setModelTarget({ provider: prov.name, model: defaultImageModel, apiKey: prov.apiKey, baseUrl: prov.baseUrl });
-        }
-      } catch {
-        // ignore; generateOne will surface the "not configured" error when called
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [providers, defaultImageModel, customModels]);
-
-  // resolve the provider for the default video model (used for "convert to motion shot")
-  useEffect(() => {
-    let cancelled = false;
-    const enabled = Object.entries(providers)
-      .filter(([, p]) => p.enabled && p.apiKey)
-      .map(([name, p]) => ({ name, apiKey: p.apiKey, baseUrl: p.baseUrl }));
-    if (enabled.length === 0 || !defaultVideoModel) {
-      setVideoModelTarget(null);
-      return;
-    }
-    (async () => {
-      try {
-        const res = await fetch("/api/ai/models", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ providers: enabled, mediaType: "video" }),
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        // merge user-defined custom video models
-        const merged = mergeCustomModels(data.models ?? [], customModels, "video", new Set(enabled.map((e) => e.name)));
-        const model = merged.find((m) => m.id === defaultVideoModel);
-        if (cancelled || !model) return;
-        const prov = enabled.find((e) => e.name === model.provider);
-        if (prov) {
-          setVideoModelTarget({ provider: prov.name, model: defaultVideoModel, apiKey: prov.apiKey, baseUrl: prov.baseUrl, supportsAudio: model.supportsAudio });
-        }
-      } catch {
-        // ignore
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [providers, defaultVideoModel, customModels]);
-
   // load cloud tasks whose results were never retrieved (issue #16) so the user can
   // recover a paid task instead of resubmitting (and paying again)
   const reloadPendingTasks = useCallback(async () => {
@@ -499,8 +432,7 @@ export default function AssetsPage() {
   // resume a persisted cloud task: query (and wait for) its status, then save the result
   const resumeTask = useCallback(
     async (task: PendingAiTask) => {
-      const prov = providers[task.provider];
-      if (!prov?.apiKey) {
+      if (!videoModelTarget) {
         setTaskMsg(t("errorNoVideoModel"));
         return;
       }
@@ -512,8 +444,9 @@ export default function AssetsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             provider: task.provider,
-            apiKey: prov.apiKey,
-            baseUrl: prov.baseUrl,
+            apiKey: videoModelTarget.apiKey,
+            apiSecret: videoModelTarget.apiSecret,
+            baseUrl: videoModelTarget.baseUrl,
             taskId: task.taskId,
             wait: true,
           }),
@@ -553,7 +486,7 @@ export default function AssetsPage() {
         });
       }
     },
-    [providers, assets, saveVideoAsset, reloadAssets, reloadPendingTasks, id, t]
+    [videoModelTarget, assets, saveVideoAsset, reloadAssets, reloadPendingTasks, id, t]
   );
 
   // convert to motion shot: use the already-generated image for this shot as the first frame, call the image-to-video model, and save the result as the shot's asset (video).
@@ -574,7 +507,7 @@ export default function AssetsPage() {
       }
       // chain target: explicit override wins (null = explicitly no chain); otherwise the next shot's static keyframe
       const chainFrame =
-        chainMode !== "pin" || lastFrameOverride === null || !modelSupportsLastFrame(videoModelTarget.model)
+        chainMode !== "pin" || lastFrameOverride === null || !videoCapabilities?.lastFrame
           ? undefined
           : lastFrameOverride ??
             // demo-type shots skip auto-chaining (their ending IS the content); explicit override still chains
@@ -635,9 +568,7 @@ export default function AssetsPage() {
         ? productImages[0]
         : undefined;
       const controlPlan = buildVideoControlPlan({
-        provider: videoModelTarget.provider,
         modelId: videoModelTarget.model,
-        supportsAudio: videoModelTarget.supportsAudio,
         firstFrameUrl: effectiveFirstFrame,
         lastFrameUrl: chainFrame,
         characterReferenceUrl: characterReference,
@@ -666,9 +597,9 @@ export default function AssetsPage() {
         videoOptions.duration = Math.min(15, Math.max(4, Math.round(asset.duration)));
       }
       if (controlPlan.audioMode === "native") {
+        // What to say is already in the prompt (controlPlan.promptSuffix carries the audio
+        // direction); the switch is all the request body takes.
         videoOptions.audioEnabled = true;
-        if (asset?.voiceover?.trim()) videoOptions.voiceover = asset.voiceover.trim();
-        if (controlPlan.audioPrompt) videoOptions.audioPrompt = controlPlan.audioPrompt;
       }
       const referenceImageUrls = controlPlan.referenceInputs.filter((item) => item.mediaType === "image").map((item) => item.url);
       const referenceVideoUrls = controlPlan.referenceInputs.filter((item) => item.mediaType === "video").map((item) => item.url);
@@ -682,6 +613,7 @@ export default function AssetsPage() {
             provider: videoModelTarget.provider,
             model: videoModelTarget.model,
             apiKey: videoModelTarget.apiKey,
+            apiSecret: videoModelTarget.apiSecret,
             baseUrl: videoModelTarget.baseUrl,
             mode: controlPlan.mode,
             prompt: finalPrompt,
@@ -728,7 +660,7 @@ export default function AssetsPage() {
         });
       }
     },
-    [assets, videoModelTarget, id, videoParams, motionIntensity, motionRealism, chainMode, projectCategory, projectCreativeIntent, projectVisualBible, visualLook, productSafe, productImages, presenterLib, presenterSheet, saveVideoAsset, reloadPendingTasks, t, locale]
+    [assets, videoModelTarget, videoCapabilities, id, videoParams, motionIntensity, motionRealism, chainMode, projectCategory, projectCreativeIntent, projectVisualBible, visualLook, productSafe, productImages, presenterLib, presenterSheet, saveVideoAsset, reloadPendingTasks, t, locale]
   );
 
   // actually generate a single asset. Returns the saved static keyframe URL (undefined on failure) so
@@ -774,7 +706,6 @@ export default function AssetsPage() {
       // product fidelity: AI shot featuring product + product image available + toggle on → redraw with product image (image-to-image, locks in the product subject)
       const useProductSafe =
         productSafe && !!productImages[0] && PRODUCT_SHOT_TYPES.has(asset.type);
-      const genModel = useProductSafe ? toEditVariant(modelTarget.model) : modelTarget.model;
       const genMode = useProductSafe ? "image-to-image" : "text-to-image";
       const basePrompt = asset.prompt || asset.description;
       // cast shots: pin the anti-"AI face" realism constraint onto the keyframe too,
@@ -809,15 +740,16 @@ export default function AssetsPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             provider: modelTarget.provider,
-            model: genModel,
+            model: modelTarget.model,
             apiKey: modelTarget.apiKey,
+            apiSecret: modelTarget.apiSecret,
             baseUrl: modelTarget.baseUrl,
             mode: genMode,
             prompt: genPrompt,
             ...(useProductSafe && { imageUrl: productImages[0] }),
             // user-defined image parameters (aspect ratio → dimensions / count / steps / guidance / seed / negative prompt)
             options: (() => {
-              const options = buildImageOptions(imageParams);
+              const options = buildImageOptions(imageParams, imageQuality);
               if (projectDirection.negativePrompt) options.negativePrompt = [options.negativePrompt, projectDirection.negativePrompt].filter(Boolean).join(", ");
               return options;
             })(),
@@ -835,7 +767,7 @@ export default function AssetsPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               shotId, type: "ai_generate", sourceUrl: url,
-              prompt: genPrompt, provider: modelTarget.provider, model: genModel,
+              prompt: genPrompt, provider: modelTarget.provider, model: modelTarget.model,
             }),
           });
           if (saveRes.ok) {
@@ -860,7 +792,7 @@ export default function AssetsPage() {
         return undefined;
       }
     },
-    [assets, modelTarget, productImages, productSafe, imageParams, autoMotion, videoModelTarget, projectCreativeIntent, projectVisualBible, visualLook, generateMotion, id, t]
+    [assets, modelTarget, productImages, productSafe, imageParams, imageQuality, autoMotion, videoModelTarget, projectCreativeIntent, projectVisualBible, visualLook, generateMotion, id, t]
   );
 
   // storyboard grid: ONE image generation renders every shot as a 3x3 grid cell (person /
@@ -874,20 +806,20 @@ export default function AssetsPage() {
       // identity/product anchoring: with a presenter sheet or product photo attached the
       // grid runs in edit mode (multi-reference) — field-proven to lock person AND product
       const productRef = productSafe ? productImages[0] : undefined;
-      const hasRefs = !!presenterSheet || !!productRef;
       const res = await fetch(`/api/project/${id}/storyboard-grid`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scriptId,
           provider: modelTarget.provider,
-          model: hasRefs ? toEditVariant(modelTarget.model) : modelTarget.model,
+          model: modelTarget.model,
           apiKey: modelTarget.apiKey,
+          apiSecret: modelTarget.apiSecret,
           baseUrl: modelTarget.baseUrl,
           ...(presenterSheet && { characterSheetUrl: presenterSheet }),
           ...(productRef && { productImageUrl: productRef }),
           // the grid itself is 9:16 so each of the 3x3 cells is exactly 9:16 too
-          options: buildImageOptions(imageParams ? { ...imageParams, aspectRatio: "9:16", count: 1 } : undefined),
+          options: buildImageOptions(imageParams ? { ...imageParams, aspectRatio: "9:16", count: 1 } : undefined, imageQuality),
         }),
       });
       const data = await res.json();
@@ -899,7 +831,7 @@ export default function AssetsPage() {
     } finally {
       setIsGridGenerating(false);
     }
-  }, [id, scriptId, modelTarget, imageParams, isGridGenerating, presenterSheet, productSafe, productImages, reloadAssets, t]);
+  }, [id, scriptId, modelTarget, imageParams, imageQuality, isGridGenerating, presenterSheet, productSafe, productImages, reloadAssets, t]);
 
   // grid→film (field-proven 2026-08): every shot keyframe rides ONE Seedance 2.5
   // reference-to-video call with a timecoded multi-shot prompt — native cuts, dialogue
@@ -920,6 +852,7 @@ export default function AssetsPage() {
             ? videoModelTarget.model
             : "bytedance/seedance-2.5/reference-to-video",
           apiKey: videoModelTarget.apiKey,
+          apiSecret: videoModelTarget.apiSecret,
           baseUrl: videoModelTarget.baseUrl,
           // presenter sheet leads reference_images as the identity anchor (@Image1)
           ...(presenterSheet && { characterSheetUrl: presenterSheet }),
@@ -1034,7 +967,6 @@ export default function AssetsPage() {
               const filmReason = !videoModelTarget ? t("filmNeedModel") : !allShotsDone ? t("filmNeedReady") : t("filmTip");
               return (
                 <>
-                  {uiMode === "pro" && (
                   <Button
                     onClick={runStoryboardGrid}
                     disabled={!gridReady || isGridGenerating || isBatchGenerating}
@@ -1051,7 +983,6 @@ export default function AssetsPage() {
                       <>{t("gridButton")}</>
                     )}
                   </Button>
-                  )}
                   <Button
                     onClick={runStoryboardFilm}
                     disabled={!filmReady || isFilmGenerating || isGridGenerating || isBatchGenerating}
@@ -1093,12 +1024,10 @@ export default function AssetsPage() {
           </div>
         </div>
 
-        {/* Director panel: global creative settings applied to every generation pass.
-            One labeled container instead of loose pills scattered through the action bar.
-            Pro mode only — beginners get working defaults without the vocabulary. */}
-        {uiMode === "pro" && (
-        <div className="mb-6 flex flex-wrap items-center gap-2 rounded-xl border border-border/50 bg-muted/10 px-3 py-2.5">
-          <span className="mr-1 text-xs font-semibold tracking-wide text-muted-foreground">{t("directorPanel")}</span>
+        {/* Director panel: global creative settings applied to every generation pass. Collapsed
+            by default — the defaults already produce a usable video, so these are for the second
+            pass, once the user has something to react to. */}
+        <DisclosureSection title={t("directorPanel")} summary={directorSummary} className="mb-6">
           <Link href={`/project/${id}/production`} className="inline-flex h-8 items-center rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
             {t("productionConsole")}
           </Link>
@@ -1203,7 +1132,7 @@ export default function AssetsPage() {
               ))}
             </div>
           )}
-          {videoModelTarget && modelSupportsLastFrame(videoModelTarget.model) && (
+          {videoModelTarget && videoCapabilities?.lastFrame && (
             <div
               className="flex h-8 items-center gap-0.5 rounded-lg border border-border/60 bg-muted/20 pl-2.5 pr-1"
               title={t("chainModeTip")}
@@ -1258,19 +1187,16 @@ export default function AssetsPage() {
               {t("productSafe")}{productSafe ? t("on") : t("off")}
             </button>
           )}
-        </div>
-        )}
+        </DisclosureSection>
 
-        {uiMode === "pro" && videoModelTarget && (
+        {videoModelTarget && (
           <ModelCapabilityPreflight
             modelId={videoModelTarget.model}
-            provider={videoModelTarget.provider}
-            supportsAudio={videoModelTarget.supportsAudio}
             duration={videoParams.duration}
             resolution={videoParams.resolution}
             aspectRatio={videoParams.aspectRatio}
             chainMode={chainMode}
-            audioEnabled={videoModelTarget.supportsAudio === true}
+            audioEnabled={videoCapabilities?.nativeAudio === true}
             referenceImageCount={Number(Boolean(presenterSheet)) + Number(Boolean(productSafe && productImages[0]))}
           />
         )}
@@ -1352,7 +1278,7 @@ export default function AssetsPage() {
               <p className="text-sm font-medium text-warning">{t("noModelTitle")}</p>
               <p className="mt-0.5 text-xs text-warning/85">
                 {t("noModelDesc")}
-                <Link href="/settings?tab=image" className="underline ml-1">{t("goToSettings")}</Link>
+                <Link href="/settings?tab=generation" className="underline ml-1">{t("goToSettings")}</Link>
               </p>
             </div>
           </div>
@@ -1440,7 +1366,6 @@ export default function AssetsPage() {
                           {/* per-shot camera move: named-preset picker + inline free-text edit
                               (curated moves instead of prompt guessing).
                               Edits persist into the script and apply on the next motion generation */}
-                          {uiMode === "pro" && (
                           <div className="flex items-center gap-1.5 mb-2 text-xs min-w-0">
                             <LuVideo className="size-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
                             {editingCameraShot === asset.shotId ? (
@@ -1521,7 +1446,6 @@ export default function AssetsPage() {
                               );
                             })()}
                           </div>
-                          )}
                           {asset.prompt && (
                             <p className="text-xs text-muted-foreground bg-muted/20 rounded px-2 py-1.5 mb-2 line-clamp-2">
                               {t("promptLabel", { prompt: asset.prompt })}

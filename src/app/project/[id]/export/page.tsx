@@ -1078,7 +1078,7 @@ export default function ExportPage() {
 
         {/* bottom navigation */}
         <div className="mt-8 flex items-center justify-center gap-4">
-          <Link href="/project/new">
+          <Link href="/start">
             <Button className="brand-fill text-white">
               <LuPlus className="w-4 h-4 mr-1.5" />
               {t("makeAnother")}

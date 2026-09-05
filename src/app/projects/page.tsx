@@ -138,7 +138,7 @@ export default function ProjectsPage() {
           title={t("pageTitle")}
           description={t("pageSubtitle")}
           actions={
-            <ButtonLink href="/project/new" className="brand-fill text-white">
+            <ButtonLink href="/start" className="brand-fill text-white">
               <LuPlus className="h-4 w-4" />
               <span className="ml-1.5">{t("newProject")}</span>
             </ButtonLink>
@@ -252,7 +252,7 @@ export default function ProjectsPage() {
               </div>
               <div className="mt-2 flex gap-2">
                 <ButtonLink href="/start" size="sm">{t("goStart")}</ButtonLink>
-                <ButtonLink href="/project/new" size="sm" variant="outline">{t("goNew")}</ButtonLink>
+                <ButtonLink href="/start" size="sm" variant="outline">{t("goNew")}</ButtonLink>
               </div>
             </CardContent>
           </Card>

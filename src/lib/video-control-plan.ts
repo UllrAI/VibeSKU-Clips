@@ -14,8 +14,9 @@ export type VideoReferenceRole = typeof VIDEO_REFERENCE_ROLES[number];
 export type VideoReferenceMediaType = "image" | "video" | "audio";
 export type VideoControlWarning =
   | "reference-pack-unsupported"
-  | "reference-pack-deferred-for-end-frame"
-  | "reference-audio-unsupported";
+  | "reference-video-unsupported"
+  | "reference-audio-unsupported"
+  | "end-frame-unsupported";
 
 export interface VideoReferenceInput {
   url: string;
@@ -83,14 +84,15 @@ function nativeAudioInstruction(input: { voiceover?: string; description?: strin
 }
 
 /**
- * Compile all available shot conditions into the strongest request that the selected
- * provider/model family can safely accept. Unsupported inputs are omitted before the
- * paid request and recorded as explicit degradation warnings.
+ * Compile all available shot conditions into the strongest request the chosen model can accept.
+ *
+ * Everything the model cannot take is dropped BEFORE the paid request and recorded as an explicit
+ * degradation warning, so a shot never quietly loses its identity anchor and never dies on a 422.
+ * Decisions come from the model's catalog entry alone — this used to branch on vendor names, and
+ * those branches went stale the moment the app moved to a single gateway.
  */
 export function buildVideoControlPlan(input: {
-  provider: string;
   modelId: string;
-  supportsAudio?: boolean;
   firstFrameUrl?: string;
   lastFrameUrl?: string;
   characterReferenceUrl?: string;
@@ -103,7 +105,7 @@ export function buildVideoControlPlan(input: {
   description?: string;
   locale: "zh" | "en";
 }): VideoControlPlan {
-  const capabilities = getVideoModelCapabilities(input.modelId, input.supportsAudio, input.provider);
+  const capabilities = getVideoModelCapabilities(input.modelId);
   const optional: VideoReferenceInput[] = [
     ...(isNonEmpty(input.characterReferenceUrl) ? [{ url: input.characterReferenceUrl, role: "character" as const, mediaType: "image" as const, required: true }] : []),
     ...(isNonEmpty(input.productReferenceUrl) ? [{ url: input.productReferenceUrl, role: "product" as const, mediaType: "image" as const, required: true }] : []),
@@ -114,36 +116,26 @@ export function buildVideoControlPlan(input: {
     ...(isNonEmpty(input.audioReferenceUrl) ? [{ url: input.audioReferenceUrl, role: "audio" as const, mediaType: "audio" as const, required: false }] : []),
   ];
   const warnings: VideoControlWarning[] = [];
-  const hasVisualPack = optional.some((item) => item.mediaType !== "audio");
-  const hasIdentityPack = optional.some((item) => item.mediaType === "image" && item.required);
-  const canUseVisualPack = capabilities.referenceImages === true;
-  const canUseAudioReference = capabilities.referenceAudio === true;
-  // Identity/product fidelity wins over a hard end-frame on Atlas: reference mode can still
-  // carry that end frame as a target anchor, while plain continuity-only requests retain the
-  // provider's stronger native start/end-frame contract.
-  const isAtlasReferenceMode = input.provider === "atlas-cloud" && hasVisualPack && canUseVisualPack && (!input.lastFrameUrl || hasIdentityPack);
-  const canAttachAlongsideFrames = input.provider === "volcengine" && hasVisualPack && canUseVisualPack;
+  const has = (type: VideoReferenceMediaType) => optional.some((item) => item.mediaType === type);
+  const accepts: Record<VideoReferenceMediaType, boolean> = {
+    image: capabilities.referenceImages,
+    video: capabilities.referenceVideo,
+    audio: capabilities.referenceAudio,
+  };
 
-  if (hasVisualPack && !canUseVisualPack) warnings.push("reference-pack-unsupported");
-  if (hasVisualPack && input.provider === "atlas-cloud" && canUseVisualPack && input.lastFrameUrl && !isAtlasReferenceMode) {
-    warnings.push("reference-pack-deferred-for-end-frame");
+  // References travel alongside the keyframes rather than replacing them: Prism's request body
+  // carries `reference_images` and `first_frame_url`/`last_frame_url` as separate fields, so an
+  // identity sheet no longer costs the shot its composition anchor (it used to, back when one
+  // vendor could only accept one or the other).
+  for (const type of ["image", "video", "audio"] as const) {
+    if (!has(type) || accepts[type]) continue;
+    warnings.push(
+      type === "image" ? "reference-pack-unsupported" : type === "video" ? "reference-video-unsupported" : "reference-audio-unsupported"
+    );
   }
-  if (input.audioReferenceUrl && !canUseAudioReference) warnings.push("reference-audio-unsupported");
+  if (isNonEmpty(input.lastFrameUrl) && !capabilities.lastFrame) warnings.push("end-frame-unsupported");
 
-  let referenceInputs: VideoReferenceInput[] = [];
-  if (isAtlasReferenceMode) {
-    if (isNonEmpty(input.firstFrameUrl)) {
-      referenceInputs.push({ url: input.firstFrameUrl, role: "keyframe", mediaType: "image", required: true });
-    }
-    if (isNonEmpty(input.lastFrameUrl)) {
-      referenceInputs.push({ url: input.lastFrameUrl, role: "end-frame", mediaType: "image", required: false });
-    }
-    referenceInputs.push(...optional.filter((item) => item.mediaType !== "audio" || canUseAudioReference));
-  } else if (canAttachAlongsideFrames) {
-    referenceInputs.push(...optional.filter((item) => item.mediaType !== "audio" || canUseAudioReference));
-  } else if (input.audioReferenceUrl && canUseAudioReference) {
-    referenceInputs.push({ url: input.audioReferenceUrl, role: "audio", mediaType: "audio", required: false });
-  }
+  let referenceInputs: VideoReferenceInput[] = optional.filter((item) => accepts[item.mediaType]);
 
   // Prevent duplicated URLs from consuming provider reference quotas while preserving role order.
   const seen = new Set<string>();
@@ -154,32 +146,38 @@ export function buildVideoControlPlan(input: {
     return true;
   });
 
-  const nativeAudio = capabilities.nativeAudio === true;
+  const nativeAudio = capabilities.nativeAudio;
   const voiceoverBound = nativeAudio && isNonEmpty(input.voiceover);
   const audioMode: VideoControlSummary["audioMode"] = nativeAudio ? "native" : isNonEmpty(input.voiceover) ? "post" : "none";
   const audioPrompt = nativeAudio ? nativeAudioInstruction(input) : undefined;
-  const frameImageCount = canAttachAlongsideFrames
-    ? Number(isNonEmpty(input.firstFrameUrl)) + Number(isNonEmpty(input.lastFrameUrl))
-    : 0;
-  const promptSuffix = [referenceInstruction(referenceInputs, input.locale, frameImageCount), audioPrompt].filter(Boolean).join(input.locale === "zh" ? "。" : " ");
-  const strategy: VideoControlSummary["strategy"] = isAtlasReferenceMode || canAttachAlongsideFrames ? "reference-pack" : "keyframe";
+
+  const firstFrameUrl = isNonEmpty(input.firstFrameUrl) ? input.firstFrameUrl : undefined;
+  const lastFrameUrl = isNonEmpty(input.lastFrameUrl) && capabilities.lastFrame ? input.lastFrameUrl : undefined;
+  // The keyframes occupy @Image1..N, so the reference map numbering starts after them.
+  const frameImageCount = Number(Boolean(firstFrameUrl)) + Number(Boolean(lastFrameUrl));
+  const promptSuffix = [referenceInstruction(referenceInputs, input.locale, frameImageCount), audioPrompt]
+    .filter(Boolean)
+    .join(input.locale === "zh" ? "。" : " ");
+
+  const visualPack = referenceInputs.some((item) => item.mediaType !== "audio");
   const referenceRoles = unique([
-    ...(isNonEmpty(input.firstFrameUrl) ? ["keyframe" as const] : []),
-    ...(isNonEmpty(input.lastFrameUrl) ? ["end-frame" as const] : []),
+    ...(firstFrameUrl ? ["keyframe" as const] : []),
+    ...(lastFrameUrl ? ["end-frame" as const] : []),
     ...referenceInputs.map((item) => item.role),
   ]);
 
   return {
     version: 1,
-    strategy,
-    mode: isAtlasReferenceMode ? "video-to-video" : "image-to-video",
+    strategy: visualPack ? "reference-pack" : "keyframe",
+    // A reference VIDEO is what actually changes the request's nature; still images do not.
+    mode: referenceInputs.some((item) => item.mediaType === "video") ? "video-to-video" : "image-to-video",
     referenceRoles,
-    referenceCount: referenceInputs.length + (isAtlasReferenceMode ? 0 : Number(Boolean(input.firstFrameUrl)) + Number(Boolean(input.lastFrameUrl))),
+    referenceCount: referenceInputs.length + frameImageCount,
     audioMode,
     voiceoverBound,
     warnings: unique(warnings),
-    ...(!isAtlasReferenceMode && isNonEmpty(input.firstFrameUrl) && { firstFrameUrl: input.firstFrameUrl }),
-    ...(!isAtlasReferenceMode && isNonEmpty(input.lastFrameUrl) && { lastFrameUrl: input.lastFrameUrl }),
+    ...(firstFrameUrl && { firstFrameUrl }),
+    ...(lastFrameUrl && { lastFrameUrl }),
     referenceInputs,
     promptSuffix,
     ...(audioPrompt && { audioPrompt }),
@@ -197,7 +195,12 @@ export function sanitizeVideoControlSummary(value: unknown): VideoControlSummary
   const roles = Array.isArray(raw.referenceRoles)
     ? unique(raw.referenceRoles.filter((role): role is VideoReferenceRole => typeof role === "string" && (VIDEO_REFERENCE_ROLES as readonly string[]).includes(role))).slice(0, VIDEO_REFERENCE_ROLES.length)
     : [];
-  const allowedWarnings: VideoControlWarning[] = ["reference-pack-unsupported", "reference-pack-deferred-for-end-frame", "reference-audio-unsupported"];
+  const allowedWarnings: VideoControlWarning[] = [
+    "reference-pack-unsupported",
+    "reference-video-unsupported",
+    "reference-audio-unsupported",
+    "end-frame-unsupported",
+  ];
   const warnings = Array.isArray(raw.warnings)
     ? unique(raw.warnings.filter((warning): warning is VideoControlWarning => typeof warning === "string" && allowedWarnings.includes(warning as VideoControlWarning))).slice(0, allowedWarnings.length)
     : [];

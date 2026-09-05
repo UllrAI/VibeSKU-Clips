@@ -1,7 +1,6 @@
-import type OpenAI from "openai";
 import type { LLMConfig } from "@/lib/script-engine/generator";
 import { extractJSON } from "@/lib/script-engine/generator";
-import { createLLMClient, jsonModeParams, withLLMErrors } from "@/lib/llm-error";
+import { completeText, imagePart } from "@/lib/llm-call";
 
 export interface MediaAnalysisResult {
   mediaType: "image" | "video";
@@ -105,20 +104,22 @@ export async function analyzeVisualMedia(input: {
   sampleContext?: string;
 }): Promise<MediaAnalysisResult> {
   const model = input.config.visionModel || input.config.model;
-  const client = createLLMClient({ ...input.config, model });
-  const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [
-    { type: "text", text: analysisPrompt(input.mediaType, input.locale, input.sampleContext) },
-    { type: "image_url", image_url: { url: input.imageDataUrl, detail: "high" } },
-  ];
-  const response = await withLLMErrors(
-    () => client.chat.completions.create({
-      model,
-      messages: [{ role: "user", content }],
-      temperature: 0.2,
-      max_tokens: 2500,
-      ...jsonModeParams(input.config.baseUrl),
-    }),
+  const text = await completeText(
     { ...input.config, model },
+    {
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: analysisPrompt(input.mediaType, input.locale, input.sampleContext) },
+            imagePart(input.imageDataUrl),
+          ],
+        },
+      ],
+      temperature: 0.2,
+      maxOutputTokens: 2500,
+      jsonMode: true,
+    },
   );
-  return parseMediaAnalysis(response.choices[0]?.message?.content || "", input.mediaType);
+  return parseMediaAnalysis(text, input.mediaType);
 }
