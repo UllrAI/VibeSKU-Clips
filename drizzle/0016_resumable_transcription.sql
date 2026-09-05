@@ -1,1 +1,0 @@
-ALTER TABLE `media_sources` ADD `transcript_checkpoint` text;
