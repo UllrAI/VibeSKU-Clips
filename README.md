@@ -140,8 +140,8 @@ never be added to `SITE_CONFIG`.
 | `RESEND_API_KEY`               | Required when `emailAuth` is enabled. Resend API key.           | `re_xxxxxxxxxxxxxxxx`                               |
 | `RESEND_EMAIL_FROM`            | Required when `emailAuth` is enabled. Verified sender.          | `noreply@your-verified-domain.com`                  |
 | `LLM_API_KEY`                  | Required when `ai` is enabled. Key for your LLM endpoint.       | `sk-...`                                            |
-| `LLM_BASE_URL`                 | Optional Responses API endpoint; defaults to OpenAI.            | `https://api.openai.com/v1`                         |
-| `AI_DEFAULT_MODEL`             | Optional chat model id; defaults to `gpt-5.6-luna`.             | `gpt-5.6-luna`                                      |
+| `LLM_BASE_URL`                 | Optional OpenAI-compatible endpoint; defaults to OpenRouter.    | `https://openrouter.ai/api/v1`                      |
+| `AI_DEFAULT_MODEL`             | Optional model id; defaults to `openai/gpt-5.6-luna`.           | `openai/gpt-5.6-luna`                               |
 | `PRISM_API_KEY`                | **Required for rendering.** Prism API key.                      | `pk_...`                                            |
 | `PRISM_API_SECRET`             | **Required for rendering.** Prism API secret.                   | `sk_...`                                            |
 | `STRIPE_SECRET_KEY`            | Required for billing. Prefer a least-privilege restricted key.  | `rk_test_...` or `rk_live_...`                      |

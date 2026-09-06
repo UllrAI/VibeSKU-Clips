@@ -196,3 +196,11 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 **原因**：`ugc.batch.run` 遇到没有 facts 的商品会跳过整条计划行。而 composer 建的商品此刻还在 ingest 队列里，于是每一行都被跳过，批次却被标成 `running`。
 
 **正确做法**：区分"还在读"（`draft`/`analyzing`，应当等待并重试）和"读不出来"（`needs_input`/`failed`，才应当跳过）。跳过时把原因写进批次的 `note` 并在界面上说出来——没有产出的运行必须解释自己，否则用户只能盯着一个不动的进度条。
+
+### `pnpm dev` 不起 Worker，等于整条生产线没人干活
+
+**现象**：新建批次后永远停在「生产中 0/1」，`pnpm dev` 的日志里全是 Next 的请求，没有任何 `{"component":"job-worker"}`。
+
+**原因**：`dev` 脚本只跑 `next dev`。Worker 是独立进程（`pnpm worker:dev`）。任务被写进 outbox、pg-boss 也收下了，但没有任何消费者，于是批次永远停在入队那一刻。这跟"任务失败"看起来一模一样，但排查方向完全相反。
+
+**正确做法**：`pnpm dev` 同时拉起两个进程（`scripts/dev.mjs`），任一退出就一起停。更重要的是**让界面自己说出来**：`task_runs` 里存在 `queued` 且超过 45 秒没被领取的行，就是"没有 Worker 在消费"，批次页和批次列表直接显示「队列停滞」。任何环境漏跑 Worker 都会立刻可见，而不是让人盯着一个不动的进度条去翻服务器日志。

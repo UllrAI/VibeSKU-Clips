@@ -7,6 +7,8 @@ export interface BatchProgressCounts {
   status: "draft" | "running" | "completed" | "cancelled";
   /** Why the run produced less than it planned; null when nothing was skipped. */
   note: string | null;
+  /** Work is queued but nothing is consuming it — usually a worker that is not running. */
+  stalled: boolean;
   total: number;
   ready: number;
   failed: number;

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, count, desc, eq, inArray, lt, or, sql } from "drizzle-orm";
 import { db } from "@/database";
 import {
   ugcBatches,
@@ -13,6 +13,9 @@ import {
 import { taskRuns } from "@/database/schema";
 import { requireAuth } from "@/lib/auth/permissions";
 import { findSimilarityHints, type SimilarityHint } from "./similarity";
+
+/** How long a queued task may sit before the console calls the run stalled. */
+const STALL_AFTER_MS = 45_000;
 
 export type ProductRow = typeof ugcProducts.$inferSelect;
 export type TalentRow = typeof ugcTalents.$inferSelect;
@@ -55,11 +58,43 @@ export async function listScripts(): Promise<
 
 export interface BatchProgress {
   batch: BatchRow;
+  /** Work is queued but nothing is consuming it — usually no worker running. */
+  stalled: boolean;
   total: number;
   ready: number;
   failed: number;
   running: number;
   pending: number;
+}
+
+/**
+ * Batches with work the queue accepted but nothing picked up.
+ *
+ * A task that is still `queued` well after it was created means no worker
+ * process is consuming the outbox. That is the single most common reason a
+ * batch looks frozen, and without saying so the operator can only find out by
+ * reading server logs.
+ */
+async function stalledBatches(batchIds: string[]): Promise<Set<string>> {
+  if (batchIds.length === 0) return new Set();
+  const rows = await db
+    .selectDistinct({
+      batchId: sql<string>`coalesce(${ugcClips.batchId}, ${ugcBatches.id})`,
+    })
+    .from(taskRuns)
+    .leftJoin(ugcClips, eq(ugcClips.taskRunId, taskRuns.id))
+    .leftJoin(ugcBatches, eq(ugcBatches.taskRunId, taskRuns.id))
+    .where(
+      and(
+        eq(taskRuns.status, "queued"),
+        lt(taskRuns.createdAt, new Date(Date.now() - STALL_AFTER_MS)),
+        or(
+          inArray(ugcClips.batchId, batchIds),
+          inArray(ugcBatches.id, batchIds),
+        ),
+      ),
+    );
+  return new Set(rows.map((row) => row.batchId));
 }
 
 async function progressFor(
@@ -76,21 +111,25 @@ async function progressFor(
     .where(inArray(ugcClips.batchId, batchIds))
     .groupBy(ugcClips.batchId, ugcClips.status);
 
+  const stalled = await stalledBatches(batchIds);
   const progress = new Map<string, Omit<BatchProgress, "batch">>();
-  for (const row of rows) {
-    const current = progress.get(row.batchId) ?? {
+  for (const batchId of batchIds) {
+    progress.set(batchId, {
+      stalled: stalled.has(batchId),
       total: 0,
       ready: 0,
       failed: 0,
       running: 0,
       pending: 0,
-    };
+    });
+  }
+  for (const row of rows) {
+    const current = progress.get(row.batchId)!;
     current.total += row.total;
     if (row.status === "ready") current.ready += row.total;
     else if (row.status === "failed") current.failed += row.total;
     else if (row.status === "pending") current.pending += row.total;
     else if (row.status !== "cancelled") current.running += row.total;
-    progress.set(row.batchId, current);
   }
   return progress;
 }
@@ -106,13 +145,7 @@ export async function listBatches(): Promise<BatchProgress[]> {
   const progress = await progressFor(batches.map((batch) => batch.id));
   return batches.map((batch) => ({
     batch,
-    ...(progress.get(batch.id) ?? {
-      total: 0,
-      ready: 0,
-      failed: 0,
-      running: 0,
-      pending: 0,
-    }),
+    ...progress.get(batch.id)!,
   }));
 }
 
@@ -162,6 +195,7 @@ async function clipDetails(
 export async function getBatchProgress(batchId: string): Promise<{
   status: BatchRow["status"];
   note: string | null;
+  stalled: boolean;
   total: number;
   ready: number;
   failed: number;
@@ -187,6 +221,7 @@ export async function getBatchProgress(batchId: string): Promise<{
   return {
     status: batch.status,
     note: batch.note,
+    stalled: counts?.stalled ?? false,
     total: Math.max(counts?.total ?? 0, batch.plannedCount),
     ready: counts?.ready ?? 0,
     failed: counts?.failed ?? 0,
@@ -214,16 +249,7 @@ export async function getBatchDetail(batchId: string): Promise<{
     : [];
 
   return {
-    progress: {
-      batch,
-      ...(progress.get(batch.id) ?? {
-        total: 0,
-        ready: 0,
-        failed: 0,
-        running: 0,
-        pending: 0,
-      }),
-    },
+    progress: { batch, ...progress.get(batch.id)! },
     clips,
     taskProgress: task?.progress ?? null,
   };

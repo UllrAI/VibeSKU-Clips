@@ -324,9 +324,15 @@ async function submitStage(
     });
   }
 
+  // The opening frame anchors the look; the talent and product shots keep the
+  // face and the object consistent across the whole clip.
   return submitVideo({
     prompt: buildVideoPrompt(subject, loaded.script.beats),
-    referenceUrl: payload.coverUrl,
+    referenceUrls: [
+      payload.coverUrl,
+      loaded.talent?.imageUrl,
+      ...loaded.product.images.slice(0, 2),
+    ].filter((url): url is string => Boolean(url)),
     durationSeconds: CLIP_SPEC.durationSeconds,
     aspectRatio: CLIP_SPEC.aspectRatio,
     requestId,

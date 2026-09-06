@@ -72,7 +72,12 @@ export const MAX_BATCH_CLIPS = 200;
  */
 export const MEDIA_PROVIDER = {
   baseUrl: "https://prism.ullrai.com/api/v1",
-  imageModel: "nano-banana-pro",
-  videoModel: "sora2",
+  /** `quality` is only honoured by Prism's gpt-image-* family. */
+  imageModel: "gpt-image-2",
+  imageQuality: "low",
+  /** H3 takes up to nine reference images and a 1-15 second duration. */
+  videoModel: "minimax-h3",
+  videoResolution: "1080p",
+  maxVideoReferences: 9,
   requestTimeoutMs: 60_000,
 } as const;

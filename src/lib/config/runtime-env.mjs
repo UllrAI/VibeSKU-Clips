@@ -28,8 +28,8 @@ export function databaseEnvFields(poolSize) {
 }
 
 export const modelEnvFields = {
-  LLM_BASE_URL: z.url().default("https://api.openai.com/v1"),
-  AI_DEFAULT_MODEL: z.string().trim().min(1).default("gpt-5.6-luna"),
+  LLM_BASE_URL: z.url().default("https://openrouter.ai/api/v1"),
+  AI_DEFAULT_MODEL: z.string().trim().min(1).default("openai/gpt-5.6-luna"),
 };
 
 // Media generation runs in both the Web process and the job worker, so the

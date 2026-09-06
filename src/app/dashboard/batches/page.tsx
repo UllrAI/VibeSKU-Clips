@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clapperboard } from "lucide-react";
+import { Clapperboard, TriangleAlert } from "lucide-react";
 import { DashboardPageWrapper } from "../_components/dashboard-page-wrapper";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -69,7 +69,15 @@ export default async function BatchesPage() {
                           : ""}
                       </p>
                     </div>
-                    <StatusBadge kind="batch" status={entry.batch.status} />
+                    <div className="flex items-center gap-2">
+                      {entry.stalled && (
+                        <span className="text-destructive flex items-center gap-1 text-xs">
+                          <TriangleAlert className="size-3.5" aria-hidden />
+                          {t("ugc_batch_stalled_badge")}
+                        </span>
+                      )}
+                      <StatusBadge kind="batch" status={entry.batch.status} />
+                    </div>
                   </div>
                   <Progress
                     className="mt-3"

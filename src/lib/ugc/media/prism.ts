@@ -94,6 +94,7 @@ export async function submitImage(request: ImageRequest): Promise<string> {
       body: {
         prompt: request.prompt,
         model: MEDIA_PROVIDER.imageModel,
+        quality: MEDIA_PROVIDER.imageQuality,
         aspect_ratio: request.aspectRatio,
         request_id: request.requestId,
         ...(request.referenceUrls.length
@@ -108,8 +109,12 @@ export async function submitImage(request: ImageRequest): Promise<string> {
 
 export interface VideoRequest {
   prompt: string;
-  /** First frame the clip opens on, which anchors talent and product look. */
-  referenceUrl?: string;
+  /**
+   * What the clip should look like. H3 treats these as a multi-image reference
+   * set rather than a strict first frame, so the storyboard frame, the product
+   * shots and the talent reference can all go in together.
+   */
+  referenceUrls: string[];
   durationSeconds: number;
   aspectRatio: string;
   requestId: string;
@@ -125,9 +130,15 @@ export async function submitVideo(request: VideoRequest): Promise<string> {
         model: MEDIA_PROVIDER.videoModel,
         duration: request.durationSeconds,
         aspect_ratio: request.aspectRatio,
+        resolution: MEDIA_PROVIDER.videoResolution,
         request_id: request.requestId,
-        ...(request.referenceUrl
-          ? { reference_url: request.referenceUrl }
+        ...(request.referenceUrls.length
+          ? {
+              reference_images: request.referenceUrls.slice(
+                0,
+                MEDIA_PROVIDER.maxVideoReferences,
+              ),
+            }
           : {}),
       },
     },

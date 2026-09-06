@@ -123,8 +123,8 @@ cp .env.example .env
 | `RESEND_API_KEY`             | 启用 `emailAuth` 时必需。Resend API Key。            | `re_xxxxxxxxxxxxxxxx`                               |
 | `RESEND_EMAIL_FROM`          | 启用 `emailAuth` 时必需。已验证的发件地址。          | `noreply@your-verified-domain.com`                  |
 | `LLM_API_KEY`                | 启用 `ai` 时必需。LLM 端点的 API Key。               | `sk-...`                                            |
-| `LLM_BASE_URL`               | 可选的 OpenAI 兼容端点，默认为 OpenAI 官方 API。     | `https://api.openai.com/v1`                         |
-| `AI_DEFAULT_MODEL`           | 可选的聊天模型 id，默认 `gpt-5.6-luna`。             | `gpt-5.6-luna`                                      |
+| `LLM_BASE_URL`               | 可选的 OpenAI 兼容端点，默认 OpenRouter。            | `https://openrouter.ai/api/v1`                      |
+| `AI_DEFAULT_MODEL`           | 可选的模型 id，默认 `openai/gpt-5.6-luna`。          | `openai/gpt-5.6-luna`                               |
 | `PRISM_API_KEY`              | **视频生成必填。** Prism API Key。                   | `pk_...`                                            |
 | `PRISM_API_SECRET`           | **视频生成必填。** Prism API Secret。                | `sk_...`                                            |
 | `STRIPE_SECRET_KEY`          | 启用 `billing` 时必需。需与环境模式匹配。            | `sk_test_...` 或 `sk_live_...`                      |

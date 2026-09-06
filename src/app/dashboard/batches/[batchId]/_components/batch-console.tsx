@@ -53,6 +53,7 @@ export function BatchConsole({
   const counts = useBatchProgress(progress.batch.id, {
     status: progress.batch.status,
     note: progress.batch.note,
+    stalled: progress.stalled,
     total: Math.max(progress.total, progress.batch.plannedCount),
     ready: progress.ready,
     failed: progress.failed,
@@ -87,6 +88,14 @@ export function BatchConsole({
           "ugc_plan_estimated_credits",
         )} ${progress.batch.estimatedCredits}`}
       />
+
+      {counts.stalled && (
+        <Alert variant="destructive">
+          <TriangleAlert />
+          <AlertTitle>{t("ugc_batch_stalled_title")}</AlertTitle>
+          <AlertDescription>{t("ugc_batch_stalled_hint")}</AlertDescription>
+        </Alert>
+      )}
 
       {counts.note && (
         <Alert>
