@@ -10,6 +10,12 @@ export interface JobHandlerContext<Payload = unknown> {
   providerIdempotencyKey: string;
   signal: AbortSignal;
   isCancelled(): Promise<boolean>;
+  /**
+   * One structured line on the worker's stdout, tagged with the job and its
+   * task run. Handlers use it to say what they decided; the queue already logs
+   * start, finish and failure, so this is for the steps in between.
+   */
+  log(event: string, data?: Record<string, unknown>): void;
   updateProgress(progress: Record<string, unknown>): Promise<boolean>;
   scheduleContinuation(
     payload: Payload,

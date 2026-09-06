@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import Image from "next/image";
 import { Check, ChevronDown, ImagePlus, Link2, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,7 @@ export function ProductSlot({
   onDraftChange: (draft: ProductDraft) => void;
 }) {
   const { t } = useTranslation();
+  const fieldId = useId();
   const [photosOpen, setPhotosOpen] = useState(false);
   const selected = products.find((product) => product.id === value);
   const isDraft = value === NEW_PRODUCT;
@@ -77,7 +78,7 @@ export function ProductSlot({
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-0 flex-1 space-y-2">
-          <Label htmlFor="composer-product">{t("ugc_plan_product")}</Label>
+          <Label htmlFor={fieldId}>{t("ugc_plan_product")}</Label>
           {isDraft ? (
             <div className="relative">
               <Link2
@@ -85,7 +86,7 @@ export function ProductSlot({
                 aria-hidden="true"
               />
               <Input
-                id="composer-product"
+                id={fieldId}
                 value={draft.entry}
                 onChange={(event) =>
                   onDraftChange({ ...draft, entry: event.target.value })
@@ -97,7 +98,7 @@ export function ProductSlot({
             </div>
           ) : (
             <Select value={value} onValueChange={onValueChange}>
-              <SelectTrigger id="composer-product">
+              <SelectTrigger id={fieldId}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

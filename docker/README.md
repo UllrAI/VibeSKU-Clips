@@ -23,7 +23,6 @@ This directory contains the Docker configuration for running VibeSKU Clips in co
 
    Store the generated value in `BETTER_AUTH_SECRET`. Set
    `RESEND_EMAIL_FROM` to an address on a domain verified in Resend. Set
-   a second generated value in `UPLOAD_CLEANUP_SECRET`. Set
    `NEXT_PUBLIC_APP_URL` to the exact public origin used to access the build;
    production SEO metadata is generated from this value at build time. Keep the
    upload bucket private and configure the four R2 credentials for both Web and

@@ -1,0 +1,1 @@
+ALTER TABLE "ugc_batches" ADD COLUMN "note" text;

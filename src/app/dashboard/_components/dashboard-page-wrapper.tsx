@@ -31,7 +31,6 @@ export function DashboardPageWrapper({
         title={title}
         parentTitle={parentTitle}
         parentUrl={parentUrl}
-        description={description}
         actions={actions}
         showSidebarTrigger={showSidebarTrigger}
       />
@@ -43,6 +42,11 @@ export function DashboardPageWrapper({
           mainClassName,
         )}
       >
+        {description && (
+          <p className="text-muted-foreground max-w-2xl text-sm text-pretty">
+            {description}
+          </p>
+        )}
         {children}
       </main>
     </>

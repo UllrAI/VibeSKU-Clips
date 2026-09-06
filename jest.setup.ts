@@ -840,7 +840,6 @@ type MockEnvironment = {
   JOB_DB_POOL_SIZE: number;
   WORKER_GRACEFUL_TIMEOUT_MS: number;
   RATE_LIMIT_IP_HEADER: string;
-  UPLOAD_CLEANUP_SECRET: string;
 };
 
 const mockEnvConfig: MockEnvironment = {
@@ -862,7 +861,6 @@ const mockEnvConfig: MockEnvironment = {
   JOB_DB_POOL_SIZE: 3,
   WORKER_GRACEFUL_TIMEOUT_MS: 30000,
   RATE_LIMIT_IP_HEADER: "x-forwarded-for",
-  UPLOAD_CLEANUP_SECRET: "mock-upload-cleanup-secret-at-least-32-chars",
 };
 
 const mockCreateEnv = jest.fn(() => mockEnvConfig);
@@ -1058,6 +1056,5 @@ jest.mock("./env.js", () => ({
     JOB_DB_POOL_SIZE: 3,
     WORKER_GRACEFUL_TIMEOUT_MS: 30000,
     RATE_LIMIT_IP_HEADER: "x-forwarded-for",
-    UPLOAD_CLEANUP_SECRET: "mock-upload-cleanup-secret-at-least-32-chars",
   },
 }));

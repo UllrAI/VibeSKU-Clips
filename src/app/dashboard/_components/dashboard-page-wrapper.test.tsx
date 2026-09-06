@@ -8,14 +8,12 @@ jest.mock("./dashboard-page-header", () => ({
     title,
     parentTitle,
     parentUrl,
-    description,
     actions,
     showSidebarTrigger,
   }: {
     title: React.ReactNode;
     parentTitle?: React.ReactNode;
     parentUrl?: string;
-    description?: React.ReactNode;
     actions?: React.ReactNode;
     showSidebarTrigger?: boolean;
   }) => (
@@ -25,9 +23,6 @@ jest.mock("./dashboard-page-header", () => ({
         <span data-testid="header-parent-title">{parentTitle}</span>
       )}
       {parentUrl && <span data-testid="header-parent-url">{parentUrl}</span>}
-      {description && (
-        <span data-testid="header-description">{description}</span>
-      )}
       {actions && <div data-testid="header-actions">{actions}</div>}
       <span data-testid="header-sidebar-trigger">
         {showSidebarTrigger ? "true" : "false"}
@@ -73,9 +68,7 @@ describe("DashboardPageWrapper", () => {
     expect(screen.getByTestId("header-parent-url")).toHaveTextContent(
       "/parent",
     );
-    expect(screen.getByTestId("header-description")).toHaveTextContent(
-      "Test description",
-    );
+    expect(screen.getByText("Test description")).toBeInTheDocument();
     expect(screen.getByTestId("header-actions")).toBeInTheDocument();
     expect(screen.getByTestId("custom-action")).toBeInTheDocument();
     expect(screen.getByTestId("header-sidebar-trigger")).toHaveTextContent(
@@ -184,7 +177,6 @@ describe("DashboardPageWrapper", () => {
       "Minimal Content",
     );
     expect(screen.queryByTestId("header-parent-title")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("header-description")).not.toBeInTheDocument();
     expect(screen.queryByTestId("header-actions")).not.toBeInTheDocument();
   });
 

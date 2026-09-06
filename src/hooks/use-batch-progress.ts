@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 export interface BatchProgressCounts {
   status: "draft" | "running" | "completed" | "cancelled";
+  /** Why the run produced less than it planned; null when nothing was skipped. */
+  note: string | null;
   total: number;
   ready: number;
   failed: number;

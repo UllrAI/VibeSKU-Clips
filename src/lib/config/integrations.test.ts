@@ -10,7 +10,6 @@ const env = {
   R2_ACCESS_KEY_ID: "access-key",
   R2_SECRET_ACCESS_KEY: "secret-key",
   R2_BUCKET_NAME: "bucket",
-  UPLOAD_CLEANUP_SECRET: "cleanup-secret",
 };
 
 jest.mock("@/env", () => ({ __esModule: true, default: env }));
@@ -21,12 +20,8 @@ describe("integration configuration accessors", () => {
   });
 
   it("returns typed configuration for enabled integrations", async () => {
-    const {
-      getBillingConfig,
-      getEmailConfig,
-      getUploadCleanupSecret,
-      getUploadConfig,
-    } = await import("./integrations");
+    const { getBillingConfig, getEmailConfig, getUploadConfig } =
+      await import("./integrations");
 
     expect(getEmailConfig()).toEqual({
       apiKey: env.RESEND_API_KEY,
@@ -38,7 +33,6 @@ describe("integration configuration accessors", () => {
       webhookSecret: env.STRIPE_WEBHOOK_SECRET,
     });
     expect(getUploadConfig().bucketName).toBe(env.R2_BUCKET_NAME);
-    expect(getUploadCleanupSecret()).toBe(env.UPLOAD_CLEANUP_SECRET);
   });
 
   it("fails before reading credentials for a disabled integration", async () => {

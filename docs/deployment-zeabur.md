@@ -295,43 +295,12 @@ database or schema is unavailable.
 ## Scheduled maintenance
 
 The Worker finalizes pending AI media, removes tombstoned files, and cleans
-abandoned uploads every five seconds. Supply its R2 credentials and upload quotas
-from the same configuration as Web. The existing cleanup endpoint can also be
-called on demand:
-
-```bash
-curl -fsS -X POST \
-  -H "Authorization: Bearer $UPLOAD_CLEANUP_SECRET" \
-  "https://yourdomain.com/api/internal/uploads/cleanup"
-```
-
-Store `UPLOAD_CLEANUP_SECRET` only in the platform secret store. Do not place it
-in a public build argument or repository file. Each call drains up to five
-100-intent batches. A response with `batches: 5` and `scanned: 500` means the
-queue reached the per-run safety cap; schedule the endpoint more frequently
-until a later response reports a partial batch. Cancelled uploads release quota
-immediately, while their cleanup tombstones remain for a second object deletion
-24 hours later so late signed PUTs cannot leave an orphan. With a daily
-schedule, expired objects may remain until a later eligible daily run. A
-tombstone that becomes eligible just after the fixed run can wait through one
-additional daily cycle, while expired intents stop counting toward quota
-immediately.
-
-The repository includes an opt-in `.github/workflows/production-maintenance.yml`
-schedule for hosts without a native cron facility. To enable it, set the
-repository variable `PRODUCTION_MAINTENANCE_ENABLED=true`, set
-`PRODUCTION_APP_URL` to the public HTTPS origin, and add the same
-`UPLOAD_CLEANUP_SECRET` value as an Actions secret. Deployments that do not set
-the enable flag skip the job safely.
-
-GitHub schedules run only from the default branch and are best-effort. Scheduled
-workflows are disabled by default in forks, may be delayed or dropped under
-load, and are disabled after 60 days without activity in a public repository.
-Confirm the workflow is enabled and monitor its latest successful run. Use a
-platform or external scheduler when execution timing is an SLA. See GitHub's
-[schedule event documentation](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
-and
-[workflow enablement guidance](https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/disabling-and-enabling-a-workflow).
+abandoned uploads every five seconds. Supply its R2 credentials and upload
+quotas from the same configuration as Web. Nothing else has to be scheduled:
+there is no maintenance endpoint and no maintenance secret, so a deployment
+that runs the Worker is already draining its own queues. Cancelled uploads
+release quota immediately, while their cleanup tombstones remain for a second
+object deletion 24 hours later so late signed PUTs cannot leave an orphan.
 
 ## Locale and SEO checks
 

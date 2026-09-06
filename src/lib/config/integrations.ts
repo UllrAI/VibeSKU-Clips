@@ -58,10 +58,3 @@ export function getUploadConfig() {
     bucketName: requireValue(env.R2_BUCKET_NAME, "R2_BUCKET_NAME"),
   };
 }
-
-export function getUploadCleanupSecret() {
-  if (!SITE_CONFIG.features.uploads) {
-    throw new IntegrationDisabledError("uploads");
-  }
-  return requireValue(env.UPLOAD_CLEANUP_SECRET, "UPLOAD_CLEANUP_SECRET");
-}

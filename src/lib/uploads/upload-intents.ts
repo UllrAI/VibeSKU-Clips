@@ -13,5 +13,4 @@ export const {
   cancelUploadIntent,
   completeUploadIntent,
   cleanupExpiredUploadIntents,
-  recoverStaleUploadCleanupClaims,
 } = createUploadRepository(db, buildFileUrl, deleteFile);

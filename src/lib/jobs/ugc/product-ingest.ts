@@ -36,6 +36,11 @@ export const productIngestJob = defineJob(
       .set({ status: "analyzing", issue: null, updatedAt: new Date() })
       .where(eq(ugcProducts.id, product.id));
     await context.updateProgress({ step: "reading_source" });
+    context.log("product_ingest_started", {
+      productId: product.id,
+      hasSourceUrl: Boolean(product.sourceUrl),
+      images: product.images.length,
+    });
 
     let sourceText: string | undefined;
     if (product.sourceUrl) {
@@ -54,6 +59,10 @@ export const productIngestJob = defineJob(
                 updatedAt: new Date(),
               })
               .where(eq(ugcProducts.id, product.id));
+            context.log("product_source_unreadable", {
+              productId: product.id,
+              reason: error.message,
+            });
             return { status: "needs_input", reason: error.message };
           }
         } else {
@@ -89,6 +98,11 @@ export const productIngestJob = defineJob(
       note: product.name,
     });
 
+    context.log("product_ingest_finished", {
+      productId: product.id,
+      status: missing.length > 0 ? "needs_input" : "ready",
+      missing,
+    });
     return { status: missing.length > 0 ? "needs_input" : "ready" };
   },
   {

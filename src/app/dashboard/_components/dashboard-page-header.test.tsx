@@ -74,26 +74,6 @@ jest.mock("@/components/ui/sidebar", () => ({
   ),
 }));
 
-jest.mock("@/components/mode-toggle", () => ({
-  ModeToggle: ({ variant, size }: { variant?: string; size?: string }) => (
-    <button data-testid="mode-toggle" data-variant={variant} data-size={size}>
-      Toggle
-    </button>
-  ),
-}));
-
-jest.mock("@/components/locale-switcher", () => ({
-  LocaleSwitcher: ({ variant, size }: { variant?: string; size?: string }) => (
-    <button
-      data-testid="locale-switcher"
-      data-variant={variant}
-      data-size={size}
-    >
-      Language
-    </button>
-  ),
-}));
-
 describe("DashboardPageHeader", () => {
   it("should render with required props", () => {
     render(<DashboardPageHeader title="Test Title" />);
@@ -103,7 +83,6 @@ describe("DashboardPageHeader", () => {
       "Test Title",
     );
     expect(screen.getByTestId("sidebar-trigger")).toBeInTheDocument();
-    expect(screen.getByTestId("mode-toggle")).toBeInTheDocument();
   });
 
   it("should render with parent title and URL", () => {
@@ -128,13 +107,11 @@ describe("DashboardPageHeader", () => {
     );
   });
 
-  it("should render description when provided", () => {
-    const description = "This is a test description";
-    render(
-      <DashboardPageHeader title="Test Title" description={description} />,
-    );
+  it("leaves appearance and language to the sidebar", () => {
+    render(<DashboardPageHeader title="Test Title" />);
 
-    expect(screen.getByText(description)).toBeInTheDocument();
+    expect(screen.queryByTestId("mode-toggle")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("locale-switcher")).not.toBeInTheDocument();
   });
 
   it("should render actions when provided", () => {
@@ -167,7 +144,6 @@ describe("DashboardPageHeader", () => {
         title="Child Page"
         parentTitle="Parent Page"
         parentUrl="/parent"
-        description="Test description"
         actions={actions}
         showSidebarTrigger={true}
       />,
@@ -179,10 +155,8 @@ describe("DashboardPageHeader", () => {
     expect(screen.getByTestId("breadcrumb-page")).toHaveTextContent(
       "Child Page",
     );
-    expect(screen.getByText("Test description")).toBeInTheDocument();
     expect(screen.getByTestId("custom-action")).toBeInTheDocument();
     expect(screen.getByTestId("sidebar-trigger")).toBeInTheDocument();
-    expect(screen.getByTestId("mode-toggle")).toBeInTheDocument();
   });
 
   it("should render breadcrumb without parent when parent not provided", () => {
@@ -206,22 +180,5 @@ describe("DashboardPageHeader", () => {
 
     const breadcrumbPage = screen.getByTestId("breadcrumb-page");
     expect(breadcrumbPage).toHaveClass("font-semibold");
-  });
-
-  it("should render mode toggle with correct props", () => {
-    render(<DashboardPageHeader title="Test Title" />);
-
-    const modeToggle = screen.getByTestId("mode-toggle");
-    expect(modeToggle).toHaveAttribute("data-variant", "ghost");
-    expect(modeToggle).toHaveAttribute("data-size", "icon");
-  });
-
-  it("should render locale switcher with correct props", () => {
-    render(<DashboardPageHeader title="Test Title" />);
-
-    const localeSwitcher = screen.getByTestId("locale-switcher");
-    expect(localeSwitcher).toBeInTheDocument();
-    expect(localeSwitcher).toHaveAttribute("data-variant", "ghost");
-    expect(localeSwitcher).toHaveAttribute("data-size", "icon");
   });
 });

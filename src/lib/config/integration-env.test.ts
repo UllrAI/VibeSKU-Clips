@@ -50,7 +50,6 @@ describe("validateIntegrationEnv", () => {
           R2_ACCESS_KEY_ID: "access-key",
           R2_SECRET_ACCESS_KEY: "secret-key",
           R2_BUCKET_NAME: "bucket",
-          UPLOAD_CLEANUP_SECRET: "cleanup-secret",
         },
       ),
     ).not.toThrow();

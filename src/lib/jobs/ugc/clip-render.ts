@@ -27,6 +27,7 @@ import {
   StorageUnavailableError,
   type ClipStorage,
 } from "@/lib/ugc/storage";
+import { settleBatchIfFinished } from "@/lib/ugc/batch-state";
 import { recordUsage } from "@/lib/ugc/usage";
 import {
   defineJob,
@@ -135,13 +136,14 @@ function clipStorage(db: AppDatabase): ClipStorage {
 
 async function failClip(
   db: AppDatabase,
-  clipId: string,
+  clip: { id: string; batchId: string },
   reason: string,
 ): Promise<void> {
   await db
     .update(ugcClips)
     .set({ status: "failed", failureReason: reason, updatedAt: new Date() })
-    .where(eq(ugcClips.id, clipId));
+    .where(eq(ugcClips.id, clip.id));
+  await settleBatchIfFinished(db, clip.batchId);
 }
 
 export const clipRenderJob = defineJob(
@@ -156,6 +158,7 @@ export const clipRenderJob = defineJob(
         .update(ugcClips)
         .set({ status: "cancelled", updatedAt: new Date() })
         .where(eq(ugcClips.id, loaded.clip.id));
+      await settleBatchIfFinished(db, loaded.clip.batchId);
       return { cancelled: true };
     }
 
@@ -169,7 +172,7 @@ export const clipRenderJob = defineJob(
       if (permanent || !retriesLeft) {
         await failClip(
           db,
-          loaded.clip.id,
+          loaded.clip,
           error instanceof Error ? error.message : "Rendering failed.",
         );
       }
@@ -216,6 +219,12 @@ async function runStage(
       { ...payload, providerTaskId, polls: 0 },
       POLL_INTERVALS[stage],
     );
+    context.log("clip_stage_submitted", {
+      clipId: loaded.clip.id,
+      reference: loaded.clip.reference,
+      stage,
+      providerTaskId,
+    });
     return { stage, providerTaskId, submitted: true };
   }
 
@@ -388,5 +397,12 @@ async function finalize(
     note: loaded.clip.reference,
   });
 
+  context.log("clip_finished", {
+    clipId: loaded.clip.id,
+    reference: loaded.clip.reference,
+    passed: quality.passed,
+    durationMs,
+  });
+  await settleBatchIfFinished(db, loaded.clip.batchId);
   return { reference: loaded.clip.reference, passed: quality.passed };
 }

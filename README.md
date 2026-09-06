@@ -151,7 +151,6 @@ never be added to `SITE_CONFIG`.
 | `R2_ACCESS_KEY_ID`             | Required when `uploads` is enabled. R2 access key ID.           | `your_r2_access_key_id`                             |
 | `R2_SECRET_ACCESS_KEY`         | Required when `uploads` is enabled. R2 secret key.              | `your_r2_secret_access_key`                         |
 | `R2_BUCKET_NAME`               | Required when `uploads` is enabled. R2 bucket name.             | `your_r2_bucket_name`                               |
-| `UPLOAD_CLEANUP_SECRET`        | Required when `uploads` is enabled. 32+ character secret.       | Generate with `openssl rand -base64 32`             |
 | `GITHUB_CLIENT_ID`             | _Optional._ GitHub OAuth Client ID.                             | `your_github_client_id`                             |
 | `GITHUB_CLIENT_SECRET`         | _Optional._ GitHub OAuth Client Secret.                         | `your_github_client_secret`                         |
 | `GOOGLE_CLIENT_ID`             | _Optional._ Google OAuth Client ID.                             | `your_google_client_id`                             |
@@ -414,25 +413,14 @@ or key-only completion path. Per-user storage quotas are 1 GiB per rolling 24
 hours and 5 GiB in total, defined as `DAILY_QUOTA_BYTES` and `TOTAL_QUOTA_BYTES`
 in `src/lib/config/upload.ts`.
 
-### 2. Schedule Upload Cleanup
+### 2. Upload Cleanup
 
-Call the cleanup endpoint once per day from your deployment platform. It claims
-expired upload intents and deletes abandoned R2 objects. At this cadence,
-expired objects may remain until a later daily run. A tombstone that becomes
-eligible just after the fixed run can wait through one additional daily cycle;
-quota accounting stops counting intents as soon as they expire.
-
-```bash
-curl -fsS -X POST \
-  -H "Authorization: Bearer $UPLOAD_CLEANUP_SECRET" \
-  "https://yourdomain.com/api/internal/uploads/cleanup"
-```
-
-The endpoint processes up to five batches of 100 intents per run and recovers
-stale cleanup claims automatically. If a run reports five full batches,
-invoke it again or schedule it more frequently until the queue is drained. R2
-lifecycle rules may additionally abort incomplete multipart uploads after one
-day, but they do not replace this database-aware cleanup.
+The Worker drains expired upload intents itself: every few seconds it recovers
+stale cleanup claims, deletes abandoned R2 objects, and removes tombstoned
+files (`maintain()` in `scripts/worker.ts`). There is nothing to schedule and
+no secret to hold — as long as the Worker runs, cleanup runs. R2 lifecycle
+rules may additionally abort incomplete multipart uploads after one day, but
+they do not replace this database-aware cleanup.
 
 ### 3. Using the `FileUploader` Component
 
@@ -536,8 +524,7 @@ see [the Zeabur deployment guide](docs/deployment-zeabur.md#using-the-workflow-i
 5. Wait for the promotion workflow and the subsequent Zeabur deployment to
    succeed. Use `/api/health` for liveness and `/api/ready` for database-backed
    readiness.
-6. Schedule an authenticated `POST /api/internal/uploads/cleanup` once per day.
-7. Verify the public origin, both locale URL variants, authentication redirects,
+6. Verify the public origin, both locale URL variants, authentication redirects,
    Dashboard access, `robots.txt`, `sitemap.xml`, and application logs.
 
 Docker Compose follows the same order with a one-shot `migrate` service. See

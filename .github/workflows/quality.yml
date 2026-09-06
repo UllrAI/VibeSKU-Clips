@@ -42,7 +42,6 @@ jobs:
       R2_ACCESS_KEY_ID: ci-placeholder
       R2_SECRET_ACCESS_KEY: ci-placeholder
       R2_BUCKET_NAME: ci-placeholder
-      UPLOAD_CLEANUP_SECRET: ci-only-upload-cleanup-secret-32-chars
       STRIPE_SECRET_KEY: sk_test_ci_placeholder
       STRIPE_ENVIRONMENT: test_mode
       STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder

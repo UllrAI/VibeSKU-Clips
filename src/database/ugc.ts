@@ -194,6 +194,9 @@ export const ugcBatches = pgTable(
     plannedCount: integer("plannedCount").notNull(),
     estimatedCredits: integer("estimatedCredits").notNull(),
     status: ugcBatchStatusEnum("status").notNull().default("draft"),
+    // Why a run produced less than it planned, in the operator's words. Set by
+    // the expansion job; null when everything the plan asked for was created.
+    note: text("note"),
     taskRunId: uuid("taskRunId"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()

@@ -81,7 +81,6 @@ export function validateIntegrationEnv(features, values) {
       "R2_ACCESS_KEY_ID",
       "R2_SECRET_ACCESS_KEY",
       "R2_BUCKET_NAME",
-      "UPLOAD_CLEANUP_SECRET",
     ]);
   }
 }

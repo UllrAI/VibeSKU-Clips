@@ -86,14 +86,6 @@ const env = createEnv({
     R2_ACCESS_KEY_ID: optionalCredentialSchema,
     R2_SECRET_ACCESS_KEY: optionalCredentialSchema,
     R2_BUCKET_NAME: optionalCredentialSchema,
-    UPLOAD_CLEANUP_SECRET: z
-      .string()
-      .min(32, "UPLOAD_CLEANUP_SECRET must be at least 32 characters")
-      .refine(
-        (value) => value !== "replace-with-at-least-32-random-characters",
-        "UPLOAD_CLEANUP_SECRET must not use the example placeholder",
-      )
-      .optional(),
 
     // Payments
     STRIPE_SECRET_KEY: optionalCredentialSchema,
@@ -187,7 +179,6 @@ const env = createEnv({
     R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
     R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
     R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
-    UPLOAD_CLEANUP_SECRET: process.env.UPLOAD_CLEANUP_SECRET,
 
     // Application settings
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

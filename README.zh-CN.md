@@ -134,7 +134,6 @@ cp .env.example .env
 | `R2_ACCESS_KEY_ID`           | 启用 `uploads` 时必需。R2 访问密钥 ID。              | `your_r2_access_key_id`                             |
 | `R2_SECRET_ACCESS_KEY`       | 启用 `uploads` 时必需。R2 秘密访问密钥。             | `your_r2_secret_access_key`                         |
 | `R2_BUCKET_NAME`             | 启用 `uploads` 时必需。R2 存储桶名称。               | `your_r2_bucket_name`                               |
-| `UPLOAD_CLEANUP_SECRET`      | 启用 `uploads` 时必需。32 位以上清理密钥。           | 使用 `openssl rand -base64 32` 生成                 |
 | `GITHUB_CLIENT_ID`           | _可选。_ 用于 GitHub OAuth 的 Client ID。            | `your_github_client_id`                             |
 | `GITHUB_CLIENT_SECRET`       | _可选。_ 用于 GitHub OAuth 的 Client Secret。        | `your_github_client_secret`                         |
 | `GOOGLE_CLIENT_ID`           | _可选。_ 用于 Google OAuth 的 Client ID。            | `your_google_client_id`                             |
@@ -367,22 +366,12 @@ pnpm test:e2e
 单用户额度为滚动 24 小时 1 GiB、总计 5 GiB，定义在 `src/lib/config/upload.ts`
 的 `DAILY_QUOTA_BYTES` 与 `TOTAL_QUOTA_BYTES`。
 
-### 2. 调度上传清理
+### 2. 上传清理
 
-请在部署平台中每天调用一次清理端点。它会认领已过期的上传意图并删除遗留的 R2
-对象。采用每日频率时，过期对象可能保留到之后某次每日任务；固定时刻执行也意味着
-刚进入第二阶段的墓碑可能再多等待一个周期。上传意图一旦到期就不再计入配额，
-无需等待清理任务。
-
-```bash
-curl -fsS -X POST \
-  -H "Authorization: Bearer $UPLOAD_CLEANUP_SECRET" \
-  "https://yourdomain.com/api/internal/uploads/cleanup"
-```
-
-每次最多处理 5 批、每批 100 条意图，并会自动恢复超时的清理任务。如果一次执行处理了
-完整 5 批，应立即再执行一次或提高调度频率，直至队列清空。R2 生命周期规则可以额外
-配置为一天后终止未完成的分片上传，但不能替代这个理解数据库状态的清理流程。
+Worker 会自行清理过期的上传意向：每隔几秒回收滞留的清理认领、删除废弃的 R2
+对象，并移除已标记删除的文件（见 `scripts/worker.ts` 的 `maintain()`）。无需
+额外调度，也不需要保存密钥——只要 Worker 在跑，清理就在跑。R2 生命周期规则可以
+额外配置为一天后终止未完成的分片上传，但不能替代这个理解数据库状态的清理流程。
 
 ### 3. 使用 `FileUploader` 组件
 
@@ -481,8 +470,7 @@ Docker 构建。
 
 5. 等待分支更新 workflow 与随后触发的 Zeabur 部署成功。`/api/health` 用于存活
    检查，`/api/ready` 用于包含数据库检查的就绪探针。
-6. 每天调度一次带认证的 `POST /api/internal/uploads/cleanup`。
-7. 验证公开 Origin、两种语言 URL、认证重定向、Dashboard、`robots.txt`、
+6. 验证公开 Origin、两种语言 URL、认证重定向、Dashboard、`robots.txt`、
    `sitemap.xml` 以及应用日志。
 
 Docker Compose 使用相同顺序，并通过一次性的 `migrate` 服务执行迁移。自托管和本地

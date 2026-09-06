@@ -48,7 +48,14 @@ const SEGMENT_ORDER: readonly SegmentId[] = [
  * The coloured bar is decorative; the semantics live in the `<progress>`
  * element and the polite live region above it.
  */
-export function ProgressOverlay({ counts }: { counts: BatchProgressCounts }) {
+export function ProgressOverlay({
+  counts,
+  meta,
+}: {
+  counts: BatchProgressCounts;
+  /** Plan facts that belong with the detail, not with the running summary. */
+  meta?: string;
+}) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const labelId = useId();
@@ -138,6 +145,11 @@ export function ProgressOverlay({ counts }: { counts: BatchProgressCounts }) {
                 </div>
               ))}
             </dl>
+            {meta && (
+              <p className="text-muted-foreground text-xs tabular-nums">
+                {meta}
+              </p>
+            )}
             {live && (
               <p className="text-muted-foreground/70 text-xs">
                 {t("ugc_batch_can_leave")}

@@ -21,29 +21,18 @@ export default async function BatchDetailPage({
   params: Promise<{ batchId: string }>;
 }) {
   const { batchId } = await params;
-  const { t, locale } = await getServerTranslations();
+  const { t } = await getServerTranslations();
   const detail = await getBatchDetail(batchId);
   if (!detail) notFound();
 
   const { progress, clips } = detail;
-  const meta = [
-    `${t("ugc_batch_planned")} ${progress.batch.plannedCount.toLocaleString(locale)}`,
-    `${t("ugc_plan_estimated_credits")} ${progress.batch.estimatedCredits.toLocaleString(locale)}`,
-  ].join(" · ");
 
   return (
     <DashboardPageWrapper
       title={<>{progress.batch.name}</>}
       parentTitle={<>{t("ugc_nav_batches")}</>}
       parentUrl="/dashboard/batches"
-      description={
-        <>
-          {t("ugc_batch_detail_description")}
-          <span className="text-muted-foreground/80 block tabular-nums">
-            {meta}
-          </span>
-        </>
-      }
+      description={<>{t("ugc_batch_detail_description")}</>}
       actions={<StatusBadge kind="batch" status={progress.batch.status} />}
     >
       <BatchConsole progress={progress} clips={clips} />

@@ -77,6 +77,11 @@ export const batchRunJob = defineJob(
       );
     const stillReading = countProductsAwaitingFacts(products);
     if (stillReading > 0 && payload.waits < MAX_INGEST_WAITS) {
+      context.log("batch_waiting_for_products", {
+        batchId: batch.id,
+        pending: stillReading,
+        wait: payload.waits + 1,
+      });
       await context.updateProgress({
         step: "reading_products",
         pending: stillReading,
@@ -91,6 +96,7 @@ export const batchRunJob = defineJob(
     const sequence = Math.abs(hashCode(batch.id)) % 10_000;
     let clipIndex = 0;
     let blocked = 0;
+    const skipped: string[] = [];
 
     for (const [lineIndex, line] of plan.lines.entries()) {
       if (await context.isCancelled()) return { cancelled: true };
@@ -115,6 +121,14 @@ export const batchRunJob = defineJob(
       if (!product?.facts || product.status === "needs_input") {
         blocked += line.clipCount;
         clipIndex += line.clipCount;
+        const reason = product?.issue ?? "no readable facts";
+        skipped.push(`${product?.name ?? "Unknown product"}: ${reason}`);
+        context.log("batch_line_skipped", {
+          line: lineIndex + 1,
+          productId: line.item.productId,
+          clips: line.clipCount,
+          reason,
+        });
         continue;
       }
 
@@ -162,13 +176,27 @@ export const batchRunJob = defineJob(
       }
     }
 
+    // A run that created nothing is over, not running: leaving it "in
+    // production" would spin the console for ever with no work behind it.
+    const clipsCreated = clipIndex - blocked;
     await db
       .update(ugcBatches)
-      .set({ status: "running", updatedAt: new Date() })
+      .set({
+        status: clipsCreated > 0 ? "running" : "completed",
+        note: skipped.length > 0 ? skipped.join(" · ") : null,
+        updatedAt: new Date(),
+      })
       .where(eq(ugcBatches.id, batch.id));
 
+    context.log("batch_expanded", {
+      batchId: batch.id,
+      created: clipsCreated,
+      blocked,
+      awaitingScriptApproval: batch.config.reviewScriptsFirst,
+    });
+
     return {
-      clipsCreated: clipIndex - blocked,
+      clipsCreated,
       blocked,
       awaitingScriptApproval: batch.config.reviewScriptsFirst,
     };

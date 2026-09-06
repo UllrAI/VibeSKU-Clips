@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,9 +37,9 @@ import {
   type ProductDraft,
 } from "./product-slot";
 
-function newLine(productId: string): PlanLineState {
+function newLine(productId: string, id = crypto.randomUUID()): PlanLineState {
   return {
-    id: crypto.randomUUID(),
+    id,
     productId,
     locale: "en",
     market: "US",
@@ -68,8 +75,11 @@ export function PlanBuilder({
   const [reviewScriptsFirst, setReviewScriptsFirst] = useState(false);
   const [draft, setDraft] = useState<ProductDraft>(emptyDraft);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  // The first line is created during render, so its id must be stable across
+  // the server and client passes; every later line is minted in an event.
+  const firstLineId = useId();
   const [lines, setLines] = useState<PlanLineState[]>(() => [
-    newLine(products[0]?.id ?? NEW_PRODUCT),
+    newLine(products[0]?.id ?? NEW_PRODUCT, firstLineId),
   ]);
 
   const usesDraft = lines.some((line) => line.productId === NEW_PRODUCT);

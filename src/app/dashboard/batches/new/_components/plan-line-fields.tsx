@@ -60,7 +60,10 @@ export function PlanLineFields({
   onDraftChange: (draft: ProductDraft) => void;
 }) {
   const { t } = useTranslation();
-  const templateName = useId();
+  // Field ids come from React, never from the line id: that one is a random
+  // uuid minted in a state initialiser, so it differs between the server and
+  // the client render and would break hydration.
+  const fieldId = useId();
   const lineScripts = scripts.filter(
     (script) => script.productId === line.productId,
   );
@@ -90,7 +93,7 @@ export function PlanLineFields({
             >
               <input
                 type="radio"
-                name={templateName}
+                name={`${fieldId}-template`}
                 value={template}
                 checked={line.template === template}
                 onChange={() => onChange({ template })}
@@ -109,12 +112,12 @@ export function PlanLineFields({
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
-          <Label htmlFor={`locale-${line.id}`}>{t("ugc_plan_locale")}</Label>
+          <Label htmlFor={`${fieldId}-locale`}>{t("ugc_plan_locale")}</Label>
           <Select
             value={line.locale}
             onValueChange={(value) => onChange({ locale: value })}
           >
-            <SelectTrigger id={`locale-${line.id}`}>
+            <SelectTrigger id={`${fieldId}-locale`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -128,12 +131,12 @@ export function PlanLineFields({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor={`market-${line.id}`}>{t("ugc_plan_market")}</Label>
+          <Label htmlFor={`${fieldId}-market`}>{t("ugc_plan_market")}</Label>
           <Select
             value={line.market}
             onValueChange={(value) => onChange({ market: value })}
           >
-            <SelectTrigger id={`market-${line.id}`}>
+            <SelectTrigger id={`${fieldId}-market`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -147,11 +150,11 @@ export function PlanLineFields({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor={`scripts-${line.id}`}>
+          <Label htmlFor={`${fieldId}-scripts`}>
             {t("ugc_plan_script_count")}
           </Label>
           <Input
-            id={`scripts-${line.id}`}
+            id={`${fieldId}-scripts`}
             type="number"
             min={1}
             max={10}
@@ -164,11 +167,11 @@ export function PlanLineFields({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor={`clips-${line.id}`}>
+          <Label htmlFor={`${fieldId}-clips`}>
             {t("ugc_plan_clips_per_script")}
           </Label>
           <Input
-            id={`clips-${line.id}`}
+            id={`${fieldId}-clips`}
             type="number"
             min={1}
             max={10}
@@ -215,7 +218,7 @@ export function PlanLineFields({
 
       {lineScripts.length > 0 && (
         <div className="space-y-2">
-          <Label htmlFor={`existing-${line.id}`}>
+          <Label htmlFor={`${fieldId}-existing`}>
             {t("ugc_plan_reuse_script")}
           </Label>
           <Select
@@ -224,7 +227,7 @@ export function PlanLineFields({
               onChange({ scriptId: value === "none" ? "" : value })
             }
           >
-            <SelectTrigger id={`existing-${line.id}`}>
+            <SelectTrigger id={`${fieldId}-existing`}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

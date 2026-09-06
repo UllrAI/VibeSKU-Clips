@@ -161,6 +161,7 @@ async function clipDetails(
 /** Just the counts, for the console's polling loop. */
 export async function getBatchProgress(batchId: string): Promise<{
   status: BatchRow["status"];
+  note: string | null;
   total: number;
   ready: number;
   failed: number;
@@ -172,6 +173,7 @@ export async function getBatchProgress(batchId: string): Promise<{
     .select({
       id: ugcBatches.id,
       status: ugcBatches.status,
+      note: ugcBatches.note,
       plannedCount: ugcBatches.plannedCount,
     })
     .from(ugcBatches)
@@ -184,6 +186,7 @@ export async function getBatchProgress(batchId: string): Promise<{
   // started rather than work that has been counted twice.
   return {
     status: batch.status,
+    note: batch.note,
     total: Math.max(counts?.total ?? 0, batch.plannedCount),
     ready: counts?.ready ?? 0,
     failed: counts?.failed ?? 0,

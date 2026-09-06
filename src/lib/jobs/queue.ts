@@ -455,6 +455,8 @@ export class JobQueue {
       isCancelled: async () =>
         job.signal.aborted ||
         (await getTaskRun(db, taskRunId))?.status === "cancelled",
+      log: (event, data) =>
+        log("info", { event, job: definition.name, taskRunId, ...data }),
       updateProgress: async (progress) =>
         (await updateTaskRunProgress(db, taskRunId, progress)) !== null,
       scheduleContinuation: async (nextPayload, startAfter) => {

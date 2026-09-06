@@ -2,8 +2,16 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CircleStop, Loader2, PlayCircle, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import {
+  CircleStop,
+  Loader2,
+  PlayCircle,
+  RefreshCw,
+  TriangleAlert,
+} from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
@@ -22,7 +30,7 @@ import {
   templateKey,
 } from "@/components/ugc/labels";
 import { ProgressOverlay } from "@/components/ugc/progress-overlay";
-import { useBatchProgress } from "@/hooks/use-batch-progress";
+import { isBatchLive, useBatchProgress } from "@/hooks/use-batch-progress";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   cancelBatch,
@@ -44,6 +52,7 @@ export function BatchConsole({
 
   const counts = useBatchProgress(progress.batch.id, {
     status: progress.batch.status,
+    note: progress.batch.note,
     total: Math.max(progress.total, progress.batch.plannedCount),
     ready: progress.ready,
     failed: progress.failed,
@@ -72,7 +81,25 @@ export function BatchConsole({
 
   return (
     <div className="space-y-4">
-      <ProgressOverlay counts={counts} />
+      <ProgressOverlay
+        counts={counts}
+        meta={`${t("ugc_batch_planned")} ${progress.batch.plannedCount} · ${t(
+          "ugc_plan_estimated_credits",
+        )} ${progress.batch.estimatedCredits}`}
+      />
+
+      {counts.note && (
+        <Alert>
+          <TriangleAlert />
+          <AlertTitle>{t("ugc_batch_skipped_title")}</AlertTitle>
+          <AlertDescription className="gap-2">
+            <span>{counts.note}</span>
+            <Button asChild size="sm" variant="outline">
+              <Link href="/dashboard/products">{t("ugc_nav_products")}</Link>
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {(awaitingApproval || cancellable) && (
         <div className="flex flex-wrap gap-2">
@@ -109,13 +136,25 @@ export function BatchConsole({
         <EmptyState
           spacing="compact"
           icon={
-            <Loader2
-              className="animate-spin motion-reduce:animate-none"
-              aria-hidden
-            />
+            isBatchLive(counts) ? (
+              <Loader2
+                className="animate-spin motion-reduce:animate-none"
+                aria-hidden
+              />
+            ) : (
+              <TriangleAlert aria-hidden />
+            )
           }
-          title={t("ugc_batch_preparing_title")}
-          description={t("ugc_batch_preparing_hint")}
+          title={t(
+            isBatchLive(counts)
+              ? "ugc_batch_preparing_title"
+              : "ugc_batch_nothing_title",
+          )}
+          description={t(
+            isBatchLive(counts)
+              ? "ugc_batch_preparing_hint"
+              : "ugc_batch_nothing_hint",
+          )}
         />
       ) : (
         <div className="overflow-x-auto">
