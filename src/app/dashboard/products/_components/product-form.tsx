@@ -276,7 +276,7 @@ export function ProductForm({
                 <Label htmlFor="brief-script">{t("ugc_brief_script")}</Label>
                 <Textarea
                   id="brief-script"
-                  rows={4}
+                  rows={8}
                   value={state.providedScript}
                   onChange={(event) =>
                     update("providedScript", event.target.value)

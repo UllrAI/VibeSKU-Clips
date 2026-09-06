@@ -26,7 +26,7 @@ const briefSchema = z.object({
   tone: z.string().trim().max(200).optional(),
   scenes: z.string().trim().max(400).optional(),
   bannedPhrases: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
-  providedScript: z.string().trim().max(4000).optional(),
+  providedScript: z.string().trim().max(30_000).optional(),
 });
 
 const imageReferenceSchema = z
@@ -56,6 +56,25 @@ function emptyToNull(value: string | undefined): string | null {
   return value && value.length > 0 ? value : null;
 }
 
+async function enqueueProductAnalysis(
+  product: typeof ugcProducts.$inferSelect,
+  feedback?: string,
+): Promise<void> {
+  await createBackgroundTask({
+    db,
+    queue: serverJobQueue,
+    definition: productIngestJob,
+    scopeKey: productScopeKey(product.userId, product.id),
+    payload: { productId: product.id, userId: product.userId, feedback },
+    idempotencyKey: `${product.id}:analysis:${crypto.randomUUID()}`,
+  });
+
+  await db
+    .update(ugcProducts)
+    .set({ status: "analyzing", issue: null })
+    .where(eq(ugcProducts.id, product.id));
+}
+
 export async function createProduct(
   input: z.infer<typeof productSchema>,
 ): Promise<ActionResult> {
@@ -80,7 +99,7 @@ export async function createProduct(
     })
     .returning();
 
-  await startProductAnalysis(product.id);
+  await enqueueProductAnalysis(product);
   revalidatePath("/dashboard/products");
   return { ok: true, id: product.id };
 }
@@ -113,31 +132,35 @@ export async function updateProduct(
   return { ok: true, id: productId };
 }
 
-export async function startProductAnalysis(
+const productAnalysisRevisionSchema = z.object({
+  feedback: z.string().trim().max(6000).optional(),
+  images: z.array(imageReferenceSchema).max(8),
+});
+
+/** Adds operator context and material, then revises the prior analysis in place. */
+export async function reviseProductAnalysis(
   productId: string,
+  input: z.infer<typeof productAnalysisRevisionSchema>,
 ): Promise<ActionResult> {
   const user = await requireAuth();
+  const parsed = productAnalysisRevisionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_input" };
+
   const [product] = await db
     .select()
     .from(ugcProducts)
     .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)));
   if (!product) return { ok: false, code: "not_found" };
 
-  await createBackgroundTask({
-    db,
-    queue: serverJobQueue,
-    definition: productIngestJob,
-    scopeKey: productScopeKey(user.id, product.id),
-    payload: { productId: product.id, userId: user.id },
-    idempotencyKey: `${product.id}:${product.updatedAt.getTime()}`,
-  });
+  const images = [...new Set([...product.images, ...parsed.data.images])];
+  if (images.length > 8) return { ok: false, code: "invalid_input" };
 
-  // Say so before the worker picks it up: a queued read is still a read, and
-  // the operator should never wonder whether their click did anything.
-  await db
+  const [updated] = await db
     .update(ugcProducts)
-    .set({ status: "analyzing", issue: null })
-    .where(eq(ugcProducts.id, product.id));
+    .set({ images, updatedAt: new Date() })
+    .where(eq(ugcProducts.id, product.id))
+    .returning();
+  await enqueueProductAnalysis(updated, parsed.data.feedback || undefined);
 
   revalidatePath("/dashboard/products");
   revalidatePath(`/dashboard/products/${product.id}`);
@@ -368,6 +391,7 @@ export async function saveScriptRevision(
       market: source.market,
       title: parsed.data.title,
       hook: parsed.data.hook,
+      productionPrompt: source.productionPrompt,
       beats: source.beats,
       voiceover: parsed.data.voiceover,
       captions: parsed.data.captions,

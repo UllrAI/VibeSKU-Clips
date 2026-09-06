@@ -66,13 +66,14 @@ export const workScriptJob = defineJob(
       talentId: talent?.id ?? null,
     });
 
-    const imageUrls = await resolveReferenceUrls(
+    const productImageUrls = await resolveReferenceUrls(
       db,
       work.userId,
-      [talent?.imageUrl, ...product.images].filter((url): url is string =>
-        Boolean(url),
-      ),
+      product.images,
     );
+    const [talentImageUrl] = talent?.imageUrl
+      ? await resolveReferenceUrls(db, work.userId, [talent.imageUrl])
+      : [];
     const draft = await composeScript({
       facts: product.facts,
       brief: product.brief,
@@ -82,7 +83,8 @@ export const workScriptJob = defineJob(
       productName: product.name,
       // The model sees what the clip will actually show, so the script can
       // describe the real object and the real performer.
-      imageUrls,
+      productImageUrls,
+      talentImageUrl,
       talentNote: talent ? (talent.prompt ?? talent.name) : null,
     });
 
@@ -96,6 +98,7 @@ export const workScriptJob = defineJob(
         market: work.market,
         title: draft.title,
         hook: draft.hook,
+        productionPrompt: draft.productionPrompt,
         beats: draft.beats,
         voiceover: draft.voiceover,
         captions: draft.captions,

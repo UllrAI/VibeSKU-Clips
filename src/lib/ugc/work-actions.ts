@@ -244,8 +244,30 @@ export async function startWorkScript(workId: string): Promise<ActionResult> {
 const scriptEditSchema = z.object({
   title: z.string().trim().min(1).max(200),
   hook: z.string().trim().min(1).max(500),
-  voiceover: z.string().trim().min(1).max(4000),
-  captions: z.array(z.string().trim().min(1).max(200)).min(1).max(8),
+  productionPrompt: z.string().trim().max(30_000),
+  beats: z
+    .array(
+      z.object({
+        start: z.number().min(0).max(15),
+        end: z.number().min(0).max(15),
+        shot: z.string().trim().min(1).max(2000),
+        action: z.string().trim().min(1).max(4000),
+        camera: z.string().trim().min(1).max(2000),
+        voiceover: z.string().trim().max(1000),
+      }),
+    )
+    .min(2)
+    .max(6)
+    .refine(
+      (beats) =>
+        beats.every(
+          (beat, index) =>
+            beat.end > beat.start &&
+            Math.abs(beat.start - (index === 0 ? 0 : beats[index - 1]!.end)) <
+              0.01,
+        ) && Math.abs(beats.at(-1)!.end - 15) < 0.01,
+    ),
+  captions: z.array(z.string().trim().min(1).max(200)).max(8),
   publishCaption: z.string().trim().max(500).optional(),
 });
 
@@ -261,12 +283,22 @@ export async function saveWorkScript(
   const work = await loadOwnedWork(workId, user.id);
   if (!work?.scriptId) return { ok: false, code: "not_found" };
 
+  const voiceover = parsed.data.beats
+    .map((beat) => beat.voiceover)
+    .filter(Boolean)
+    .join(" ");
+  if (!voiceover || voiceover.length > 4000) {
+    return { ok: false, code: "invalid_input" };
+  }
+
   await db
     .update(ugcScripts)
     .set({
       title: parsed.data.title,
       hook: parsed.data.hook,
-      voiceover: parsed.data.voiceover,
+      productionPrompt: parsed.data.productionPrompt || null,
+      beats: parsed.data.beats,
+      voiceover,
       captions: parsed.data.captions,
       publishCaption: parsed.data.publishCaption || null,
       updatedAt: new Date(),

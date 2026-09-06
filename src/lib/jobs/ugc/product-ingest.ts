@@ -36,7 +36,13 @@ async function stopProduct(
 
 export const productIngestJob = defineJob(
   "ugc.product.ingest",
-  z.object({ productId: z.uuid(), userId: z.string().min(1) }).strict(),
+  z
+    .object({
+      productId: z.uuid(),
+      userId: z.string().min(1),
+      feedback: z.string().trim().max(6000).optional(),
+    })
+    .strict(),
   async (payload, context) => {
     const [product] = await context.db
       .select()
@@ -95,10 +101,13 @@ export const productIngestJob = defineJob(
       await context.updateProgress({ step: "extracting_facts" });
       const facts = await analyzeProduct({
         name: product.name,
+        variant: product.variant,
         sourceText,
         imageUrls,
         brief: product.brief,
         market: product.market,
+        previousFacts: product.facts,
+        feedback: payload.feedback,
       });
 
       const missing = facts.missing ?? [];
@@ -122,6 +131,7 @@ export const productIngestJob = defineJob(
       context.log("product_ingest_finished", {
         productId: product.id,
         status: missing.length > 0 ? "needs_input" : "ready",
+        imagesRead: imageUrls.length,
         missing,
       });
       return { status: missing.length > 0 ? "needs_input" : "ready" };

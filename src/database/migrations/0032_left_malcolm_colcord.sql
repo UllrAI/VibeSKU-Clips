@@ -1,0 +1,1 @@
+ALTER TABLE "ugc_scripts" ADD COLUMN "productionPrompt" text;

@@ -28,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { actionMessageKey } from "@/components/ugc/action-message";
 import { ImageField } from "@/components/ugc/image-field";
@@ -74,7 +75,9 @@ export function WorkComposer({
   const [productId, setProductId] = useState(initialProductId ?? "");
   const [name, setName] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
+  const [variant, setVariant] = useState("");
   const [images, setImages] = useState<string[]>([]);
+  const [productionDirection, setProductionDirection] = useState("");
   const [talentId, setTalentId] = useState(NO_TALENT);
   const [template, setTemplate] = useState<ScriptTemplate>("spokesperson");
   const [locale, setLocale] = useState("en");
@@ -95,8 +98,12 @@ export function WorkComposer({
         const created = await createProduct({
           name: name.trim(),
           sourceUrl: sourceUrl.trim(),
+          variant: variant.trim(),
           market,
           images,
+          brief: {
+            providedScript: productionDirection.trim() || undefined,
+          },
         });
         if (!created.ok || !created.id) {
           toast.error(t(actionMessageKey(created.code)));
@@ -199,7 +206,7 @@ export function WorkComposer({
 
           <TabsContent value="new" className="mt-4 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-2">
                 <Label htmlFor="work-new-name">{t("ugc_product_name")}</Label>
                 <Input
                   id="work-new-name"
@@ -221,6 +228,16 @@ export function WorkComposer({
                   placeholder="https://"
                 />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="work-new-variant">
+                  {t("ugc_product_variant")}
+                </Label>
+                <Input
+                  id="work-new-variant"
+                  value={variant}
+                  onChange={(event) => setVariant(event.target.value)}
+                />
+              </div>
             </div>
             <ImageField
               value={images}
@@ -228,6 +245,18 @@ export function WorkComposer({
               maxFiles={8}
               label={t("ugc_product_images")}
             />
+            <div className="space-y-2">
+              <Label htmlFor="work-new-production-direction">
+                {t("ugc_brief_script")}
+              </Label>
+              <Textarea
+                id="work-new-production-direction"
+                rows={6}
+                value={productionDirection}
+                onChange={(event) => setProductionDirection(event.target.value)}
+                placeholder={t("ugc_brief_script_hint")}
+              />
+            </div>
             <p className="text-muted-foreground text-xs">
               {t("ugc_work_new_product_hint")}
             </p>

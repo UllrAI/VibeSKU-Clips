@@ -173,6 +173,7 @@ export const ugcScripts = pgTable(
     market: text("market").notNull(),
     title: text("title").notNull(),
     hook: text("hook").notNull(),
+    productionPrompt: text("productionPrompt"),
     beats: jsonb("beats").$type<ScriptBeat[]>().notNull().default([]),
     voiceover: text("voiceover").notNull(),
     captions: jsonb("captions").$type<string[]>().notNull().default([]),

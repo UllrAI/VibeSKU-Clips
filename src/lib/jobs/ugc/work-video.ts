@@ -142,7 +142,7 @@ export const workVideoJob = defineJob(
         ].filter((url): url is string => Boolean(url)),
       );
       const providerTaskId = await submitVideo({
-        prompt: buildVideoPrompt(subject, beats),
+        prompt: buildVideoPrompt(subject, beats, script.productionPrompt),
         referenceUrls: references,
         durationSeconds: CLIP_SPEC.durationSeconds,
         aspectRatio: CLIP_SPEC.aspectRatio,
@@ -156,7 +156,7 @@ export const workVideoJob = defineJob(
       context.log("work_video_submitted", {
         workId: work.id,
         providerTaskId,
-        references: frames.length,
+        references: references.length,
       });
       return { providerTaskId, submitted: true };
     }

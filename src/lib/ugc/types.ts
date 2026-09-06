@@ -4,7 +4,7 @@ export interface ProductBrief {
   tone?: string;
   scenes?: string;
   bannedPhrases?: string[];
-  /** Copy the operator supplied verbatim. When present it must not be rewritten. */
+  /** Operator-supplied script or production direction for the writer to honour. */
   providedScript?: string;
 }
 
@@ -26,12 +26,16 @@ export interface ScriptBeat {
   end: number;
   shot: string;
   action: string;
+  /** Phone/camera movement and focus behaviour for this beat. */
+  camera?: string;
   voiceover: string;
 }
 
 export interface ScriptDraft {
   title: string;
   hook: string;
+  /** Complete director-level prompt shared by storyboard and video generation. */
+  productionPrompt: string;
   beats: ScriptBeat[];
   voiceover: string;
   captions: string[];

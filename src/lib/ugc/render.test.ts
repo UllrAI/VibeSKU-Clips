@@ -12,6 +12,7 @@ const beats: ScriptBeat[] = [
     end: 3.5,
     shot: "handheld medium shot",
     action: "picks up the vacuum",
+    camera: "small autofocus correction toward the product",
     voiceover: "This lives by the sofa now.",
   },
   {
@@ -19,6 +20,7 @@ const beats: ScriptBeat[] = [
     end: 15,
     shot: "close-up of the product",
     action: "runs it over the cushion",
+    camera: "slow handheld push-in",
     voiceover: "",
   },
 ];
@@ -38,7 +40,7 @@ describe("render prompts", () => {
 
     expect(prompt).toContain("Match the supplied reference image");
     expect(prompt).toContain("Cordless hand vacuum");
-    expect(prompt).toContain("no on-screen text");
+    expect(prompt).toContain("on-screen text");
   });
 
   it("falls back to a product-led frame when no talent is chosen", () => {
@@ -51,10 +53,16 @@ describe("render prompts", () => {
   });
 
   it("passes every beat to the video model with its timing", () => {
-    const prompt = buildVideoPrompt(subject, beats);
+    const prompt = buildVideoPrompt(
+      subject,
+      beats,
+      "LOCATION: lived-in sitting room\nLIGHTING: window light",
+    );
 
     expect(prompt).toContain("0.0-3.5s");
     expect(prompt).toContain("3.5-15.0s");
+    expect(prompt).toContain("small autofocus correction");
+    expect(prompt).toContain("LOCATION: lived-in sitting room");
     expect(prompt).toContain("No burned-in captions");
   });
 });

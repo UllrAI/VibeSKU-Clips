@@ -125,7 +125,12 @@ export const workStoryboardJob = defineJob(
             beats.map((beat, position) => ({
               workId: work.id,
               position,
-              prompt: buildFramePrompt(subject, beat, position),
+              prompt: buildFramePrompt(
+                subject,
+                beat,
+                position,
+                script.productionPrompt,
+              ),
             })),
           )
           .returning({ id: ugcWorkFrames.id });
@@ -154,8 +159,8 @@ export const workStoryboardJob = defineJob(
       ? await resolveReferenceUrls(
           db,
           work.userId,
-          [talent?.imageUrl, ...product.images.slice(0, 2)].filter(
-            (url): url is string => Boolean(url),
+          [talent?.imageUrl, ...product.images].filter((url): url is string =>
+            Boolean(url),
           ),
         )
       : [];
