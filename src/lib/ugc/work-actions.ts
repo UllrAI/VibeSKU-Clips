@@ -18,7 +18,7 @@ import { workStoryboardJob } from "@/lib/jobs/ugc/work-storyboard";
 import { workVideoJob } from "@/lib/jobs/ugc/work-video";
 import { serverJobQueue } from "@/lib/jobs/server";
 import { createBackgroundTask } from "@/lib/tasks/service";
-import { SCRIPT_TEMPLATES } from "./constants";
+import { SCRIPT_TEMPLATES, VIDEO_MODES } from "./constants";
 import { talentScopeKey, workScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
@@ -30,6 +30,7 @@ const setupSchema = z
     locale: z.string().trim().min(2).max(16),
     market: z.string().trim().min(2).max(16),
     template: z.enum(SCRIPT_TEMPLATES),
+    videoMode: z.enum(VIDEO_MODES).default("one_take"),
   })
   .refine((input) => !(input.randomTalent && input.talentId), {
     path: ["talentId"],
@@ -169,6 +170,7 @@ export async function createWork(
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,
+      videoMode: parsed.data.videoMode,
     })
     .returning();
 
@@ -221,6 +223,7 @@ export async function setWorkSetup(
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,
+      videoMode: parsed.data.videoMode,
       step: "product",
       stepStatus: "idle",
       updatedAt: new Date(),
@@ -323,12 +326,59 @@ export async function saveWorkScript(
   return { ok: true, id: workId };
 }
 
-/**
- * Accepts the script and asks for a storyboard. Accepting also promotes the
- * draft into the script library, because a script a person signed off on is
- * exactly what is worth reusing.
- */
-export async function startWorkStoryboard(
+async function enqueueStoryboard(
+  work: NonNullable<Awaited<ReturnType<typeof loadOwnedWork>>>,
+  userId: string,
+): Promise<void> {
+  // A re-run starts from a clean storyboard rather than mixing old frames in.
+  await db.delete(ugcWorkFrames).where(eq(ugcWorkFrames.workId, work.id));
+
+  const { taskRun } = await createBackgroundTask({
+    db,
+    queue: serverJobQueue,
+    definition: workStoryboardJob,
+    scopeKey: workScopeKey(userId, work.id),
+    payload: { workId: work.id, userId, frameIds: [], polls: 0 },
+    idempotencyKey: `${work.id}:storyboard:${Date.now()}`,
+  });
+
+  await db
+    .update(ugcWorks)
+    .set({
+      step: "storyboard",
+      stepStatus: "running",
+      taskRunId: taskRun.id,
+      updatedAt: new Date(),
+    })
+    .where(eq(ugcWorks.id, work.id));
+}
+
+async function enqueueVideo(
+  work: NonNullable<Awaited<ReturnType<typeof loadOwnedWork>>>,
+  userId: string,
+): Promise<void> {
+  const { taskRun } = await createBackgroundTask({
+    db,
+    queue: serverJobQueue,
+    definition: workVideoJob,
+    scopeKey: workScopeKey(userId, work.id),
+    payload: { workId: work.id, userId, polls: 0 },
+    idempotencyKey: `${work.id}:video:${Date.now()}`,
+  });
+
+  await db
+    .update(ugcWorks)
+    .set({
+      step: "video",
+      stepStatus: "running",
+      taskRunId: taskRun.id,
+      updatedAt: new Date(),
+    })
+    .where(eq(ugcWorks.id, work.id));
+}
+
+/** Accepts the script and starts the selected video workflow. */
+export async function startWorkFromScript(
   workId: string,
 ): Promise<ActionResult> {
   const user = await requireAuth();
@@ -342,28 +392,28 @@ export async function startWorkStoryboard(
       and(eq(ugcScripts.id, work.scriptId), eq(ugcScripts.status, "draft")),
     );
 
-  // A re-run starts from a clean storyboard rather than mixing old frames in.
-  await db.delete(ugcWorkFrames).where(eq(ugcWorkFrames.workId, work.id));
+  if (work.videoMode === "storyboard") {
+    await enqueueStoryboard(work, user.id);
+  } else {
+    await db.delete(ugcWorkFrames).where(eq(ugcWorkFrames.workId, work.id));
+    await enqueueVideo(work, user.id);
+  }
 
-  const { taskRun } = await createBackgroundTask({
-    db,
-    queue: serverJobQueue,
-    definition: workStoryboardJob,
-    scopeKey: workScopeKey(user.id, work.id),
-    payload: { workId: work.id, userId: user.id, frameIds: [], polls: 0 },
-    idempotencyKey: `${work.id}:storyboard:${Date.now()}`,
-  });
+  revalidatePath(`/dashboard/works/${workId}`);
+  return { ok: true, id: workId };
+}
 
-  await db
-    .update(ugcWorks)
-    .set({
-      step: "storyboard",
-      stepStatus: "running",
-      taskRunId: taskRun.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(ugcWorks.id, work.id));
+/** Draws or redraws the storyboard selected for this work. */
+export async function startWorkStoryboard(
+  workId: string,
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const work = await loadOwnedWork(workId, user.id);
+  if (!work?.scriptId || work.videoMode !== "storyboard") {
+    return { ok: false, code: "not_found" };
+  }
 
+  await enqueueStoryboard(work, user.id);
   revalidatePath(`/dashboard/works/${workId}`);
   return { ok: true, id: workId };
 }
@@ -429,38 +479,26 @@ export async function regenerateWorkFrame(
   return { ok: true, id: frame.id };
 }
 
-/** Accepts the storyboard and renders the clip. This is the expensive step. */
+/** Renders the clip, requiring accepted frames only in storyboard mode. */
 export async function startWorkVideo(workId: string): Promise<ActionResult> {
   const user = await requireAuth();
   const work = await loadOwnedWork(workId, user.id);
   if (!work) return { ok: false, code: "not_found" };
 
-  const ready = await db
-    .select({ id: ugcWorkFrames.id })
-    .from(ugcWorkFrames)
-    .where(
-      and(eq(ugcWorkFrames.workId, work.id), eq(ugcWorkFrames.status, "ready")),
-    );
-  if (ready.length === 0) return { ok: false, code: "work_needs_frames" };
+  if (work.videoMode === "storyboard") {
+    const ready = await db
+      .select({ id: ugcWorkFrames.id })
+      .from(ugcWorkFrames)
+      .where(
+        and(
+          eq(ugcWorkFrames.workId, work.id),
+          eq(ugcWorkFrames.status, "ready"),
+        ),
+      );
+    if (ready.length === 0) return { ok: false, code: "work_needs_frames" };
+  }
 
-  const { taskRun } = await createBackgroundTask({
-    db,
-    queue: serverJobQueue,
-    definition: workVideoJob,
-    scopeKey: workScopeKey(user.id, work.id),
-    payload: { workId: work.id, userId: user.id, polls: 0 },
-    idempotencyKey: `${work.id}:video:${Date.now()}`,
-  });
-
-  await db
-    .update(ugcWorks)
-    .set({
-      step: "video",
-      stepStatus: "running",
-      taskRunId: taskRun.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(ugcWorks.id, work.id));
+  await enqueueVideo(work, user.id);
 
   revalidatePath(`/dashboard/works/${workId}`);
   return { ok: true, id: workId };
@@ -474,6 +512,9 @@ export async function reopenWorkStep(
   const user = await requireAuth();
   const work = await loadOwnedWork(workId, user.id);
   if (!work) return { ok: false, code: "not_found" };
+  if (step === "storyboard" && work.videoMode !== "storyboard") {
+    return { ok: false, code: "invalid_input" };
+  }
 
   await db
     .update(ugcWorks)

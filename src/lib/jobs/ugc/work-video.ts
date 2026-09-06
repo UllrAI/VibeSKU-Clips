@@ -53,7 +53,7 @@ function storage(db: AppDatabase): ClipStorage {
 }
 
 /**
- * Renders the approved storyboard into the finished clip.
+ * Renders the selected workflow into the finished clip.
  *
  * The frames go to the video model as a reference set alongside the product
  * and talent shots — H3 reads them together rather than treating one as a
@@ -113,7 +113,7 @@ export const workVideoJob = defineJob(
         ),
       )
       .orderBy(asc(ugcWorkFrames.position));
-    if (frames.length === 0) {
+    if (work.videoMode === "storyboard" && frames.length === 0) {
       throw new PermanentJobError(
         "UGC_WORK_NO_FRAMES",
         "Draw and accept a storyboard before rendering.",
@@ -139,11 +139,16 @@ export const workVideoJob = defineJob(
         [
           ...frames.map((frame) => frame.imageUrl),
           talent?.imageUrl,
-          ...product.images.slice(0, 2),
+          ...product.images.slice(0, work.videoMode === "one_take" ? 8 : 2),
         ].filter((url): url is string => Boolean(url)),
       );
       const providerTaskId = await submitVideo({
-        prompt: buildVideoPrompt(subject, beats, script.productionPrompt),
+        prompt: buildVideoPrompt(
+          subject,
+          beats,
+          script.productionPrompt,
+          work.videoMode,
+        ),
         referenceUrls: references,
         durationSeconds: CLIP_SPEC.durationSeconds,
         aspectRatio: CLIP_SPEC.aspectRatio,
@@ -226,7 +231,7 @@ export const workVideoJob = defineJob(
               .map((check) => check.detail)
               .join(" "),
         videoUrl,
-        coverUrl: frames[0]?.imageUrl ?? null,
+        coverUrl: frames[0]?.imageUrl ?? product.images[0] ?? null,
         subtitleUrl,
         publishCaption: script.publishCaption,
         durationMs,

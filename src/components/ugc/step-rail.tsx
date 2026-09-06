@@ -3,10 +3,11 @@
 import { Check, Loader2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
-  WORK_STEPS,
   WORK_STEP_LABEL,
+  workStepsFor,
   workStepPosition,
   type WorkStep,
+  type WorkVideoMode,
 } from "@/lib/ugc/work-steps";
 import { cn } from "@/lib/utils";
 
@@ -17,13 +18,22 @@ import { cn } from "@/lib/utils";
  * at once — how many steps there are, which one is theirs now, and which are
  * already signed off. A bare spinner tells them none of that.
  */
-export function StepRail({ step, busy }: { step: WorkStep; busy: boolean }) {
+export function StepRail({
+  step,
+  busy,
+  videoMode,
+}: {
+  step: WorkStep;
+  busy: boolean;
+  videoMode: WorkVideoMode;
+}) {
   const { t } = useTranslation();
-  const current = workStepPosition(step);
+  const steps = workStepsFor(videoMode);
+  const current = workStepPosition(step, videoMode);
 
   return (
     <ol className="flex flex-wrap items-center gap-x-1 gap-y-2">
-      {WORK_STEPS.map((entry, index) => {
+      {steps.map((entry, index) => {
         const done = index < current;
         const active = index === current;
         return (
@@ -58,7 +68,7 @@ export function StepRail({ step, busy }: { step: WorkStep; busy: boolean }) {
               </span>
               {t(WORK_STEP_LABEL[entry])}
             </span>
-            {index < WORK_STEPS.length - 1 && (
+            {index < steps.length - 1 && (
               <span
                 aria-hidden
                 className={cn(

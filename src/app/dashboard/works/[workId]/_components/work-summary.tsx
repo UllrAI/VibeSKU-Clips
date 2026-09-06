@@ -20,6 +20,7 @@ import {
   contentLocaleKey,
   marketKey,
   templateKey,
+  videoModeKey,
 } from "@/components/ugc/labels";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import { deleteWork } from "@/lib/ugc/work-actions";
@@ -27,7 +28,7 @@ import type { WorkDetail } from "@/lib/ugc/works";
 
 /**
  * What this work is, kept in view for the whole flow. Every step after the
- * first is generated from these four answers, so they stay readable rather
+ * first is generated from these setup choices, so they stay readable rather
  * than disappearing behind the step the operator happens to be on.
  */
 export function WorkSummary({ detail }: { detail: WorkDetail }) {
@@ -86,6 +87,9 @@ export function WorkSummary({ detail }: { detail: WorkDetail }) {
         </Fact>
         <Fact label={t("ugc_plan_template")}>
           {t(templateKey(work.template))}
+        </Fact>
+        <Fact label={t("ugc_video_mode")}>
+          {t(videoModeKey(work.videoMode))}
         </Fact>
         <Fact label={t("ugc_plan_locale")}>
           {t(contentLocaleKey(work.locale))} · {t(marketKey(work.market))}

@@ -51,9 +51,23 @@ export function WorkConsole({
       />
     );
   } else if (work.step === "done" && clip) {
-    body = <DoneStep workId={work.id} clip={clip} onRefresh={refresh} />;
+    body = (
+      <DoneStep
+        workId={work.id}
+        clip={clip}
+        videoMode={work.videoMode}
+        onRefresh={refresh}
+      />
+    );
   } else if (work.step === "script" && work.stepStatus === "review" && script) {
-    body = <ScriptStep workId={work.id} script={script} onRefresh={refresh} />;
+    body = (
+      <ScriptStep
+        workId={work.id}
+        script={script}
+        videoMode={work.videoMode}
+        onRefresh={refresh}
+      />
+    );
   } else if (work.step === "storyboard" && !failed && frames.length > 0) {
     body = (
       <StoryboardStep workId={work.id} frames={frames} onRefresh={refresh} />
@@ -73,6 +87,7 @@ export function WorkConsole({
         failureCode={detail.run.failureCode}
         stalled={detail.run.stalled}
         frames={work.step === "video" ? frames : []}
+        videoMode={work.videoMode}
         onRefresh={refresh}
       />
     );
@@ -80,7 +95,11 @@ export function WorkConsole({
 
   return (
     <div className="space-y-4">
-      <StepRail step={work.step} busy={work.stepStatus === "running"} />
+      <StepRail
+        step={work.step}
+        busy={work.stepStatus === "running"}
+        videoMode={work.videoMode}
+      />
       <WorkSummary detail={detail} />
       {body}
     </div>

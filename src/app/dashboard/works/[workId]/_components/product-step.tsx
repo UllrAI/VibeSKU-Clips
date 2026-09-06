@@ -27,10 +27,11 @@ import {
   MARKET_OPTIONS,
   contentLocaleKey,
   marketKey,
+  videoModeKey,
 } from "@/components/ugc/labels";
 import { TemplatePicker } from "@/components/ugc/template-picker";
 import { useTranslation } from "@/lib/i18n/translation/client";
-import type { ScriptTemplate } from "@/lib/ugc/constants";
+import type { ScriptTemplate, VideoMode } from "@/lib/ugc/constants";
 import type { ProductRow, TalentRow } from "@/lib/ugc/queries";
 import { setWorkSetup, startWorkScript } from "@/lib/ugc/work-actions";
 import type { WorkDetail } from "@/lib/ugc/works";
@@ -66,6 +67,7 @@ export function ProductStep({
   const [locale, setLocale] = useState(work.locale);
   const [market, setMarket] = useState(work.market);
   const [template, setTemplate] = useState<ScriptTemplate>(work.template);
+  const [videoMode, setVideoMode] = useState<VideoMode>(work.videoMode);
 
   const save = () =>
     setWorkSetup(work.id, {
@@ -78,6 +80,7 @@ export function ProductStep({
       locale,
       market,
       template,
+      videoMode,
     });
 
   const apply = () =>
@@ -239,6 +242,29 @@ export function ProductStep({
           </div>
 
           <TemplatePicker value={template} onChange={setTemplate} />
+
+          <div className="space-y-2">
+            <Label htmlFor="work-video-mode">{t("ugc_video_mode")}</Label>
+            <Select
+              value={videoMode}
+              onValueChange={(value) => setVideoMode(value as VideoMode)}
+            >
+              <SelectTrigger id="work-video-mode" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="one_take">
+                  {t(videoModeKey("one_take"))}
+                </SelectItem>
+                <SelectItem value="storyboard">
+                  {t(videoModeKey("storyboard"))}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">
+              {t(`ugc_video_mode_${videoMode}_hint`)}
+            </p>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

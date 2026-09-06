@@ -18,6 +18,7 @@ import {
   startWorkVideo,
 } from "@/lib/ugc/work-actions";
 import type { WorkFrameRow } from "@/lib/ugc/works";
+import type { VideoMode } from "@/lib/ugc/constants";
 import { StepCard } from "./step-card";
 
 type RunningStep = "script" | "storyboard" | "video";
@@ -69,6 +70,7 @@ export function PendingStep({
   failureCode,
   stalled,
   frames,
+  videoMode,
   onRefresh,
 }: {
   workId: string;
@@ -77,11 +79,18 @@ export function PendingStep({
   failureCode: string | null;
   stalled: boolean;
   frames: WorkFrameRow[];
+  videoMode: VideoMode;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
   const copy = COPY[step];
+  const back =
+    step === "video" && videoMode === "one_take" ? "script" : copy.back;
+  const wait =
+    step === "video" && videoMode === "one_take"
+      ? "ugc_work_video_one_take_wait"
+      : copy.wait;
 
   const run = (task: () => Promise<{ ok: boolean; code?: string }>) =>
     startTransition(async () => {
@@ -96,14 +105,14 @@ export function PendingStep({
   return (
     <StepCard
       title={t(copy.title)}
-      description={t(copy.wait)}
+      description={t(wait)}
       secondary={
         failed && (
           <Button
             variant="ghost"
             size="sm"
             disabled={pending}
-            onClick={() => run(() => reopenWorkStep(workId, copy.back))}
+            onClick={() => run(() => reopenWorkStep(workId, back))}
           >
             <ArrowLeft />
             {t("ugc_work_back_a_step")}

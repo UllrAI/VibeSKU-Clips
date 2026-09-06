@@ -65,6 +65,13 @@ describe("render prompts", () => {
     expect(prompt).toContain("LOCATION: lived-in sitting room");
     expect(prompt).toContain("No burned-in captions");
   });
+
+  it("directs one-take video to avoid cuts and scene changes", () => {
+    const prompt = buildVideoPrompt(subject, beats, null, "one_take");
+
+    expect(prompt).toContain("one continuous take");
+    expect(prompt).toContain("no cuts, transitions, or scene changes");
+  });
 });
 
 describe("subtitle track", () => {

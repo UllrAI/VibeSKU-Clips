@@ -1,4 +1,5 @@
 import { CLIP_SPEC } from "./constants";
+import type { VideoMode } from "./constants";
 import { TEMPLATE_BRIEFS } from "./templates";
 import type { ScriptBeat } from "./types";
 import type { ScriptTemplate } from "./constants";
@@ -78,11 +79,15 @@ export function buildVideoPrompt(
   subject: RenderSubject,
   beats: ScriptBeat[],
   productionPrompt?: string | null,
+  videoMode: VideoMode = "storyboard",
 ): string {
   const brief = TEMPLATE_BRIEFS[subject.template];
   return [
     `A ${CLIP_SPEC.durationSeconds}-second vertical ${CLIP_SPEC.aspectRatio} user-generated product video shot on a phone.`,
     `Format: ${brief.structure}`,
+    videoMode === "one_take"
+      ? "Film this as one continuous take with no cuts, transitions, or scene changes. Use natural camera movement to connect every beat."
+      : "Use the supplied storyboard images as the visual reference for each beat.",
     `Delivery: ${brief.voice} Spoken in ${subject.locale} for the ${subject.market} market.`,
     `Product: ${subject.productName}. ${subject.appearance}`,
     productionPrompt

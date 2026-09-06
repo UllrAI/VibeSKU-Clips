@@ -10,16 +10,19 @@ import { actionMessageKey } from "@/components/ugc/action-message";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import { reopenWorkStep } from "@/lib/ugc/work-actions";
 import type { ClipRow } from "@/lib/ugc/works";
+import type { VideoMode } from "@/lib/ugc/constants";
 import { StepCard } from "./step-card";
 
 /** The finished clip, with its quality findings spelled out rather than scored. */
 export function DoneStep({
   workId,
   clip,
+  videoMode,
   onRefresh,
 }: {
   workId: string;
   clip: ClipRow;
+  videoMode: VideoMode;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
@@ -37,7 +40,10 @@ export function DoneStep({
           disabled={pending}
           onClick={() =>
             startTransition(async () => {
-              const result = await reopenWorkStep(workId, "storyboard");
+              const result = await reopenWorkStep(
+                workId,
+                videoMode === "storyboard" ? "storyboard" : "script",
+              );
               if (!result.ok) {
                 toast.error(t(actionMessageKey(result.code)));
                 return;
@@ -47,7 +53,11 @@ export function DoneStep({
           }
         >
           <ArrowLeft />
-          {t("ugc_work_back_to_storyboard")}
+          {t(
+            videoMode === "storyboard"
+              ? "ugc_work_back_to_storyboard"
+              : "ugc_work_back_to_script",
+          )}
         </Button>
       }
       action={

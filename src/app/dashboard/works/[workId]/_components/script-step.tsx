@@ -18,9 +18,10 @@ import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   reopenWorkStep,
   saveWorkScript,
-  startWorkStoryboard,
+  startWorkFromScript,
 } from "@/lib/ugc/work-actions";
 import type { ScriptRow } from "@/lib/ugc/queries";
+import type { VideoMode } from "@/lib/ugc/constants";
 import type { ScriptBeat } from "@/lib/ugc/types";
 import { StepCard } from "./step-card";
 
@@ -32,10 +33,12 @@ import { StepCard } from "./step-card";
 export function ScriptStep({
   workId,
   script,
+  videoMode,
   onRefresh,
 }: {
   workId: string;
   script: ScriptRow;
+  videoMode: VideoMode;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
@@ -114,19 +117,29 @@ export function ScriptStep({
           return;
         }
       }
-      const started = await startWorkStoryboard(workId);
+      const started = await startWorkFromScript(workId);
       if (!started.ok) {
         toast.error(t(actionMessageKey(started.code)));
         return;
       }
-      toast.success(t("ugc_work_storyboard_started"));
+      toast.success(
+        t(
+          videoMode === "storyboard"
+            ? "ugc_work_storyboard_started"
+            : "ugc_work_video_started",
+        ),
+      );
       onRefresh();
     });
 
   return (
     <StepCard
       title={t("ugc_work_step_script")}
-      description={t("ugc_work_script_hint")}
+      description={t(
+        videoMode === "storyboard"
+          ? "ugc_work_script_hint"
+          : "ugc_work_script_one_take_hint",
+      )}
       secondary={
         <>
           <Button
@@ -159,7 +172,11 @@ export function ScriptStep({
       action={
         <Button onClick={accept} disabled={pending || !title.trim()}>
           {pending && <Loader2 className="animate-spin" aria-hidden />}
-          {t("ugc_work_confirm_script")}
+          {t(
+            videoMode === "storyboard"
+              ? "ugc_work_confirm_script"
+              : "ugc_work_confirm_script_and_render",
+          )}
         </Button>
       }
     >
@@ -221,7 +238,11 @@ export function ScriptStep({
       <div className="space-y-2">
         <p className="text-sm font-medium">{t("ugc_work_beats")}</p>
         <p className="text-muted-foreground text-xs">
-          {t("ugc_work_beats_hint")}
+          {t(
+            videoMode === "storyboard"
+              ? "ugc_work_beats_hint"
+              : "ugc_work_beats_one_take_hint",
+          )}
         </p>
         <ol className="divide-border border-border divide-y rounded-lg border">
           {beats.map((beat, index) => (

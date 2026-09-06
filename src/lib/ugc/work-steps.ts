@@ -5,13 +5,28 @@
  */
 export type WorkStep = "product" | "script" | "storyboard" | "video" | "done";
 export type WorkStepStatus = "idle" | "running" | "review" | "failed";
+export type WorkVideoMode = "one_take" | "storyboard";
 
-export const WORK_STEPS: readonly Exclude<WorkStep, "done">[] = [
+const STORYBOARD_WORK_STEPS: readonly Exclude<WorkStep, "done">[] = [
   "product",
   "script",
   "storyboard",
   "video",
 ];
+
+const ONE_TAKE_WORK_STEPS: readonly Exclude<WorkStep, "done">[] = [
+  "product",
+  "script",
+  "video",
+];
+
+export function workStepsFor(
+  videoMode: WorkVideoMode,
+): readonly Exclude<WorkStep, "done">[] {
+  return videoMode === "storyboard"
+    ? STORYBOARD_WORK_STEPS
+    : ONE_TAKE_WORK_STEPS;
+}
 
 export const WORK_STEP_LABEL: Record<WorkStep, string> = {
   product: "ugc_work_step_product",
@@ -22,8 +37,12 @@ export const WORK_STEP_LABEL: Record<WorkStep, string> = {
 };
 
 /** How far along a work is, counted in rail positions. */
-export function workStepPosition(step: WorkStep): number {
-  return step === "done" ? WORK_STEPS.length : WORK_STEPS.indexOf(step);
+export function workStepPosition(
+  step: WorkStep,
+  videoMode: WorkVideoMode,
+): number {
+  const steps = workStepsFor(videoMode);
+  return step === "done" ? steps.length : steps.indexOf(step);
 }
 
 const STATE_LABEL: Record<WorkStepStatus, string> = {

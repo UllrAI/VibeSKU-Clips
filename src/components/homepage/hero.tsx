@@ -26,11 +26,6 @@ export function Hero({
       state: t("ugc_work_state_review"),
     },
     {
-      id: "storyboard",
-      label: t("ugc_work_step_storyboard"),
-      state: t("ugc_work_state_idle"),
-    },
-    {
       id: "video",
       label: t("ugc_work_step_video"),
       state: t("ugc_work_state_idle"),

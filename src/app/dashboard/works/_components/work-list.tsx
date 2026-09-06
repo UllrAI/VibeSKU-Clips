@@ -13,9 +13,9 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIntlLocale } from "@/hooks/use-intl-locale";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
-  WORK_STEPS,
   WORK_STEP_LABEL,
   workStateKey,
+  workStepsFor,
   workStepPosition,
 } from "@/lib/ugc/work-steps";
 import type { WorkSummary } from "@/lib/ugc/works";
@@ -104,7 +104,8 @@ export function WorkList({ works }: { works: WorkSummary[] }) {
           {visible.map((summary) => {
             const { work } = summary;
             const status = statusOf(summary);
-            const position = workStepPosition(work.step);
+            const steps = workStepsFor(work.videoMode);
+            const position = workStepPosition(work.step, work.videoMode);
             const playable = status === "completed" && summary.videoUrl;
 
             return (
@@ -180,8 +181,8 @@ export function WorkList({ works }: { works: WorkSummary[] }) {
                         </p>
                         <p className="text-muted-foreground text-xs tabular-nums">
                           {t("ugc_work_step_position", {
-                            position: Math.min(position + 1, WORK_STEPS.length),
-                            total: WORK_STEPS.length,
+                            position: Math.min(position + 1, steps.length),
+                            total: steps.length,
                           })}
                           {" · "}
                           {new Date(work.updatedAt).toLocaleDateString(locale)}

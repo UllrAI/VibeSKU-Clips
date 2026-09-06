@@ -246,6 +246,13 @@
       "when": 1788712644650,
       "tag": "0034_early_pete_wisdom",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1788713972422,
+      "tag": "0035_striped_nova",
+      "breakpoints": true
     }
   ]
 }

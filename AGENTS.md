@@ -7,8 +7,8 @@ This file is the single source of truth for repository-specific agent instructio
 
 VibeSKU Clips produces one short vertical product video at a time for shoppable
 feeds. An operator chooses a product, the system reads its material into
-verifiable facts, and a guided work moves through script, storyboard, and video
-with a person confirming each expensive step. Every work appears in one list
+verifiable facts, and a guided work moves through script and video, with an
+optional reviewed storyboard, while a person confirms each expensive step. Every work appears in one list
 from creation through completion, where a finished video can be downloaded.
 
 Two rules run through the whole codebase and are worth internalising before
@@ -125,21 +125,22 @@ pnpm stripe:sync-products
 
 Five durable jobs are registered in `src/lib/jobs/catalog.ts`:
 
-| Job                   | Handler                               | What it does                                                                                  |
-| --------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Fetches the source link, extracts product facts, or marks the product `needs_input`           |
-| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief, draws one reference image, and archives it                            |
-| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it    |
-| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands              |
-| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the accepted frames, product and talent to the video model and writes the finished clip |
+| Job                   | Handler                               | What it does                                                                               |
+| --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Fetches the source link, extracts product facts, or marks the product `needs_input`        |
+| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief, draws one reference image, and archives it                         |
+| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it |
+| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands           |
+| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model         |
 
-A **work** (`ugc_works`) runs one clip through `product -> script -> storyboard
--> video`, stopping for confirmation at each step. Products, scripts, frames,
-and clips remain separate records so every output is traceable. The step's own
+A **work** (`ugc_works`) runs one clip through `product -> script -> video` by
+default. Storyboard-guided works add a reviewed `storyboard` step before video.
+Products, scripts, frames, and clips remain separate records so every generated
+output is traceable. The step's own
 task run records why it gave up, so the console reads failure and stall state
 from `task_runs` (`src/lib/ugc/run-state.ts`) and never spins indefinitely.
 
-The work composer asks for the product, talent, format, language and market in
+The work composer asks for the product, talent, format, generation mode, language and market in
 one card, and creates the product in place when it does not exist yet. Creating
 a work therefore starts the script immediately when the product has already
 been read; a product still being read stops the work on step one, where its

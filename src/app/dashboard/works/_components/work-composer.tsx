@@ -37,11 +37,12 @@ import {
   MARKET_OPTIONS,
   contentLocaleKey,
   marketKey,
+  videoModeKey,
 } from "@/components/ugc/labels";
 import { StatusBadge } from "@/components/ugc/status-badge";
 import { TemplatePicker } from "@/components/ugc/template-picker";
 import { useTranslation } from "@/lib/i18n/translation/client";
-import type { ScriptTemplate } from "@/lib/ugc/constants";
+import type { ScriptTemplate, VideoMode } from "@/lib/ugc/constants";
 import { createProduct } from "@/lib/ugc/actions";
 import type { ProductRow, TalentRow } from "@/lib/ugc/queries";
 import { createWork } from "@/lib/ugc/work-actions";
@@ -80,6 +81,7 @@ export function WorkComposer({
   const [productionDirection, setProductionDirection] = useState("");
   const [talentId, setTalentId] = useState(NO_TALENT);
   const [template, setTemplate] = useState<ScriptTemplate>("spokesperson");
+  const [videoMode, setVideoMode] = useState<VideoMode>("one_take");
   const [locale, setLocale] = useState("en");
   const [market, setMarket] = useState("US");
 
@@ -125,6 +127,7 @@ export function WorkComposer({
         locale,
         market,
         template,
+        videoMode,
       });
       if (!work.ok || !work.id) {
         toast.error(t(actionMessageKey(work.code)));
@@ -267,6 +270,29 @@ export function WorkComposer({
         </Tabs>
 
         <TemplatePicker value={template} onChange={setTemplate} />
+
+        <div className="space-y-2">
+          <Label htmlFor="work-video-mode">{t("ugc_video_mode")}</Label>
+          <Select
+            value={videoMode}
+            onValueChange={(value) => setVideoMode(value as VideoMode)}
+          >
+            <SelectTrigger id="work-video-mode" className="w-full sm:w-72">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="one_take">
+                {t(videoModeKey("one_take"))}
+              </SelectItem>
+              <SelectItem value="storyboard">
+                {t(videoModeKey("storyboard"))}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-muted-foreground text-xs">
+            {t(`ugc_video_mode_${videoMode}_hint`)}
+          </p>
+        </div>
 
         <div className="space-y-2">
           <Label htmlFor="work-talent">{t("ugc_plan_talents")}</Label>

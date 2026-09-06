@@ -28,6 +28,10 @@ export function templateDescriptionKey(template: string): string {
   return `ugc_template_${template}_description`;
 }
 
+export function videoModeKey(videoMode: string): string {
+  return `ugc_video_mode_${videoMode}`;
+}
+
 export const LOCALE_OPTIONS: readonly ContentLocale[] = SUPPORTED_LOCALES;
 export const MARKET_OPTIONS: readonly TargetMarket[] = SUPPORTED_MARKETS;
 export const TEMPLATE_OPTIONS: readonly ScriptTemplate[] = SCRIPT_TEMPLATES;

@@ -170,8 +170,8 @@ step is active, what it produced, and what happens if they say yes.
 - A step that is working says what it is working on and roughly how long that
   takes. A step that gave up says so in the operator's language, keeps its place
   in the rail, and offers to run again — it never spins forever.
-- Cheap changes come before expensive ones. Words are edited before frames,
-  frames before the render, because that is the order of what they cost.
+- Cheap changes come before expensive ones. Words are edited before the render;
+  when storyboard guidance is selected, frames are reviewed between them.
 - What a machine understood is shown before it is used, in the same shape the
   operator can edit. Extracted product facts are a draft with an author, not a
   verdict: reading them, correcting them, and saving them is one gesture, and

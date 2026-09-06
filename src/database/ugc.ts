@@ -62,6 +62,11 @@ export const ugcWorkStepStatusEnum = pgEnum("ugc_work_step_status", [
   "failed",
 ]);
 
+export const ugcVideoModeEnum = pgEnum("ugc_video_mode", [
+  "one_take",
+  "storyboard",
+]);
+
 export const ugcFrameStatusEnum = pgEnum("ugc_frame_status", [
   "pending",
   "generating",
@@ -288,6 +293,7 @@ export const ugcWorks = pgTable(
     template: ugcScriptTemplateEnum("template")
       .notNull()
       .default("spokesperson"),
+    videoMode: ugcVideoModeEnum("videoMode").notNull().default("one_take"),
     scriptId: uuid("scriptId").references(() => ugcScripts.id, {
       onDelete: "set null",
     }),

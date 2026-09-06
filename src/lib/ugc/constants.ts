@@ -50,6 +50,10 @@ export const SCRIPT_TEMPLATES = [
 ] as const;
 export type ScriptTemplate = (typeof SCRIPT_TEMPLATES)[number];
 
+/** Whether the operator reviews generated key frames before video rendering. */
+export const VIDEO_MODES = ["one_take", "storyboard"] as const;
+export type VideoMode = (typeof VIDEO_MODES)[number];
+
 /**
  * Credit cost per unit of work. Retries and operator-requested regenerations
  * both consume credits, and both are recorded separately from the planned count.
