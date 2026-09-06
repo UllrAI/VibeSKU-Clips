@@ -17,8 +17,8 @@ deployment instead of assuming the Dockerfile `USER` directive was preserved.
 
 `NEXT_PUBLIC_APP_URL` is the required build argument. User uploads use a private
 R2 bucket and authenticated application URLs, so no public storage origin is
-compiled into the image. Follow the [private-file cutover](architecture-remediation.md#deployment-requirements)
-when upgrading an existing public bucket.
+compiled into the image. See the [architecture notes](architecture.md#deployment-requirements)
+for the bucket rules this relies on.
 
 ## Promotion model
 

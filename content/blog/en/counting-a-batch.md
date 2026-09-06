@@ -48,12 +48,13 @@ None of that should stop the other seventy-nine. A product whose material cannot
 
 You can also cancel what has not started yet without touching what has already been delivered. Cancelling a batch stops the queued and in-flight work; the clips that already passed the gate stay in review where you left them.
 
-## Generated is not selected, and selected is not matched
+## Generated is not selected
 
-Three states get conflated constantly, and keeping them apart is most of what makes a handover trustworthy:
+These two get conflated constantly, and keeping them apart is most of what makes a handover trustworthy:
 
 1. **Generated** means the clip exists and passed the quality gate.
 2. **Selected** means a person watched it and decided to use it.
-3. **Matched** means the storefront link for the target market is on file.
 
-A clip can be all three, or any one of them. The export manifest states which, per asset — and an asset with no storefront link ships flagged as awaiting a product match rather than being assumed shoppable. That flag has saved more operations time than any generation feature we have shipped.
+A generated clip is not a decision. The export manifest only ever contains clips a person selected, and it states, per asset, the reference number, product, variant, language, market, talent, and the disclosure line that goes with it.
+
+What the manifest deliberately does not contain is the storefront link. Attaching an asset to a listing, checking stock, and posting it are the publisher's job, not ours — we make the video and say exactly what it is. Drawing that line is what keeps the handover honest: nothing here can claim an asset is ready to sell when nobody has checked the listing.

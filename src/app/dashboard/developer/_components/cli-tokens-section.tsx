@@ -49,7 +49,7 @@ export function CliTokensSection({
               {t.rich("device_no_cli_sessions_yet_run_authorize", {
                 code0: () => (
                   <code className="bg-muted rounded px-1 py-0.5" translate="no">
-                    pnpm vibesku-cli -- auth login
+                    pnpm vibesku-clips-cli -- auth login
                   </code>
                 ),
               })}

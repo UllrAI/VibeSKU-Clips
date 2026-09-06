@@ -116,7 +116,7 @@ For production deployment:
 7. **File maintenance**: Keep the Worker running with R2 credentials. It retries
    AI media finalization, abandoned uploads, and requested file deletions.
    For existing public buckets, follow the cutover in
-   [architecture remediation](../docs/architecture-remediation.md).
+   [architecture notes](../docs/architecture.md).
 8. **Upload protocol rollout**: Set `UPLOAD_LEGACY_COMPLETION_SINCE` and
    `UPLOAD_LEGACY_COMPLETION_UNTIL` only for the bounded v1-to-v2 rollout
    window, then remove both after the cutoff

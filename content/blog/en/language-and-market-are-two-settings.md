@@ -25,11 +25,11 @@ Language decides the words available. Market decides which of them a person ther
 
 ## Product facts follow the market too
 
-This is the part that causes real damage when it goes wrong. A product listing in one market is not automatically the same product in another: the variant may differ, the pack size may differ, and the storefront link certainly differs.
+This is the part that causes real damage when it goes wrong. A product listing in one market is not automatically the same product in another: the variant may differ, the pack size may differ, and the claims you are allowed to make may differ.
 
-The platform keeps two links apart on every product. A **reference link** is where the product facts were read from — it may be a manufacturer page, a listing in another market, or anything else with reliable material. A **storefront link** is the listing in the market the clip is made for, and it is the only one that reaches the export manifest.
+So a product record carries a reference link — wherever its facts were read from, be it a manufacturer page, a listing in another market, or any page with reliable material — and the market a clip is made for is set per line, not inherited from that link. If the two disagree, the brief wins, because you are the one who has to answer for the claim.
 
-If the storefront link is missing, the asset does not quietly export as shoppable. It exports flagged as awaiting a product match, and the operator who publishes it can see that before it goes anywhere near a live account.
+What the platform does not do is manage the storefront link. Which listing an asset gets attached to, and whether it is in stock, belongs to whoever publishes it. Every exported asset states its market, so that person knows which listing they are matching it to.
 
 ## Reusing a creative direction without reusing the facts
 

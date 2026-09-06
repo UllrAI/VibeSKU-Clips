@@ -65,3 +65,14 @@ export const CREDIT_COST = {
 export const MAX_RENDER_ATTEMPTS = 3;
 
 export const MAX_BATCH_CLIPS = 200;
+
+/**
+ * Prism is a first-party service and the models below are a product decision,
+ * not a per-deployment setting. Only the credentials come from the environment.
+ */
+export const MEDIA_PROVIDER = {
+  baseUrl: "https://prism.ullrai.com/api/v1",
+  imageModel: "nano-banana-pro",
+  videoModel: "sora2",
+  requestTimeoutMs: 60_000,
+} as const;

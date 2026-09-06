@@ -84,24 +84,4 @@ export function validateIntegrationEnv(features, values) {
       "UPLOAD_CLEANUP_SECRET",
     ]);
   }
-
-  const legacySince = values.UPLOAD_LEGACY_COMPLETION_SINCE;
-  const legacyUntil = values.UPLOAD_LEGACY_COMPLETION_UNTIL;
-  if (Boolean(legacySince) !== Boolean(legacyUntil)) {
-    throw new Error(
-      "Legacy upload compatibility requires both UPLOAD_LEGACY_COMPLETION_SINCE and UPLOAD_LEGACY_COMPLETION_UNTIL.",
-    );
-  }
-  if (typeof legacySince === "string" && typeof legacyUntil === "string") {
-    const compatibilityDuration =
-      Date.parse(legacyUntil) - Date.parse(legacySince);
-    if (
-      compatibilityDuration <= 0 ||
-      compatibilityDuration > 24 * 60 * 60 * 1000
-    ) {
-      throw new Error(
-        "The legacy upload compatibility window must be longer than zero and no more than 24 hours.",
-      );
-    }
-  }
 }

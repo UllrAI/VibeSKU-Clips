@@ -1,7 +1,6 @@
 import { z } from "zod";
+import { MEDIA_PROVIDER } from "../constants";
 import { loadMediaEnv } from "./config";
-
-const REQUEST_TIMEOUT_MS = 60_000;
 
 export class MediaProviderError extends Error {
   readonly retryable: boolean;
@@ -46,9 +45,9 @@ async function call<T>(
     );
   }
 
-  const response = await fetch(`${env.PRISM_API_BASE_URL}${path}`, {
+  const response = await fetch(`${MEDIA_PROVIDER.baseUrl}${path}`, {
     method: init.method,
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal: AbortSignal.timeout(MEDIA_PROVIDER.requestTimeoutMs),
     headers: {
       "content-type": "application/json",
       "X-API-Key": env.PRISM_API_KEY,
@@ -88,14 +87,13 @@ export interface ImageRequest {
 }
 
 export async function submitImage(request: ImageRequest): Promise<string> {
-  const env = loadMediaEnv();
   const { task_id } = await call(
     "/image-gen",
     {
       method: "POST",
       body: {
         prompt: request.prompt,
-        model: env.PRISM_IMAGE_MODEL,
+        model: MEDIA_PROVIDER.imageModel,
         aspect_ratio: request.aspectRatio,
         request_id: request.requestId,
         ...(request.referenceUrls.length
@@ -118,14 +116,13 @@ export interface VideoRequest {
 }
 
 export async function submitVideo(request: VideoRequest): Promise<string> {
-  const env = loadMediaEnv();
   const { task_id } = await call(
     "/video-gen",
     {
       method: "POST",
       body: {
         prompt: request.prompt,
-        model: env.PRISM_VIDEO_MODEL,
+        model: MEDIA_PROVIDER.videoModel,
         duration: request.durationSeconds,
         aspect_ratio: request.aspectRatio,
         request_id: request.requestId,

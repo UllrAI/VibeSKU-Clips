@@ -117,11 +117,6 @@ export function ProductLibrary({ products }: { products: ProductRow[] }) {
                         {product.issue}
                       </p>
                     )}
-                    {!product.shopUrl && (
-                      <p className="text-muted-foreground text-xs">
-                        {t("ugc_product_no_shop_url")}
-                      </p>
-                    )}
                     <div className="flex flex-wrap gap-2 pt-1">
                       <Button
                         size="sm"

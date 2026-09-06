@@ -132,6 +132,16 @@ export const UPLOAD_CONFIG = {
   USER_UPLOAD_RATE_LIMIT_MAX_REQUESTS: 30,
 
   /**
+   * Storage a single user may add in 24 hours.
+   */
+  DAILY_QUOTA_BYTES: 1024 * 1024 * 1024,
+
+  /**
+   * Total storage a single user may hold.
+   */
+  TOTAL_QUOTA_BYTES: 5 * 1024 * 1024 * 1024,
+
+  /**
    * Presigned URL expiration in seconds.
    * @default 15 minutes
    */

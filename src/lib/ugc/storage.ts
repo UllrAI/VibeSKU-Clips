@@ -38,7 +38,5 @@ export function createClipStorage(
     accessKeyId: parsed.data.R2_ACCESS_KEY_ID,
     secretAccessKey: parsed.data.R2_SECRET_ACCESS_KEY,
     bucketName: parsed.data.R2_BUCKET_NAME,
-    UPLOAD_DAILY_QUOTA_BYTES: parsed.data.UPLOAD_DAILY_QUOTA_BYTES,
-    UPLOAD_TOTAL_QUOTA_BYTES: parsed.data.UPLOAD_TOTAL_QUOTA_BYTES,
   });
 }

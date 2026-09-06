@@ -6,16 +6,13 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import type { AppDatabase } from "@/database/client";
-import {
-  createUploadRepository,
-  type UploadRepositoryConfig,
-} from "./repository";
+import { createUploadRepository } from "./repository";
 import { isFileSizeAllowed, isFileTypeAllowed } from "@/lib/config/upload";
 import { buildFileUrl } from "./url";
 
 export function createFileStorage(
   db: AppDatabase,
-  config: UploadRepositoryConfig & {
+  config: {
     endpoint: string;
     accessKeyId: string;
     secretAccessKey: string;
@@ -30,21 +27,16 @@ export function createFileStorage(
       secretAccessKey: config.secretAccessKey,
     },
   });
-  const repository = createUploadRepository(
-    db,
-    config,
-    buildFileUrl,
-    async (key) => {
-      try {
-        await client.send(
-          new DeleteObjectCommand({ Bucket: config.bucketName, Key: key }),
-        );
-        return { success: true };
-      } catch {
-        return { success: false, error: "Object deletion failed." };
-      }
-    },
-  );
+  const repository = createUploadRepository(db, buildFileUrl, async (key) => {
+    try {
+      await client.send(
+        new DeleteObjectCommand({ Bucket: config.bucketName, Key: key }),
+      );
+      return { success: true };
+    } catch {
+      return { success: false, error: "Object deletion failed." };
+    }
+  });
   return async (input: {
     userId: string;
     identity: string;

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "@jest/globals";
 import {
   buildExportManifest,
-  countUnmatched,
   manifestToCsv,
   type ManifestClip,
 } from "./manifest";
@@ -20,7 +19,6 @@ function clip(overrides: Partial<ManifestClip> = {}): ManifestClip {
     product: {
       name: "Cordless hand vacuum",
       variant: "White",
-      shopUrl: "https://shop.example/vacuum",
     },
     ...overrides,
   };
@@ -36,7 +34,6 @@ describe("export manifest", () => {
           product: {
             name: "Ceramic pour-over set",
             variant: null,
-            shopUrl: "https://shop.example/pour-over",
           },
         }),
       ],
@@ -54,29 +51,6 @@ describe("export manifest", () => {
     const manifest = buildExportManifest([clip()], "accountTag", "Unassigned");
 
     expect(manifest.groups[0]?.label).toBe("Unassigned");
-  });
-
-  it("flags assets with no storefront link for the target market", () => {
-    const manifest = buildExportManifest(
-      [
-        clip(),
-        clip({
-          reference: "VC-0001-003",
-          product: {
-            name: "Cordless hand vacuum",
-            variant: null,
-            shopUrl: null,
-          },
-        }),
-      ],
-      "product",
-      "Unassigned",
-    );
-
-    expect(countUnmatched(manifest)).toBe(1);
-    expect(
-      manifest.groups[0]?.rows.map((row) => row.awaitingProductMatch),
-    ).toEqual([false, true]);
   });
 
   it("escapes CSV fields that contain separators", () => {

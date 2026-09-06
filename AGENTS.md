@@ -26,6 +26,10 @@ changing anything:
 Also: interface language and clip language are separate settings, and language
 is separate from market. Do not collapse them.
 
+**Scope boundary.** The platform produces video and a delivery manifest. It does
+not manage storefront links, stock, publishing, or performance — those belong to
+whoever posts the clips. Do not add product-matching state here.
+
 ## 1. Working Agreement
 
 - Make minimal, correct, production-ready changes. Avoid over-engineering.

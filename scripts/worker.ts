@@ -14,9 +14,6 @@ async function main(): Promise<void> {
   const database = createDatabaseClient({
     url: workerEnv.DATABASE_URL,
     max: workerEnv.DB_POOL_SIZE,
-    idleTimeout: workerEnv.DB_IDLE_TIMEOUT,
-    maxLifetime: workerEnv.DB_MAX_LIFETIME,
-    connectTimeout: workerEnv.DB_CONNECT_TIMEOUT,
   });
 
   createAiModels({
@@ -61,8 +58,6 @@ async function main(): Promise<void> {
         accessKeyId: workerEnv.R2_ACCESS_KEY_ID!,
         secretAccessKey: workerEnv.R2_SECRET_ACCESS_KEY!,
         bucketName: workerEnv.R2_BUCKET_NAME!,
-        UPLOAD_DAILY_QUOTA_BYTES: workerEnv.UPLOAD_DAILY_QUOTA_BYTES,
-        UPLOAD_TOTAL_QUOTA_BYTES: workerEnv.UPLOAD_TOTAL_QUOTA_BYTES,
       }
     : null;
   const storeFile = storageConfig
@@ -95,12 +90,7 @@ async function main(): Promise<void> {
     }
   };
   const uploads = storageConfig
-    ? createUploadRepository(
-        database.db,
-        storageConfig,
-        buildFileUrl,
-        deleteObject,
-      )
+    ? createUploadRepository(database.db, buildFileUrl, deleteObject)
     : null;
   const maintain = async () => {
     await finalizePendingAiRuns(database.db, storeFile);

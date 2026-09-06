@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Download } from "lucide-react";
 import { DashboardPageWrapper } from "../_components/dashboard-page-wrapper";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getServerTranslations } from "@/lib/i18n/translation/server";
@@ -61,13 +60,6 @@ export default async function ExportsPage() {
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  {record.unmatchedCount > 0 && (
-                    <Badge variant="outline">
-                      {t("ugc_export_unmatched_count", {
-                        count: record.unmatchedCount,
-                      })}
-                    </Badge>
-                  )}
                   <Button asChild size="sm" variant="outline">
                     <a href={`/api/ugc/exports/${record.id}/manifest`}>
                       <Download />

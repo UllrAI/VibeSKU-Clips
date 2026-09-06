@@ -32,7 +32,6 @@ import { actionMessageKey } from "@/components/ugc/action-message";
 interface ProductFormState {
   name: string;
   sourceUrl: string;
-  shopUrl: string;
   variant: string;
   market: string;
   images: string[];
@@ -48,7 +47,6 @@ function toState(product: ProductRow | null): ProductFormState {
   return {
     name: product?.name ?? "",
     sourceUrl: product?.sourceUrl ?? "",
-    shopUrl: product?.shopUrl ?? "",
     variant: product?.variant ?? "",
     market: product?.market ?? "",
     images: product?.images ?? [],
@@ -91,7 +89,6 @@ export function ProductForm({
     const payload = {
       name: state.name.trim(),
       sourceUrl: state.sourceUrl.trim(),
-      shopUrl: state.shopUrl.trim(),
       variant: state.variant.trim(),
       market: state.market,
       images: state.images,
@@ -156,20 +153,6 @@ export function ProductForm({
               />
               <p className="text-muted-foreground text-xs">
                 {t("ugc_product_source_url_hint")}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="product-shop">{t("ugc_product_shop_url")}</Label>
-              <Input
-                id="product-shop"
-                type="url"
-                inputMode="url"
-                value={state.shopUrl}
-                onChange={(event) => update("shopUrl", event.target.value)}
-                placeholder="https://"
-              />
-              <p className="text-muted-foreground text-xs">
-                {t("ugc_product_shop_url_hint")}
               </p>
             </div>
             <div className="space-y-2">

@@ -6,10 +6,11 @@ VibeSKU Clips turns product material into localised 15-second UGC video for
 TikTok Shop account matrices. An operator submits a product link or images with a
 brief; the platform reads the product, writes a market-specific script, generates
 and edits the clip, checks it against a quality gate, and hands back grouped
-assets with a product manifest.
+assets with a delivery manifest.
 
 The platform produces material and the manifest. Account login, publishing,
-product tagging, and performance observation stay with the operations team.
+storefront links, product tagging, and performance observation stay with the
+operations team.
 
 ![VibeSKU Clips](./public/og.png)
 
@@ -33,8 +34,8 @@ product tagging, and performance observation stay with the operations team.
 - **Review and regeneration.** Grouped comparison with similarity hints, three
   decision states, retry for failures, and regeneration that keeps the original.
 - **Exports with a manifest.** Grouped by product or account tag, with the
-  reference number, variant, storefront link, and an explicit
-  awaiting-product-match flag.
+  reference number, product, variant, language, market, talent, licence note,
+  and disclosure line for every asset.
 - **Asset and consumption records.** Products, talent, scripts, and approved
   clips keep their source, licence, and version lineage; analysis, scripting,
   rendering, retries, and regenerations are metered separately.
@@ -123,52 +124,45 @@ never be added to `SITE_CONFIG`.
 
 #### Environment Variables
 
-| Variable Name                    | Description                                                     | Example                                             |
-| :------------------------------- | :-------------------------------------------------------------- | :-------------------------------------------------- |
-| `DATABASE_URL`                   | **Required.** PostgreSQL connection string.                     | `postgresql://user:password@localhost:5432/db_name` |
-| `JOB_DATABASE_URL`               | Optional pg-boss database; defaults to `DATABASE_URL`.          | `postgresql://user:password@localhost:5432/db_name` |
-| `JOB_DB_POOL_SIZE`               | Optional pg-boss pool size per process; defaults to `3`.        | `3`                                                 |
-| `WORKER_GRACEFUL_TIMEOUT_MS`     | Optional Worker SIGTERM drain deadline; defaults to 30 seconds. | `30000`                                             |
-| `RATE_LIMIT_IP_HEADER`           | Optional trusted client-IP header; defaults to Zeabur.          | `x-forwarded-for`                                   |
-| `NEXT_PUBLIC_APP_URL`            | **Required.** Public URL of your deployed app.                  | `http://localhost:3000` or `https://yourdomain.com` |
-| `BING_SITE_VERIFICATION`         | Optional Bing Webmaster `msvalidate.01` verification token.     | Value issued for your deployed hostname             |
-| `NEXT_PUBLIC_UMAMI_SCRIPT_URL`   | Optional Umami tracker URL; set all three Umami variables.      | `https://analytics.example.com/script.js`           |
-| `NEXT_PUBLIC_UMAMI_WEBSITE_ID`   | Optional deployment-specific Umami website UUID.                | `00000000-0000-4000-8000-000000000000`              |
-| `NEXT_PUBLIC_UMAMI_DOMAINS`      | Optional comma-separated host allowlist for this deployment.    | `yourdomain.com`                                    |
-| `BETTER_AUTH_SECRET`             | **Required.** Random session secret, at least 32 characters.    | Generate with `openssl rand -base64 32`             |
-| `RESEND_API_KEY`                 | Required when `emailAuth` is enabled. Resend API key.           | `re_xxxxxxxxxxxxxxxx`                               |
-| `RESEND_EMAIL_FROM`              | Required when `emailAuth` is enabled. Verified sender.          | `noreply@your-verified-domain.com`                  |
-| `LLM_API_KEY`                    | Required when `ai` is enabled. Key for your LLM endpoint.       | `sk-...`                                            |
-| `LLM_BASE_URL`                   | Optional Responses API endpoint; defaults to OpenAI.            | `https://api.openai.com/v1`                         |
-| `AI_DEFAULT_MODEL`               | Optional chat model id; defaults to `gpt-5.6-luna`.             | `gpt-5.6-luna`                                      |
-| `PRISM_API_KEY`                  | **Required for rendering.** Prism API key.                      | `pk_...`                                            |
-| `PRISM_API_SECRET`               | **Required for rendering.** Prism API secret.                   | `sk_...`                                            |
-| `PRISM_API_BASE_URL`             | Optional Prism host; defaults to the production endpoint.       | `https://prism.ullrai.com/api/v1`                   |
-| `PRISM_IMAGE_MODEL`              | Optional opening-frame model; defaults to `nano-banana-pro`.    | `nano-banana-pro`                                   |
-| `PRISM_VIDEO_MODEL`              | Optional clip model; defaults to `sora2`.                       | `sora2`                                             |
-| `STRIPE_SECRET_KEY`              | Required for billing. Prefer a least-privilege restricted key.  | `rk_test_...` or `rk_live_...`                      |
-| `STRIPE_ENVIRONMENT`             | Stripe mode; defaults to `test_mode`.                           | `test_mode` or `live_mode`                          |
-| `STRIPE_WEBHOOK_SECRET`          | Required when `billing` is enabled. Endpoint signing secret.    | `whsec_your_webhook_secret`                         |
-| `R2_ENDPOINT`                    | Required when `uploads` is enabled. R2 API endpoint.            | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`     |
-| `R2_ACCESS_KEY_ID`               | Required when `uploads` is enabled. R2 access key ID.           | `your_r2_access_key_id`                             |
-| `R2_SECRET_ACCESS_KEY`           | Required when `uploads` is enabled. R2 secret key.              | `your_r2_secret_access_key`                         |
-| `R2_BUCKET_NAME`                 | Required when `uploads` is enabled. R2 bucket name.             | `your_r2_bucket_name`                               |
-| `UPLOAD_CLEANUP_SECRET`          | Required when `uploads` is enabled. 32+ character secret.       | Generate with `openssl rand -base64 32`             |
-| `UPLOAD_DAILY_QUOTA_BYTES`       | Optional rolling 24-hour upload quota per user.                 | `1073741824` (1 GiB)                                |
-| `UPLOAD_TOTAL_QUOTA_BYTES`       | Optional total stored and reserved bytes per user.              | `5368709120` (5 GiB)                                |
-| `UPLOAD_LEGACY_COMPLETION_SINCE` | Optional ISO-8601 start of the bounded v1 compatibility window. | Set with `UPLOAD_LEGACY_COMPLETION_UNTIL` only      |
-| `UPLOAD_LEGACY_COMPLETION_UNTIL` | Optional ISO-8601 end of the bounded v1 compatibility window.   | At most 24 hours after the matching start           |
-| `GITHUB_CLIENT_ID`               | _Optional._ GitHub OAuth Client ID.                             | `your_github_client_id`                             |
-| `GITHUB_CLIENT_SECRET`           | _Optional._ GitHub OAuth Client Secret.                         | `your_github_client_secret`                         |
-| `GOOGLE_CLIENT_ID`               | _Optional._ Google OAuth Client ID.                             | `your_google_client_id`                             |
-| `GOOGLE_CLIENT_SECRET`           | _Optional._ Google OAuth Client Secret.                         | `your_google_client_secret`                         |
-| `LINKEDIN_CLIENT_ID`             | _Optional._ LinkedIn OAuth Client ID.                           | `your_linkedin_client_id`                           |
-| `LINKEDIN_CLIENT_SECRET`         | _Optional._ LinkedIn OAuth Client Secret.                       | `your_linkedin_client_secret`                       |
+| Variable Name                  | Description                                                     | Example                                             |
+| :----------------------------- | :-------------------------------------------------------------- | :-------------------------------------------------- |
+| `DATABASE_URL`                 | **Required.** PostgreSQL connection string.                     | `postgresql://user:password@localhost:5432/db_name` |
+| `JOB_DATABASE_URL`             | Optional pg-boss database; defaults to `DATABASE_URL`.          | `postgresql://user:password@localhost:5432/db_name` |
+| `JOB_DB_POOL_SIZE`             | Optional pg-boss pool size per process; defaults to `3`.        | `3`                                                 |
+| `WORKER_GRACEFUL_TIMEOUT_MS`   | Optional Worker SIGTERM drain deadline; defaults to 30 seconds. | `30000`                                             |
+| `RATE_LIMIT_IP_HEADER`         | Optional trusted client-IP header; defaults to Zeabur.          | `x-forwarded-for`                                   |
+| `NEXT_PUBLIC_APP_URL`          | **Required.** Public URL of your deployed app.                  | `http://localhost:3000` or `https://yourdomain.com` |
+| `BING_SITE_VERIFICATION`       | Optional Bing Webmaster `msvalidate.01` verification token.     | Value issued for your deployed hostname             |
+| `NEXT_PUBLIC_UMAMI_SCRIPT_URL` | Optional Umami tracker URL; set all three Umami variables.      | `https://analytics.example.com/script.js`           |
+| `NEXT_PUBLIC_UMAMI_WEBSITE_ID` | Optional deployment-specific Umami website UUID.                | `00000000-0000-4000-8000-000000000000`              |
+| `NEXT_PUBLIC_UMAMI_DOMAINS`    | Optional comma-separated host allowlist for this deployment.    | `yourdomain.com`                                    |
+| `BETTER_AUTH_SECRET`           | **Required.** Random session secret, at least 32 characters.    | Generate with `openssl rand -base64 32`             |
+| `RESEND_API_KEY`               | Required when `emailAuth` is enabled. Resend API key.           | `re_xxxxxxxxxxxxxxxx`                               |
+| `RESEND_EMAIL_FROM`            | Required when `emailAuth` is enabled. Verified sender.          | `noreply@your-verified-domain.com`                  |
+| `LLM_API_KEY`                  | Required when `ai` is enabled. Key for your LLM endpoint.       | `sk-...`                                            |
+| `LLM_BASE_URL`                 | Optional Responses API endpoint; defaults to OpenAI.            | `https://api.openai.com/v1`                         |
+| `AI_DEFAULT_MODEL`             | Optional chat model id; defaults to `gpt-5.6-luna`.             | `gpt-5.6-luna`                                      |
+| `PRISM_API_KEY`                | **Required for rendering.** Prism API key.                      | `pk_...`                                            |
+| `PRISM_API_SECRET`             | **Required for rendering.** Prism API secret.                   | `sk_...`                                            |
+| `STRIPE_SECRET_KEY`            | Required for billing. Prefer a least-privilege restricted key.  | `rk_test_...` or `rk_live_...`                      |
+| `STRIPE_ENVIRONMENT`           | Stripe mode; defaults to `test_mode`.                           | `test_mode` or `live_mode`                          |
+| `STRIPE_WEBHOOK_SECRET`        | Required when `billing` is enabled. Endpoint signing secret.    | `whsec_your_webhook_secret`                         |
+| `R2_ENDPOINT`                  | Required when `uploads` is enabled. R2 API endpoint.            | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`     |
+| `R2_ACCESS_KEY_ID`             | Required when `uploads` is enabled. R2 access key ID.           | `your_r2_access_key_id`                             |
+| `R2_SECRET_ACCESS_KEY`         | Required when `uploads` is enabled. R2 secret key.              | `your_r2_secret_access_key`                         |
+| `R2_BUCKET_NAME`               | Required when `uploads` is enabled. R2 bucket name.             | `your_r2_bucket_name`                               |
+| `UPLOAD_CLEANUP_SECRET`        | Required when `uploads` is enabled. 32+ character secret.       | Generate with `openssl rand -base64 32`             |
+| `GITHUB_CLIENT_ID`             | _Optional._ GitHub OAuth Client ID.                             | `your_github_client_id`                             |
+| `GITHUB_CLIENT_SECRET`         | _Optional._ GitHub OAuth Client Secret.                         | `your_github_client_secret`                         |
+| `GOOGLE_CLIENT_ID`             | _Optional._ Google OAuth Client ID.                             | `your_google_client_id`                             |
+| `GOOGLE_CLIENT_SECRET`         | _Optional._ Google OAuth Client Secret.                         | `your_google_client_secret`                         |
+| `LINKEDIN_CLIENT_ID`           | _Optional._ LinkedIn OAuth Client ID.                           | `your_linkedin_client_id`                           |
+| `LINKEDIN_CLIENT_SECRET`       | _Optional._ LinkedIn OAuth Client Secret.                       | `your_linkedin_client_secret`                       |
 
 > **Tip:** You can generate a secure key using the following command:
 > `openssl rand -base64 32`
 >
-> **Optional local CLI auth:** for scripts, local agents, or quick terminal access, you can export `VIBESKU_CLI_API_KEY=ssk_...` instead of storing credentials in the CLI config.
+> **Optional local CLI auth:** for scripts, local agents, or quick terminal access, you can export `VIBESKU_CLIPS_CLI_API_KEY=ssk_...` instead of storing credentials in the CLI config.
 
 #### Analytics
 
@@ -265,7 +259,7 @@ This starter distinguishes clearly between human auth and machine auth:
 
 - **Browser users:** Better Auth session cookies for the web app
 - **Server-to-server and agent access:** user-managed API keys
-- **Local developer tools:** browser-approved device login via `vibesku-cli`
+- **Local developer tools:** browser-approved device login via `vibesku-clips-cli`
 
 What ships today:
 
@@ -278,13 +272,13 @@ Quick examples:
 
 ```bash
 # Sign in a local CLI through the browser
-pnpm vibesku-cli -- auth login --base-url http://localhost:3000
+pnpm vibesku-clips-cli -- auth login --base-url http://localhost:3000
 
 # Check current CLI auth state
-pnpm vibesku-cli -- auth status --base-url http://localhost:3000
+pnpm vibesku-clips-cli -- auth status --base-url http://localhost:3000
 
 # Use an API key for scripts or coding agents
-VIBESKU_CLI_API_KEY=ssk_your_key_here pnpm vibesku-cli -- auth status --base-url http://localhost:3000
+VIBESKU_CLIPS_CLI_API_KEY=ssk_your_key_here pnpm vibesku-clips-cli -- auth status --base-url http://localhost:3000
 ```
 
 The web app exposes management surfaces at `/dashboard/developer` for both API keys and authorized CLI sessions.
@@ -318,20 +312,20 @@ After successful execution, the user receives `super_admin` privileges and can a
 
 #### Application Scripts
 
-| Script                 | Description                                                    |
-| :--------------------- | :------------------------------------------------------------- |
-| `pnpm dev`             | Start development server.                                      |
-| `pnpm build`           | Build application for production.                              |
-| `pnpm start`           | Start production server.                                       |
-| `pnpm vibesku-cli`     | Run the first-party CLI for device login and API verification. |
-| `pnpm lint`            | Check code for linting errors.                                 |
-| `pnpm dead-code:check` | Detect unused files, exports, and dependencies.                |
-| `pnpm type-check`      | Run TypeScript type checking.                                  |
-| `pnpm test`            | Run the Jest test suite.                                       |
-| `pnpm test:coverage`   | Run Jest and generate a coverage report.                       |
-| `pnpm test:e2e`        | Build and run Playwright E2E smoke tests.                      |
-| `pnpm prettier:format` | Format all code using Prettier.                                |
-| `pnpm set:admin`       | Promote specified email user to super admin.                   |
+| Script                   | Description                                                    |
+| :----------------------- | :------------------------------------------------------------- |
+| `pnpm dev`               | Start development server.                                      |
+| `pnpm build`             | Build application for production.                              |
+| `pnpm start`             | Start production server.                                       |
+| `pnpm vibesku-clips-cli` | Run the first-party CLI for device login and API verification. |
+| `pnpm lint`              | Check code for linting errors.                                 |
+| `pnpm dead-code:check`   | Detect unused files, exports, and dependencies.                |
+| `pnpm type-check`        | Run TypeScript type checking.                                  |
+| `pnpm test`              | Run the Jest test suite.                                       |
+| `pnpm test:coverage`     | Run Jest and generate a coverage report.                       |
+| `pnpm test:e2e`          | Build and run Playwright E2E smoke tests.                      |
+| `pnpm prettier:format`   | Format all code using Prettier.                                |
+| `pnpm set:admin`         | Promote specified email user to super admin.                   |
 
 ## 🧪 E2E Testing
 
@@ -415,15 +409,10 @@ the intent. This second check catches a late PUT that began while the signed URL
 was still valid. Clients built against the older unsigned-header protocol must
 be refreshed when this version is deployed.
 
-For a rolling v1-to-v2 deployment, set `UPLOAD_LEGACY_COMPLETION_SINCE` to the
-rollout start and `UPLOAD_LEGACY_COMPLETION_UNTIL` to an absolute timestamp no
-more than 24 hours later. The compatibility path only accepts the authenticated
-user's timestamp-and-UUID v1 keys issued up to 15 minutes before that start,
-verifies the declared URL and actual R2 metadata, applies upload quotas, and is
-idempotent. Remove both variables after the cutoff. Then perform a one-time,
-dry-run inventory comparison between R2's `uploads/` prefix and the upload
-records' `"fileKey"` values; review the difference before deleting untracked
-legacy objects. New clients always require a database-backed v2 intent.
+Every completion requires a database-backed intent; there is no unauthenticated
+or key-only completion path. Per-user storage quotas are 1 GiB per rolling 24
+hours and 5 GiB in total, defined as `DAILY_QUOTA_BYTES` and `TOTAL_QUOTA_BYTES`
+in `src/lib/config/upload.ts`.
 
 ### 2. Schedule Upload Cleanup
 
@@ -532,7 +521,7 @@ see [the Zeabur deployment guide](docs/deployment-zeabur.md#using-the-workflow-i
 2. Configure every required variable from `.env.example`. Set
    `NEXT_PUBLIC_APP_URL` to the final HTTPS origin before building because
    canonical URLs and client configuration are compiled from it. Keep the user
-   upload bucket private; see [private-file cutover](docs/architecture-remediation.md#deployment-requirements).
+   upload bucket private; see [architecture notes](docs/architecture.md#deployment-requirements).
 3. Set `PRODUCTION_DATABASE_URL` in the GitHub `production` environment, plus
    `PRODUCTION_JOB_DATABASE_URL` for a separate queue database. The release
    workflow checks the exact SHA's Quality result and runs migrations before promotion.

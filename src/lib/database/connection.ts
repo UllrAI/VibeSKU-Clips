@@ -1,6 +1,9 @@
 import env from "@/env";
 
-import { utcConnectionOptions } from "@/database/connection-options";
+import {
+  POOL_TIMING,
+  utcConnectionOptions,
+} from "@/database/connection-options";
 
 /**
  * Detects if the application is running in a serverless environment
@@ -53,14 +56,10 @@ export function getConnectionConfig() {
     // Higher connection pool for traditional servers
     max: env.DB_POOL_SIZE,
 
-    // Longer idle timeout for persistent applications
-    idle_timeout: env.DB_IDLE_TIMEOUT, // 5 minutes
-
-    // Longer connection lifetime
-    max_lifetime: env.DB_MAX_LIFETIME, // 4 hours
-
-    // Connection timeout
-    connect_timeout: env.DB_CONNECT_TIMEOUT,
+    // Longer idle timeout, lifetime, and connect deadline than serverless
+    idle_timeout: POOL_TIMING.idleTimeout,
+    max_lifetime: POOL_TIMING.maxLifetime,
+    connect_timeout: POOL_TIMING.connectTimeout,
 
     // Enable prepared statements
     prepare: true,

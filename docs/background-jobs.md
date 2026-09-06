@@ -38,10 +38,22 @@ requests without a check-then-insert race. Reusing the key with different input 
 Task acceptance and a `task_dispatches` outbox row commit in one transaction; the Worker
 retries delivery after queue or Web failures. Each scope may have at most 100 unfinished
 tasks, and the example route applies a user request limit. Queue job IDs prevent duplicate queue
-rows independently. `scopeKey` is `user:<id>` in V1 and is also assigned as the
-pg-boss group and singleton key. `groupConcurrency` expresses tenant fairness;
-the singleton queue policy closes concurrent-claim races at a limit of one. It
-does not implement provider rate limits, quotas, or billing.
+rows independently. `scopeKey` is also assigned as the pg-boss group and
+singleton key. `groupConcurrency` expresses tenant fairness; the singleton queue
+policy closes concurrent-claim races at a limit of one. It does not implement
+provider rate limits, quotas, or billing.
+
+Because the singleton policy allows one active job per key, the scope key is
+what decides how much of a user's work runs at once. `src/lib/ugc/scope.ts`
+serialises per product (`user:<id>:product:<id>`) and per batch, and spreads clip
+rendering over a fixed number of lanes (`user:<id>:batch:<id>#<lane>`) so a
+batch does not render strictly one clip at a time.
+
+The three production jobs — `ugc.product.ingest`, `ugc.batch.run`, and
+`ugc.clip.render` — live in `src/lib/jobs/ugc`. `ugc.clip.render` is the
+reference for long provider work: it uses `scheduleContinuation` to poll rather
+than holding a claim open, and it archives every finished asset into R2 before
+the clip is marked ready.
 
 ## State and cancellation
 

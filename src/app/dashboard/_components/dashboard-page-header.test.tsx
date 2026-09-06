@@ -39,9 +39,9 @@ jest.mock("@/components/ui/breadcrumb-client", () => ({
     children: React.ReactNode;
     className?: string;
   }) => (
-    <span data-testid="breadcrumb-page" className={className}>
+    <h1 data-testid="breadcrumb-page" className={className}>
       {children}
-    </span>
+    </h1>
   ),
   BreadcrumbSeparator: ({ className }: { className?: string }) => (
     <span data-testid="breadcrumb-separator" className={className}>

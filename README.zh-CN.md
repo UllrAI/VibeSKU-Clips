@@ -4,9 +4,9 @@
 
 VibeSKU Clips 把商品资料转化为面向 TikTok Shop 账号矩阵的 15 秒本地化 UGC 视频。
 运营提交商品链接或图片与创作要求，平台连续完成商品理解、脚本创作、视听生成、
-剪辑与质检，交付可分组导出的素材与商品对应清单。
+剪辑与质检，交付可分组导出的素材与交付清单。
 
-平台负责素材生产与商品对应清单；账号登录、内容发布、实际挂车与效果观察由运营
+平台负责素材生产与交付清单；账号登录、内容发布、挂车商品与效果观察由运营
 团队通过既有工具完成。
 
 ![VibeSKU Clips](./public/og.png)
@@ -27,8 +27,8 @@ VibeSKU Clips 把商品资料转化为面向 TikTok Shop 账号矩阵的 15 秒�
   与目标语言表达。
 - **审核与再生成。** 分组对比、相似内容提示、三种选用状态；失败可单独重试，再生成
   保留原结果以便比较。
-- **导出附商品清单。** 按商品或账号标签分组，随附素材编号、变体与挂车链接；未匹配
-  时明确标记为"待匹配商品"。
+- **导出附交付清单。** 按商品或账号标签分组，逐条包含素材编号、商品、变体、语言、
+  市场、模特、授权说明与合规声明。
 - **资产与消耗记录。** 商品、模特、脚本与合格成片保留来源、授权与版本关系；解析、
   脚本、生成、重试与再生成分别计量。
 
@@ -111,48 +111,41 @@ cp .env.example .env
 
 #### 环境变量说明
 
-| 变量名                           | 描述                                                 | 示例                                                |
-| :------------------------------- | :--------------------------------------------------- | :-------------------------------------------------- |
-| `DATABASE_URL`                   | **必需。** PostgreSQL 连接字符串。                   | `postgresql://user:password@localhost:5432/db_name` |
-| `JOB_DATABASE_URL`               | 可选。pg-boss 数据库，默认使用 `DATABASE_URL`。      | `postgresql://user:password@localhost:5432/db_name` |
-| `JOB_DB_POOL_SIZE`               | 可选。每进程 pg-boss 连接池大小，默认 `3`。          | `3`                                                 |
-| `WORKER_GRACEFUL_TIMEOUT_MS`     | 可选。Worker 收到 SIGTERM 后的排空时限，默认 30 秒。 | `30000`                                             |
-| `RATE_LIMIT_IP_HEADER`           | **选填。** 可信客户端 IP 请求头，默认适配 Zeabur。   | `x-forwarded-for`                                   |
-| `NEXT_PUBLIC_APP_URL`            | **必需。** 您应用部署后的公开 URL。                  | `http://localhost:3000` 或 `https://yourdomain.com` |
-| `BETTER_AUTH_SECRET`             | **必需。** 至少 32 个字符的随机会话密钥。            | 使用 `openssl rand -base64 32` 生成                 |
-| `RESEND_API_KEY`                 | 启用 `emailAuth` 时必需。Resend API Key。            | `re_xxxxxxxxxxxxxxxx`                               |
-| `RESEND_EMAIL_FROM`              | 启用 `emailAuth` 时必需。已验证的发件地址。          | `noreply@your-verified-domain.com`                  |
-| `LLM_API_KEY`                    | 启用 `ai` 时必需。LLM 端点的 API Key。               | `sk-...`                                            |
-| `LLM_BASE_URL`                   | 可选的 OpenAI 兼容端点，默认为 OpenAI 官方 API。     | `https://api.openai.com/v1`                         |
-| `AI_DEFAULT_MODEL`               | 可选的聊天模型 id，默认 `gpt-5.6-luna`。             | `gpt-5.6-luna`                                      |
-| `PRISM_API_KEY`                  | **视频生成必填。** Prism API Key。                   | `pk_...`                                            |
-| `PRISM_API_SECRET`               | **视频生成必填。** Prism API Secret。                | `sk_...`                                            |
-| `PRISM_API_BASE_URL`             | 可选的 Prism 域名，默认生产环境。                    | `https://prism.ullrai.com/api/v1`                   |
-| `PRISM_IMAGE_MODEL`              | 可选的开场帧模型，默认 `nano-banana-pro`。           | `nano-banana-pro`                                   |
-| `PRISM_VIDEO_MODEL`              | 可选的成片模型，默认 `sora2`。                       | `sora2`                                             |
-| `STRIPE_SECRET_KEY`              | 启用 `billing` 时必需。需与环境模式匹配。            | `sk_test_...` 或 `sk_live_...`                      |
-| `STRIPE_ENVIRONMENT`             | Stripe 环境模式，默认为 `test_mode`。                | `test_mode` 或 `live_mode`                          |
-| `STRIPE_WEBHOOK_SECRET`          | 启用 `billing` 时必需。Endpoint 签名密钥。           | `whsec_your_webhook_secret`                         |
-| `R2_ENDPOINT`                    | 启用 `uploads` 时必需。Cloudflare R2 API 端点。      | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`     |
-| `R2_ACCESS_KEY_ID`               | 启用 `uploads` 时必需。R2 访问密钥 ID。              | `your_r2_access_key_id`                             |
-| `R2_SECRET_ACCESS_KEY`           | 启用 `uploads` 时必需。R2 秘密访问密钥。             | `your_r2_secret_access_key`                         |
-| `R2_BUCKET_NAME`                 | 启用 `uploads` 时必需。R2 存储桶名称。               | `your_r2_bucket_name`                               |
-| `UPLOAD_CLEANUP_SECRET`          | 启用 `uploads` 时必需。32 位以上清理密钥。           | 使用 `openssl rand -base64 32` 生成                 |
-| `UPLOAD_DAILY_QUOTA_BYTES`       | 可选。每用户滚动 24 小时上传额度。                   | `1073741824`（1 GiB）                               |
-| `UPLOAD_TOTAL_QUOTA_BYTES`       | 可选。每用户已存储与预留的总字节额度。               | `5368709120`（5 GiB）                               |
-| `UPLOAD_LEGACY_COMPLETION_SINCE` | 可选。v1 有界兼容窗口的 ISO-8601 开始时间。          | 仅与 `UPLOAD_LEGACY_COMPLETION_UNTIL` 同时设置      |
-| `UPLOAD_LEGACY_COMPLETION_UNTIL` | 可选。v1 有界兼容窗口的 ISO-8601 结束时间。          | 最多晚于对应开始时间 24 小时                        |
-| `GITHUB_CLIENT_ID`               | _可选。_ 用于 GitHub OAuth 的 Client ID。            | `your_github_client_id`                             |
-| `GITHUB_CLIENT_SECRET`           | _可选。_ 用于 GitHub OAuth 的 Client Secret。        | `your_github_client_secret`                         |
-| `GOOGLE_CLIENT_ID`               | _可选。_ 用于 Google OAuth 的 Client ID。            | `your_google_client_id`                             |
-| `GOOGLE_CLIENT_SECRET`           | _可选。_ 用于 Google OAuth 的 Client Secret。        | `your_google_client_secret`                         |
-| `LINKEDIN_CLIENT_ID`             | _可选。_ 用于 LinkedIn OAuth 的 Client ID。          | `your_linkedin_client_id`                           |
-| `LINKEDIN_CLIENT_SECRET`         | _可选。_ 用于 LinkedIn OAuth 的 Client Secret。      | `your_linkedin_client_secret`                       |
+| 变量名                       | 描述                                                 | 示例                                                |
+| :--------------------------- | :--------------------------------------------------- | :-------------------------------------------------- |
+| `DATABASE_URL`               | **必需。** PostgreSQL 连接字符串。                   | `postgresql://user:password@localhost:5432/db_name` |
+| `JOB_DATABASE_URL`           | 可选。pg-boss 数据库，默认使用 `DATABASE_URL`。      | `postgresql://user:password@localhost:5432/db_name` |
+| `JOB_DB_POOL_SIZE`           | 可选。每进程 pg-boss 连接池大小，默认 `3`。          | `3`                                                 |
+| `WORKER_GRACEFUL_TIMEOUT_MS` | 可选。Worker 收到 SIGTERM 后的排空时限，默认 30 秒。 | `30000`                                             |
+| `RATE_LIMIT_IP_HEADER`       | **选填。** 可信客户端 IP 请求头，默认适配 Zeabur。   | `x-forwarded-for`                                   |
+| `NEXT_PUBLIC_APP_URL`        | **必需。** 您应用部署后的公开 URL。                  | `http://localhost:3000` 或 `https://yourdomain.com` |
+| `BETTER_AUTH_SECRET`         | **必需。** 至少 32 个字符的随机会话密钥。            | 使用 `openssl rand -base64 32` 生成                 |
+| `RESEND_API_KEY`             | 启用 `emailAuth` 时必需。Resend API Key。            | `re_xxxxxxxxxxxxxxxx`                               |
+| `RESEND_EMAIL_FROM`          | 启用 `emailAuth` 时必需。已验证的发件地址。          | `noreply@your-verified-domain.com`                  |
+| `LLM_API_KEY`                | 启用 `ai` 时必需。LLM 端点的 API Key。               | `sk-...`                                            |
+| `LLM_BASE_URL`               | 可选的 OpenAI 兼容端点，默认为 OpenAI 官方 API。     | `https://api.openai.com/v1`                         |
+| `AI_DEFAULT_MODEL`           | 可选的聊天模型 id，默认 `gpt-5.6-luna`。             | `gpt-5.6-luna`                                      |
+| `PRISM_API_KEY`              | **视频生成必填。** Prism API Key。                   | `pk_...`                                            |
+| `PRISM_API_SECRET`           | **视频生成必填。** Prism API Secret。                | `sk_...`                                            |
+| `STRIPE_SECRET_KEY`          | 启用 `billing` 时必需。需与环境模式匹配。            | `sk_test_...` 或 `sk_live_...`                      |
+| `STRIPE_ENVIRONMENT`         | Stripe 环境模式，默认为 `test_mode`。                | `test_mode` 或 `live_mode`                          |
+| `STRIPE_WEBHOOK_SECRET`      | 启用 `billing` 时必需。Endpoint 签名密钥。           | `whsec_your_webhook_secret`                         |
+| `R2_ENDPOINT`                | 启用 `uploads` 时必需。Cloudflare R2 API 端点。      | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`     |
+| `R2_ACCESS_KEY_ID`           | 启用 `uploads` 时必需。R2 访问密钥 ID。              | `your_r2_access_key_id`                             |
+| `R2_SECRET_ACCESS_KEY`       | 启用 `uploads` 时必需。R2 秘密访问密钥。             | `your_r2_secret_access_key`                         |
+| `R2_BUCKET_NAME`             | 启用 `uploads` 时必需。R2 存储桶名称。               | `your_r2_bucket_name`                               |
+| `UPLOAD_CLEANUP_SECRET`      | 启用 `uploads` 时必需。32 位以上清理密钥。           | 使用 `openssl rand -base64 32` 生成                 |
+| `GITHUB_CLIENT_ID`           | _可选。_ 用于 GitHub OAuth 的 Client ID。            | `your_github_client_id`                             |
+| `GITHUB_CLIENT_SECRET`       | _可选。_ 用于 GitHub OAuth 的 Client Secret。        | `your_github_client_secret`                         |
+| `GOOGLE_CLIENT_ID`           | _可选。_ 用于 Google OAuth 的 Client ID。            | `your_google_client_id`                             |
+| `GOOGLE_CLIENT_SECRET`       | _可选。_ 用于 Google OAuth 的 Client Secret。        | `your_google_client_secret`                         |
+| `LINKEDIN_CLIENT_ID`         | _可选。_ 用于 LinkedIn OAuth 的 Client ID。          | `your_linkedin_client_id`                           |
+| `LINKEDIN_CLIENT_SECRET`     | _可选。_ 用于 LinkedIn OAuth 的 Client Secret。      | `your_linkedin_client_secret`                       |
 
 > **提示:** 您可以使用以下命令生成一个安全的密钥：
 > `openssl rand -base64 32`
 >
-> **可选的本地 CLI 鉴权方式：** 对于脚本、本地 Agent 或临时终端调用，您可以直接导出 `VIBESKU_CLI_API_KEY=ssk_...`，而不必把凭证写入 CLI 配置文件。
+> **可选的本地 CLI 鉴权方式：** 对于脚本、本地 Agent 或临时终端调用，您可以直接导出 `VIBESKU_CLIPS_CLI_API_KEY=ssk_...`，而不必把凭证写入 CLI 配置文件。
 
 #### 数据统计
 
@@ -224,7 +217,7 @@ pnpm db:migrate
 
 - **浏览器用户：** Web App 使用 Better Auth session cookie
 - **服务对服务、Agent、自动化脚本：** 使用用户自主管理的 API Key
-- **本地开发工具：** 使用 `vibesku-cli` 的浏览器批准设备登录
+- **本地开发工具：** 使用 `vibesku-clips-cli` 的浏览器批准设备登录
 
 当前已经提供：
 
@@ -236,14 +229,14 @@ pnpm db:migrate
 快速示例：
 
 ```bash
-# 通过浏览器批准 vibesku-cli 登录
-pnpm vibesku-cli -- auth login --base-url http://localhost:3000
+# 通过浏览器批准 vibesku-clips-cli 登录
+pnpm vibesku-clips-cli -- auth login --base-url http://localhost:3000
 
 # 查看当前 CLI 登录状态
-pnpm vibesku-cli -- auth status --base-url http://localhost:3000
+pnpm vibesku-clips-cli -- auth status --base-url http://localhost:3000
 
 # 用 API Key 驱动脚本或 Coding Agent
-VIBESKU_CLI_API_KEY=ssk_your_key_here pnpm vibesku-cli -- auth status --base-url http://localhost:3000
+VIBESKU_CLIPS_CLI_API_KEY=ssk_your_key_here pnpm vibesku-clips-cli -- auth status --base-url http://localhost:3000
 ```
 
 Web 端对应的管理入口位于 `/dashboard/developer`，可以同时管理 API Key 和已授权 CLI 会话。
@@ -277,20 +270,20 @@ pnpm set:admin --email=your-email@example.com
 
 #### 应用脚本
 
-| 脚本                   | 描述                                            |
-| :--------------------- | :---------------------------------------------- |
-| `pnpm dev`             | 启动开发服务器。                                |
-| `pnpm build`           | 为生产环境构建应用。                            |
-| `pnpm start`           | 启动生产服务器。                                |
-| `pnpm vibesku-cli`     | 运行一等公民 CLI，用于设备登录与 API 鉴权检查。 |
-| `pnpm lint`            | 检查代码中的 linting 错误。                     |
-| `pnpm dead-code:check` | 检查未使用的文件、导出与依赖。                  |
-| `pnpm type-check`      | 运行 TypeScript 类型检查。                      |
-| `pnpm test`            | 运行 Jest 测试套件。                            |
-| `pnpm test:coverage`   | 运行 Jest 并生成覆盖率报告。                    |
-| `pnpm test:e2e`        | 构建并运行 Playwright E2E 冒烟测试。            |
-| `pnpm prettier:format` | 使用 Prettier 格式化所有代码。                  |
-| `pnpm set:admin`       | 将指定邮箱的用户提升为超级管理员。              |
+| 脚本                     | 描述                                            |
+| :----------------------- | :---------------------------------------------- |
+| `pnpm dev`               | 启动开发服务器。                                |
+| `pnpm build`             | 为生产环境构建应用。                            |
+| `pnpm start`             | 启动生产服务器。                                |
+| `pnpm vibesku-clips-cli` | 运行一等公民 CLI，用于设备登录与 API 鉴权检查。 |
+| `pnpm lint`              | 检查代码中的 linting 错误。                     |
+| `pnpm dead-code:check`   | 检查未使用的文件、导出与依赖。                  |
+| `pnpm type-check`        | 运行 TypeScript 类型检查。                      |
+| `pnpm test`              | 运行 Jest 测试套件。                            |
+| `pnpm test:coverage`     | 运行 Jest 并生成覆盖率报告。                    |
+| `pnpm test:e2e`          | 构建并运行 Playwright E2E 冒烟测试。            |
+| `pnpm prettier:format`   | 使用 Prettier 格式化所有代码。                  |
+| `pnpm set:admin`         | 将指定邮箱的用户提升为超级管理员。              |
 
 ## 🧪 E2E 测试
 
@@ -370,12 +363,9 @@ pnpm test:e2e
 从而清理在签名仍有效时才开始的晚到 PUT。部署该版本时，仍使用旧版未签名请求头协议
 的客户端必须刷新。
 
-执行 v1 到 v2 的滚动部署时，将 `UPLOAD_LEGACY_COMPLETION_SINCE` 设置为上线开始时间，
-并将 `UPLOAD_LEGACY_COMPLETION_UNTIL` 设置为其后不超过 24 小时的绝对时间。兼容路径
-仅接收开始时间前最多 15 分钟签发、属于当前登录用户的“时间戳 + UUID”旧版对象键，
-校验声明 URL 与 R2 实际元数据、执行上传配额准入，并保持幂等。截止后应删除这两个变量；
-随后对 R2 的 `uploads/` 前缀与上传记录的 `"fileKey"` 值做一次只读清单差异检查，
-人工确认后再删除无记录的旧版对象。新客户端始终必须使用数据库支持的 v2 上传意图。
+所有完成请求都必须携带数据库中的上传意图，不存在仅凭对象键即可完成的旁路。
+单用户额度为滚动 24 小时 1 GiB、总计 5 GiB，定义在 `src/lib/config/upload.ts`
+的 `DAILY_QUOTA_BYTES` 与 `TOTAL_QUOTA_BYTES`。
 
 ### 2. 调度上传清理
 
@@ -477,7 +467,7 @@ Docker 构建。
 1. 将通过审查的 commit 合并到默认分支，并等待 Quality workflow 通过。
 2. 配置 `.env.example` 中的全部必需变量。构建前必须把 `NEXT_PUBLIC_APP_URL`
    设置为最终 HTTPS Origin，因为 canonical URL 与客户端配置会在构建时写入。
-   用户文件使用私有桶，升级时按[私有文件切换说明](docs/architecture-remediation.md#deployment-requirements)操作。
+   用户文件使用私有桶，升级时按[架构说明](docs/architecture.md#deployment-requirements)操作。
 3. 在 GitHub `production` 环境配置 `PRODUCTION_DATABASE_URL`；队列使用独立数据库时
    再设置 `PRODUCTION_JOB_DATABASE_URL`。发布流程核验精确 SHA 的 Quality 成功后，
    自动执行一次迁移，再更新生产分支。

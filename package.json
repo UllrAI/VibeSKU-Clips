@@ -12,7 +12,7 @@
     "build": "next build && pnpm build:worker && node scripts/prepare-standalone.mjs",
     "build:worker": "node scripts/build-worker.mjs",
     "start": "node .next/standalone/server.js",
-    "vibesku-cli": "node --import tsx packages/cli/src/index.ts",
+    "vibesku-clips-cli": "node --import tsx packages/cli/src/index.ts",
     "lint": "eslint .",
     "dead-code:check": "pnpm content:build && SKIP_ENV_VALIDATION=1 knip",
     "type-check": "pnpm content:build && node scripts/clean-next-types.mjs && SKIP_ENV_VALIDATION=1 next typegen && tsc --noEmit",

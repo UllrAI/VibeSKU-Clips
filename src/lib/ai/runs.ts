@@ -8,10 +8,14 @@ import {
   aiUsageEvents,
 } from "@/database/schema";
 import { withoutImageBytes } from "./finalize";
-import env from "@/env";
 import type { AiMessage } from "./chat-history-types";
 import type { AiUsageEventInput } from "./usage";
-import { AI_RUN_TIMEOUT_MS, AI_RUN_TOKEN_RESERVATION } from "./limits";
+import {
+  AI_DAILY_IMAGE_LIMIT,
+  AI_DAILY_TOKEN_LIMIT,
+  AI_RUN_TIMEOUT_MS,
+  AI_RUN_TOKEN_RESERVATION,
+} from "./limits";
 
 export class AiRunConflictError extends Error {}
 export class AiBudgetExceededError extends Error {}
@@ -78,10 +82,7 @@ export async function beginAiRun(input: {
     // One active run per user also serializes approvals and image reservations.
     if (Number(usage.active) > 0)
       throw new AiRunConflictError("Another response is still running.");
-    if (
-      Number(usage.tokens) + AI_RUN_TOKEN_RESERVATION >
-      env.AI_DAILY_TOKEN_LIMIT
-    )
+    if (Number(usage.tokens) + AI_RUN_TOKEN_RESERVATION > AI_DAILY_TOKEN_LIMIT)
       throw new AiBudgetExceededError("Daily AI allowance reached.");
     const [run] = await tx
       .insert(aiRuns)
@@ -90,13 +91,13 @@ export async function beginAiRun(input: {
         conversationId: input.conversationId,
         requestKey,
         reservedTokens: AI_RUN_TOKEN_RESERVATION,
-        imageCount: Number(usage.images) < env.AI_DAILY_IMAGE_LIMIT ? 1 : 0,
+        imageCount: Number(usage.images) < AI_DAILY_IMAGE_LIMIT ? 1 : 0,
         expiresAt: new Date(Date.now() + AI_RUN_TIMEOUT_MS + 30_000),
       })
       .returning();
     return {
       run,
-      allowImageGeneration: Number(usage.images) < env.AI_DAILY_IMAGE_LIMIT,
+      allowImageGeneration: Number(usage.images) < AI_DAILY_IMAGE_LIMIT,
     };
   });
 }

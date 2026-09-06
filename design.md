@@ -70,8 +70,9 @@ because it is content.
 - Body: `text-sm` or `text-base`, relaxed leading for long passages.
 - Metadata: `text-xs` or `text-sm` with `muted-foreground`.
 
-Every route has one visible, descriptive `h1`, except focused creation
-workspaces where the artefact itself is the heading. Use sentence case. Do not
+Every route has one visible, descriptive `h1`. Outside the dashboard the page
+title carries it; inside, the current page in `DashboardPageHeader` is the `h1`,
+so pages must not add a second one. Use sentence case. Do not
 use all-caps eyebrows, decorative tracking, or tiny grey text to force content
 into a layout. Reference numbers, model ids, and timestamps use the mono stack
 and `tabular-nums`.
@@ -114,7 +115,8 @@ bounce, or hover zoom.
 ## Page composition
 
 - **Standard page.** `DashboardPageWrapper` with a title, one orienting
-  sentence, and actions beside the title on wide screens.
+  sentence, and actions beside the title on wide screens. The wrapper renders
+  the title as the page `h1`.
 - **Library and gallery.** Search and filters form one control group. Cards keep
   consistent geometry; media, title, metadata, and state sit in the same
   positions across peers.

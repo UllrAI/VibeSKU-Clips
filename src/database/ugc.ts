@@ -87,7 +87,6 @@ export const ugcProducts = pgTable(
     sourceUrl: text("sourceUrl"),
     // Storefront link for the market the clip will be published in. Kept apart
     // from sourceUrl so a reference page is never exported as a shoppable link.
-    shopUrl: text("shopUrl"),
     variant: text("variant"),
     market: text("market"),
     images: jsonb("images").$type<string[]>().notNull().default([]),
@@ -286,7 +285,6 @@ export const ugcExports = pgTable(
     name: text("name").notNull(),
     groupBy: text("groupBy").notNull(),
     clipCount: integer("clipCount").notNull(),
-    unmatchedCount: integer("unmatchedCount").notNull().default(0),
     manifest: jsonb("manifest").$type<ExportManifest>().notNull(),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()

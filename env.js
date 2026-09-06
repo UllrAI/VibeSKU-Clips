@@ -94,34 +94,11 @@ const env = createEnv({
         "UPLOAD_CLEANUP_SECRET must not use the example placeholder",
       )
       .optional(),
-    UPLOAD_DAILY_QUOTA_BYTES: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(1024 * 1024 * 1024),
-    UPLOAD_TOTAL_QUOTA_BYTES: z.coerce
-      .number()
-      .int()
-      .positive()
-      .default(5 * 1024 * 1024 * 1024),
-    UPLOAD_LEGACY_COMPLETION_SINCE: z.preprocess(
-      (value) =>
-        typeof value === "string" && value.trim() === "" ? undefined : value,
-      z.iso.datetime().optional(),
-    ),
-    UPLOAD_LEGACY_COMPLETION_UNTIL: z.preprocess(
-      (value) =>
-        typeof value === "string" && value.trim() === "" ? undefined : value,
-      z.iso.datetime().optional(),
-    ),
 
     // Payments
     STRIPE_SECRET_KEY: optionalCredentialSchema,
     STRIPE_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).default("test_mode"),
     STRIPE_WEBHOOK_SECRET: optionalCredentialSchema,
-
-    AI_DAILY_TOKEN_LIMIT: z.coerce.number().int().positive().default(2_000_000),
-    AI_DAILY_IMAGE_LIMIT: z.coerce.number().int().nonnegative().default(10),
 
     // AI assistant (OpenAI Responses-compatible endpoint)
     LLM_API_KEY: optionalCredentialSchema,
@@ -187,9 +164,6 @@ const env = createEnv({
 
     // Database connection pool settings
     DB_POOL_SIZE: process.env.DB_POOL_SIZE,
-    DB_IDLE_TIMEOUT: process.env.DB_IDLE_TIMEOUT,
-    DB_MAX_LIFETIME: process.env.DB_MAX_LIFETIME,
-    DB_CONNECT_TIMEOUT: process.env.DB_CONNECT_TIMEOUT,
     JOB_DB_POOL_SIZE: process.env.JOB_DB_POOL_SIZE,
     WORKER_GRACEFUL_TIMEOUT_MS: process.env.WORKER_GRACEFUL_TIMEOUT_MS,
     RATE_LIMIT_IP_HEADER: process.env.RATE_LIMIT_IP_HEADER,
@@ -214,10 +188,6 @@ const env = createEnv({
     R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
     R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
     UPLOAD_CLEANUP_SECRET: process.env.UPLOAD_CLEANUP_SECRET,
-    UPLOAD_DAILY_QUOTA_BYTES: process.env.UPLOAD_DAILY_QUOTA_BYTES,
-    UPLOAD_TOTAL_QUOTA_BYTES: process.env.UPLOAD_TOTAL_QUOTA_BYTES,
-    UPLOAD_LEGACY_COMPLETION_SINCE: process.env.UPLOAD_LEGACY_COMPLETION_SINCE,
-    UPLOAD_LEGACY_COMPLETION_UNTIL: process.env.UPLOAD_LEGACY_COMPLETION_UNTIL,
 
     // Application settings
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
@@ -231,20 +201,14 @@ const env = createEnv({
     STRIPE_ENVIRONMENT: process.env.STRIPE_ENVIRONMENT,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
 
-    AI_DAILY_TOKEN_LIMIT: process.env.AI_DAILY_TOKEN_LIMIT,
-    AI_DAILY_IMAGE_LIMIT: process.env.AI_DAILY_IMAGE_LIMIT,
-
     // AI assistant
     LLM_API_KEY: process.env.LLM_API_KEY,
     LLM_BASE_URL: process.env.LLM_BASE_URL,
     AI_DEFAULT_MODEL: process.env.AI_DEFAULT_MODEL,
 
     // Media generation
-    PRISM_API_BASE_URL: process.env.PRISM_API_BASE_URL,
     PRISM_API_KEY: process.env.PRISM_API_KEY,
     PRISM_API_SECRET: process.env.PRISM_API_SECRET,
-    PRISM_IMAGE_MODEL: process.env.PRISM_IMAGE_MODEL,
-    PRISM_VIDEO_MODEL: process.env.PRISM_VIDEO_MODEL,
 
     // E2E testing
     E2E_DATABASE_URL: process.env.E2E_DATABASE_URL,

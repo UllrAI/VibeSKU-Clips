@@ -1,4 +1,4 @@
-# Architecture consistency and recovery
+# Architecture boundaries and recovery
 
 The application remains a modular Next.js monolith with a separate Node Worker,
 PostgreSQL, pg-boss, Stripe, and private R2 storage. These changes add durable
@@ -21,7 +21,7 @@ flowchart LR
   Stripe[Verified Stripe webhook] --> DB
 ```
 
-## Resolved boundaries
+## Durable boundaries
 
 | Finding                          | Implementation                                                                                                                                                                                                                                        | Regression coverage                                                                                                                           |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -51,23 +51,16 @@ immutable compliance ledger.
    reaches the private Zeabur PostgreSQL through the dedicated SSH tunnel described
    in [the deployment runbook](deployment-zeabur.md#migration-network-access).
    Missing credentials or tunnel access block promotion.
-2. Deploy Web and Worker from the same release commit and Dockerfile. Give the Worker the four R2
-   credentials and the same upload quotas as Web, so it can finalize media and
-   remove deleted/abandoned objects. No model credentials are needed for media
-   retries; the Worker does not replay an interrupted AI generation.
-3. Disable public bucket access, custom public domains, and `r2.dev` for the user
-   upload bucket. Code and SQL cannot revoke an already-public object URL. For
-   an existing deployment, pause uploads and drain in-flight Web requests while
-   applying migrations 0025–0026 and deploying both processes; reopen after public
-   access is disabled and authenticated access is verified. Do not keep old Web
-   replicas writing public URLs during this cutover.
-4. Existing file metadata and structured AI file/tool links are migrated. Text
-   already copied outside the application cannot be recalled; disabling bucket
-   public access also invalidates those old URLs. Previously issued signed GETs
-   can remain usable for up to five minutes after deletion.
-5. This release changes the chat protocol. Refresh open AI tabs after deployment.
-   Legacy unscoped response handles are ignored and bounded local history is used
-   instead. Queue reconciliation adopts pre-outbox queued/poll jobs from pg-boss.
+2. Deploy Web and Worker from the same release commit and Dockerfile. Give the
+   Worker the four R2 credentials plus `LLM_API_KEY` and the `PRISM_*` pair, so
+   it can render clips, finalize media, and remove deleted or abandoned objects.
+   A Worker without the media credentials accepts batches and then fails every
+   render.
+3. Disable public bucket access, custom public domains, and `r2.dev` for the
+   user upload bucket. Every file is served through an authenticated
+   application URL backed by a five-minute signed GET; code and SQL cannot
+   revoke an object URL that was ever public. Previously issued signed GETs can
+   remain usable for up to five minutes after deletion.
 
 ## Runtime guarantees and limits
 
@@ -76,11 +69,11 @@ provider idempotency keys. New mutating AI tools must implement idempotency with
 `userId + conversationId + toolCallId`; a signed approval alone is not an
 execution ledger. The bundled save-document operation is idempotent.
 
-`AI_DAILY_TOKEN_LIMIT` defaults to 2,000,000 admission units per rolling 24 hours.
-Each admitted run reserves 400,000; reported token totals replace the reservation.
-Unknown provider usage retains the reservation. This prevents unmetered retries;
-it is not a provider invoice or a strict monetary cap. `AI_DAILY_IMAGE_LIMIT`
-defaults to 10. Failed calls that never start the provider release reservations.
+`AI_DAILY_TOKEN_LIMIT` in `src/lib/ai/limits.ts` is 2,000,000 admission units per
+rolling 24 hours. Each admitted run reserves 400,000; reported token totals
+replace the reservation. Unknown provider usage retains the reservation. This
+prevents unmetered retries; it is not a provider invoice or a strict monetary
+cap. `AI_DAILY_IMAGE_LIMIT` is 10. Failed calls that never start the provider release reservations.
 Use provider-side spending limits when an account requires a hard cost ceiling.
 
 Generation stops on timeout or cancellation. A process killed before its final
@@ -90,9 +83,3 @@ Media failures after that transaction are recoverable by the Worker. Long
 conversations remain readable in pages of 80 messages; sending is bounded to
 80 stored messages and 64 KiB of serialized context, with a localized prompt to
 start a new conversation when full.
-
-The PR does not deploy, change a live bucket, migrate production, or call paid
-providers. Unit/SDK and PostgreSQL integration tests inject external failures;
-E2E exercises the production build with isolated fixtures and simulated provider
-streams. Production promotion and bucket access still need the deployment
-configuration above.

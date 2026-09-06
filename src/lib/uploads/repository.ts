@@ -32,23 +32,6 @@ interface CompleteUploadInput {
   };
 }
 
-interface CompleteLegacyUploadInput {
-  userId: string;
-  key: string;
-  contentLength: number;
-  contentType: string;
-  declaration: {
-    fileName: string;
-    fileSize: number;
-    contentType: string;
-    url: string;
-  };
-}
-
-const LEGACY_UPLOAD_KEY_PATTERN =
-  /^uploads\/([^/]+)\/(\d{13})-[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.[a-z0-9]+$/i;
-const LEGACY_UPLOAD_CLOCK_SKEW_MS = 5 * 60 * 1000;
-
 export class UploadQuotaExceededError extends Error {
   constructor(readonly quota: "daily" | "total") {
     super(`The ${quota} upload quota has been reached.`);
@@ -76,18 +59,11 @@ export class UploadMetadataMismatchError extends Error {
   }
 }
 
-export interface UploadRepositoryConfig {
-  UPLOAD_DAILY_QUOTA_BYTES: number;
-  UPLOAD_TOTAL_QUOTA_BYTES: number;
-  UPLOAD_LEGACY_COMPLETION_SINCE?: string;
-  UPLOAD_LEGACY_COMPLETION_UNTIL?: string;
-}
 export type DeleteObject = (
   key: string,
 ) => Promise<{ success: boolean; error?: string }>;
 export function createUploadRepository(
   db: AppDatabase,
-  env: UploadRepositoryConfig,
   buildUrl: (key: string) => string,
   deleteFile: DeleteObject,
 ) {
@@ -180,10 +156,10 @@ export function createUploadRepository(
         }
       }
       const usage = await getUploadUsage(userId, tx);
-      if (usage.daily + fileSize > env.UPLOAD_DAILY_QUOTA_BYTES) {
+      if (usage.daily + fileSize > UPLOAD_CONFIG.DAILY_QUOTA_BYTES) {
         throw new UploadQuotaExceededError("daily");
       }
-      if (usage.total + fileSize > env.UPLOAD_TOTAL_QUOTA_BYTES) {
+      if (usage.total + fileSize > UPLOAD_CONFIG.TOTAL_QUOTA_BYTES) {
         throw new UploadQuotaExceededError("total");
       }
 
@@ -353,107 +329,6 @@ export function createUploadRepository(
     });
   }
 
-  function isEligibleLegacyUploadKey(
-    key: string,
-    userId: string,
-    now: number,
-  ): boolean {
-    const since = env.UPLOAD_LEGACY_COMPLETION_SINCE
-      ? Date.parse(env.UPLOAD_LEGACY_COMPLETION_SINCE)
-      : Number.NaN;
-    const cutoff = env.UPLOAD_LEGACY_COMPLETION_UNTIL
-      ? Date.parse(env.UPLOAD_LEGACY_COMPLETION_UNTIL)
-      : Number.NaN;
-    if (
-      !Number.isFinite(since) ||
-      !Number.isFinite(cutoff) ||
-      since >= cutoff ||
-      cutoff - since > 24 * 60 * 60 * 1000 ||
-      now < since ||
-      now > cutoff
-    ) {
-      return false;
-    }
-
-    const match = LEGACY_UPLOAD_KEY_PATTERN.exec(key);
-    if (!match || match[1] !== userId) {
-      return false;
-    }
-
-    const issuedAt = Number(match[2]);
-    return (
-      issuedAt >= since - UPLOAD_CONFIG.PRESIGNED_URL_EXPIRATION * 1000 &&
-      issuedAt <= Math.min(cutoff, now + LEGACY_UPLOAD_CLOCK_SKEW_MS)
-    );
-  }
-
-  async function completeLegacyUpload({
-    userId,
-    key,
-    contentLength,
-    contentType,
-    declaration,
-  }: CompleteLegacyUploadInput): Promise<UploadRecord | null> {
-    if (!isEligibleLegacyUploadKey(key, userId, Date.now())) {
-      return null;
-    }
-    if (
-      declaration.fileSize !== contentLength ||
-      declaration.contentType !== contentType
-    ) {
-      throw new UploadMetadataMismatchError(
-        "Legacy upload details do not match the stored object.",
-      );
-    }
-
-    return db.transaction(async (tx) => {
-      await lockUserUploadScope(userId, tx);
-      if (!isEligibleLegacyUploadKey(key, userId, Date.now())) {
-        return null;
-      }
-
-      const [existing] = await tx
-        .select()
-        .from(uploads)
-        .where(and(eq(uploads.userId, userId), eq(uploads.fileKey, key)))
-        .limit(1);
-      if (existing) {
-        return existing;
-      }
-
-      const usage = await getUploadUsage(userId, tx);
-      if (usage.daily + contentLength > env.UPLOAD_DAILY_QUOTA_BYTES) {
-        throw new UploadQuotaExceededError("daily");
-      }
-      if (usage.total + contentLength > env.UPLOAD_TOTAL_QUOTA_BYTES) {
-        throw new UploadQuotaExceededError("total");
-      }
-
-      const [created] = await tx
-        .insert(uploads)
-        .values({
-          userId,
-          fileKey: key,
-          url: buildUrl(key),
-          fileName: declaration.fileName,
-          fileSize: contentLength,
-          contentType,
-        })
-        .onConflictDoNothing({ target: uploads.fileKey })
-        .returning();
-      if (created) {
-        return created;
-      }
-
-      const [conflicting] = await tx
-        .select()
-        .from(uploads)
-        .where(and(eq(uploads.userId, userId), eq(uploads.fileKey, key)))
-        .limit(1);
-      return conflicting ?? null;
-    });
-  }
-
   async function claimExpiredIntent(
     intent: Pick<UploadIntent, "id" | "userId" | "status">,
   ): Promise<UploadIntent | null> {
@@ -590,7 +465,6 @@ export function createUploadRepository(
     releaseUploadIntent,
     cancelUploadIntent,
     completeUploadIntent,
-    completeLegacyUpload,
     cleanupExpiredUploadIntents,
     recoverStaleUploadCleanupClaims,
   };

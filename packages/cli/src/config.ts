@@ -72,7 +72,7 @@ export function requireAuthToken(): string {
 
   if (!token) {
     throw new Error(
-      "Not authenticated. Run `pnpm vibesku-cli -- auth login`, or set VIBESKU_CLI_API_KEY.",
+      "Not authenticated. Run `pnpm vibesku-clips-cli -- auth login`, or set VIBESKU_CLIPS_CLI_API_KEY.",
     );
   }
 

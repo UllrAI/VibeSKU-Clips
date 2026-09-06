@@ -84,9 +84,6 @@ export interface ExportManifestRow {
   variant: string | null;
   market: string;
   locale: string;
-  shopUrl: string | null;
-  /** True when no storefront link is on file for the target market. */
-  awaitingProductMatch: boolean;
   publishCaption: string | null;
   videoUrl: string | null;
   coverUrl: string | null;

@@ -187,7 +187,7 @@ async function runRefresh(options: { baseUrl?: string }) {
 
   if (!config.refreshToken) {
     throw new Error(
-      "No refresh token found. Run `pnpm vibesku-cli -- auth login`.",
+      "No refresh token found. Run `pnpm vibesku-clips-cli -- auth login`.",
     );
   }
 

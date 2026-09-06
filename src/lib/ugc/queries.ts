@@ -119,7 +119,6 @@ export async function listBatches(): Promise<BatchProgress[]> {
 export interface ClipDetail {
   clip: ClipRow;
   productName: string;
-  productShopUrl: string | null;
   productVariant: string | null;
   scriptTitle: string | null;
   scriptHook: string | null;
@@ -134,7 +133,6 @@ async function clipDetails(
     .select({
       clip: ugcClips,
       productName: ugcProducts.name,
-      productShopUrl: ugcProducts.shopUrl,
       productVariant: ugcProducts.variant,
       scriptTitle: ugcScripts.title,
       scriptHook: ugcScripts.hook,
@@ -152,7 +150,6 @@ async function clipDetails(
   return rows.map((row) => ({
     clip: row.clip,
     productName: row.productName,
-    productShopUrl: row.productShopUrl,
     productVariant: row.productVariant,
     scriptTitle: row.scriptTitle,
     scriptHook: row.scriptHook,

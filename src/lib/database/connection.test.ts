@@ -6,13 +6,12 @@ import {
   afterEach,
   jest,
 } from "@jest/globals";
+import { POOL_TIMING } from "@/database/connection-options";
 
-// Mock the environment module
+// Mock the environment module. Only the pool size comes from the environment;
+// driver timing is the POOL_TIMING constant.
 const mockEnv = {
   DB_POOL_SIZE: 10,
-  DB_IDLE_TIMEOUT: 300,
-  DB_MAX_LIFETIME: 14400,
-  DB_CONNECT_TIMEOUT: 4,
 };
 
 jest.mock("@/env", () => mockEnv);
@@ -44,9 +43,6 @@ describe("Database Connection Configuration", () => {
     );
     Object.assign(mockEnv, {
       DB_POOL_SIZE: 10, // Safe value that won't trigger warnings
-      DB_IDLE_TIMEOUT: 300,
-      DB_MAX_LIFETIME: 14400,
-      DB_CONNECT_TIMEOUT: 4,
     });
 
     // Reset modules and configuration validation flag
@@ -144,9 +140,9 @@ describe("Database Connection Configuration", () => {
           },
         },
         max: mockEnv.DB_POOL_SIZE,
-        idle_timeout: mockEnv.DB_IDLE_TIMEOUT,
-        max_lifetime: mockEnv.DB_MAX_LIFETIME,
-        connect_timeout: mockEnv.DB_CONNECT_TIMEOUT,
+        idle_timeout: POOL_TIMING.idleTimeout,
+        max_lifetime: POOL_TIMING.maxLifetime,
+        connect_timeout: POOL_TIMING.connectTimeout,
         prepare: true,
         debug: false, // NODE_ENV is 'test', not 'development'
         onnotice: expect.any(Function),
@@ -423,14 +419,14 @@ describe("Database Connection Configuration", () => {
       expect(typeof config.onnotice).toBe("function");
     });
 
-    it("should use environment variables for traditional configuration", async () => {
+    it("should use the pool size and timing constants for traditional configuration", async () => {
       const { getConnectionConfig } = await import("./connection");
       const config = getConnectionConfig();
 
       expect(config.max).toBe(mockEnv.DB_POOL_SIZE);
-      expect(config.idle_timeout).toBe(mockEnv.DB_IDLE_TIMEOUT);
-      expect(config.max_lifetime).toBe(mockEnv.DB_MAX_LIFETIME);
-      expect(config.connect_timeout).toBe(mockEnv.DB_CONNECT_TIMEOUT);
+      expect(config.idle_timeout).toBe(POOL_TIMING.idleTimeout);
+      expect(config.max_lifetime).toBe(POOL_TIMING.maxLifetime);
+      expect(config.connect_timeout).toBe(POOL_TIMING.connectTimeout);
       expect(config.prepare).toBe(true);
     });
 
@@ -508,43 +504,28 @@ describe("Database Connection Configuration", () => {
       expect(getEnvironmentType()).toBe("traditional");
     });
 
-    it("should handle undefined environment variables in mockEnv", async () => {
-      // Test with undefined values from mockEnv
-      Object.assign(mockEnv, {
-        DB_POOL_SIZE: undefined,
-        DB_IDLE_TIMEOUT: undefined,
-        DB_MAX_LIFETIME: undefined,
-        DB_CONNECT_TIMEOUT: undefined,
-      });
+    it("should handle an undefined pool size gracefully", async () => {
+      Object.assign(mockEnv, { DB_POOL_SIZE: undefined });
 
       jest.resetModules();
       const { getConnectionConfig } = await import("./connection");
       const config = getConnectionConfig();
 
-      // Should handle undefined values gracefully
       expect(config.max).toBeUndefined();
-      expect(config.idle_timeout).toBeUndefined();
-      expect(config.max_lifetime).toBeUndefined();
-      expect(config.connect_timeout).toBeUndefined();
       expect(config.prepare).toBe(true);
     });
 
-    it("should allow zero timeout values but keep a positive pool size", async () => {
-      Object.assign(mockEnv, {
-        DB_POOL_SIZE: 1,
-        DB_IDLE_TIMEOUT: 0,
-        DB_MAX_LIFETIME: 0,
-        DB_CONNECT_TIMEOUT: 0,
-      });
+    it("keeps driver timing constant whatever the pool size is", async () => {
+      Object.assign(mockEnv, { DB_POOL_SIZE: 1 });
 
       jest.resetModules();
       const { getConnectionConfig } = await import("./connection");
       const config = getConnectionConfig();
 
       expect(config.max).toBe(1);
-      expect(config.idle_timeout).toBe(0);
-      expect(config.max_lifetime).toBe(0);
-      expect(config.connect_timeout).toBe(0);
+      expect(config.idle_timeout).toBe(POOL_TIMING.idleTimeout);
+      expect(config.max_lifetime).toBe(POOL_TIMING.maxLifetime);
+      expect(config.connect_timeout).toBe(POOL_TIMING.connectTimeout);
     });
   });
 

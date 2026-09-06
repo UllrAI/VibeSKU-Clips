@@ -28,14 +28,13 @@ const mockDatabase = createDatabaseClient({
   url: process.env.DATABASE_URL!,
   max: 5,
 });
-const mockEnv = { AI_DAILY_TOKEN_LIMIT: 800_000, AI_DAILY_IMAGE_LIMIT: 1 };
 const mockSend = jest.spyOn(S3Client.prototype, "send");
 jest.mock("server-only", () => ({}));
-jest.mock("@/env", () => ({
-  __esModule: true,
-  get default() {
-    return mockEnv;
-  },
+// Shrink the daily allowances so two runs are enough to exhaust them.
+jest.mock("@/lib/ai/limits", () => ({
+  ...jest.requireActual<typeof import("@/lib/ai/limits")>("@/lib/ai/limits"),
+  AI_DAILY_TOKEN_LIMIT: 800_000,
+  AI_DAILY_IMAGE_LIMIT: 1,
 }));
 jest.mock("@/database", () => ({
   get db() {
@@ -50,8 +49,6 @@ const storageConfig = {
   accessKeyId: "test",
   secretAccessKey: "test",
   bucketName: "private",
-  UPLOAD_DAILY_QUOTA_BYTES: 1_000_000,
-  UPLOAD_TOTAL_QUOTA_BYTES: 1_000_000,
 };
 const fileStorage = createFileStorage(mockDatabase.db, storageConfig);
 

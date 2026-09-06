@@ -11,7 +11,6 @@ import { getObjectMetadata } from "@/lib/r2";
 import { getAuthSessionFromHeaders } from "@/lib/auth/session";
 import { checkUploadRateLimit } from "@/lib/upload-rate-limit";
 import {
-  completeLegacyUpload,
   completeUploadIntent,
   UploadIntentUnavailableError,
   UploadMetadataMismatchError,
@@ -142,18 +141,10 @@ export async function POST(request: NextRequest) {
         url,
       },
     };
-    let upload;
-    try {
-      upload = await completeUploadIntent({ intentId, ...completionInput });
-    } catch (error) {
-      if (!(error instanceof UploadIntentUnavailableError) || intentId) {
-        throw error;
-      }
-      upload = await completeLegacyUpload(completionInput);
-      if (!upload) {
-        throw error;
-      }
-    }
+    const upload = await completeUploadIntent({
+      intentId,
+      ...completionInput,
+    });
 
     return NextResponse.json({
       file: {

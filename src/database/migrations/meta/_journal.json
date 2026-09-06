@@ -197,6 +197,13 @@
       "when": 1788674651053,
       "tag": "0027_natural_whiplash",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1788686269488,
+      "tag": "0028_mysterious_albert_cleary",
+      "breakpoints": true
     }
   ]
 }

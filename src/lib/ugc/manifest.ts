@@ -13,7 +13,6 @@ export interface ManifestClip {
   product: {
     name: string;
     variant: string | null;
-    shopUrl: string | null;
   };
 }
 
@@ -24,10 +23,6 @@ function toRow(clip: ManifestClip): ExportManifestRow {
     variant: clip.product.variant,
     market: clip.market,
     locale: clip.locale,
-    shopUrl: clip.product.shopUrl,
-    // Without a storefront link for the target market the asset is not
-    // shoppable, and the manifest says so rather than guessing.
-    awaitingProductMatch: !clip.product.shopUrl,
     publishCaption: clip.publishCaption,
     videoUrl: clip.videoUrl,
     coverUrl: clip.coverUrl,
@@ -65,22 +60,12 @@ export function buildExportManifest(
   };
 }
 
-export function countUnmatched(manifest: ExportManifest): number {
-  return manifest.groups.reduce(
-    (total, group) =>
-      total + group.rows.filter((row) => row.awaitingProductMatch).length,
-    0,
-  );
-}
-
 const CSV_COLUMNS: (keyof ExportManifestRow)[] = [
   "reference",
   "productName",
   "variant",
   "market",
   "locale",
-  "shopUrl",
-  "awaitingProductMatch",
   "accountTag",
   "videoUrl",
   "coverUrl",

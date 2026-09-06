@@ -837,17 +837,10 @@ type MockEnvironment = {
   STRIPE_SECRET_KEY: string;
   STRIPE_WEBHOOK_SECRET: string;
   DB_POOL_SIZE: number;
-  DB_IDLE_TIMEOUT: number;
-  DB_MAX_LIFETIME: number;
-  DB_CONNECT_TIMEOUT: number;
   JOB_DB_POOL_SIZE: number;
   WORKER_GRACEFUL_TIMEOUT_MS: number;
   RATE_LIMIT_IP_HEADER: string;
   UPLOAD_CLEANUP_SECRET: string;
-  UPLOAD_DAILY_QUOTA_BYTES: number;
-  UPLOAD_TOTAL_QUOTA_BYTES: number;
-  UPLOAD_LEGACY_COMPLETION_SINCE?: string;
-  UPLOAD_LEGACY_COMPLETION_UNTIL?: string;
 };
 
 const mockEnvConfig: MockEnvironment = {
@@ -866,15 +859,10 @@ const mockEnvConfig: MockEnvironment = {
   STRIPE_SECRET_KEY: "sk_test_mock_api_key",
   STRIPE_WEBHOOK_SECRET: "whsec_mock_webhook_secret",
   DB_POOL_SIZE: 20,
-  DB_IDLE_TIMEOUT: 300,
-  DB_MAX_LIFETIME: 14400,
-  DB_CONNECT_TIMEOUT: 4,
   JOB_DB_POOL_SIZE: 3,
   WORKER_GRACEFUL_TIMEOUT_MS: 30000,
   RATE_LIMIT_IP_HEADER: "x-forwarded-for",
   UPLOAD_CLEANUP_SECRET: "mock-upload-cleanup-secret-at-least-32-chars",
-  UPLOAD_DAILY_QUOTA_BYTES: 1024 * 1024 * 1024,
-  UPLOAD_TOTAL_QUOTA_BYTES: 5 * 1024 * 1024 * 1024,
 };
 
 const mockCreateEnv = jest.fn(() => mockEnvConfig);
@@ -1067,16 +1055,9 @@ jest.mock("./env.js", () => ({
     STRIPE_ENVIRONMENT: "test_mode",
     STRIPE_WEBHOOK_SECRET: "whsec_mock_webhook_secret",
     DB_POOL_SIZE: 20,
-    DB_IDLE_TIMEOUT: 300,
-    DB_MAX_LIFETIME: 14400,
-    DB_CONNECT_TIMEOUT: 4,
     JOB_DB_POOL_SIZE: 3,
     WORKER_GRACEFUL_TIMEOUT_MS: 30000,
     RATE_LIMIT_IP_HEADER: "x-forwarded-for",
     UPLOAD_CLEANUP_SECRET: "mock-upload-cleanup-secret-at-least-32-chars",
-    UPLOAD_DAILY_QUOTA_BYTES: 1024 * 1024 * 1024,
-    UPLOAD_TOTAL_QUOTA_BYTES: 5 * 1024 * 1024 * 1024,
-    UPLOAD_LEGACY_COMPLETION_SINCE: undefined,
-    UPLOAD_LEGACY_COMPLETION_UNTIL: undefined,
   },
 }));

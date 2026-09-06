@@ -224,11 +224,6 @@ export function ReviewWorkbench({
                           {detail.scriptHook}
                         </p>
                       )}
-                      {!detail.productShopUrl && (
-                        <p className="text-muted-foreground text-xs">
-                          {t("ugc_export_awaiting_product_match")}
-                        </p>
-                      )}
                     </div>
 
                     {hint && (

@@ -65,7 +65,7 @@ A three-minute abort, five-step limit, and 4096 output-token limit bound each ru
 The response, pending media message, and usage commit together. The Worker retries R2
 storage independently; stale media retries cannot overwrite a later reply. A process
 killed before that transaction leaves a reserved interrupted run and is not automatically
-replayed. See [architecture recovery and deployment](architecture-remediation.md).
+replayed. See [architecture boundaries and recovery](architecture.md).
 
 Users can attach up to six PNG, JPEG, or WebP reference images to each message, including an
 image-only message. The composer uploads them through the existing R2 flow before sending, and the
@@ -79,14 +79,13 @@ arbitrary external images or another user's files. The supported formats follow 
 The stack uses the OpenAI Responses protocol so reasoning and function tools work together.
 `LLM_BASE_URL` remains configurable for gateways that implement the Responses API.
 
-| Setting                | Where                                                 | Notes                                                                         |
-| :--------------------- | :---------------------------------------------------- | :---------------------------------------------------------------------------- |
-| Feature switch         | `SITE_CONFIG.features.ai` in `src/lib/config/site.js` | Gates the nav item, page, and API route.                                      |
-| `LLM_API_KEY`          | `.env`                                                | Required while the feature is enabled.                                        |
-| `LLM_BASE_URL`         | `.env`                                                | Optional Responses API base URL.                                              |
-| `AI_DAILY_TOKEN_LIMIT` | `.env`                                                | Rolling 24h admission allowance, default 2,000,000; reserves 400,000 per run. |
-| `AI_DAILY_IMAGE_LIMIT` | `.env`                                                | Rolling 24h image allowance, default 10.                                      |
-| `AI_DEFAULT_MODEL`     | `.env`                                                | Optional; defaults to `gpt-5.6-luna`.                                         |
+| Setting            | Where                                                                     | Notes                                                          |
+| :----------------- | :------------------------------------------------------------------------ | :------------------------------------------------------------- |
+| Feature switch     | `SITE_CONFIG.features.ai` in `src/lib/config/site.js`                     | Gates the nav item, page, and API route.                       |
+| `LLM_API_KEY`      | `.env`                                                                    | Required while the feature is enabled.                         |
+| `LLM_BASE_URL`     | `.env`                                                                    | Optional Responses API base URL.                               |
+| `AI_DEFAULT_MODEL` | `.env`                                                                    | Optional; defaults to `gpt-5.6-luna`.                          |
+| Daily allowances   | `AI_DAILY_TOKEN_LIMIT` / `AI_DAILY_IMAGE_LIMIT` in `src/lib/ai/limits.ts` | Rolling 24h admission: 2,000,000 units and 10 images per user. |
 
 The assistant defaults to `low` reasoning; the client may select `low`, `medium`, or `high` per
 request. Image generation is intentionally fixed in code to GPT Image 2, low quality, WebP output,

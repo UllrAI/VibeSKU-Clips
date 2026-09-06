@@ -24,7 +24,7 @@ import {
 } from "@/lib/tasks/service";
 import { MAX_BATCH_CLIPS, SCRIPT_TEMPLATES } from "./constants";
 import { isMediaProviderConfigured } from "./media/config";
-import { buildExportManifest, countUnmatched } from "./manifest";
+import { buildExportManifest } from "./manifest";
 import { summarizePlan } from "./planning";
 import { batchScopeKey, isOwnedScope, productScopeKey } from "./scope";
 import type { ActionResult, BatchPlanConfig } from "./types";
@@ -41,7 +41,6 @@ const briefSchema = z.object({
 const productSchema = z.object({
   name: z.string().trim().min(1).max(200),
   sourceUrl: z.string().trim().url().max(2000).optional().or(z.literal("")),
-  shopUrl: z.string().trim().url().max(2000).optional().or(z.literal("")),
   variant: z.string().trim().max(200).optional(),
   market: z.string().trim().max(16).optional(),
   images: z.array(z.string().trim().min(1).max(2000)).max(8),
@@ -68,7 +67,6 @@ export async function createProduct(
       userId: user.id,
       name: parsed.data.name,
       sourceUrl: emptyToNull(parsed.data.sourceUrl),
-      shopUrl: emptyToNull(parsed.data.shopUrl),
       variant: emptyToNull(parsed.data.variant),
       market: emptyToNull(parsed.data.market),
       images: parsed.data.images,
@@ -95,7 +93,6 @@ export async function updateProduct(
     .set({
       name: parsed.data.name,
       sourceUrl: emptyToNull(parsed.data.sourceUrl),
-      shopUrl: emptyToNull(parsed.data.shopUrl),
       variant: emptyToNull(parsed.data.variant),
       market: emptyToNull(parsed.data.market),
       images: parsed.data.images,
@@ -484,7 +481,6 @@ export async function createExport(
       clip: ugcClips,
       productName: ugcProducts.name,
       productVariant: ugcProducts.variant,
-      productShopUrl: ugcProducts.shopUrl,
       disclosure: ugcScripts.disclosure,
     })
     .from(ugcClips)
@@ -513,7 +509,6 @@ export async function createExport(
       product: {
         name: row.productName,
         variant: row.productVariant,
-        shopUrl: row.productShopUrl,
       },
     })),
     parsed.data.groupBy,
@@ -527,7 +522,6 @@ export async function createExport(
       name: parsed.data.name,
       groupBy: parsed.data.groupBy,
       clipCount: rows.length,
-      unmatchedCount: countUnmatched(manifest),
       manifest,
     })
     .returning();

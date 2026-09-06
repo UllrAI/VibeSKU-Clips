@@ -16,6 +16,8 @@ test("redirects /en-prefixed marketing routes to canonical English paths", async
 
   await expect(page).toHaveURL(/\/about$/);
   await expect(
-    page.getByRole("heading", { name: /Building the future of SaaS/i }),
+    page.getByRole("heading", {
+      name: /Content supply, built like production/i,
+    }),
   ).toBeVisible();
 });

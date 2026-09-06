@@ -7,7 +7,8 @@ export const databaseUrlSchema = z
     "DATABASE_URL must use the postgres or postgresql protocol",
   );
 
-// Web and Worker choose their pool defaults, but share validation and timing.
+// Web and Worker choose their pool defaults but share validation. Only the pool
+// sizes are configurable; driver timing lives in `POOL_TIMING`.
 export function databaseEnvFields(poolSize) {
   return {
     DATABASE_URL: databaseUrlSchema,
@@ -16,10 +17,8 @@ export function databaseEnvFields(poolSize) {
       databaseUrlSchema.optional(),
     ),
     DB_POOL_SIZE: z.coerce.number().int().positive().max(50).default(poolSize),
-    DB_IDLE_TIMEOUT: z.coerce.number().int().nonnegative().default(300),
-    DB_MAX_LIFETIME: z.coerce.number().int().nonnegative().default(14_400),
-    DB_CONNECT_TIMEOUT: z.coerce.number().int().positive().max(4).default(4),
     JOB_DB_POOL_SIZE: z.coerce.number().int().positive().max(20).default(3),
+    // Must stay below the host's container stop window, which varies by platform.
     WORKER_GRACEFUL_TIMEOUT_MS: z.coerce
       .number()
       .int()
@@ -34,9 +33,9 @@ export const modelEnvFields = {
 };
 
 // Media generation runs in both the Web process and the job worker, so the
-// provider fields are shared rather than duplicated in each environment schema.
+// credentials are shared rather than duplicated in each environment schema.
+// Everything else about the provider is a constant in `src/lib/ugc/constants.ts`.
 export const mediaEnvFields = {
-  PRISM_API_BASE_URL: z.url().default("https://prism.ullrai.com/api/v1"),
   PRISM_API_KEY: z.preprocess(
     (value) => value || undefined,
     z.string().trim().min(1).optional(),
@@ -45,8 +44,6 @@ export const mediaEnvFields = {
     (value) => value || undefined,
     z.string().trim().min(1).optional(),
   ),
-  PRISM_IMAGE_MODEL: z.string().trim().min(1).default("nano-banana-pro"),
-  PRISM_VIDEO_MODEL: z.string().trim().min(1).default("sora2"),
 };
 
 // Object storage is used by the Web process, the worker, and the renderer, so
@@ -56,14 +53,4 @@ export const storageEnvFields = {
   R2_ACCESS_KEY_ID: z.string().optional(),
   R2_SECRET_ACCESS_KEY: z.string().optional(),
   R2_BUCKET_NAME: z.string().optional(),
-  UPLOAD_DAILY_QUOTA_BYTES: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(1024 * 1024 * 1024),
-  UPLOAD_TOTAL_QUOTA_BYTES: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(5 * 1024 * 1024 * 1024),
 };

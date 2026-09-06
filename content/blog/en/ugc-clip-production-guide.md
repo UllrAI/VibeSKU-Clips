@@ -60,10 +60,13 @@ alone. It does not silently proceed with an empty fact sheet, and it does not
 take the rest of your queue down with it. You add images or write the facts
 yourself, and it rejoins the pipeline.
 
-Two fields are worth calling out because operators skip them and regret it. The
-**storefront link** is the shoppable URL for the market you are targeting; it is
-what makes an asset actually usable when it reaches whoever posts it. The
-**market** is not the language. More on that in a moment.
+One field is worth calling out because operators skip it and regret it: the
+**market**. It is not the language. More on that in a moment.
+
+What a product record does not hold is a storefront link. Which listing an asset
+ends up attached to, and whether it is in stock, belongs to whoever publishes it.
+This tool makes the video and says exactly what it is; it does not pretend to
+know that anything is ready to sell.
 
 ## 2. Talents are reusable, and they are on the record
 
@@ -107,7 +110,7 @@ A script that cannot be read in time is not a script, it is a reshoot.
 
 Now the part that causes the most confusion in practice: **language and market
 are two different settings.** Language is what the clip is spoken and captioned
-in. Market is where the clip will run — which storefront link applies, which
+in. Market is where the clip will run — which listing it describes, which
 disclosure wording is required, which cultural references land. Portuguese for
 Brazil and Portuguese for Portugal are the same language setting and different
 market settings, and treating them as one field is how you end up with a
@@ -208,20 +211,20 @@ Both consume credits, and every unit of work — analysis, script, render, retry
 regeneration — is recorded separately with its own cost. That is what makes cost
 per _delivered_ clip a number you can compute rather than estimate.
 
-## 8. Export, and the flag that saves the most time
+## 8. Export, and where our job ends
 
 Exports group approved clips the way the next person needs them: by product, by
 account, by market, or by language. Each export produces a manifest listing
-every asset with its reference number, product, language, market, template,
-talent, licence note, publish caption, disclosure line, and storefront link.
+every asset with its reference number, product, variant, language, market,
+template, talent, licence note, publish caption, and disclosure line.
 
-If a clip has no storefront link for its market, it ships flagged as **awaiting
-product match**. It is not quietly assumed to be shoppable. Three states get
-conflated constantly — generated, selected, and matched — and keeping them apart
-is most of what makes a handover trustworthy. Generated means the clip exists
-and passed the gate. Selected means a person watched it and chose it. Matched
-means the storefront link is on file. A clip can be all three or only one, and
-the manifest says which.
+The manifest deliberately stops there. Attaching an asset to a listing, checking
+stock, and posting it belong to whoever publishes — and drawing that line is
+what keeps the handover honest, because nothing here can claim an asset is ready
+to sell when nobody has checked the listing. Two states get conflated constantly
+and are worth keeping apart: **generated** means the clip exists and passed the
+gate; **selected** means a person watched it and chose it. Only selected clips
+reach a manifest.
 
 ## 9. When things go wrong
 
@@ -235,8 +238,8 @@ stops what is queued and in flight without touching what is already delivered �
 clips that passed the gate stay in review exactly where you left them.
 
 The one failure mode the tool cannot protect you from is a wrong product record.
-Facts, brief, market, storefront link: get those right and everything downstream
-is a matter of taste. Get them wrong and you will have eighty well-produced
+Facts, brief, market: get those right and everything downstream is a matter of
+taste. Get them wrong and you will have eighty well-produced
 videos saying the wrong thing.
 
 ## A reasonable first run

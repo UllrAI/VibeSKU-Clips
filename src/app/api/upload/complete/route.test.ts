@@ -28,12 +28,10 @@ jest.mock("@/lib/upload-rate-limit", () => ({
 }));
 
 const mockCompleteUploadIntent = jest.fn() as any;
-const mockCompleteLegacyUpload = jest.fn() as any;
 class MockUploadIntentUnavailableError extends Error {}
 class MockUploadMetadataMismatchError extends Error {}
 class MockUploadQuotaExceededError extends Error {}
 jest.mock("@/lib/uploads/upload-intents", () => ({
-  completeLegacyUpload: mockCompleteLegacyUpload,
   completeUploadIntent: mockCompleteUploadIntent,
   UploadIntentUnavailableError: MockUploadIntentUnavailableError,
   UploadMetadataMismatchError: MockUploadMetadataMismatchError,
@@ -110,7 +108,6 @@ describe("Upload Complete API", () => {
       fileSize: validRequestBody.size,
       contentType: validRequestBody.contentType,
     });
-    mockCompleteLegacyUpload.mockResolvedValue(null);
   });
 
   it("returns 401 when the user is not authenticated", async () => {
@@ -227,69 +224,13 @@ describe("Upload Complete API", () => {
     expect(response.status).toBe(409);
   });
 
-  it("completes an in-flight legacy upload during the rollout window", async () => {
-    const legacyRequest = { ...validRequestBody, intentId: undefined };
-    const legacyUpload = {
-      fileKey: legacyRequest.key,
-      url: legacyRequest.url,
-      fileName: legacyRequest.fileName,
-      fileSize: legacyRequest.size,
-      contentType: legacyRequest.contentType,
-    };
-    mockUploadCompleteRequestSchema.safeParse.mockReturnValue({
-      success: true,
-      data: legacyRequest,
-    });
+  it("returns a controlled quota response when the quota is exhausted", async () => {
     mockCompleteUploadIntent.mockRejectedValue(
-      new MockUploadIntentUnavailableError("Upload intent unavailable."),
-    );
-    mockCompleteLegacyUpload.mockResolvedValue(legacyUpload);
-
-    const { POST } = await import("./route");
-    const response = await POST(createMockRequest(legacyRequest));
-
-    expect(response.status).toBe(200);
-    expect(mockCompleteLegacyUpload).toHaveBeenCalledWith({
-      userId: "user-123",
-      key: legacyRequest.key,
-      contentLength: 1024,
-      contentType: "image/jpeg",
-      declaration: {
-        fileName: legacyRequest.fileName,
-        fileSize: legacyRequest.size,
-        contentType: legacyRequest.contentType,
-        url: legacyRequest.url,
-      },
-    });
-  });
-
-  it("does not bypass a rejected v2 intent through legacy completion", async () => {
-    mockCompleteUploadIntent.mockRejectedValue(
-      new MockUploadIntentUnavailableError("Upload intent unavailable."),
-    );
-
-    const { POST } = await import("./route");
-    const response = await POST(createMockRequest(validRequestBody));
-
-    expect(response.status).toBe(409);
-    expect(mockCompleteLegacyUpload).not.toHaveBeenCalled();
-  });
-
-  it("returns a controlled quota response for a legacy completion", async () => {
-    const legacyRequest = { ...validRequestBody, intentId: undefined };
-    mockUploadCompleteRequestSchema.safeParse.mockReturnValue({
-      success: true,
-      data: legacyRequest,
-    });
-    mockCompleteUploadIntent.mockRejectedValue(
-      new MockUploadIntentUnavailableError("Upload intent unavailable."),
-    );
-    mockCompleteLegacyUpload.mockRejectedValue(
       new MockUploadQuotaExceededError("Daily upload quota reached."),
     );
 
     const { POST } = await import("./route");
-    const response = await POST(createMockRequest(legacyRequest));
+    const response = await POST(createMockRequest(validRequestBody));
 
     expect(response.status).toBe(403);
     await expect(response.json()).resolves.toEqual({
