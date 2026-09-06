@@ -1,0 +1,80 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
+export interface BatchProgressCounts {
+  status: "draft" | "running" | "completed" | "cancelled";
+  total: number;
+  ready: number;
+  failed: number;
+  running: number;
+  pending: number;
+}
+
+const BASE_INTERVAL_MS = 4_000;
+const MAX_INTERVAL_MS = 30_000;
+
+function isSettled(counts: BatchProgressCounts): boolean {
+  return counts.running + counts.pending === 0;
+}
+
+/**
+ * Keeps a batch console current without the operator reaching for reload.
+ *
+ * The counts endpoint is cheap, so it is polled on a short interval that backs
+ * off while nothing changes; the expensive part — the rows themselves — is
+ * only re-fetched (`router.refresh()`) when a count actually moves. Polling
+ * stops for good once no clip can change any more.
+ */
+export function useBatchProgress(
+  batchId: string,
+  initial: BatchProgressCounts,
+): BatchProgressCounts {
+  const [counts, setCounts] = useState(initial);
+  const router = useRouter();
+  const signatureRef = useRef(JSON.stringify(initial));
+
+  useEffect(() => {
+    if (isSettled(counts)) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout>;
+    let interval = BASE_INTERVAL_MS;
+
+    const tick = async () => {
+      try {
+        const response = await fetch(`/api/ugc/batches/${batchId}/progress`, {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+        const next = (await response.json()) as BatchProgressCounts;
+        if (cancelled) return;
+
+        const signature = JSON.stringify(next);
+        if (signature === signatureRef.current) {
+          interval = Math.min(interval * 1.5, MAX_INTERVAL_MS);
+        } else {
+          signatureRef.current = signature;
+          interval = BASE_INTERVAL_MS;
+          setCounts(next);
+          router.refresh();
+        }
+      } catch {
+        // A dropped poll is not worth telling the operator about; the next
+        // tick recovers, and the numbers on screen stay the last known truth.
+        interval = Math.min(interval * 2, MAX_INTERVAL_MS);
+      } finally {
+        if (!cancelled) timer = setTimeout(tick, interval);
+      }
+    };
+
+    timer = setTimeout(tick, interval);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [batchId, counts, router]);
+
+  return counts;
+}

@@ -1,47 +1,39 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageSkeleton, RowListSkeleton } from "./_components/page-skeleton";
 
 export default function DashboardLoading() {
   return (
-    <div className="space-y-6 p-6">
-      <div className="space-y-3">
-        <Skeleton className="h-9 w-40" />
-        <Skeleton className="h-5 w-72 max-w-full" />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-        <section className="border-border bg-card space-y-4 border p-6">
-          <Skeleton className="h-6 w-36" />
-          <Skeleton className="h-4 w-72 max-w-full" />
-          <div className="grid gap-4 md:grid-cols-3">
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-28 w-full" />
-            <Skeleton className="h-28 w-full" />
+    <PageSkeleton actions>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <div
+            key={index}
+            className="border-border space-y-3 rounded-xl border p-6"
+          >
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-16" />
           </div>
-        </section>
-
-        <section className="border-border bg-card space-y-4 border p-6">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-        </section>
+        ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_0.9fr]">
-        <section className="border-border bg-card space-y-4 border p-6">
-          <Skeleton className="h-6 w-36" />
-          <Skeleton className="h-4 w-80 max-w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </section>
-
-        <section className="border-border bg-card space-y-4 border p-6">
-          <Skeleton className="h-6 w-44" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </section>
+      <div className="border-border space-y-4 rounded-xl border p-6">
+        <Skeleton className="h-5 w-40" />
+        <Skeleton className="h-4 w-72 max-w-full" />
+        <RowListSkeleton count={3} />
       </div>
-    </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        {Array.from({ length: 2 }, (_, index) => (
+          <div
+            key={index}
+            className="border-border space-y-3 rounded-xl border p-6"
+          >
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-4 w-56 max-w-full" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+        ))}
+      </div>
+    </PageSkeleton>
   );
 }

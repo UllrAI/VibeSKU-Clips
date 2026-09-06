@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, Plus, Trash2 } from "lucide-react";
+import { Copy, Package, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -142,17 +143,16 @@ export function PlanBuilder({
 
   if (products.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <p className="text-sm font-medium">{t("ugc_plan_no_products")}</p>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {t("ugc_plan_no_products_hint")}
-          </p>
-          <Button asChild className="mt-4" size="sm">
+      <EmptyState
+        icon={<Package />}
+        title={t("ugc_plan_no_products")}
+        description={t("ugc_plan_no_products_hint")}
+        action={
+          <Button asChild size="sm">
             <Link href="/dashboard/products">{t("ugc_nav_products")}</Link>
           </Button>
-        </CardContent>
-      </Card>
+        }
+      />
     );
   }
 

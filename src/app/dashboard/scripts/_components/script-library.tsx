@@ -2,11 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { SquarePen } from "lucide-react";
+import { FileText, SquarePen } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Dialog,
   DialogContent,
@@ -83,14 +84,11 @@ export function ScriptLibrary({ scripts }: { scripts: ScriptWithProduct[] }) {
 
   if (scripts.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <p className="text-sm font-medium">{t("ugc_scripts_empty_title")}</p>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {t("ugc_scripts_empty_hint")}
-          </p>
-        </CardContent>
-      </Card>
+      <EmptyState
+        icon={<FileText />}
+        title={t("ugc_scripts_empty_title")}
+        description={t("ugc_scripts_empty_hint")}
+      />
     );
   }
 

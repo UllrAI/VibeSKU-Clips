@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import type { CliTokenPublic } from "@/lib/machine-auth/types";
 export function CliTokensSection({
   initialTokens,
@@ -43,18 +44,17 @@ export function CliTokensSection({
       </CardHeader>
       <CardContent className="space-y-3">
         {tokens.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-8 text-center">
-            <Terminal className="text-muted-foreground h-8 w-8" />
-            <p className="text-muted-foreground text-sm">
-              {t.rich("device_no_cli_sessions_yet_run_authorize", {
-                code0: () => (
-                  <code className="bg-muted rounded px-1 py-0.5" translate="no">
-                    pnpm vibesku-clips-cli -- auth login
-                  </code>
-                ),
-              })}
-            </p>
-          </div>
+          <EmptyState
+            spacing="compact"
+            icon={<Terminal />}
+            title={t.rich("device_no_cli_sessions_yet_run_authorize", {
+              code0: () => (
+                <code className="bg-muted rounded px-1 py-0.5" translate="no">
+                  pnpm vibesku-clips-cli -- auth login
+                </code>
+              ),
+            })}
+          />
         ) : (
           tokens.map((token) => (
             <CliTokenRow

@@ -128,6 +128,33 @@ bounce, or hover zoom.
 - **Data-heavy table.** Numeric columns use tabular numerals and align right;
   horizontal scrolling is contained to the table.
 
+### Work that takes minutes
+
+Generation runs for minutes, so the screen has to stay usable while it does.
+
+- Progress is a compact bar that sticks to the top of the work surface, not a
+  panel that pushes the surface down. It is collapsed by default and answers one
+  question — how much is left; the per-state breakdown is one click away.
+- The coloured bar is decorative. The semantics live in a `<progress>` element
+  and a polite live region, so a screen reader hears the change once, in words.
+- Progress updates itself. The operator never presses reload to find out what
+  happened, and the page says so: the work continues if they close the tab.
+- Never invent a countdown. Show what is measured — how many clips are left —
+  rather than an estimate the system cannot stand behind.
+- A batch that is still expanding shows the planned count as the denominator.
+  The unfilled part of the bar is work not yet started, not work that failed.
+
+### Selection and bulk actions
+
+- The action for a selection lives in a bar that appears with the selection and
+  sticks to the bottom of the viewport, next to the work. It states the count,
+  offers select-all and clear, and carries the primary action.
+- Selection and decision are different gestures with different affordances.
+  Both are real buttons carrying `aria-pressed`, never colour alone.
+- Only a finished clip can be played, decided on, or exported. A still frame
+  behind player chrome invites a click that goes nowhere, so unfinished clips
+  show the reason instead of a player.
+
 ## Components
 
 - One primary action per local decision. Secondary, outline, and ghost variants
@@ -138,7 +165,15 @@ bounce, or hover zoom.
   paragraph.
 - Badges communicate status, category, or compact metadata, never decoration.
 - Dialogs contain one decision, with a stable cancel/confirm order.
-- Empty states explain what is missing and offer the most relevant next action.
+- Empty states use the shared `EmptyState`: a dashed outline, never a solid
+  card, so an absence of content does not read as content. They explain what is
+  missing and offer the most relevant next action, and an empty search result
+  says so rather than repeating the first-run copy.
+- Route skeletons mirror the layout they replace — the same grid, the same
+  media aspect ratio — so nothing jumps when the data lands. What cannot be
+  mirrored honestly is left out.
+- Filters over a fixed set of states are tabs with a live count, not a select.
+  The counts are the fastest way to see where the remaining work is.
 - Failure states name the specific finding. Never show a bare "something went
   wrong" where the system knows which check failed.
 

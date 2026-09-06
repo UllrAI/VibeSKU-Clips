@@ -14,6 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Dialog,
   DialogContent,
@@ -62,12 +63,11 @@ export function ApiKeysSection({
       </CardHeader>
       <CardContent className="space-y-3">
         {keys.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-8 text-center">
-            <KeyRound className="text-muted-foreground h-8 w-8" />
-            <p className="text-muted-foreground text-sm">
-              {t("device_no_api_keys_yet_create_one")}
-            </p>
-          </div>
+          <EmptyState
+            spacing="compact"
+            icon={<KeyRound />}
+            title={t("device_no_api_keys_yet_create_one")}
+          />
         ) : (
           keys.map((apiKey) => (
             <ApiKeyRow

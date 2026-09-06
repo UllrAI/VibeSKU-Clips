@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Clapperboard } from "lucide-react";
 import { DashboardPageWrapper } from "../_components/dashboard-page-wrapper";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/ugc/status-badge";
 import { getServerTranslations } from "@/lib/i18n/translation/server";
@@ -36,16 +36,18 @@ export default async function BatchesPage() {
       }
     >
       {batches.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-sm font-medium">
-              {t("ugc_batches_empty_title")}
-            </p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {t("ugc_batches_empty_hint")}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Clapperboard />}
+          title={t("ugc_batches_empty_title")}
+          description={t("ugc_batches_empty_hint")}
+          action={
+            <Button asChild size="sm">
+              <Link href="/dashboard/batches/new">
+                {t("ugc_nav_new_batch")}
+              </Link>
+            </Button>
+          }
+        />
       ) : (
         <ul className="space-y-3">
           {batches.map((entry) => {

@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Plus, RefreshCw, Trash2, SquarePen } from "lucide-react";
+import { Package, Plus, RefreshCw, Trash2, SquarePen } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
+import { SearchInput } from "@/components/ui/search-input";
 import { StatusBadge } from "@/components/ugc/status-badge";
 import { actionMessageKey } from "@/components/ugc/action-message";
 import { marketKey } from "@/components/ugc/labels";
@@ -47,12 +48,12 @@ export function ProductLibrary({ products }: { products: ProductRow[] }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <Input
+        <SearchInput
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onValueChange={setQuery}
           placeholder={t("ugc_product_search_placeholder")}
-          className="max-w-xs"
-          aria-label={t("ugc_product_search_placeholder")}
+          clearLabel={t("ugc_common_clear_search")}
+          className="w-full max-w-xs"
         />
         <Button
           onClick={() => {
@@ -66,16 +67,14 @@ export function ProductLibrary({ products }: { products: ProductRow[] }) {
       </div>
 
       {visible.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-sm font-medium">
-              {t("ugc_product_empty_title")}
-            </p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {t("ugc_product_empty_hint")}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          spacing="compact"
+          icon={<Package />}
+          title={t(query ? "ugc_common_no_matches" : "ugc_product_empty_title")}
+          description={t(
+            query ? "ugc_common_no_matches_hint" : "ugc_product_empty_hint",
+          )}
+        />
       ) : (
         <ul className="grid gap-4 md:grid-cols-2">
           {visible.map((product) => (

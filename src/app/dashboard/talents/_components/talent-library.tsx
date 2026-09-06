@@ -3,11 +3,12 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { Archive, Plus } from "lucide-react";
+import { Archive, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Dialog,
   DialogContent,
@@ -76,14 +77,16 @@ export function TalentLibrary({ talents }: { talents: TalentRow[] }) {
       </div>
 
       {talents.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-sm font-medium">{t("ugc_talent_empty_title")}</p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {t("ugc_talent_empty_hint")}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Users />}
+          title={t("ugc_talent_empty_title")}
+          description={t("ugc_talent_empty_hint")}
+          action={
+            <Button size="sm" onClick={() => setOpen(true)}>
+              {t("ugc_talent_new_title")}
+            </Button>
+          }
+        />
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {talents.map((talent) => (

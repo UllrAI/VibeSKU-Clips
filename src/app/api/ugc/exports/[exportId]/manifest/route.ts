@@ -6,8 +6,8 @@ import { getExport } from "@/lib/ugc/queries";
 const exportIdSchema = z.uuid();
 
 /**
- * Serves the product manifest that ships with an export: one row per asset,
- * with the storefront link or an explicit "awaiting product match" flag.
+ * Serves the delivery manifest that ships with an export: one row per asset,
+ * with the reference, product, language, market, talent and disclosure line.
  */
 export async function GET(
   _request: NextRequest,

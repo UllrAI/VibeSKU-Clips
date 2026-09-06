@@ -16,6 +16,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Progress } from "@/components/ui/progress";
 import { StatusBadge } from "@/components/ugc/status-badge";
 import { getServerTranslations } from "@/lib/i18n/translation/server";
@@ -139,19 +140,19 @@ export default async function DashboardOverviewPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           {activeBatches.length === 0 ? (
-            <div className="border-border rounded-md border border-dashed px-4 py-10 text-center">
-              <p className="text-sm font-medium">
-                {t("ugc_overview_empty_title")}
-              </p>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {t("ugc_overview_empty_hint")}
-              </p>
-              <Button asChild className="mt-4" size="sm">
-                <Link href="/dashboard/batches/new">
-                  {t("ugc_nav_new_batch")}
-                </Link>
-              </Button>
-            </div>
+            <EmptyState
+              spacing="compact"
+              icon={<Clapperboard />}
+              title={t("ugc_overview_empty_title")}
+              description={t("ugc_overview_empty_hint")}
+              action={
+                <Button asChild size="sm">
+                  <Link href="/dashboard/batches/new">
+                    {t("ugc_nav_new_batch")}
+                  </Link>
+                </Button>
+              }
+            />
           ) : (
             activeBatches.map((entry) => {
               const done = entry.ready + entry.failed;

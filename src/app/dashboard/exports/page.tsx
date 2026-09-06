@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Download } from "lucide-react";
+import { Download, FolderDown } from "lucide-react";
 import { DashboardPageWrapper } from "../_components/dashboard-page-wrapper";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getServerTranslations } from "@/lib/i18n/translation/server";
 import { createMetadataDefaults } from "@/lib/metadata";
 import { listExports } from "@/lib/ugc/queries";
@@ -26,19 +26,16 @@ export default async function ExportsPage() {
       description={<>{t("ugc_exports_description")}</>}
     >
       {records.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-sm font-medium">
-              {t("ugc_exports_empty_title")}
-            </p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {t("ugc_exports_empty_hint")}
-            </p>
-            <Button asChild className="mt-4" size="sm">
+        <EmptyState
+          icon={<FolderDown />}
+          title={t("ugc_exports_empty_title")}
+          description={t("ugc_exports_empty_hint")}
+          action={
+            <Button asChild size="sm">
               <Link href="/dashboard/review">{t("ugc_nav_review")}</Link>
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <ul className="space-y-3">
           {records.map((record) => (

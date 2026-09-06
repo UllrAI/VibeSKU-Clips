@@ -2,12 +2,12 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, FolderDown, RefreshCw, Repeat2 } from "lucide-react";
+import { Copy, FolderDown, RefreshCw, Repeat2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/ugc/status-badge";
 import { actionMessageKey } from "@/components/ugc/action-message";
 import { contentLocaleKey, marketKey } from "@/components/ugc/labels";
@@ -39,6 +40,16 @@ import type { ClipDetail } from "@/lib/ugc/queries";
 import type { SimilarityHint } from "@/lib/ugc/similarity";
 
 type ReviewFilter = "all" | "pending" | "selected" | "shortlisted" | "rejected";
+
+const FILTERS: readonly { id: ReviewFilter; labelKey: string }[] = [
+  { id: "all", labelKey: "ugc_review_filter_all" },
+  { id: "pending", labelKey: "ugc_review_status_pending" },
+  { id: "selected", labelKey: "ugc_review_status_selected" },
+  { id: "shortlisted", labelKey: "ugc_review_status_shortlisted" },
+  { id: "rejected", labelKey: "ugc_review_status_rejected" },
+];
+
+const DECISIONS = ["selected", "shortlisted", "rejected"] as const;
 
 export function ReviewWorkbench({
   clips,
@@ -67,12 +78,25 @@ export function ReviewWorkbench({
     [clips],
   );
 
-  const visible = clips.filter((detail) => {
-    if (filter !== "all" && detail.clip.reviewStatus !== filter) return false;
-    if (productFilter !== "all" && detail.productName !== productFilter)
-      return false;
-    return true;
-  });
+  const inProduct = clips.filter(
+    (detail) => productFilter === "all" || detail.productName === productFilter,
+  );
+  const visible = inProduct.filter(
+    (detail) => filter === "all" || detail.clip.reviewStatus === filter,
+  );
+  const selectable = visible.filter((detail) => detail.clip.status === "ready");
+
+  const countFor = (id: ReviewFilter) =>
+    id === "all"
+      ? inProduct.length
+      : inProduct.filter((detail) => detail.clip.reviewStatus === id).length;
+
+  const toggle = (clipId: string) =>
+    setSelection((current) =>
+      current.includes(clipId)
+        ? current.filter((id) => id !== clipId)
+        : [...current, clipId],
+    );
 
   const run = (
     action: () => Promise<{ ok: boolean; code?: string }>,
@@ -105,85 +129,71 @@ export function ReviewWorkbench({
     });
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="review-filter">{t("ugc_review_filter_status")}</Label>
-          <Select
-            value={filter}
-            onValueChange={(value) => setFilter(value as ReviewFilter)}
-          >
-            <SelectTrigger id="review-filter" className="w-44">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("ugc_review_filter_all")}</SelectItem>
-              <SelectItem value="pending">
-                {t("ugc_review_status_pending")}
-              </SelectItem>
-              <SelectItem value="selected">
-                {t("ugc_review_status_selected")}
-              </SelectItem>
-              <SelectItem value="shortlisted">
-                {t("ugc_review_status_shortlisted")}
-              </SelectItem>
-              <SelectItem value="rejected">
-                {t("ugc_review_status_rejected")}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="review-product">{t("ugc_plan_product")}</Label>
-          <Select value={productFilter} onValueChange={setProductFilter}>
-            <SelectTrigger id="review-product" className="w-56">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("ugc_review_filter_all")}</SelectItem>
-              {products.map((product) => (
-                <SelectItem key={product} value={product}>
-                  {product}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <Button
-          className="ml-auto"
-          disabled={selection.length === 0}
-          onClick={() => setExportOpen(true)}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Tabs
+          value={filter}
+          onValueChange={(value) => setFilter(value as ReviewFilter)}
         >
-          <FolderDown />
-          {t("ugc_review_export_selection", { count: selection.length })}
-        </Button>
+          <TabsList
+            variant="line"
+            aria-label={t("ugc_review_filter_status")}
+            className="flex-wrap"
+          >
+            {FILTERS.map((entry) => (
+              <TabsTrigger key={entry.id} value={entry.id}>
+                {t(entry.labelKey)}
+                <span className="text-muted-foreground tabular-nums">
+                  {countFor(entry.id)}
+                </span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+
+        <Select value={productFilter} onValueChange={setProductFilter}>
+          <SelectTrigger className="w-56" aria-label={t("ugc_plan_product")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("ugc_review_filter_all")}</SelectItem>
+            {products.map((product) => (
+              <SelectItem key={product} value={product}>
+                {product}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {visible.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-sm font-medium">{t("ugc_review_empty_title")}</p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {t("ugc_review_empty_hint")}
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          spacing="compact"
+          icon={<FolderDown />}
+          title={t("ugc_review_empty_title")}
+          description={t("ugc_review_empty_hint")}
+        />
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((detail) => {
             const hint = hintById.get(detail.clip.id);
             const checked = selection.includes(detail.clip.id);
+            // Only a finished clip has something to play or to ship: a still
+            // frame behind player chrome invites a click that goes nowhere.
+            const playable =
+              detail.clip.status === "ready" && Boolean(detail.clip.videoUrl);
             return (
               <li key={detail.clip.id}>
-                <Card className="h-full">
+                <Card
+                  data-selected={checked || undefined}
+                  className="data-selected:ring-primary h-full transition-shadow data-selected:ring-2"
+                >
                   <CardContent className="space-y-3 pt-6">
                     <div className="border-border bg-muted relative aspect-[9/16] overflow-hidden rounded-md border">
-                      {detail.clip.videoUrl ? (
+                      {playable ? (
                         <video
                           className="size-full object-cover"
-                          src={detail.clip.videoUrl}
+                          src={detail.clip.videoUrl ?? undefined}
                           poster={detail.clip.coverUrl ?? undefined}
                           controls
                           preload="none"
@@ -247,28 +257,27 @@ export function ReviewWorkbench({
                     )}
 
                     <div className="flex flex-wrap gap-2">
-                      {(["selected", "shortlisted", "rejected"] as const).map(
-                        (status) => (
-                          <Button
-                            key={status}
-                            size="sm"
-                            variant={
-                              detail.clip.reviewStatus === status
-                                ? "default"
-                                : "outline"
-                            }
-                            disabled={pending || detail.clip.status !== "ready"}
-                            onClick={() =>
-                              run(
-                                () => setClipReview(detail.clip.id, status),
-                                "ugc_review_updated",
-                              )
-                            }
-                          >
-                            {t(`ugc_review_status_${status}`)}
-                          </Button>
-                        ),
-                      )}
+                      {DECISIONS.map((status) => (
+                        <Button
+                          key={status}
+                          size="sm"
+                          variant={
+                            detail.clip.reviewStatus === status
+                              ? "default"
+                              : "outline"
+                          }
+                          aria-pressed={detail.clip.reviewStatus === status}
+                          disabled={pending || !playable}
+                          onClick={() =>
+                            run(
+                              () => setClipReview(detail.clip.id, status),
+                              "ugc_review_updated",
+                            )
+                          }
+                        >
+                          {t(`ugc_review_status_${status}`)}
+                        </Button>
+                      ))}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
@@ -299,20 +308,16 @@ export function ReviewWorkbench({
                             : "ugc_clip_regenerate",
                         )}
                       </Button>
-                      <label className="ml-auto flex items-center gap-2 text-sm">
-                        <Checkbox
-                          checked={checked}
-                          disabled={detail.clip.status !== "ready"}
-                          onCheckedChange={(value) =>
-                            setSelection((current) =>
-                              value
-                                ? [...current, detail.clip.id]
-                                : current.filter((id) => id !== detail.clip.id),
-                            )
-                          }
-                        />
+                      <Button
+                        size="sm"
+                        variant={checked ? "secondary" : "ghost"}
+                        aria-pressed={checked}
+                        disabled={!playable}
+                        className="ml-auto"
+                        onClick={() => toggle(detail.clip.id)}
+                      >
                         {t("ugc_review_include_in_export")}
-                      </label>
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -320,6 +325,40 @@ export function ReviewWorkbench({
             );
           })}
         </ul>
+      )}
+
+      {selection.length > 0 && (
+        <div
+          role="region"
+          aria-label={t("ugc_review_selection_bar")}
+          className="bg-background/95 supports-[backdrop-filter]:bg-background/80 border-border sticky bottom-4 z-10 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 shadow-sm backdrop-blur"
+        >
+          <span className="text-sm font-medium tabular-nums">
+            {t("ugc_review_selected_count", { count: selection.length })}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={selection.length === selectable.length}
+            onClick={() =>
+              setSelection(selectable.map((detail) => detail.clip.id))
+            }
+          >
+            {t("ugc_review_select_visible")}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSelection([])}>
+            <X />
+            {t("ugc_review_clear_selection")}
+          </Button>
+          <Button
+            size="sm"
+            className="ml-auto"
+            onClick={() => setExportOpen(true)}
+          >
+            <FolderDown />
+            {t("ugc_review_export_selection", { count: selection.length })}
+          </Button>
+        </div>
       )}
 
       <Dialog open={exportOpen} onOpenChange={setExportOpen}>

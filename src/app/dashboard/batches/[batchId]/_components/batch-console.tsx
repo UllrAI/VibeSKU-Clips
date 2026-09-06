@@ -20,6 +20,8 @@ import {
   marketKey,
   templateKey,
 } from "@/components/ugc/labels";
+import { ProgressOverlay } from "@/components/ugc/progress-overlay";
+import { useBatchProgress } from "@/hooks/use-batch-progress";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   cancelBatch,
@@ -39,6 +41,15 @@ export function BatchConsole({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
+  const counts = useBatchProgress(progress.batch.id, {
+    status: progress.batch.status,
+    total: Math.max(progress.total, progress.batch.plannedCount),
+    ready: progress.ready,
+    failed: progress.failed,
+    running: progress.running,
+    pending: progress.pending,
+  });
+
   const run = (
     action: () => Promise<{ ok: boolean; code?: string }>,
     successKey: string,
@@ -53,42 +64,45 @@ export function BatchConsole({
       router.refresh();
     });
 
+  const inFlight = counts.running + counts.pending;
   const awaitingApproval =
-    progress.batch.config.reviewScriptsFirst && progress.pending > 0;
-  const cancellable =
-    progress.batch.status === "running" &&
-    progress.pending + progress.running > 0;
+    progress.batch.config.reviewScriptsFirst && counts.pending > 0;
+  const cancellable = counts.status === "running" && inFlight > 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        {awaitingApproval && (
-          <Button
-            disabled={pending}
-            onClick={() =>
-              run(
-                () => releaseBatchForRendering(progress.batch.id),
-                "ugc_batch_released",
-              )
-            }
-          >
-            <PlayCircle />
-            {t("ugc_batch_release_scripts")}
-          </Button>
-        )}
-        {cancellable && (
-          <Button
-            variant="outline"
-            disabled={pending}
-            onClick={() =>
-              run(() => cancelBatch(progress.batch.id), "ugc_batch_cancelled")
-            }
-          >
-            <CircleStop />
-            {t("ugc_batch_cancel_pending")}
-          </Button>
-        )}
-      </div>
+    <div className="space-y-4">
+      <ProgressOverlay counts={counts} />
+
+      {(awaitingApproval || cancellable) && (
+        <div className="flex flex-wrap gap-2">
+          {awaitingApproval && (
+            <Button
+              disabled={pending}
+              onClick={() =>
+                run(
+                  () => releaseBatchForRendering(progress.batch.id),
+                  "ugc_batch_released",
+                )
+              }
+            >
+              <PlayCircle />
+              {t("ugc_batch_release_scripts")}
+            </Button>
+          )}
+          {cancellable && (
+            <Button
+              variant="outline"
+              disabled={pending}
+              onClick={() =>
+                run(() => cancelBatch(progress.batch.id), "ugc_batch_cancelled")
+              }
+            >
+              <CircleStop />
+              {t("ugc_batch_cancel_pending")}
+            </Button>
+          )}
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <Table>

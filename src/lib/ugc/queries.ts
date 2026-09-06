@@ -158,6 +158,40 @@ async function clipDetails(
   }));
 }
 
+/** Just the counts, for the console's polling loop. */
+export async function getBatchProgress(batchId: string): Promise<{
+  status: BatchRow["status"];
+  total: number;
+  ready: number;
+  failed: number;
+  running: number;
+  pending: number;
+} | null> {
+  const user = await requireAuth();
+  const [batch] = await db
+    .select({
+      id: ugcBatches.id,
+      status: ugcBatches.status,
+      plannedCount: ugcBatches.plannedCount,
+    })
+    .from(ugcBatches)
+    .where(and(eq(ugcBatches.id, batchId), eq(ugcBatches.userId, user.id)));
+  if (!batch) return null;
+
+  const counts = (await progressFor([batch.id])).get(batch.id);
+  // Clip rows do not exist until the batch is expanded, so the planned count
+  // is the honest denominator; the unfilled part of the bar is work not yet
+  // started rather than work that has been counted twice.
+  return {
+    status: batch.status,
+    total: Math.max(counts?.total ?? 0, batch.plannedCount),
+    ready: counts?.ready ?? 0,
+    failed: counts?.failed ?? 0,
+    running: counts?.running ?? 0,
+    pending: counts?.pending ?? 0,
+  };
+}
+
 export async function getBatchDetail(batchId: string): Promise<{
   progress: BatchProgress;
   clips: ClipDetail[];
