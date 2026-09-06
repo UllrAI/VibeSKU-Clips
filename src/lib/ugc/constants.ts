@@ -56,6 +56,18 @@ export type VideoResolution = (typeof VIDEO_RESOLUTIONS)[number];
 
 /** Prism's H3 adapter exposes only its lower two output tiers. */
 export const PRISM_VIDEO_RESOLUTIONS = ["480p", "720p"] as const;
+export const LK666_VIDEO_RESOLUTIONS = ["720p", "1080p", "2k"] as const;
+export const VIDEO_GENERATION_PROVIDERS = ["prism", "lk666"] as const;
+export type VideoGenerationProvider =
+  (typeof VIDEO_GENERATION_PROVIDERS)[number];
+
+export function videoResolutionsForProvider(
+  provider: VideoGenerationProvider,
+): readonly VideoResolution[] {
+  return provider === "lk666"
+    ? LK666_VIDEO_RESOLUTIONS
+    : PRISM_VIDEO_RESOLUTIONS;
+}
 
 export const DEFAULT_VIDEO_SETTINGS = {
   aspectRatio: "9:16",
@@ -77,11 +89,11 @@ export const CREDIT_COST = {
 
 /** A generation attempt is abandoned after this many system retries. */
 
-/**
- * Prism is a first-party service and the models below are a product decision,
- * not a per-deployment setting. Only the credentials come from the environment.
- */
-export const MEDIA_PROVIDER = {
+/** Shared network deadline for media provider requests. */
+export const MEDIA_REQUEST_TIMEOUT_MS = 60_000;
+
+/** Prism model choices are product decisions; credentials remain environment settings. */
+export const PRISM_MEDIA = {
   /** `quality` is only honoured by Prism's gpt-image-* family. */
   imageModel: "gpt-image-2",
   imageSize: "1K",
@@ -89,5 +101,4 @@ export const MEDIA_PROVIDER = {
   /** H3 takes up to nine reference images and a 1-15 second duration. */
   videoModel: "minimax-h3",
   maxVideoReferences: 9,
-  requestTimeoutMs: 60_000,
 } as const;

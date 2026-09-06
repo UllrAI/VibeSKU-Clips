@@ -38,6 +38,13 @@ const JOB_FAILURE_KEYS: Record<string, string> = {
   PRISM_INVALID_RESPONSE: "ugc_work_failure_prism_response",
   PRISM_UNREACHABLE: "ugc_work_failure_prism_unavailable",
   PRISM_UNAVAILABLE: "ugc_work_failure_prism_unavailable",
+  LK666_NOT_CONFIGURED: "ugc_work_failure_lk666_config",
+  LK666_AUTH_FAILED: "ugc_work_failure_lk666_auth",
+  LK666_REQUEST_REJECTED: "ugc_work_failure_lk666_request",
+  LK666_INVALID_RESPONSE: "ugc_work_failure_lk666_response",
+  LK666_UNREACHABLE: "ugc_work_failure_lk666_unavailable",
+  LK666_UNAVAILABLE: "ugc_work_failure_lk666_unavailable",
+  VIDEO_PROVIDER_TASK_INVALID: "ugc_work_failure_incomplete",
   QUEUE_JOB_TERMINATED: "ugc_work_failure_terminated",
 };
 

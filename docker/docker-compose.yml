@@ -87,6 +87,13 @@ services:
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
       AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-gpt-5.6-luna}
 
+      VIDEO_GENERATION_PROVIDER: ${VIDEO_GENERATION_PROVIDER:-prism}
+      PRISM_API_BASE_URL: ${PRISM_API_BASE_URL:-https://staging-prism.ullrai.com/api/v1}
+      PRISM_API_KEY: ${PRISM_API_KEY:-}
+      PRISM_API_SECRET: ${PRISM_API_SECRET:-}
+      LK666_API_BASE_URL: ${LK666_API_BASE_URL:-https://api.lk888.ai}
+      LK666_API_KEY: ${LK666_API_KEY:-}
+
       # Payment provider (configure with your Stripe credentials)
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?Set STRIPE_SECRET_KEY}
       STRIPE_ENVIRONMENT: ${STRIPE_ENVIRONMENT:-test_mode}
@@ -129,6 +136,12 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
       AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-gpt-5.6-luna}
+      VIDEO_GENERATION_PROVIDER: ${VIDEO_GENERATION_PROVIDER:-prism}
+      PRISM_API_BASE_URL: ${PRISM_API_BASE_URL:-https://staging-prism.ullrai.com/api/v1}
+      PRISM_API_KEY: ${PRISM_API_KEY:-}
+      PRISM_API_SECRET: ${PRISM_API_SECRET:-}
+      LK666_API_BASE_URL: ${LK666_API_BASE_URL:-https://api.lk888.ai}
+      LK666_API_KEY: ${LK666_API_KEY:-}
     depends_on:
       migrate:
         condition: service_completed_successfully

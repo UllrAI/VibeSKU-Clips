@@ -6,9 +6,9 @@ const mediaEnvSchema = z.object(mediaEnvFields);
 export type MediaEnv = z.infer<typeof mediaEnvSchema>;
 
 /**
- * Media credentials are read straight from the process environment because the
- * renderer runs in both the Web process and the standalone job worker, which
- * validate their environments separately.
+ * Media provider selection and credentials are read straight from the process
+ * environment because the renderer runs in both the Web process and the
+ * standalone job worker, which validate their environments separately.
  */
 export function loadMediaEnv(
   source: NodeJS.ProcessEnv = process.env,

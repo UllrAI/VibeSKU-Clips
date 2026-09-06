@@ -53,9 +53,9 @@ synthetic-content disclosure.
 | Video      | `ugc.work.video`      | Generates one clip from the script and selected references, archives it, writes subtitles, and runs quality checks |
 
 Jobs run on pg-boss through the repository's task-run outbox, so each step
-survives a restart and can be retried on its own. Media generation goes through
-Prism (`src/lib/ugc/media`), and scripting through any OpenAI-compatible
-endpoint.
+survives a restart and can be retried on its own. Images go through Prism;
+video uses the provider selected by `VIDEO_GENERATION_PROVIDER`, and scripting
+uses any OpenAI-compatible endpoint.
 
 Business logic lives in `src/lib/ugc`, the job handlers in `src/lib/jobs/ugc`,
 and the operator surfaces under `src/app/dashboard`.
@@ -71,7 +71,7 @@ and the operator surfaces under `src/app/dashboard`.
 | **Database**        | [PostgreSQL](https://www.postgresql.org/)                                                                                                              |
 | **ORM**             | [Drizzle ORM](https://orm.drizzle.team/)                                                                                                               |
 | **Payments**        | [Stripe](https://stripe.com/)                                                                                                                          |
-| **Media**           | [Prism](https://prism.ullrai.com/) (image and video generation)                                                                                        |
+| **Media**           | Prism for images; selectable Prism or lk666 video generation                                                                                           |
 | **AI**              | [Vercel AI SDK](https://ai-sdk.dev/) v7, any OpenAI-compatible LLM endpoint                                                                            |
 | **Email**           | [Resend](https://resend.com/), [React Email](https://react.email/)                                                                                     |
 | **Forms**           | [React Hook Form](https://react-hook-form.com/), [Zod](https://zod.dev/)                                                                               |
@@ -143,9 +143,12 @@ never be added to `SITE_CONFIG`.
 | `LLM_API_KEY`                  | Required when `ai` is enabled. Key for your LLM endpoint.       | `sk-...`                                            |
 | `LLM_BASE_URL`                 | Optional OpenAI-compatible endpoint; defaults to OpenRouter.    | `https://openrouter.ai/api/v1`                      |
 | `AI_DEFAULT_MODEL`             | Optional model id; defaults to `openai/gpt-5.6-luna`.           | `openai/gpt-5.6-luna`                               |
+| `VIDEO_GENERATION_PROVIDER`    | Video backend: `prism` or `lk666`; defaults to Prism.           | `lk666`                                             |
 | `PRISM_API_BASE_URL`           | Prism root; staging outside production, production in prod.     | `https://staging-prism.ullrai.com/api/v1`           |
 | `PRISM_API_KEY`                | **Required for rendering.** Prism API key for the chosen host.  | `pk_...`                                            |
 | `PRISM_API_SECRET`             | **Required for rendering.** Prism secret for the chosen host.   | `sk_...`                                            |
+| `LK666_API_BASE_URL`           | Optional lk666-compatible API root.                             | `https://api.lk888.ai`                              |
+| `LK666_API_KEY`                | Required when the selected video backend is `lk666`.            | `sk-...`                                            |
 | `STRIPE_SECRET_KEY`            | Required for billing. Prefer a least-privilege restricted key.  | `rk_test_...` or `rk_live_...`                      |
 | `STRIPE_ENVIRONMENT`           | Stripe mode; defaults to `test_mode`.                           | `test_mode` or `live_mode`                          |
 | `STRIPE_WEBHOOK_SECRET`        | Required when `billing` is enabled. Endpoint signing secret.    | `whsec_your_webhook_secret`                         |

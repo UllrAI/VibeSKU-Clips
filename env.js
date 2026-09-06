@@ -198,9 +198,12 @@ const env = createEnv({
     AI_DEFAULT_MODEL: process.env.AI_DEFAULT_MODEL,
 
     // Media generation
+    VIDEO_GENERATION_PROVIDER: process.env.VIDEO_GENERATION_PROVIDER,
     PRISM_API_BASE_URL: process.env.PRISM_API_BASE_URL,
     PRISM_API_KEY: process.env.PRISM_API_KEY,
     PRISM_API_SECRET: process.env.PRISM_API_SECRET,
+    LK666_API_BASE_URL: process.env.LK666_API_BASE_URL,
+    LK666_API_KEY: process.env.LK666_API_KEY,
 
     // E2E testing
     E2E_DATABASE_URL: process.env.E2E_DATABASE_URL,

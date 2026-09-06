@@ -14,6 +14,19 @@ describe("worker environment", () => {
     expect(env.PRISM_API_BASE_URL).toBe(
       "https://staging-prism.ullrai.com/api/v1",
     );
+    expect(env.VIDEO_GENERATION_PROVIDER).toBe("prism");
+    expect(env.LK666_API_BASE_URL).toBe("https://api.lk888.ai");
+  });
+
+  it("accepts lk666 as the video provider", () => {
+    const env = loadWorkerEnv({
+      DATABASE_URL: "postgresql://worker:worker@localhost/app",
+      VIDEO_GENERATION_PROVIDER: "lk666",
+      LK666_API_KEY: "test-key",
+    });
+
+    expect(env.VIDEO_GENERATION_PROVIDER).toBe("lk666");
+    expect(env.LK666_API_KEY).toBe("test-key");
   });
 
   it("accepts a separate queue database and explicit pool budgets", () => {

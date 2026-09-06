@@ -10,7 +10,7 @@ import {
   ugcWorks,
 } from "@/database/ugc";
 import { CLIP_SPEC, CREDIT_COST } from "@/lib/ugc/constants";
-import { getTask, submitVideo } from "@/lib/ugc/media/prism";
+import { getVideoTask, submitVideo } from "@/lib/ugc/media/video-provider";
 import { evaluateClipQuality } from "@/lib/ugc/qc";
 import {
   archiveRemoteAsset,
@@ -166,7 +166,7 @@ export const workVideoJob = defineJob(
       return { providerTaskId, submitted: true };
     }
 
-    const task = await getTask(payload.providerTaskId);
+    const task = await getVideoTask(payload.providerTaskId);
     if (task.status === "pending") {
       if (payload.polls >= MAX_POLLS) {
         throw new PermanentJobError(

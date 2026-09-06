@@ -56,12 +56,14 @@ export function ProductStep({
   products,
   talents,
   productState,
+  resolutionOptions,
   onRefresh,
 }: {
   detail: WorkDetail;
   products: ProductRow[];
   talents: TalentRow[];
   productState: "empty" | "reading" | "needs_input" | "ready";
+  resolutionOptions: readonly VideoResolution[];
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
@@ -263,6 +265,7 @@ export function ProductStep({
             onAspectRatioChange={setAspectRatio}
             resolution={resolution}
             onResolutionChange={setResolution}
+            resolutionOptions={resolutionOptions}
           />
 
           <div className="grid gap-4 sm:grid-cols-2">

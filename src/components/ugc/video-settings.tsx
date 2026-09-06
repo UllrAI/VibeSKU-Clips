@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/select";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
-  PRISM_VIDEO_RESOLUTIONS,
   VIDEO_ASPECT_RATIOS,
   type VideoAspectRatio,
   type VideoMode,
@@ -25,7 +24,7 @@ export function VideoSettings({
   onAspectRatioChange,
   resolution,
   onResolutionChange,
-  resolutionOptions = PRISM_VIDEO_RESOLUTIONS,
+  resolutionOptions,
 }: {
   videoMode: VideoMode;
   onVideoModeChange: (value: VideoMode) => void;
@@ -33,7 +32,7 @@ export function VideoSettings({
   onAspectRatioChange: (value: VideoAspectRatio) => void;
   resolution: VideoResolution;
   onResolutionChange: (value: VideoResolution) => void;
-  resolutionOptions?: readonly VideoResolution[];
+  resolutionOptions: readonly VideoResolution[];
 }) {
   const { t } = useTranslation();
 

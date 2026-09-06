@@ -66,10 +66,12 @@ export function WorkComposer({
   products,
   talents,
   initialProductId,
+  resolutionOptions,
 }: {
   products: ProductRow[];
   talents: TalentRow[];
   initialProductId?: string;
+  resolutionOptions: readonly VideoResolution[];
 }) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -287,6 +289,7 @@ export function WorkComposer({
           onAspectRatioChange={setAspectRatio}
           resolution={resolution}
           onResolutionChange={setResolution}
+          resolutionOptions={resolutionOptions}
         />
 
         <div className="space-y-2">

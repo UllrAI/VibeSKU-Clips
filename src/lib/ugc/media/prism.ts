@@ -2,11 +2,12 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { PermanentJobError, RetryableJobError } from "@/lib/jobs/definition";
 import {
-  MEDIA_PROVIDER,
+  MEDIA_REQUEST_TIMEOUT_MS,
+  PRISM_MEDIA,
   type VideoAspectRatio,
-  type VideoResolution,
 } from "../constants";
 import { loadMediaEnv } from "./config";
+import type { MediaTask, MediaTaskStatus, VideoRequest } from "./video-types";
 
 const submissionSchema = z.object({
   data: z.object({ task_id: z.string().min(1) }),
@@ -20,8 +21,6 @@ const taskSchema = z.object({
   extra_data: z.record(z.string(), z.unknown()).nullish(),
 });
 
-type MediaTaskStatus = "pending" | "completed" | "failed";
-
 /** Prism requires request_id to be a UUID, including for derived frame jobs. */
 export function createPrismRequestId(...parts: string[]): string {
   const bytes = createHash("sha256")
@@ -32,14 +31,6 @@ export function createPrismRequestId(...parts: string[]): string {
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
   const hex = bytes.toString("hex");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
-export interface MediaTask {
-  status: MediaTaskStatus;
-  outputUrl: string | null;
-  errorMessage: string | null;
-  provider: string | null;
-  extra: Record<string, unknown> | null;
 }
 
 async function call<T>(
@@ -58,7 +49,7 @@ async function call<T>(
   const baseUrl = env.PRISM_API_BASE_URL.replace(/\/$/, "");
   const response = await fetch(`${baseUrl}${path}`, {
     method: init.method,
-    signal: AbortSignal.timeout(MEDIA_PROVIDER.requestTimeoutMs),
+    signal: AbortSignal.timeout(MEDIA_REQUEST_TIMEOUT_MS),
     headers: {
       "content-type": "application/json",
       "X-API-Key": env.PRISM_API_KEY,
@@ -108,9 +99,9 @@ export async function submitImage(request: ImageRequest): Promise<string> {
       method: "POST",
       body: {
         prompt: request.prompt,
-        model: MEDIA_PROVIDER.imageModel,
-        image_size: MEDIA_PROVIDER.imageSize,
-        quality: MEDIA_PROVIDER.imageQuality,
+        model: PRISM_MEDIA.imageModel,
+        image_size: PRISM_MEDIA.imageSize,
+        quality: PRISM_MEDIA.imageQuality,
         aspect_ratio: request.aspectRatio,
         request_id: request.requestId,
         ...(request.referenceUrls.length
@@ -123,20 +114,6 @@ export async function submitImage(request: ImageRequest): Promise<string> {
   return submission.data.task_id;
 }
 
-export interface VideoRequest {
-  prompt: string;
-  /**
-   * What the clip should look like. H3 treats these as a multi-image reference
-   * set rather than a strict first frame, so the storyboard frame, the product
-   * shots and the talent reference can all go in together.
-   */
-  referenceUrls: string[];
-  durationSeconds: number;
-  aspectRatio: VideoAspectRatio;
-  resolution: VideoResolution;
-  requestId: string;
-}
-
 export async function submitVideo(request: VideoRequest): Promise<string> {
   const submission = await call(
     "/video-gen",
@@ -144,7 +121,7 @@ export async function submitVideo(request: VideoRequest): Promise<string> {
       method: "POST",
       body: {
         prompt: request.prompt,
-        model: MEDIA_PROVIDER.videoModel,
+        model: PRISM_MEDIA.videoModel,
         duration: request.durationSeconds,
         aspect_ratio: request.aspectRatio,
         resolution: request.resolution,
@@ -154,7 +131,7 @@ export async function submitVideo(request: VideoRequest): Promise<string> {
           ? {
               reference_images: request.referenceUrls.slice(
                 0,
-                MEDIA_PROVIDER.maxVideoReferences,
+                PRISM_MEDIA.maxVideoReferences,
               ),
             }
           : {}),

@@ -41,12 +41,18 @@ export const modelEnvFields = {
 // connection settings are shared rather than duplicated in each environment
 // schema. Model choices remain product constants in `src/lib/ugc/constants.ts`.
 export const mediaEnvFields = {
+  VIDEO_GENERATION_PROVIDER: z.enum(["prism", "lk666"]).default("prism"),
   PRISM_API_BASE_URL: z.url().default(defaultPrismApiBaseUrl),
   PRISM_API_KEY: z.preprocess(
     (value) => value || undefined,
     z.string().trim().min(1).optional(),
   ),
   PRISM_API_SECRET: z.preprocess(
+    (value) => value || undefined,
+    z.string().trim().min(1).optional(),
+  ),
+  LK666_API_BASE_URL: z.url().default("https://api.lk888.ai"),
+  LK666_API_KEY: z.preprocess(
     (value) => value || undefined,
     z.string().trim().min(1).optional(),
   ),

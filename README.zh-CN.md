@@ -42,7 +42,8 @@ VibeSKU Clips 把商品资料转化为一条 15 秒本地化 UGC 视频。运营
 | 成片 | `ugc.work.video`      | 根据脚本与所选参考素材生成视频、归档、写字幕并执行质检 |
 
 任务通过 pg-boss 与仓库既有的 task-run 出箱机制执行，每一步都可在重启后继续或
-独立重试。视听生成走 Prism（`src/lib/ugc/media`），脚本创作走任意 OpenAI 兼容接口。
+独立重试。图片生成走 Prism；视频由 `VIDEO_GENERATION_PROVIDER` 选择 Prism 或
+lk666，脚本创作走任意 OpenAI 兼容接口。
 
 业务逻辑位于 `src/lib/ugc`，任务处理器位于 `src/lib/jobs/ugc`，操作界面位于
 `src/app/dashboard`。
@@ -123,9 +124,12 @@ cp .env.example .env
 | `LLM_API_KEY`                | 启用 `ai` 时必需。LLM 端点的 API Key。                | `sk-...`                                            |
 | `LLM_BASE_URL`               | 可选的 OpenAI 兼容端点，默认 OpenRouter。             | `https://openrouter.ai/api/v1`                      |
 | `AI_DEFAULT_MODEL`           | 可选的模型 id，默认 `openai/gpt-5.6-luna`。           | `openai/gpt-5.6-luna`                               |
+| `VIDEO_GENERATION_PROVIDER`  | 视频供应商，可选 `prism` 或 `lk666`，默认 Prism。     | `lk666`                                             |
 | `PRISM_API_BASE_URL`         | Prism 根地址；开发默认 staging，生产默认 production。 | `https://staging-prism.ullrai.com/api/v1`           |
 | `PRISM_API_KEY`              | **生成必填。** 当前 Prism 环境的 API Key。            | `pk_...`                                            |
 | `PRISM_API_SECRET`           | **生成必填。** 当前 Prism 环境的 API Secret。         | `sk_...`                                            |
+| `LK666_API_BASE_URL`         | 可选的 lk666 兼容 API 根地址。                        | `https://api.lk888.ai`                              |
+| `LK666_API_KEY`              | 视频供应商选择 `lk666` 时必填。                       | `sk-...`                                            |
 | `STRIPE_SECRET_KEY`          | 启用 `billing` 时必需。需与环境模式匹配。             | `sk_test_...` 或 `sk_live_...`                      |
 | `STRIPE_ENVIRONMENT`         | Stripe 环境模式，默认为 `test_mode`。                 | `test_mode` 或 `live_mode`                          |
 | `STRIPE_WEBHOOK_SECRET`      | 启用 `billing` 时必需。Endpoint 签名密钥。            | `whsec_your_webhook_secret`                         |

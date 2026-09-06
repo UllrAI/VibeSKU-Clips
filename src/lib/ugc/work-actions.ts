@@ -19,12 +19,12 @@ import { workVideoJob } from "@/lib/jobs/ugc/work-video";
 import { serverJobQueue } from "@/lib/jobs/server";
 import { createBackgroundTask } from "@/lib/tasks/service";
 import {
-  PRISM_VIDEO_RESOLUTIONS,
   SCRIPT_TEMPLATES,
   VIDEO_ASPECT_RATIOS,
   VIDEO_MODES,
   VIDEO_RESOLUTIONS,
 } from "./constants";
+import { isActiveVideoResolution } from "./media/video-provider";
 import { talentScopeKey, workScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
@@ -40,9 +40,7 @@ const setupSchema = z
     aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).default("9:16"),
     resolution: z
       .enum(VIDEO_RESOLUTIONS)
-      .refine((value) =>
-        PRISM_VIDEO_RESOLUTIONS.some((candidate) => candidate === value),
-      )
+      .refine((value) => isActiveVideoResolution(value))
       .default("720p"),
   })
   .refine((input) => !(input.randomTalent && input.talentId), {
