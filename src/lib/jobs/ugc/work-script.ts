@@ -85,7 +85,9 @@ export const workScriptJob = defineJob(
       // describe the real object and the real performer.
       productImageUrls,
       talentImageUrl,
-      talentNote: talent ? (talent.prompt ?? talent.name) : null,
+      talentNote: talent
+        ? (talent.prompt ?? talent.description ?? talent.name)
+        : null,
     });
 
     const [script] = await db

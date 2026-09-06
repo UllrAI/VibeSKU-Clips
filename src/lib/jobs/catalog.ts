@@ -5,6 +5,7 @@ import { workScriptJob } from "./ugc/work-script";
 import { workStoryboardJob } from "./ugc/work-storyboard";
 import { workVideoJob } from "./ugc/work-video";
 import { productIngestJob } from "./ugc/product-ingest";
+import { talentGenerateJob } from "./ugc/talent-generate";
 
 /**
  * Element type used where the queue walks the whole registry. Payload types
@@ -16,6 +17,7 @@ export type AnyJobDefinition = JobDefinition<string, z.ZodType, unknown>;
 export const jobDefinitions = [
   exampleProcessJob,
   productIngestJob,
+  talentGenerateJob,
   workScriptJob,
   workStoryboardJob,
   workVideoJob,

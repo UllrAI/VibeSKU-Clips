@@ -122,11 +122,12 @@ pnpm stripe:sync-products
 
 ## 5. UGC Production Pipeline
 
-Four durable jobs are registered in `src/lib/jobs/catalog.ts`:
+Five durable jobs are registered in `src/lib/jobs/catalog.ts`:
 
 | Job                   | Handler                               | What it does                                                                                  |
 | --------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Fetches the source link, extracts product facts, or marks the product `needs_input`           |
+| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief, draws one reference image, and archives it                            |
 | `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it    |
 | `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands              |
 | `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the accepted frames, product and talent to the video model and writes the finished clip |

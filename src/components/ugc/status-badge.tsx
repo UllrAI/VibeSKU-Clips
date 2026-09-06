@@ -33,10 +33,17 @@ const REVIEW_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
   rejected: { key: "ugc_review_status_rejected", variant: "destructive" },
 };
 
+const TALENT_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
+  generating: { key: "ugc_talent_status_generating", variant: "secondary" },
+  ready: { key: "ugc_talent_status_ready", variant: "default" },
+  failed: { key: "ugc_talent_status_failed", variant: "destructive" },
+};
+
 const MAPS = {
   product: PRODUCT_STATUS,
   clip: CLIP_STATUS,
   review: REVIEW_STATUS,
+  talent: TALENT_STATUS,
 } as const;
 
 export function StatusBadge({

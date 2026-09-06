@@ -7,6 +7,10 @@ export function productScopeKey(userId: string, productId: string): string {
   return `user:${userId}:product:${productId}`;
 }
 
+export function talentScopeKey(userId: string, talentId: string): string {
+  return `user:${userId}:talent:${talentId}`;
+}
+
 export function workScopeKey(userId: string, workId: string): string {
   return `user:${userId}:work:${workId}`;
 }

@@ -107,7 +107,9 @@ export const workStoryboardJob = defineJob(
       market: work.market,
       locale: work.locale,
       template: work.template,
-      talentPrompt: talent ? (talent.prompt ?? talent.name) : null,
+      talentPrompt: talent
+        ? (talent.prompt ?? talent.description ?? talent.name)
+        : null,
     };
 
     // First pass: create the frame rows from the accepted beats.

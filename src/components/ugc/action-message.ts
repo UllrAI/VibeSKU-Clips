@@ -2,8 +2,6 @@ const MESSAGE_KEYS: Record<string, string> = {
   invalid_input: "ugc_error_invalid_input",
   not_found: "ugc_error_not_found",
   product_needs_link_or_image: "ugc_error_product_needs_link_or_image",
-  talent_needs_image: "ugc_error_talent_needs_image",
-  talent_needs_prompt: "ugc_error_talent_needs_prompt",
   media_provider_unconfigured: "ugc_error_media_provider_unconfigured",
   work_needs_product: "ugc_error_work_needs_product",
   product_not_read: "ugc_error_product_not_read",

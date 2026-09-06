@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNotNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/database";
 import {
@@ -12,13 +12,14 @@ import {
   ugcWorks,
 } from "@/database/ugc";
 import { requireAuth } from "@/lib/auth/permissions";
+import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
 import { workScriptJob } from "@/lib/jobs/ugc/work-script";
 import { workStoryboardJob } from "@/lib/jobs/ugc/work-storyboard";
 import { workVideoJob } from "@/lib/jobs/ugc/work-video";
 import { serverJobQueue } from "@/lib/jobs/server";
 import { createBackgroundTask } from "@/lib/tasks/service";
 import { SCRIPT_TEMPLATES } from "./constants";
-import { workScopeKey } from "./scope";
+import { talentScopeKey, workScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
 const setupSchema = z
@@ -56,16 +57,25 @@ async function resolveTalentSelection(
       RANDOM_TALENT_PROFILES[
         Math.floor(Math.random() * RANDOM_TALENT_PROFILES.length)
       ];
+    const description = `${profile}. Create a fictional adult suitable for ${selection.market}; the performance language is ${selection.locale}. Do not resemble a real public figure.`;
     const [talent] = await db
       .insert(ugcTalents)
       .values({
         userId,
         name: `AI Talent ${crypto.randomUUID().slice(0, 4).toUpperCase()}`,
-        source: "generated",
-        prompt: `${profile}. Create a fictional adult suitable for ${selection.market}; the performance language is ${selection.locale}. Do not resemble a real public figure.`,
-        licenceNote: "Fictional adult generated for this work.",
+        description,
+        referenceImages: [],
+        status: "generating",
       })
-      .returning({ id: ugcTalents.id });
+      .returning();
+    await createBackgroundTask({
+      db,
+      queue: serverJobQueue,
+      definition: talentGenerateJob,
+      scopeKey: talentScopeKey(userId, talent.id),
+      payload: { talentId: talent.id, userId, polls: 0 },
+      idempotencyKey: `${talent.id}:image:${crypto.randomUUID()}`,
+    });
     return talent.id;
   }
   if (!selection.talentId) return null;
@@ -78,6 +88,8 @@ async function resolveTalentSelection(
         eq(ugcTalents.id, selection.talentId),
         eq(ugcTalents.userId, userId),
         eq(ugcTalents.archived, false),
+        eq(ugcTalents.status, "ready"),
+        isNotNull(ugcTalents.imageUrl),
       ),
     );
   return talent?.id;

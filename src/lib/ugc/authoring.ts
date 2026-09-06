@@ -24,6 +24,61 @@ const factsSchema = z.object({
   missing: z.array(z.string()).max(6),
 });
 
+const talentImagePromptSchema = z.object({
+  prompt: z.string().min(1).max(12_000),
+});
+
+export interface ComposeTalentImagePromptInput {
+  name: string;
+  description: string;
+  referenceImageUrls: string[];
+}
+
+/** Turns a short operator brief into one complete, shootable portrait prompt. */
+export async function composeTalentImagePrompt(
+  input: ComposeTalentImagePromptInput,
+): Promise<string> {
+  const { object } = await generateObject({
+    model: getAuthoringModel(),
+    schema: talentImagePromptSchema,
+    system: [
+      "You write one production-ready prompt for a photorealistic adult talent reference image.",
+      "Preserve every explicit fact in the operator brief. Expand missing photographic detail coherently without changing the requested identity, clothing, setting, or mood.",
+      "Write in the same language as the operator brief.",
+      "Describe camera type, selfie or photographer viewpoint, camera height and angle, crop, facial structure, complexion, eyes, lips, hair, complete modest outfit, accessories, pose, setting, background depth, light direction, colour temperature, expression, attitude, skin texture, and phone-camera realism.",
+      "Finish with positive identity and wardrobe locks plus concise negative constraints. The subject must be an adult. No swimwear, exposed midriff, sexualised pose, text overlay, watermark, beauty filter, plastic skin, or anatomical errors.",
+      input.referenceImageUrls.length
+        ? "Reference images are attached. State that facial identity, facial proportions, complexion, eyes, and hair must match the reference exactly; use the operator brief for intentional wardrobe or setting changes."
+        : "No reference image is attached. Define one coherent fictional adult identity from the operator brief.",
+      "Return only the final image prompt in `prompt`, with no explanation or markdown.",
+    ].join("\n"),
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text" as const,
+            text: `Talent name: ${input.name}\nOperator brief:\n${input.description}`,
+          },
+          ...input.referenceImageUrls.flatMap((url, index) => [
+            {
+              type: "text" as const,
+              text: `Talent reference image ${index + 1} of ${input.referenceImageUrls.length}`,
+            },
+            {
+              type: "file" as const,
+              data: new URL(url),
+              mediaType: "image",
+            },
+          ]),
+        ],
+      },
+    ],
+  });
+
+  return object.prompt;
+}
+
 function timingsCoverClip(beats: { start: number; end: number }[]): boolean {
   return (
     beats.every(

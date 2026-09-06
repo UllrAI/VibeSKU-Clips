@@ -26,9 +26,10 @@ export const ugcProductStatusEnum = pgEnum("ugc_product_status", [
   "failed",
 ]);
 
-export const ugcTalentSourceEnum = pgEnum("ugc_talent_source", [
-  "uploaded",
-  "generated",
+export const ugcTalentStatusEnum = pgEnum("ugc_talent_status", [
+  "generating",
+  "ready",
+  "failed",
 ]);
 
 export const ugcScriptTemplateEnum = pgEnum("ugc_script_template", [
@@ -135,13 +136,15 @@ export const ugcTalents = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    source: ugcTalentSourceEnum("source").notNull(),
+    description: text("description").notNull().default(""),
+    referenceImages: jsonb("referenceImages")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
     imageUrl: text("imageUrl"),
+    // Expanded photography prompt used to create the final reference image.
     prompt: text("prompt"),
-    // Free-form record of where the likeness came from and what it may be used
-    // for. Voice cloning is never implied by an image licence.
-    licenceNote: text("licenceNote"),
-    voicePreset: text("voicePreset"),
+    status: ugcTalentStatusEnum("status").notNull().default("ready"),
     archived: boolean("archived").notNull().default(false),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()

@@ -84,6 +84,9 @@ export function WorkComposer({
   const [market, setMarket] = useState("US");
 
   const chosen = products.find((product) => product.id === productId);
+  const availableTalents = talents.filter(
+    (talent) => talent.status === "ready" && talent.imageUrl,
+  );
   const ready =
     source === "library"
       ? Boolean(productId)
@@ -278,7 +281,7 @@ export function WorkComposer({
               <SelectItem value={RANDOM_TALENT}>
                 {t("ugc_work_random_talent")}
               </SelectItem>
-              {talents.map((talent) => (
+              {availableTalents.map((talent) => (
                 <SelectItem key={talent.id} value={talent.id}>
                   {talent.name}
                 </SelectItem>

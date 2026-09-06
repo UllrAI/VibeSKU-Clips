@@ -13,11 +13,12 @@ import {
 } from "@/database/ugc";
 import { requireAuth } from "@/lib/auth/permissions";
 import { productIngestJob } from "@/lib/jobs/ugc/product-ingest";
+import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
 import { serverJobQueue } from "@/lib/jobs/server";
 import { fileKeyFromUrl } from "@/lib/uploads/url";
 import { createBackgroundTask } from "@/lib/tasks/service";
 import { buildExportManifest } from "./manifest";
-import { productScopeKey } from "./scope";
+import { productScopeKey, talentScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
 const briefSchema = z.object({
@@ -224,12 +225,22 @@ export async function deleteProduct(productId: string): Promise<ActionResult> {
 
 const talentSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  source: z.enum(["uploaded", "generated"]),
-  imageUrl: imageReferenceSchema.optional(),
-  prompt: z.string().trim().max(1000).optional(),
-  licenceNote: z.string().trim().max(1000).optional(),
-  voicePreset: z.string().trim().max(120).optional(),
+  description: z.string().trim().min(1).max(6000),
+  referenceImages: z.array(imageReferenceSchema).max(1),
 });
+
+async function enqueueTalentGeneration(
+  talent: typeof ugcTalents.$inferSelect,
+): Promise<void> {
+  await createBackgroundTask({
+    db,
+    queue: serverJobQueue,
+    definition: talentGenerateJob,
+    scopeKey: talentScopeKey(talent.userId, talent.id),
+    payload: { talentId: talent.id, userId: talent.userId, polls: 0 },
+    idempotencyKey: `${talent.id}:image:${crypto.randomUUID()}`,
+  });
+}
 
 export async function createTalent(
   input: z.infer<typeof talentSchema>,
@@ -237,26 +248,35 @@ export async function createTalent(
   const user = await requireAuth();
   const parsed = talentSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "invalid_input" };
-  if (parsed.data.source === "uploaded" && !parsed.data.imageUrl) {
-    return { ok: false, code: "talent_needs_image" };
-  }
-  if (parsed.data.source === "generated" && !parsed.data.prompt) {
-    return { ok: false, code: "talent_needs_prompt" };
-  }
 
   const [talent] = await db
     .insert(ugcTalents)
     .values({
       userId: user.id,
       name: parsed.data.name,
-      source: parsed.data.source,
-      imageUrl: emptyToNull(parsed.data.imageUrl),
-      prompt: emptyToNull(parsed.data.prompt),
-      licenceNote: emptyToNull(parsed.data.licenceNote),
-      voicePreset: emptyToNull(parsed.data.voicePreset),
+      description: parsed.data.description,
+      referenceImages: parsed.data.referenceImages,
+      status: "generating",
     })
     .returning();
 
+  await enqueueTalentGeneration(talent);
+  revalidatePath("/dashboard/talents");
+  return { ok: true, id: talent.id };
+}
+
+export async function retryTalentGeneration(
+  talentId: string,
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const [talent] = await db
+    .update(ugcTalents)
+    .set({ status: "generating", updatedAt: new Date() })
+    .where(and(eq(ugcTalents.id, talentId), eq(ugcTalents.userId, user.id)))
+    .returning();
+  if (!talent) return { ok: false, code: "not_found" };
+
+  await enqueueTalentGeneration(talent);
   revalidatePath("/dashboard/talents");
   return { ok: true, id: talent.id };
 }

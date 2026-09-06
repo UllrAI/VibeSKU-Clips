@@ -125,3 +125,34 @@ describe("composeScript", () => {
     expect(result.voiceover).toBe("Last step. Then sleep.");
   });
 });
+
+describe("composeTalentImagePrompt", () => {
+  it("expands the user's direction and sends the optional reference image", async () => {
+    const { composeTalentImagePrompt } = await import("./authoring");
+    mockGenerateObject.mockResolvedValueOnce({
+      object: {
+        prompt:
+          "iPhone selfie, slightly below eye level, photoreal adult creator, warm late-afternoon light.",
+      },
+    });
+
+    const result = await composeTalentImagePrompt({
+      name: "Mia",
+      description:
+        "Young adult woman with long light-brown hair at a Mediterranean cafe.",
+      referenceImageUrls: ["https://example.com/mia.jpg"],
+    });
+
+    const request = mockGenerateObject.mock.calls[0]![0] as {
+      system: string;
+      messages: { content: { type: string; text?: string }[] }[];
+    };
+    const content = request.messages[0]!.content;
+    expect(request.system).toContain("camera type");
+    expect(request.system).toContain("facial identity");
+    expect(content.filter((part) => part.type === "file")).toHaveLength(1);
+    expect(content[0]!.text).toContain("Mia");
+    expect(content[0]!.text).toContain("Mediterranean cafe");
+    expect(result).toContain("iPhone selfie");
+  });
+});
