@@ -94,7 +94,7 @@ export function Features({
 
   const specs = [
     { id: "duration", label: t("home_spec_duration"), value: "15s" },
-    { id: "frame", label: t("home_spec_frame"), value: "1080×1920" },
+    { id: "frame", label: t("home_spec_frame"), value: "9:16 / 16:9" },
     { id: "templates", label: t("home_spec_templates"), value: "3" },
     { id: "locales", label: t("home_spec_locales"), value: "6" },
   ];

@@ -24,6 +24,7 @@ import {
   startWorkVideo,
 } from "@/lib/ugc/work-actions";
 import type { WorkFrameRow } from "@/lib/ugc/works";
+import type { VideoAspectRatio } from "@/lib/ugc/constants";
 import { cn } from "@/lib/utils";
 import { StepCard } from "./step-card";
 
@@ -35,10 +36,12 @@ import { StepCard } from "./step-card";
 export function StoryboardStep({
   workId,
   frames,
+  aspectRatio,
   onRefresh,
 }: {
   workId: string;
   frames: WorkFrameRow[];
+  aspectRatio: VideoAspectRatio;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
@@ -124,7 +127,8 @@ export function StoryboardStep({
               type="button"
               onClick={() => openEditor(frame)}
               className={cn(
-                "border-border bg-muted focus-visible:ring-ring relative block aspect-9/16 w-full overflow-hidden rounded-lg border",
+                "border-border bg-muted focus-visible:ring-ring relative block w-full overflow-hidden rounded-lg border",
+                aspectRatio === "9:16" ? "aspect-9/16" : "aspect-video",
                 "hover:border-primary transition-colors focus-visible:ring-[3px] focus-visible:outline-none",
               )}
             >

@@ -6,8 +6,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: APP_NAME,
     short_name: APP_NAME,
-    description:
-      "Guided production of localised 15-second vertical product video.",
+    description: "Guided production of localised 15-second product video.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",

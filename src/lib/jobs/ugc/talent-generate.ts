@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { AppDatabase } from "@/database/client";
 import { ugcTalents } from "@/database/ugc";
 import { composeTalentImagePrompt } from "@/lib/ugc/authoring";
-import { CLIP_SPEC, CREDIT_COST } from "@/lib/ugc/constants";
+import { CREDIT_COST, DEFAULT_VIDEO_SETTINGS } from "@/lib/ugc/constants";
 import { getTask, submitImage } from "@/lib/ugc/media/prism";
 import { archiveRemoteAsset } from "@/lib/ugc/render";
 import {
@@ -89,7 +89,7 @@ export const talentGenerateJob = defineJob(
         const providerTaskId = await submitImage({
           prompt,
           referenceUrls: referenceImageUrls,
-          aspectRatio: CLIP_SPEC.aspectRatio,
+          aspectRatio: DEFAULT_VIDEO_SETTINGS.aspectRatio,
           requestId: context.taskRunId,
         });
         await context.updateProgress({ step: "drawing_talent" });

@@ -67,10 +67,14 @@ describe("render prompts", () => {
   });
 
   it("directs one-take video to avoid cuts and scene changes", () => {
-    const prompt = buildVideoPrompt(subject, beats, null, "one_take");
+    const prompt = buildVideoPrompt(subject, beats, null, {
+      videoMode: "one_take",
+      aspectRatio: "16:9",
+    });
 
     expect(prompt).toContain("one continuous take");
     expect(prompt).toContain("no cuts, transitions, or scene changes");
+    expect(prompt).toContain("landscape 16:9");
   });
 });
 

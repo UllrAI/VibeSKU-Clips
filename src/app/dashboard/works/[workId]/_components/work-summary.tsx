@@ -89,7 +89,8 @@ export function WorkSummary({ detail }: { detail: WorkDetail }) {
           {t(templateKey(work.template))}
         </Fact>
         <Fact label={t("ugc_video_mode")}>
-          {t(videoModeKey(work.videoMode))}
+          {t(videoModeKey(work.videoMode))} · {work.aspectRatio} ·{" "}
+          {work.resolution === "2k" ? "2K" : work.resolution}
         </Fact>
         <Fact label={t("ugc_plan_locale")}>
           {t(contentLocaleKey(work.locale))} · {t(marketKey(work.market))}

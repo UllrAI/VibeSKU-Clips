@@ -143,15 +143,14 @@ export const workVideoJob = defineJob(
         ].filter((url): url is string => Boolean(url)),
       );
       const providerTaskId = await submitVideo({
-        prompt: buildVideoPrompt(
-          subject,
-          beats,
-          script.productionPrompt,
-          work.videoMode,
-        ),
+        prompt: buildVideoPrompt(subject, beats, script.productionPrompt, {
+          videoMode: work.videoMode,
+          aspectRatio: work.aspectRatio,
+        }),
         referenceUrls: references,
         durationSeconds: CLIP_SPEC.durationSeconds,
-        aspectRatio: CLIP_SPEC.aspectRatio,
+        aspectRatio: work.aspectRatio,
+        resolution: work.resolution,
         requestId: context.taskRunId,
       });
       await context.updateProgress({ step: "video" });
@@ -223,6 +222,8 @@ export const workVideoJob = defineJob(
         locale: work.locale,
         market: work.market,
         template: work.template,
+        aspectRatio: work.aspectRatio,
+        resolution: work.resolution,
         status: quality.passed ? "ready" : "failed",
         failureReason: quality.passed
           ? null

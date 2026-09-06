@@ -70,7 +70,12 @@ export function WorkConsole({
     );
   } else if (work.step === "storyboard" && !failed && frames.length > 0) {
     body = (
-      <StoryboardStep workId={work.id} frames={frames} onRefresh={refresh} />
+      <StoryboardStep
+        workId={work.id}
+        frames={frames}
+        aspectRatio={work.aspectRatio}
+        onRefresh={refresh}
+      />
     );
   } else {
     body = (
@@ -88,6 +93,7 @@ export function WorkConsole({
         stalled={detail.run.stalled}
         frames={work.step === "video" ? frames : []}
         videoMode={work.videoMode}
+        aspectRatio={work.aspectRatio}
         onRefresh={refresh}
       />
     );

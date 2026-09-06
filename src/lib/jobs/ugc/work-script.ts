@@ -80,6 +80,7 @@ export const workScriptJob = defineJob(
       template: work.template as ScriptTemplate,
       locale: work.locale,
       market: work.market,
+      aspectRatio: work.aspectRatio,
       productName: product.name,
       // The model sees what the clip will actually show, so the script can
       // describe the real object and the real performer.

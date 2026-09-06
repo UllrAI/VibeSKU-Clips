@@ -1,12 +1,6 @@
-/**
- * Delivery specification for every clip the platform produces. These values are
- * contractual: the renderer and quality gate both read them from here.
- */
+/** The fixed timing and speech constraints shared by every clip. */
 export const CLIP_SPEC = {
   durationSeconds: 15,
-  width: 1080,
-  height: 1920,
-  aspectRatio: "9:16",
   /** Tolerance either side of the target duration before a clip is rejected. */
   durationToleranceMs: 700,
   /** Roughly the number of spoken characters that fit in the target duration. */
@@ -54,6 +48,23 @@ export type ScriptTemplate = (typeof SCRIPT_TEMPLATES)[number];
 export const VIDEO_MODES = ["one_take", "storyboard"] as const;
 export type VideoMode = (typeof VIDEO_MODES)[number];
 
+export const VIDEO_ASPECT_RATIOS = ["9:16", "16:9"] as const;
+export type VideoAspectRatio = (typeof VIDEO_ASPECT_RATIOS)[number];
+
+export const VIDEO_RESOLUTIONS = ["480p", "720p", "1080p", "2k"] as const;
+export type VideoResolution = (typeof VIDEO_RESOLUTIONS)[number];
+
+/** Prism's H3 adapter exposes only its lower two output tiers. */
+export const PRISM_VIDEO_RESOLUTIONS = ["480p", "720p"] as const;
+
+export const DEFAULT_VIDEO_SETTINGS = {
+  aspectRatio: "9:16",
+  resolution: "720p",
+} as const satisfies {
+  aspectRatio: VideoAspectRatio;
+  resolution: VideoResolution;
+};
+
 /**
  * Credit cost per unit of work. Retries and operator-requested regenerations
  * both consume credits, and both are recorded separately from the planned count.
@@ -77,8 +88,6 @@ export const MEDIA_PROVIDER = {
   imageQuality: "low",
   /** H3 takes up to nine reference images and a 1-15 second duration. */
   videoModel: "minimax-h3",
-  // Prism maps this to H3's native 768p mode; H3 rejects 1080p.
-  videoResolution: "720p",
   maxVideoReferences: 9,
   requestTimeoutMs: 60_000,
 } as const;

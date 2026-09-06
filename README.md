@@ -4,9 +4,9 @@
 
 VibeSKU Clips turns product material into a localised 15-second UGC video. An
 operator submits a product link or images with a brief; the platform reads the
-product, writes a market-specific script, draws a storyboard, generates the
-clip, checks it against a quality gate, and hands back the asset with a delivery
-manifest.
+product, writes a market-specific script, optionally draws a storyboard,
+generates the clip, checks it against a quality gate, and hands back the asset
+with a delivery manifest.
 
 The platform produces material and the manifest. Account login, publishing,
 storefront links, product tagging, and performance observation stay with the
@@ -26,8 +26,8 @@ operations team.
   production recipe with its own beat structure and rotating opening angles.
 - **Talent consistency.** Upload a licensed photo or describe a fictional adult
   performer. The generated opening frame anchors the look for the whole clip.
-- **One clip at a time.** Product, talent, script, storyboard, and video form one
-  guided path, with a human confirmation before each expensive step.
+- **One clip at a time.** Product, talent, script, optional storyboard, and video
+  form one guided path, with a human confirmation before each expensive step.
 - **A quality gate before review.** Duration, voiceover length, caption safe
   area, product accuracy, performer consistency, and local expression are
   checked on every clip.
@@ -39,17 +39,18 @@ operations team.
   clips keep their source, licence, and version lineage; analysis, scripting,
   rendering, retries, and regenerations are metered separately.
 
-Delivery specification: 15 seconds, 9:16, 1080×1920, with cover, subtitles,
-publish caption, and a synthetic-content disclosure.
+Delivery specification: 15 seconds, selectable 9:16 or 16:9 framing, and a
+provider-compatible resolution, with cover, subtitles, publish caption, and a
+synthetic-content disclosure.
 
 ## 🧱 How production runs
 
-| Stage      | Job                   | What it does                                                                                              |
-| :--------- | :-------------------- | :-------------------------------------------------------------------------------------------------------- |
-| Intake     | `ugc.product.ingest`  | Fetches the product page, reads facts from the material, and pauses when something is missing             |
-| Script     | `ugc.work.script`     | Writes one script from the confirmed product, talent, language, and market                                |
-| Storyboard | `ugc.work.storyboard` | Draws one key frame per beat and stops for confirmation                                                   |
-| Video      | `ugc.work.video`      | Generates one clip from the accepted storyboard, archives it, writes subtitles, and runs the quality gate |
+| Stage      | Job                   | What it does                                                                                                       |
+| :--------- | :-------------------- | :----------------------------------------------------------------------------------------------------------------- |
+| Intake     | `ugc.product.ingest`  | Fetches the product page, reads facts from the material, and pauses when something is missing                      |
+| Script     | `ugc.work.script`     | Writes one script from the confirmed product, talent, language, and market                                         |
+| Storyboard | `ugc.work.storyboard` | Draws one key frame per beat and stops for confirmation                                                            |
+| Video      | `ugc.work.video`      | Generates one clip from the script and selected references, archives it, writes subtitles, and runs quality checks |
 
 Jobs run on pg-boss through the repository's task-run outbox, so each step
 survives a restart and can be retried on its own. Media generation goes through

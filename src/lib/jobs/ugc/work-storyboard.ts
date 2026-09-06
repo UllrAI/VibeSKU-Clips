@@ -8,7 +8,7 @@ import {
   ugcWorkFrames,
   ugcWorks,
 } from "@/database/ugc";
-import { CLIP_SPEC, CREDIT_COST } from "@/lib/ugc/constants";
+import { CREDIT_COST } from "@/lib/ugc/constants";
 import {
   createPrismRequestId,
   getTask,
@@ -132,6 +132,7 @@ export const workStoryboardJob = defineJob(
                 beat,
                 position,
                 script.productionPrompt,
+                work.aspectRatio,
               ),
             })),
           )
@@ -172,7 +173,7 @@ export const workStoryboardJob = defineJob(
       const providerTaskId = await submitImage({
         prompt: frame.prompt,
         referenceUrls: references,
-        aspectRatio: CLIP_SPEC.aspectRatio,
+        aspectRatio: work.aspectRatio,
         requestId: createPrismRequestId(context.taskRunId, frame.id),
       });
       await db

@@ -5,6 +5,7 @@ import {
   CLIP_SPEC,
   voiceoverBudgetFor,
   type ScriptTemplate,
+  type VideoAspectRatio,
 } from "./constants";
 import type {
   ProductBrief,
@@ -206,6 +207,7 @@ export interface ComposeScriptInput {
   template: ScriptTemplate;
   locale: string;
   market: string;
+  aspectRatio: VideoAspectRatio;
   productName: string;
   productImageUrls?: string[];
   talentImageUrl?: string | null;
@@ -256,7 +258,8 @@ export async function composeScript(
     model: getAuthoringModel(),
     schema: scriptSchema,
     system: [
-      `You are both the writer and director of a ${CLIP_SPEC.durationSeconds}-second vertical UGC video. Produce a shootable production script, not a marketing outline.`,
+      `You are both the writer and director of a ${CLIP_SPEC.durationSeconds}-second ${input.aspectRatio} UGC video. Produce a shootable production script, not a marketing outline.`,
+      `Compose every shot and camera move for a ${input.aspectRatio === "9:16" ? "portrait" : "landscape"} frame. Record the ${input.aspectRatio} ratio in OUTPUT SETTINGS.`,
       `Structure: ${brief.structure}`,
       `Voice: ${brief.voice}`,
       `Write every field in ${input.locale} for the ${input.market} market, using local wording, units, and everyday scenes.`,

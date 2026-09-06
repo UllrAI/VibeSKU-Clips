@@ -18,7 +18,8 @@ import {
   startWorkVideo,
 } from "@/lib/ugc/work-actions";
 import type { WorkFrameRow } from "@/lib/ugc/works";
-import type { VideoMode } from "@/lib/ugc/constants";
+import type { VideoAspectRatio, VideoMode } from "@/lib/ugc/constants";
+import { cn } from "@/lib/utils";
 import { StepCard } from "./step-card";
 
 type RunningStep = "script" | "storyboard" | "video";
@@ -71,6 +72,7 @@ export function PendingStep({
   stalled,
   frames,
   videoMode,
+  aspectRatio,
   onRefresh,
 }: {
   workId: string;
@@ -80,6 +82,7 @@ export function PendingStep({
   stalled: boolean;
   frames: WorkFrameRow[];
   videoMode: VideoMode;
+  aspectRatio: VideoAspectRatio;
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
@@ -164,7 +167,10 @@ export function PendingStep({
           {frames.map((frame) => (
             <li
               key={frame.id}
-              className="border-border bg-muted relative aspect-9/16 overflow-hidden rounded-md border"
+              className={cn(
+                "border-border bg-muted relative overflow-hidden rounded-md border",
+                aspectRatio === "9:16" ? "aspect-9/16" : "aspect-video",
+              )}
             >
               {frame.imageUrl && (
                 <Image

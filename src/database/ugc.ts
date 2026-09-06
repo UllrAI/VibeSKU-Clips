@@ -67,6 +67,18 @@ export const ugcVideoModeEnum = pgEnum("ugc_video_mode", [
   "storyboard",
 ]);
 
+export const ugcVideoAspectRatioEnum = pgEnum("ugc_video_aspect_ratio", [
+  "9:16",
+  "16:9",
+]);
+
+export const ugcVideoResolutionEnum = pgEnum("ugc_video_resolution", [
+  "480p",
+  "720p",
+  "1080p",
+  "2k",
+]);
+
 export const ugcFrameStatusEnum = pgEnum("ugc_frame_status", [
   "pending",
   "generating",
@@ -221,6 +233,10 @@ export const ugcClips = pgTable(
     locale: text("locale").notNull(),
     market: text("market").notNull(),
     template: ugcScriptTemplateEnum("template").notNull(),
+    aspectRatio: ugcVideoAspectRatioEnum("aspectRatio")
+      .notNull()
+      .default("9:16"),
+    resolution: ugcVideoResolutionEnum("resolution").notNull().default("720p"),
     status: ugcClipStatusEnum("status").notNull().default("pending"),
     videoUrl: text("videoUrl"),
     coverUrl: text("coverUrl"),
@@ -294,6 +310,10 @@ export const ugcWorks = pgTable(
       .notNull()
       .default("spokesperson"),
     videoMode: ugcVideoModeEnum("videoMode").notNull().default("one_take"),
+    aspectRatio: ugcVideoAspectRatioEnum("aspectRatio")
+      .notNull()
+      .default("9:16"),
+    resolution: ugcVideoResolutionEnum("resolution").notNull().default("720p"),
     scriptId: uuid("scriptId").references(() => ugcScripts.id, {
       onDelete: "set null",
     }),

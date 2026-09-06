@@ -56,7 +56,8 @@ and script are sent to the video model. Long provider work is polled in the
 background, so closing the tab does not cancel it. Finished media is copied to
 private object storage instead of depending on an expiring provider URL.
 
-The delivery specification is fixed: 15 seconds, 9:16, 1080×1920. A quality
+The duration is fixed at 15 seconds. Each work selects 9:16 or 16:9 framing and
+a resolution supported by its video provider. A quality
 report checks duration, spoken length, caption safety, factual accuracy, talent
 consistency, and locale expression.
 

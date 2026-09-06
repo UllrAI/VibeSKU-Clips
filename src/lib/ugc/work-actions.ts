@@ -18,7 +18,13 @@ import { workStoryboardJob } from "@/lib/jobs/ugc/work-storyboard";
 import { workVideoJob } from "@/lib/jobs/ugc/work-video";
 import { serverJobQueue } from "@/lib/jobs/server";
 import { createBackgroundTask } from "@/lib/tasks/service";
-import { SCRIPT_TEMPLATES, VIDEO_MODES } from "./constants";
+import {
+  PRISM_VIDEO_RESOLUTIONS,
+  SCRIPT_TEMPLATES,
+  VIDEO_ASPECT_RATIOS,
+  VIDEO_MODES,
+  VIDEO_RESOLUTIONS,
+} from "./constants";
 import { talentScopeKey, workScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
@@ -31,6 +37,13 @@ const setupSchema = z
     market: z.string().trim().min(2).max(16),
     template: z.enum(SCRIPT_TEMPLATES),
     videoMode: z.enum(VIDEO_MODES).default("one_take"),
+    aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).default("9:16"),
+    resolution: z
+      .enum(VIDEO_RESOLUTIONS)
+      .refine((value) =>
+        PRISM_VIDEO_RESOLUTIONS.some((candidate) => candidate === value),
+      )
+      .default("720p"),
   })
   .refine((input) => !(input.randomTalent && input.talentId), {
     path: ["talentId"],
@@ -171,6 +184,8 @@ export async function createWork(
       market: parsed.data.market,
       template: parsed.data.template,
       videoMode: parsed.data.videoMode,
+      aspectRatio: parsed.data.aspectRatio,
+      resolution: parsed.data.resolution,
     })
     .returning();
 
@@ -224,6 +239,8 @@ export async function setWorkSetup(
       market: parsed.data.market,
       template: parsed.data.template,
       videoMode: parsed.data.videoMode,
+      aspectRatio: parsed.data.aspectRatio,
+      resolution: parsed.data.resolution,
       step: "product",
       stepStatus: "idle",
       updatedAt: new Date(),

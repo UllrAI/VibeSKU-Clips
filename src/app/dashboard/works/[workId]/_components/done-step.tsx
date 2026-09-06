@@ -11,6 +11,7 @@ import { useTranslation } from "@/lib/i18n/translation/client";
 import { reopenWorkStep } from "@/lib/ugc/work-actions";
 import type { ClipRow } from "@/lib/ugc/works";
 import type { VideoMode } from "@/lib/ugc/constants";
+import { cn } from "@/lib/utils";
 import { StepCard } from "./step-card";
 
 /** The finished clip, with its quality findings spelled out rather than scored. */
@@ -70,7 +71,14 @@ export function DoneStep({
       }
     >
       <div className="flex flex-col gap-5 sm:flex-row">
-        <div className="border-border bg-muted relative aspect-9/16 w-full max-w-56 shrink-0 overflow-hidden rounded-lg border">
+        <div
+          className={cn(
+            "border-border bg-muted relative w-full shrink-0 overflow-hidden rounded-lg border",
+            clip.aspectRatio === "9:16"
+              ? "aspect-9/16 max-w-56"
+              : "aspect-video sm:max-w-96",
+          )}
+        >
           {clip.videoUrl ? (
             <video
               className="size-full object-cover"

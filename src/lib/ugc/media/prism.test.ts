@@ -64,7 +64,7 @@ describe("Prism media client", () => {
     });
   });
 
-  it("submits 15-second portrait video to MiniMax H3", async () => {
+  it("submits the selected size and resolution to MiniMax H3", async () => {
     const fetchMock = jest
       .spyOn(global, "fetch")
       .mockResolvedValue(successfulSubmission());
@@ -78,6 +78,7 @@ describe("Prism media client", () => {
       referenceUrls: references,
       durationSeconds: 15,
       aspectRatio: "9:16",
+      resolution: "480p",
       requestId: TASK_ID,
     });
 
@@ -88,7 +89,7 @@ describe("Prism media client", () => {
       model: "minimax-h3",
       duration: 15,
       aspect_ratio: "9:16",
-      resolution: "720p",
+      resolution: "480p",
       generate_audio: true,
       request_id: TASK_ID,
       reference_images: references.slice(0, 9),

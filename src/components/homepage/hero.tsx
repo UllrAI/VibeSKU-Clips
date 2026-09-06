@@ -79,7 +79,7 @@ export function Hero({
                 {t("home_plan_card_title")}
               </span>
               <span className="text-muted-foreground font-mono text-xs">
-                9:16 · 1080×1920 · 15s
+                9:16 / 16:9 · 15s
               </span>
             </div>
 

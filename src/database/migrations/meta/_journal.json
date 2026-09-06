@@ -253,6 +253,13 @@
       "when": 1788713972422,
       "tag": "0035_striped_nova",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1788714434612,
+      "tag": "0036_abnormal_gamma_corps",
+      "breakpoints": true
     }
   ]
 }

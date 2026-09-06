@@ -19,6 +19,7 @@ import {
   workStepPosition,
 } from "@/lib/ugc/work-steps";
 import type { WorkSummary } from "@/lib/ugc/works";
+import { cn } from "@/lib/utils";
 
 type WorkFilter = "all" | "running" | "waiting" | "completed" | "failed";
 
@@ -112,7 +113,14 @@ export function WorkList({ works }: { works: WorkSummary[] }) {
               <li key={work.id}>
                 <Card>
                   <CardContent className="flex gap-4 pt-6">
-                    <div className="border-border bg-muted relative aspect-9/16 w-24 shrink-0 overflow-hidden rounded-md border sm:w-32">
+                    <div
+                      className={cn(
+                        "border-border bg-muted relative shrink-0 overflow-hidden rounded-md border",
+                        work.aspectRatio === "9:16"
+                          ? "aspect-9/16 w-24 sm:w-32"
+                          : "aspect-video w-40 sm:w-56",
+                      )}
+                    >
                       {playable ? (
                         <video
                           className="size-full object-cover"

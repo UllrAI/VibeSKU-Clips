@@ -1,5 +1,5 @@
-import { CLIP_SPEC } from "./constants";
-import type { VideoMode } from "./constants";
+import { CLIP_SPEC, DEFAULT_VIDEO_SETTINGS } from "./constants";
+import type { VideoAspectRatio, VideoMode } from "./constants";
 import { TEMPLATE_BRIEFS } from "./templates";
 import type { ScriptBeat } from "./types";
 import type { ScriptTemplate } from "./constants";
@@ -14,6 +14,10 @@ export interface RenderSubject {
   talentPrompt: string | null;
 }
 
+function frameDescription(aspectRatio: VideoAspectRatio): string {
+  return `${aspectRatio === "9:16" ? "Portrait" : "Landscape"} ${aspectRatio}`;
+}
+
 /**
  * The opening frame is generated first and then handed to the video model as
  * the first frame, which is what keeps the performer and the product looking
@@ -23,9 +27,10 @@ export function buildCoverPrompt(
   subject: RenderSubject,
   firstBeat: ScriptBeat | undefined,
   productionPrompt?: string | null,
+  aspectRatio: VideoAspectRatio = DEFAULT_VIDEO_SETTINGS.aspectRatio,
 ): string {
   return [
-    `Vertical ${CLIP_SPEC.aspectRatio} opening frame for a user-generated product video.`,
+    `${frameDescription(aspectRatio)} opening frame for a user-generated product video.`,
     productionPrompt
       ? `Production direction:\n${productionPrompt.slice(0, 20_000)}`
       : "",
@@ -53,9 +58,10 @@ export function buildFramePrompt(
   beat: ScriptBeat,
   position: number,
   productionPrompt?: string | null,
+  aspectRatio: VideoAspectRatio = DEFAULT_VIDEO_SETTINGS.aspectRatio,
 ): string {
   return [
-    `Vertical ${CLIP_SPEC.aspectRatio} key frame ${position + 1} of a user-generated product video.`,
+    `${frameDescription(aspectRatio)} key frame ${position + 1} of a user-generated product video.`,
     productionPrompt
       ? `Production direction shared by every frame:\n${productionPrompt.slice(0, 20_000)}`
       : "",
@@ -79,13 +85,19 @@ export function buildVideoPrompt(
   subject: RenderSubject,
   beats: ScriptBeat[],
   productionPrompt?: string | null,
-  videoMode: VideoMode = "storyboard",
+  settings: {
+    videoMode: VideoMode;
+    aspectRatio: VideoAspectRatio;
+  } = {
+    videoMode: "storyboard",
+    aspectRatio: DEFAULT_VIDEO_SETTINGS.aspectRatio,
+  },
 ): string {
   const brief = TEMPLATE_BRIEFS[subject.template];
   return [
-    `A ${CLIP_SPEC.durationSeconds}-second vertical ${CLIP_SPEC.aspectRatio} user-generated product video shot on a phone.`,
+    `A ${CLIP_SPEC.durationSeconds}-second ${frameDescription(settings.aspectRatio).toLowerCase()} user-generated product video shot on a phone.`,
     `Format: ${brief.structure}`,
-    videoMode === "one_take"
+    settings.videoMode === "one_take"
       ? "Film this as one continuous take with no cuts, transitions, or scene changes. Use natural camera movement to connect every beat."
       : "Use the supplied storyboard images as the visual reference for each beat.",
     `Delivery: ${brief.voice} Spoken in ${subject.locale} for the ${subject.market} market.`,

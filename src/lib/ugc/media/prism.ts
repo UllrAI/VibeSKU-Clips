@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { PermanentJobError, RetryableJobError } from "@/lib/jobs/definition";
-import { MEDIA_PROVIDER } from "../constants";
+import {
+  MEDIA_PROVIDER,
+  type VideoAspectRatio,
+  type VideoResolution,
+} from "../constants";
 import { loadMediaEnv } from "./config";
 
 const submissionSchema = z.object({
@@ -93,7 +97,7 @@ async function call<T>(
 export interface ImageRequest {
   prompt: string;
   referenceUrls: string[];
-  aspectRatio: string;
+  aspectRatio: VideoAspectRatio;
   requestId: string;
 }
 
@@ -128,7 +132,8 @@ export interface VideoRequest {
    */
   referenceUrls: string[];
   durationSeconds: number;
-  aspectRatio: string;
+  aspectRatio: VideoAspectRatio;
+  resolution: VideoResolution;
   requestId: string;
 }
 
@@ -142,7 +147,7 @@ export async function submitVideo(request: VideoRequest): Promise<string> {
         model: MEDIA_PROVIDER.videoModel,
         duration: request.durationSeconds,
         aspect_ratio: request.aspectRatio,
-        resolution: MEDIA_PROVIDER.videoResolution,
+        resolution: request.resolution,
         generate_audio: true,
         request_id: request.requestId,
         ...(request.referenceUrls.length

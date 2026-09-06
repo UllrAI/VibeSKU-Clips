@@ -5,7 +5,7 @@ This file is the single source of truth for repository-specific agent instructio
 
 ## 0. What This Product Is
 
-VibeSKU Clips produces one short vertical product video at a time for shoppable
+VibeSKU Clips produces one short product video at a time for shoppable
 feeds. An operator chooses a product, the system reads its material into
 verifiable facts, and a guided work moves through script and video, with an
 optional reviewed storyboard, while a person confirms each expensive step. Every work appears in one list
@@ -14,9 +14,10 @@ from creation through completion, where a finished video can be downloaded.
 Two rules run through the whole codebase and are worth internalising before
 changing anything:
 
-- **Delivery spec is fixed.** 15 seconds, 9:16, 1080x1920. `CLIP_SPEC` in
-  `src/lib/ugc/constants.ts` is the only definition; downstream checks are
-  strict because of it.
+- **Duration is fixed; frame settings are selected per work.** Every clip is 15
+  seconds. Aspect ratio is `9:16` or `16:9`; resolution is provider-dependent.
+  `CLIP_SPEC` in `src/lib/ugc/constants.ts` defines the fixed timing constraints,
+  while each `ugc_works` row stores its frame settings.
   Also: interface language and clip language are separate settings, and language
   is separate from market. Do not collapse them.
 

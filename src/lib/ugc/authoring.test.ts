@@ -109,6 +109,7 @@ describe("composeScript", () => {
       template: "spokesperson",
       locale: "en",
       market: "US",
+      aspectRatio: "9:16",
       productImageUrls: productImages,
       talentImageUrl: "https://example.com/talent.jpg",
       talentNote: "Young adult woman",
@@ -122,6 +123,8 @@ describe("composeScript", () => {
     expect(content.filter((part) => part.type === "file")).toHaveLength(9);
     expect(request.system).toContain("CAMERA CHARACTER");
     expect(request.system).toContain("exact spoken dialogue");
+    expect(request.system).toContain("portrait");
+    expect(request.system).toContain("9:16");
     expect(result.voiceover).toBe("Last step. Then sleep.");
   });
 });
