@@ -74,6 +74,7 @@ describe("Prism media client", () => {
     );
 
     await submitVideo({
+      model: "h3",
       prompt: "Animate the storyboard",
       referenceUrls: references,
       durationSeconds: 15,

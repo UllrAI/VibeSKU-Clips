@@ -6,7 +6,7 @@ import { StepRail } from "@/components/ugc/step-rail";
 import { useWorkState } from "@/hooks/use-work-state";
 import type { ProductRow, TalentRow } from "@/lib/ugc/queries";
 import type { WorkDetail, WorkState } from "@/lib/ugc/works";
-import type { VideoResolution } from "@/lib/ugc/constants";
+import type { VideoModelOption } from "@/lib/ugc/constants";
 import { DoneStep } from "./done-step";
 import { PendingStep } from "./pending-step";
 import { ProductStep } from "./product-step";
@@ -24,14 +24,14 @@ export function WorkConsole({
   talents,
   productState,
   initialState,
-  resolutionOptions,
+  modelOptions,
 }: {
   detail: WorkDetail;
   products: ProductRow[];
   talents: TalentRow[];
   productState: "empty" | "reading" | "needs_input" | "ready";
   initialState: WorkState;
-  resolutionOptions: readonly VideoResolution[];
+  modelOptions: readonly VideoModelOption[];
 }) {
   const router = useRouter();
   const refresh = () => router.refresh();
@@ -50,7 +50,7 @@ export function WorkConsole({
         products={products}
         talents={talents}
         productState={productState}
-        resolutionOptions={resolutionOptions}
+        modelOptions={modelOptions}
         onRefresh={refresh}
       />
     );

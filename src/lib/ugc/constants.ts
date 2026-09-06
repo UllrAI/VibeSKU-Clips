@@ -54,25 +54,52 @@ export type VideoAspectRatio = (typeof VIDEO_ASPECT_RATIOS)[number];
 export const VIDEO_RESOLUTIONS = ["480p", "720p", "1080p", "2k"] as const;
 export type VideoResolution = (typeof VIDEO_RESOLUTIONS)[number];
 
-/** Prism's H3 adapter exposes only its lower two output tiers. */
-export const PRISM_VIDEO_RESOLUTIONS = ["480p", "720p"] as const;
-export const LK666_VIDEO_RESOLUTIONS = ["720p", "1080p", "2k"] as const;
+export const VIDEO_MODELS = ["h3", "seedance-2.0", "seedance-2.5"] as const;
+export type VideoModel = (typeof VIDEO_MODELS)[number];
+
 export const VIDEO_GENERATION_PROVIDERS = ["prism", "lk666"] as const;
 export type VideoGenerationProvider =
   (typeof VIDEO_GENERATION_PROVIDERS)[number];
 
+export interface VideoModelOption {
+  model: VideoModel;
+  resolutions: readonly VideoResolution[];
+}
+
+const PRISM_VIDEO_MODEL_OPTIONS = [
+  { model: "h3", resolutions: ["480p", "720p"] },
+] as const satisfies readonly VideoModelOption[];
+
+const LK666_VIDEO_MODEL_OPTIONS = [
+  { model: "h3", resolutions: ["720p", "1080p", "2k"] },
+  { model: "seedance-2.0", resolutions: ["480p", "720p", "1080p"] },
+  { model: "seedance-2.5", resolutions: ["480p", "720p", "1080p"] },
+] as const satisfies readonly VideoModelOption[];
+
+export function videoModelsForProvider(
+  provider: VideoGenerationProvider,
+): readonly VideoModelOption[] {
+  return provider === "lk666"
+    ? LK666_VIDEO_MODEL_OPTIONS
+    : PRISM_VIDEO_MODEL_OPTIONS;
+}
+
 export function videoResolutionsForProvider(
   provider: VideoGenerationProvider,
+  model: VideoModel = "h3",
 ): readonly VideoResolution[] {
-  return provider === "lk666"
-    ? LK666_VIDEO_RESOLUTIONS
-    : PRISM_VIDEO_RESOLUTIONS;
+  return (
+    videoModelsForProvider(provider).find((option) => option.model === model)
+      ?.resolutions ?? []
+  );
 }
 
 export const DEFAULT_VIDEO_SETTINGS = {
+  model: "h3",
   aspectRatio: "9:16",
   resolution: "720p",
 } as const satisfies {
+  model: VideoModel;
   aspectRatio: VideoAspectRatio;
   resolution: VideoResolution;
 };

@@ -46,6 +46,8 @@ import type {
   ScriptTemplate,
   VideoAspectRatio,
   VideoMode,
+  VideoModel,
+  VideoModelOption,
   VideoResolution,
 } from "@/lib/ugc/constants";
 import { createProduct } from "@/lib/ugc/actions";
@@ -66,12 +68,12 @@ export function WorkComposer({
   products,
   talents,
   initialProductId,
-  resolutionOptions,
+  modelOptions,
 }: {
   products: ProductRow[];
   talents: TalentRow[];
   initialProductId?: string;
-  resolutionOptions: readonly VideoResolution[];
+  modelOptions: readonly VideoModelOption[];
 }) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -89,6 +91,7 @@ export function WorkComposer({
   const [talentId, setTalentId] = useState(NO_TALENT);
   const [template, setTemplate] = useState<ScriptTemplate>("spokesperson");
   const [videoMode, setVideoMode] = useState<VideoMode>("one_take");
+  const [videoModel, setVideoModel] = useState<VideoModel>("h3");
   const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio>("9:16");
   const [resolution, setResolution] = useState<VideoResolution>("720p");
   const [locale, setLocale] = useState("en");
@@ -137,6 +140,7 @@ export function WorkComposer({
         market,
         template,
         videoMode,
+        videoModel,
         aspectRatio,
         resolution,
       });
@@ -285,11 +289,13 @@ export function WorkComposer({
         <VideoSettings
           videoMode={videoMode}
           onVideoModeChange={setVideoMode}
+          videoModel={videoModel}
+          onVideoModelChange={setVideoModel}
           aspectRatio={aspectRatio}
           onAspectRatioChange={setAspectRatio}
           resolution={resolution}
           onResolutionChange={setResolution}
-          resolutionOptions={resolutionOptions}
+          modelOptions={modelOptions}
         />
 
         <div className="space-y-2">

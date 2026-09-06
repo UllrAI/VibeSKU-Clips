@@ -55,7 +55,9 @@ synthetic-content disclosure.
 Jobs run on pg-boss through the repository's task-run outbox, so each step
 survives a restart and can be retried on its own. Images go through Prism;
 video uses the provider selected by `VIDEO_GENERATION_PROVIDER`, and scripting
-uses any OpenAI-compatible endpoint.
+uses any OpenAI-compatible endpoint. Prism video is fixed to H3; lk666 also
+offers Seedance 2.0 and 2.5, with each model exposing only its supported output
+resolutions.
 
 Business logic lives in `src/lib/ugc`, the job handlers in `src/lib/jobs/ugc`,
 and the operator surfaces under `src/app/dashboard`.

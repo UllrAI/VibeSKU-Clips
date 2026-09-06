@@ -21,10 +21,11 @@ import { createBackgroundTask } from "@/lib/tasks/service";
 import {
   SCRIPT_TEMPLATES,
   VIDEO_ASPECT_RATIOS,
+  VIDEO_MODELS,
   VIDEO_MODES,
   VIDEO_RESOLUTIONS,
 } from "./constants";
-import { isActiveVideoResolution } from "./media/video-provider";
+import { isActiveVideoConfiguration } from "./media/video-provider";
 import { talentScopeKey, workScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
@@ -37,12 +38,14 @@ const setupSchema = z
     market: z.string().trim().min(2).max(16),
     template: z.enum(SCRIPT_TEMPLATES),
     videoMode: z.enum(VIDEO_MODES).default("one_take"),
+    videoModel: z.enum(VIDEO_MODELS).default("h3"),
     aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).default("9:16"),
-    resolution: z
-      .enum(VIDEO_RESOLUTIONS)
-      .refine((value) => isActiveVideoResolution(value))
-      .default("720p"),
+    resolution: z.enum(VIDEO_RESOLUTIONS).default("720p"),
   })
+  .refine(
+    (input) => isActiveVideoConfiguration(input.videoModel, input.resolution),
+    { path: ["resolution"] },
+  )
   .refine((input) => !(input.randomTalent && input.talentId), {
     path: ["talentId"],
   });
@@ -182,6 +185,7 @@ export async function createWork(
       market: parsed.data.market,
       template: parsed.data.template,
       videoMode: parsed.data.videoMode,
+      videoModel: parsed.data.videoModel,
       aspectRatio: parsed.data.aspectRatio,
       resolution: parsed.data.resolution,
     })
@@ -237,6 +241,7 @@ export async function setWorkSetup(
       market: parsed.data.market,
       template: parsed.data.template,
       videoMode: parsed.data.videoMode,
+      videoModel: parsed.data.videoModel,
       aspectRatio: parsed.data.aspectRatio,
       resolution: parsed.data.resolution,
       step: "product",

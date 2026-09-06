@@ -1,4 +1,8 @@
-import type { VideoAspectRatio, VideoResolution } from "../constants";
+import type {
+  VideoAspectRatio,
+  VideoModel,
+  VideoResolution,
+} from "../constants";
 
 export type MediaTaskStatus = "pending" | "completed" | "failed";
 
@@ -11,6 +15,7 @@ export interface MediaTask {
 }
 
 export interface VideoRequest {
+  model: VideoModel;
   prompt: string;
   referenceUrls: string[];
   durationSeconds: number;

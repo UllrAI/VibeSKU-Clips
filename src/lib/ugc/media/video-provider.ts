@@ -1,6 +1,9 @@
 import {
+  videoModelsForProvider,
   videoResolutionsForProvider,
   type VideoGenerationProvider,
+  type VideoModel,
+  type VideoModelOption,
   type VideoResolution,
 } from "../constants";
 import { PermanentJobError } from "@/lib/jobs/definition";
@@ -20,23 +23,32 @@ export function activeVideoProvider(
   return loadMediaEnv(source).VIDEO_GENERATION_PROVIDER;
 }
 
-export function activeVideoResolutions(
+export function activeVideoModelOptions(
   source: NodeJS.ProcessEnv = process.env,
-): readonly VideoResolution[] {
-  return videoResolutionsForProvider(activeVideoProvider(source));
+): readonly VideoModelOption[] {
+  return videoModelsForProvider(activeVideoProvider(source));
 }
 
-export function isActiveVideoResolution(
+export function isActiveVideoConfiguration(
+  model: VideoModel,
   resolution: VideoResolution,
   source: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  return activeVideoResolutions(source).some(
+  return videoResolutionsForProvider(activeVideoProvider(source), model).some(
     (candidate) => candidate === resolution,
   );
 }
 
 export async function submitVideo(request: VideoRequest): Promise<string> {
   const provider = activeVideoProvider();
+  if (!isActiveVideoConfiguration(request.model, request.resolution)) {
+    throw new PermanentJobError(
+      provider === "lk666"
+        ? "LK666_REQUEST_REJECTED"
+        : "PRISM_REQUEST_REJECTED",
+      "The selected video model does not support this resolution.",
+    );
+  }
   const taskId =
     provider === "lk666"
       ? await submitLk666Video(request)

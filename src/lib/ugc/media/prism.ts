@@ -115,6 +115,12 @@ export async function submitImage(request: ImageRequest): Promise<string> {
 }
 
 export async function submitVideo(request: VideoRequest): Promise<string> {
+  if (request.model !== "h3") {
+    throw new PermanentJobError(
+      "PRISM_REQUEST_REJECTED",
+      "Prism only supports H3 video generation.",
+    );
+  }
   const submission = await call(
     "/video-gen",
     {

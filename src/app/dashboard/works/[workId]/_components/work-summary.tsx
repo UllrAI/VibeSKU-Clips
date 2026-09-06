@@ -21,6 +21,7 @@ import {
   marketKey,
   templateKey,
   videoModeKey,
+  videoModelKey,
 } from "@/components/ugc/labels";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import { deleteWork } from "@/lib/ugc/work-actions";
@@ -89,7 +90,10 @@ export function WorkSummary({ detail }: { detail: WorkDetail }) {
           {t(templateKey(work.template))}
         </Fact>
         <Fact label={t("ugc_video_mode")}>
-          {t(videoModeKey(work.videoMode))} · {work.aspectRatio} ·{" "}
+          {t(videoModeKey(work.videoMode))} ·{" "}
+          {t(videoModelKey(work.videoModel))}
+          {" · "}
+          {work.aspectRatio} ·{" "}
           {work.resolution === "2k" ? "2K" : work.resolution}
         </Fact>
         <Fact label={t("ugc_plan_locale")}>

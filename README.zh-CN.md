@@ -43,7 +43,8 @@ VibeSKU Clips 把商品资料转化为一条 15 秒本地化 UGC 视频。运营
 
 任务通过 pg-boss 与仓库既有的 task-run 出箱机制执行，每一步都可在重启后继续或
 独立重试。图片生成走 Prism；视频由 `VIDEO_GENERATION_PROVIDER` 选择 Prism 或
-lk666，脚本创作走任意 OpenAI 兼容接口。
+lk666，脚本创作走任意 OpenAI 兼容接口。Prism 视频固定使用 H3；lk666
+还可选择 Seedance 2.0 或 2.5，并按模型限制可用分辨率。
 
 业务逻辑位于 `src/lib/ugc`，任务处理器位于 `src/lib/jobs/ugc`，操作界面位于
 `src/app/dashboard`。

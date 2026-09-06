@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from "@jest/globals";
 import {
+  activeVideoModelOptions,
   activeVideoProvider,
-  activeVideoResolutions,
+  isActiveVideoConfiguration,
   submitVideo,
 } from "./video-provider";
 
@@ -14,14 +15,30 @@ describe("video provider selection", () => {
 
   it("defaults to Prism and its supported resolutions", () => {
     expect(activeVideoProvider({})).toBe("prism");
-    expect(activeVideoResolutions({})).toEqual(["480p", "720p"]);
+    expect(activeVideoModelOptions({})).toEqual([
+      { model: "h3", resolutions: ["480p", "720p"] },
+    ]);
+    expect(isActiveVideoConfiguration("seedance-2.0", "720p", {})).toBe(false);
   });
 
   it("offers 768-mapped 720p and higher tiers for lk666", () => {
     const source = { VIDEO_GENERATION_PROVIDER: "lk666" };
 
     expect(activeVideoProvider(source)).toBe("lk666");
-    expect(activeVideoResolutions(source)).toEqual(["720p", "1080p", "2k"]);
+    expect(activeVideoModelOptions(source)).toEqual([
+      { model: "h3", resolutions: ["720p", "1080p", "2k"] },
+      {
+        model: "seedance-2.0",
+        resolutions: ["480p", "720p", "1080p"],
+      },
+      {
+        model: "seedance-2.5",
+        resolutions: ["480p", "720p", "1080p"],
+      },
+    ]);
+    expect(isActiveVideoConfiguration("seedance-2.5", "2k", source)).toBe(
+      false,
+    );
   });
 
   it("prefixes submitted task ids so polling survives provider changes", async () => {
@@ -35,6 +52,7 @@ describe("video provider selection", () => {
 
     await expect(
       submitVideo({
+        model: "h3",
         prompt: "One take",
         referenceUrls: ["https://example.com/product.png"],
         durationSeconds: 15,

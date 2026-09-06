@@ -6,6 +6,12 @@ import type { MediaTask, VideoRequest } from "./video-types";
 
 const MODEL = "hailuo-h3-quannengcankao";
 const MAX_PROMPT_CHARACTERS = 4096;
+const SEEDANCE_TASK_PREFIX = "seedance:";
+
+const SEEDANCE_MODELS = {
+  "seedance-2.0": "doubao-seedance-2-0-260128",
+  "seedance-2.5": "doubao-seedance-2-5-260628",
+} as const;
 
 function fitPrompt(prompt: string): string {
   return Array.from(prompt).slice(0, MAX_PROMPT_CHARACTERS).join("");
@@ -27,6 +33,19 @@ const taskSchema = z.object({
   result_url: z.string().nullish(),
   error: z.string().nullish(),
   cost: z.number().optional(),
+});
+
+const seedanceSubmissionSchema = z.object({ id: taskIdSchema });
+const seedanceTaskSchema = z.object({
+  status: z.enum(["queued", "running", "succeeded", "failed"]),
+  content: z.object({ video_url: z.string().nullish() }).nullish(),
+  error: z
+    .union([
+      z.string(),
+      z.object({ code: z.string().optional(), message: z.string().optional() }),
+    ])
+    .nullish(),
+  usage: z.object({ completion_tokens: z.number().optional() }).nullish(),
 });
 
 async function call(path: string, init: RequestInit): Promise<unknown> {
@@ -83,7 +102,7 @@ export function lk666Resolution(resolution: VideoResolution): string {
   );
 }
 
-export async function submitLk666Video(request: VideoRequest): Promise<string> {
+async function submitH3Video(request: VideoRequest): Promise<string> {
   const raw = await call("/v1/media/generate", {
     method: "POST",
     body: JSON.stringify({
@@ -119,7 +138,47 @@ export async function submitLk666Video(request: VideoRequest): Promise<string> {
   return parsed.data.data.task_id;
 }
 
-export async function getLk666Task(taskId: string): Promise<MediaTask> {
+async function submitSeedanceVideo(request: VideoRequest): Promise<string> {
+  if (request.model === "h3") {
+    throw new PermanentJobError(
+      "LK666_REQUEST_REJECTED",
+      "A Seedance model must be selected.",
+    );
+  }
+  const raw = await call("/api/v3/contents/generations/tasks", {
+    method: "POST",
+    body: JSON.stringify({
+      model: SEEDANCE_MODELS[request.model],
+      content: [
+        { type: "text", text: fitPrompt(request.prompt) },
+        ...request.referenceUrls.slice(0, 9).map((url) => ({
+          type: "image_url",
+          role: "reference_image",
+          image_url: { url },
+        })),
+      ],
+      resolution: request.resolution,
+      ratio: request.aspectRatio,
+      duration: request.durationSeconds,
+    }),
+  });
+  const parsed = seedanceSubmissionSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new PermanentJobError(
+      "LK666_INVALID_RESPONSE",
+      "The lk666 Seedance endpoint omitted the task id.",
+    );
+  }
+  return `${SEEDANCE_TASK_PREFIX}${parsed.data.id}`;
+}
+
+export async function submitLk666Video(request: VideoRequest): Promise<string> {
+  return request.model === "h3"
+    ? submitH3Video(request)
+    : submitSeedanceVideo(request);
+}
+
+async function getH3Task(taskId: string): Promise<MediaTask> {
   const raw = await call(
     `/v1/media/status?task_id=${encodeURIComponent(taskId)}`,
     { method: "GET" },
@@ -141,4 +200,48 @@ export async function getLk666Task(taskId: string): Promise<MediaTask> {
     provider: "lk666",
     extra: task.cost === undefined ? null : { cost: task.cost },
   };
+}
+
+function seedanceErrorMessage(
+  error: z.infer<typeof seedanceTaskSchema>["error"],
+): string | null {
+  if (!error) return null;
+  if (typeof error === "string") return error;
+  return error.message ?? error.code ?? null;
+}
+
+async function getSeedanceTask(taskId: string): Promise<MediaTask> {
+  const raw = await call(
+    `/api/v3/contents/generations/tasks/${encodeURIComponent(taskId)}`,
+    { method: "GET" },
+  );
+  const parsed = seedanceTaskSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw new PermanentJobError(
+      "LK666_INVALID_RESPONSE",
+      "The lk666 Seedance endpoint returned an unexpected task response.",
+    );
+  }
+
+  const task = parsed.data;
+  return {
+    status:
+      task.status === "succeeded"
+        ? "completed"
+        : task.status === "failed"
+          ? "failed"
+          : "pending",
+    outputUrl:
+      task.status === "succeeded" ? (task.content?.video_url ?? null) : null,
+    errorMessage:
+      task.status === "failed" ? seedanceErrorMessage(task.error) : null,
+    provider: "lk666",
+    extra: task.usage ?? null,
+  };
+}
+
+export async function getLk666Task(taskId: string): Promise<MediaTask> {
+  return taskId.startsWith(SEEDANCE_TASK_PREFIX)
+    ? getSeedanceTask(taskId.slice(SEEDANCE_TASK_PREFIX.length))
+    : getH3Task(taskId);
 }

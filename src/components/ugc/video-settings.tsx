@@ -13,32 +13,52 @@ import {
   VIDEO_ASPECT_RATIOS,
   type VideoAspectRatio,
   type VideoMode,
+  type VideoModel,
+  type VideoModelOption,
   type VideoResolution,
 } from "@/lib/ugc/constants";
-import { videoModeKey } from "./labels";
+import { videoModeKey, videoModelKey } from "./labels";
 
 export function VideoSettings({
   videoMode,
   onVideoModeChange,
+  videoModel,
+  onVideoModelChange,
   aspectRatio,
   onAspectRatioChange,
   resolution,
   onResolutionChange,
-  resolutionOptions,
+  modelOptions,
 }: {
   videoMode: VideoMode;
   onVideoModeChange: (value: VideoMode) => void;
+  videoModel: VideoModel;
+  onVideoModelChange: (value: VideoModel) => void;
   aspectRatio: VideoAspectRatio;
   onAspectRatioChange: (value: VideoAspectRatio) => void;
   resolution: VideoResolution;
   onResolutionChange: (value: VideoResolution) => void;
-  resolutionOptions: readonly VideoResolution[];
+  modelOptions: readonly VideoModelOption[];
 }) {
   const { t } = useTranslation();
+  const resolutionOptions =
+    modelOptions.find((option) => option.model === videoModel)?.resolutions ??
+    [];
+
+  const changeModel = (value: VideoModel) => {
+    onVideoModelChange(value);
+    const resolutions =
+      modelOptions.find((option) => option.model === value)?.resolutions ?? [];
+    if (!resolutions.includes(resolution)) {
+      onResolutionChange(
+        resolutions.includes("720p") ? "720p" : resolutions[0],
+      );
+    }
+  };
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <div className="space-y-2">
           <Label htmlFor="work-video-mode">{t("ugc_video_mode")}</Label>
           <Select
@@ -55,6 +75,26 @@ export function VideoSettings({
               <SelectItem value="storyboard">
                 {t(videoModeKey("storyboard"))}
               </SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="work-video-model">{t("ugc_video_model")}</Label>
+          <Select
+            value={videoModel}
+            onValueChange={(value) => changeModel(value as VideoModel)}
+            disabled={modelOptions.length === 1}
+          >
+            <SelectTrigger id="work-video-model" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {modelOptions.map((option) => (
+                <SelectItem key={option.model} value={option.model}>
+                  {t(videoModelKey(option.model))}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

@@ -35,6 +35,8 @@ import type {
   ScriptTemplate,
   VideoAspectRatio,
   VideoMode,
+  VideoModel,
+  VideoModelOption,
   VideoResolution,
 } from "@/lib/ugc/constants";
 import type { ProductRow, TalentRow } from "@/lib/ugc/queries";
@@ -56,14 +58,14 @@ export function ProductStep({
   products,
   talents,
   productState,
-  resolutionOptions,
+  modelOptions,
   onRefresh,
 }: {
   detail: WorkDetail;
   products: ProductRow[];
   talents: TalentRow[];
   productState: "empty" | "reading" | "needs_input" | "ready";
-  resolutionOptions: readonly VideoResolution[];
+  modelOptions: readonly VideoModelOption[];
   onRefresh: () => void;
 }) {
   const { t } = useTranslation();
@@ -75,11 +77,19 @@ export function ProductStep({
   const [market, setMarket] = useState(work.market);
   const [template, setTemplate] = useState<ScriptTemplate>(work.template);
   const [videoMode, setVideoMode] = useState<VideoMode>(work.videoMode);
+  const initialModelOption =
+    modelOptions.find((option) => option.model === work.videoModel) ??
+    modelOptions[0];
+  const [videoModel, setVideoModel] = useState<VideoModel>(
+    initialModelOption.model,
+  );
   const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio>(
     work.aspectRatio,
   );
-  const [resolution, setResolution] = useState<VideoResolution>(
-    work.resolution,
+  const [resolution, setResolution] = useState<VideoResolution>(() =>
+    initialModelOption.resolutions.includes(work.resolution)
+      ? work.resolution
+      : "720p",
   );
 
   const save = () =>
@@ -94,6 +104,7 @@ export function ProductStep({
       market,
       template,
       videoMode,
+      videoModel,
       aspectRatio,
       resolution,
     });
@@ -261,11 +272,13 @@ export function ProductStep({
           <VideoSettings
             videoMode={videoMode}
             onVideoModeChange={setVideoMode}
+            videoModel={videoModel}
+            onVideoModelChange={setVideoModel}
             aspectRatio={aspectRatio}
             onAspectRatioChange={setAspectRatio}
             resolution={resolution}
             onResolutionChange={setResolution}
-            resolutionOptions={resolutionOptions}
+            modelOptions={modelOptions}
           />
 
           <div className="grid gap-4 sm:grid-cols-2">

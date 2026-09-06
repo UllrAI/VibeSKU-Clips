@@ -25,6 +25,7 @@ describe("lk666 media client", () => {
 
     await expect(
       submitLk666Video({
+        model: "h3",
         prompt: "One continuous product demonstration",
         referenceUrls: ["https://example.com/product.png"],
         durationSeconds: 15,
@@ -89,6 +90,65 @@ describe("lk666 media client", () => {
     });
   });
 
+  it("submits Seedance 2.5 through the documented Ark-compatible endpoint", async () => {
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockResolvedValue(Response.json({ id: "99936297", status: "queued" }));
+
+    await expect(
+      submitLk666Video({
+        model: "seedance-2.5",
+        prompt: "A continuous product demonstration",
+        referenceUrls: ["https://example.com/product.png"],
+        durationSeconds: 15,
+        aspectRatio: "9:16",
+        resolution: "1080p",
+        requestId: "unused-by-provider",
+      }),
+    ).resolves.toBe("seedance:99936297");
+
+    const [url, init] = fetchMock.mock.calls.at(-1) ?? [];
+    expect(url).toBe("https://api.lk888.ai/api/v3/contents/generations/tasks");
+    expect(JSON.parse(String(init?.body))).toEqual({
+      model: "doubao-seedance-2-5-260628",
+      content: [
+        { type: "text", text: "A continuous product demonstration" },
+        {
+          type: "image_url",
+          role: "reference_image",
+          image_url: { url: "https://example.com/product.png" },
+        },
+      ],
+      resolution: "1080p",
+      ratio: "9:16",
+      duration: 15,
+    });
+  });
+
+  it("polls Seedance tasks and reads the completed video URL", async () => {
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(
+      Response.json({
+        id: "99936297",
+        model: "doubao-seedance-2-0-260128",
+        status: "succeeded",
+        error: null,
+        content: { video_url: "https://example.com/seedance.mp4" },
+        usage: { completion_tokens: 107680 },
+      }),
+    );
+
+    await expect(getLk666Task("seedance:99936297")).resolves.toEqual({
+      status: "completed",
+      outputUrl: "https://example.com/seedance.mp4",
+      errorMessage: null,
+      provider: "lk666",
+      extra: { completion_tokens: 107680 },
+    });
+    expect(fetchMock.mock.calls.at(-1)?.[0]).toBe(
+      "https://api.lk888.ai/api/v3/contents/generations/tasks/99936297",
+    );
+  });
+
   it("limits prompts to the provider's 4096-character maximum", async () => {
     const fetchMock = jest
       .spyOn(global, "fetch")
@@ -97,6 +157,7 @@ describe("lk666 media client", () => {
       );
 
     await submitLk666Video({
+      model: "h3",
       prompt: "画".repeat(5_000),
       referenceUrls: ["https://example.com/product.png"],
       durationSeconds: 15,

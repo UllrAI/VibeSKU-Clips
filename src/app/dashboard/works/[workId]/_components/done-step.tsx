@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { actionMessageKey } from "@/components/ugc/action-message";
+import { videoModelKey } from "@/components/ugc/labels";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import { reopenWorkStep } from "@/lib/ugc/work-actions";
 import type { ClipRow } from "@/lib/ugc/works";
@@ -105,6 +106,11 @@ export function DoneStep({
                   ? "ugc_work_quality_passed"
                   : "ugc_work_quality_flagged",
               )}
+            </Badge>
+            <Badge variant="outline">
+              {t("ugc_video_model_used", {
+                model: t(videoModelKey(clip.videoModel)),
+              })}
             </Badge>
           </div>
 

@@ -85,7 +85,7 @@ pnpm stripe:sync-products
 - Billing: provider abstraction in `src/lib/billing/provider.ts`, current implementation uses Stripe
 - Storage: Cloudflare R2 with presigned uploads
 - AI: Vercel AI SDK v7 agent loop over any OpenAI-compatible endpoint (`LLM_API_KEY`/`LLM_BASE_URL`), tools and skills registered in `src/lib/ai`, feature-gated by `SITE_CONFIG.features.ai` (see `docs/ai-agent.md`)
-- Media generation: Prism (`PRISM_*`) for images; video selected by `VIDEO_GENERATION_PROVIDER` (`prism` or `lk666`), called only from the Worker
+- Media generation: Prism (`PRISM_*`) for images; video selected by `VIDEO_GENERATION_PROVIDER` (`prism` or `lk666`), with H3 on both providers and Seedance 2.0/2.5 on lk666, called only from the Worker
 - Durable jobs: pg-boss with a task-run outbox (`src/lib/jobs`, `src/lib/tasks`)
 - Content: Content Collections plus repository-managed Markdown
 - Localization: `next-intl`

@@ -3,7 +3,7 @@ import { DashboardPageWrapper } from "../../_components/dashboard-page-wrapper";
 import { getServerTranslations } from "@/lib/i18n/translation/server";
 import { createMetadataDefaults } from "@/lib/metadata";
 import { listProducts, listTalents } from "@/lib/ugc/queries";
-import { activeVideoResolutions } from "@/lib/ugc/media/video-provider";
+import { activeVideoModelOptions } from "@/lib/ugc/media/video-provider";
 import { getWork, getWorkState, productStepState } from "@/lib/ugc/works";
 import { WorkConsole } from "./_components/work-console";
 
@@ -47,7 +47,7 @@ export default async function WorkDetailPage({
         talents={talents}
         productState={productStepState(detail.product)}
         initialState={state}
-        resolutionOptions={activeVideoResolutions()}
+        modelOptions={activeVideoModelOptions()}
       />
     </DashboardPageWrapper>
   );

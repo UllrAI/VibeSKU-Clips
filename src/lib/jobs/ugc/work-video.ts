@@ -143,6 +143,7 @@ export const workVideoJob = defineJob(
         ].filter((url): url is string => Boolean(url)),
       );
       const providerTaskId = await submitVideo({
+        model: work.videoModel,
         prompt: buildVideoPrompt(subject, beats, script.productionPrompt, {
           videoMode: work.videoMode,
           aspectRatio: work.aspectRatio,
@@ -222,6 +223,7 @@ export const workVideoJob = defineJob(
         locale: work.locale,
         market: work.market,
         template: work.template,
+        videoModel: work.videoModel,
         aspectRatio: work.aspectRatio,
         resolution: work.resolution,
         status: quality.passed ? "ready" : "failed",

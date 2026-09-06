@@ -79,6 +79,12 @@ export const ugcVideoResolutionEnum = pgEnum("ugc_video_resolution", [
   "2k",
 ]);
 
+export const ugcVideoModelEnum = pgEnum("ugc_video_model", [
+  "h3",
+  "seedance-2.0",
+  "seedance-2.5",
+]);
+
 export const ugcFrameStatusEnum = pgEnum("ugc_frame_status", [
   "pending",
   "generating",
@@ -233,6 +239,7 @@ export const ugcClips = pgTable(
     locale: text("locale").notNull(),
     market: text("market").notNull(),
     template: ugcScriptTemplateEnum("template").notNull(),
+    videoModel: ugcVideoModelEnum("videoModel").notNull().default("h3"),
     aspectRatio: ugcVideoAspectRatioEnum("aspectRatio")
       .notNull()
       .default("9:16"),
@@ -310,6 +317,7 @@ export const ugcWorks = pgTable(
       .notNull()
       .default("spokesperson"),
     videoMode: ugcVideoModeEnum("videoMode").notNull().default("one_take"),
+    videoModel: ugcVideoModelEnum("videoModel").notNull().default("h3"),
     aspectRatio: ugcVideoAspectRatioEnum("aspectRatio")
       .notNull()
       .default("9:16"),
