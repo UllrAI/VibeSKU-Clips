@@ -15,7 +15,6 @@ import type {
   ProductBrief,
   ProductFacts,
   ScriptBeat,
-  ExportManifest,
 } from "@/lib/ugc/types";
 
 export const ugcProductStatusEnum = pgEnum("ugc_product_status", [
@@ -78,13 +77,6 @@ export const ugcClipStatusEnum = pgEnum("ugc_clip_status", [
   "ready",
   "failed",
   "cancelled",
-]);
-
-export const ugcReviewStatusEnum = pgEnum("ugc_review_status", [
-  "pending",
-  "selected",
-  "shortlisted",
-  "rejected",
 ]);
 
 export const ugcUsageKindEnum = pgEnum("ugc_usage_kind", [
@@ -219,7 +211,7 @@ export const ugcClips = pgTable(
     talentId: uuid("talentId").references(() => ugcTalents.id, {
       onDelete: "set null",
     }),
-    // Stable serial number printed on the export manifest.
+    // Stable serial number shown beside the generated work.
     reference: text("reference").notNull(),
     locale: text("locale").notNull(),
     market: text("market").notNull(),
@@ -232,11 +224,6 @@ export const ugcClips = pgTable(
     durationMs: integer("durationMs"),
     quality: jsonb("quality").$type<ClipQualityReport | null>(),
     failureReason: text("failureReason"),
-    similarityKey: text("similarityKey"),
-    reviewStatus: ugcReviewStatusEnum("reviewStatus")
-      .notNull()
-      .default("pending"),
-    reviewNote: text("reviewNote"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -245,37 +232,7 @@ export const ugcClips = pgTable(
       .defaultNow(),
   },
   (table) => ({
-    userReviewIdx: index("ugc_clips_userId_reviewStatus_idx").on(
-      table.userId,
-      table.reviewStatus,
-    ),
     userCreatedAtIdx: index("ugc_clips_userId_createdAt_idx").on(
-      table.userId,
-      table.createdAt.desc(),
-    ),
-    similarityIdx: index("ugc_clips_userId_similarityKey_idx").on(
-      table.userId,
-      table.similarityKey,
-    ),
-  }),
-);
-
-export const ugcExports = pgTable(
-  "ugc_exports",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    clipCount: integer("clipCount").notNull(),
-    manifest: jsonb("manifest").$type<ExportManifest>().notNull(),
-    createdAt: timestamp("createdAt", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => ({
-    userCreatedAtIdx: index("ugc_exports_userId_createdAt_idx").on(
       table.userId,
       table.createdAt.desc(),
     ),

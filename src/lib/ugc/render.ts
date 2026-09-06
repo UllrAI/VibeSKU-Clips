@@ -143,7 +143,7 @@ export type ClipAssetKind = keyof typeof ASSET_CONTENT_TYPES;
 
 /**
  * Provider output URLs expire. Every delivered asset is copied into the
- * project's own storage so an export made weeks later still resolves.
+ * project's own storage so a finished work still resolves weeks later.
  */
 export async function archiveRemoteAsset(input: {
   storeFile: ClipStorage;

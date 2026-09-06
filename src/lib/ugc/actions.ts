@@ -1,23 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/database";
-import {
-  ugcClips,
-  ugcExports,
-  ugcProducts,
-  ugcScripts,
-  ugcTalents,
-} from "@/database/ugc";
+import { ugcProducts, ugcScripts, ugcTalents } from "@/database/ugc";
 import { requireAuth } from "@/lib/auth/permissions";
 import { productIngestJob } from "@/lib/jobs/ugc/product-ingest";
 import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
 import { serverJobQueue } from "@/lib/jobs/server";
 import { fileKeyFromUrl } from "@/lib/uploads/url";
 import { createBackgroundTask } from "@/lib/tasks/service";
-import { buildExportManifest } from "./manifest";
 import { productScopeKey, talentScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
@@ -291,88 +284,6 @@ export async function archiveTalent(talentId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-export async function setClipReview(
-  clipId: string,
-  reviewStatus: "pending" | "selected" | "shortlisted" | "rejected",
-  note?: string,
-): Promise<ActionResult> {
-  const user = await requireAuth();
-  const updated = await db
-    .update(ugcClips)
-    .set({
-      reviewStatus,
-      reviewNote: note?.trim() ? note.trim() : null,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(ugcClips.id, clipId), eq(ugcClips.userId, user.id)))
-    .returning();
-  if (updated.length === 0) return { ok: false, code: "not_found" };
-  revalidatePath("/dashboard/review");
-  return { ok: true, id: clipId };
-}
-
-const exportSchema = z.object({
-  name: z.string().trim().min(1).max(160),
-  clipIds: z.array(z.uuid()).min(1).max(300),
-});
-
-export async function createExport(
-  input: z.infer<typeof exportSchema>,
-): Promise<ActionResult> {
-  const user = await requireAuth();
-  const parsed = exportSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, code: "invalid_input" };
-
-  const rows = await db
-    .select({
-      clip: ugcClips,
-      productName: ugcProducts.name,
-      productVariant: ugcProducts.variant,
-      disclosure: ugcScripts.disclosure,
-    })
-    .from(ugcClips)
-    .innerJoin(ugcProducts, eq(ugcProducts.id, ugcClips.productId))
-    .leftJoin(ugcScripts, eq(ugcScripts.id, ugcClips.scriptId))
-    .where(
-      and(
-        eq(ugcClips.userId, user.id),
-        inArray(ugcClips.id, parsed.data.clipIds),
-      ),
-    );
-
-  if (rows.length === 0) return { ok: false, code: "not_found" };
-
-  const manifest = buildExportManifest(
-    rows.map((row) => ({
-      reference: row.clip.reference,
-      locale: row.clip.locale,
-      market: row.clip.market,
-      publishCaption: row.clip.publishCaption,
-      videoUrl: row.clip.videoUrl,
-      coverUrl: row.clip.coverUrl,
-      subtitleUrl: row.clip.subtitleUrl,
-      disclosure: row.disclosure,
-      product: {
-        name: row.productName,
-        variant: row.productVariant,
-      },
-    })),
-  );
-
-  const [record] = await db
-    .insert(ugcExports)
-    .values({
-      userId: user.id,
-      name: parsed.data.name,
-      clipCount: rows.length,
-      manifest,
-    })
-    .returning();
-
-  revalidatePath("/dashboard/exports");
-  return { ok: true, id: record.id };
-}
-
 const scriptRevisionSchema = z.object({
   title: z.string().trim().min(1).max(200),
   hook: z.string().trim().min(1).max(500),
@@ -384,7 +295,7 @@ const scriptRevisionSchema = z.object({
 
 /**
  * Edits never overwrite a script. A revision is stored as a new version that
- * points back at its source, so an exported clip can always be traced to the
+ * points back at its source, so a finished clip can always be traced to the
  * exact wording it was made from.
  */
 export async function saveScriptRevision(

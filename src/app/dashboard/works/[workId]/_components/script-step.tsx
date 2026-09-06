@@ -53,18 +53,15 @@ export function ScriptStep({
   );
   const [captions, setCaptions] = useState(script.captions.join("\n"));
 
-  const dirty =
-    title !== script.title ||
-    hook !== script.hook ||
-    productionPrompt !== (script.productionPrompt ?? "") ||
-    JSON.stringify(beats) !==
-      JSON.stringify(
-        script.beats.map((beat) => ({
-          ...beat,
-          camera: beat.camera ?? t("ugc_script_camera_default"),
-        })),
-      ) ||
-    captions !== script.captions.join("\n");
+  const currentSnapshot = JSON.stringify({
+    title,
+    hook,
+    productionPrompt,
+    beats,
+    captions,
+  });
+  const [savedSnapshot, setSavedSnapshot] = useState(currentSnapshot);
+  const dirty = currentSnapshot !== savedSnapshot;
 
   const updateBeat = <Key extends keyof ScriptBeat>(
     index: number,
@@ -103,6 +100,7 @@ export function ScriptStep({
         toast.error(t(actionMessageKey(result.code)));
         return;
       }
+      setSavedSnapshot(currentSnapshot);
       toast.success(t("ugc_work_script_saved"));
       onRefresh();
     });

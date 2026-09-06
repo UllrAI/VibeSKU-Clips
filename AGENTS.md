@@ -7,8 +7,9 @@ This file is the single source of truth for repository-specific agent instructio
 
 VibeSKU Clips produces one short vertical product video at a time for shoppable
 feeds. An operator chooses a product, the system reads its material into
-verifiable facts, and a guided work moves through script, storyboard, video,
-review, and export with a person confirming each expensive step.
+verifiable facts, and a guided work moves through script, storyboard, and video
+with a person confirming each expensive step. Every work appears in one list
+from creation through completion, where a finished video can be downloaded.
 
 Two rules run through the whole codebase and are worth internalising before
 changing anything:
@@ -19,9 +20,9 @@ changing anything:
   Also: interface language and clip language are separate settings, and language
   is separate from market. Do not collapse them.
 
-**Scope boundary.** The platform produces video and a delivery manifest. It does
-not manage storefront links, stock, publishing, or performance — those belong to
-whoever posts the clips. Do not add product-matching state here.
+**Scope boundary.** The platform produces downloadable video. It does not manage
+storefront links, stock, publishing, or performance — those belong to whoever
+posts the clips. Do not add product-matching state here.
 
 ## 1. Working Agreement
 
@@ -99,7 +100,7 @@ pnpm stripe:sync-products
 - UI primitives: `src/components/ui`
 - Forms: `src/components/forms`
 - Business logic: `src/lib`
-- UGC domain logic (QC, similarity, manifest, render prompts): `src/lib/ugc`
+- UGC domain logic (QC and render prompts): `src/lib/ugc`
 - UGC server actions and queries: `src/lib/ugc/actions.ts`, `src/lib/ugc/queries.ts`
 - Stepped single-clip flow: `src/lib/ugc/works.ts`, `src/lib/ugc/work-actions.ts`, `src/app/dashboard/works`
 - Background-run state shared by the product and work consoles: `src/lib/ugc/run-state.ts`
@@ -152,7 +153,7 @@ Rules that are easy to break:
   Node process: `server-only` throws there and `@/env` validates Next-only
   variables. Build storage and the model from `process.env` (`src/lib/ugc/storage.ts`,
   `src/lib/ugc/model.ts`) and take the database from `JobHandlerContext`.
-- **Archive generated media into R2.** Provider URLs expire; an export that stops
+- **Archive generated media into R2.** Provider URLs expire; a video that stops
   resolving is not a deliverable.
 - **Private image references are resolved at the Worker boundary.** Saved app
   URLs require authentication and cannot be sent to a remote model directly.

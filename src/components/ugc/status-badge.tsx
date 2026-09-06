@@ -26,13 +26,6 @@ const CLIP_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
   cancelled: { key: "ugc_clip_status_cancelled", variant: "outline" },
 };
 
-const REVIEW_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
-  pending: { key: "ugc_review_status_pending", variant: "outline" },
-  selected: { key: "ugc_review_status_selected", variant: "default" },
-  shortlisted: { key: "ugc_review_status_shortlisted", variant: "secondary" },
-  rejected: { key: "ugc_review_status_rejected", variant: "destructive" },
-};
-
 const TALENT_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
   generating: { key: "ugc_talent_status_generating", variant: "secondary" },
   ready: { key: "ugc_talent_status_ready", variant: "default" },
@@ -42,7 +35,6 @@ const TALENT_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
 const MAPS = {
   product: PRODUCT_STATUS,
   clip: CLIP_STATUS,
-  review: REVIEW_STATUS,
   talent: TALENT_STATUS,
 } as const;
 

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-/** The dashboard has one primary job: make one clip. */
+/** The dashboard opens on every work, including anything still in progress. */
 export default function DashboardPage() {
   redirect("/dashboard/works");
 }

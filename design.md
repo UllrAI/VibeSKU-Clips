@@ -177,16 +177,15 @@ step is active, what it produced, and what happens if they say yes.
   verdict: reading them, correcting them, and saving them is one gesture, and
   saving is what clears the object for production.
 
-### Review selection
+### Work list
 
-- The action for a selection lives in a bar that appears with the selection and
-  sticks to the bottom of the viewport, next to the work. It states the count,
-  offers select-all and clear, and carries the primary action.
-- Selection and decision are different gestures with different affordances.
-  Both are real buttons carrying `aria-pressed`, never colour alone.
-- Only a finished clip can be played, decided on, or exported. A still frame
-  behind player chrome invites a click that goes nowhere, so unfinished clips
-  show the reason instead of a player.
+- A work appears in the list as soon as it is created, not only after a video
+  exists. Status filters separate work in progress, work waiting for a person,
+  completed work, and failures.
+- Every card opens the current step. Only a finished work shows player controls
+  and a direct video download; unfinished work shows the best available still.
+- The list does not add review decisions, multi-selection, grouped exports, or
+  delivery manifests before a real publishing workflow requires them.
 
 ## Components
 

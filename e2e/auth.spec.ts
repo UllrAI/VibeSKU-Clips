@@ -18,9 +18,9 @@ test("allows an E2E user session to access the dashboard", async ({ page }) => {
 
   // Reaching the route without the login redirect is what proves the session;
   // no dashboard surface renders the account details on the server.
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page).toHaveURL(/\/dashboard\/works$/);
   await expect(
-    page.getByRole("heading", { level: 1, name: "Production overview" }),
+    page.getByRole("heading", { level: 1, name: "Works" }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Products" })).toBeVisible();
 });

@@ -18,7 +18,6 @@ import {
   buildSubtitleTrack,
   buildVideoPrompt,
 } from "@/lib/ugc/render";
-import { similarityKeyFor } from "@/lib/ugc/similarity";
 import {
   createClipStorage,
   resolveReferenceUrls,
@@ -59,8 +58,8 @@ function storage(db: AppDatabase): ClipStorage {
  * The frames go to the video model as a reference set alongside the product
  * and talent shots — H3 reads them together rather than treating one as a
  * strict first frame, which is what holds the face and the object steady for
- * the full fifteen seconds. The result lands in `ugc_clips`, so review and
- * export it from the same review surface as any finished work.
+ * the full fifteen seconds. The result lands in `ugc_clips`, where the work
+ * list can preview and download it directly.
  */
 export const workVideoJob = defineJob(
   "ugc.work.video",
@@ -232,11 +231,6 @@ export const workVideoJob = defineJob(
         publishCaption: script.publishCaption,
         durationMs,
         quality,
-        similarityKey: similarityKeyFor({
-          locale: work.locale,
-          hook: script.hook,
-          voiceover: script.voiceover,
-        }),
       })
       .returning();
 

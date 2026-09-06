@@ -14,7 +14,7 @@ export interface ProductFacts {
   specs: string[];
   sellingPoints: string[];
   scenarios: string[];
-  /** Where each fact came from, so the manifest can be audited later. */
+  /** Where each fact came from, so the product analysis stays traceable. */
   sources: string[];
   /** Set when the source material is incomplete or self-contradictory. */
   missing?: string[];
@@ -60,28 +60,6 @@ export interface QualityCheck {
 export interface ClipQualityReport {
   checks: QualityCheck[];
   passed: boolean;
-}
-
-export interface ExportManifestRow {
-  reference: string;
-  productName: string;
-  variant: string | null;
-  market: string;
-  locale: string;
-  publishCaption: string | null;
-  videoUrl: string | null;
-  coverUrl: string | null;
-  subtitleUrl: string | null;
-  disclosure: string | null;
-}
-
-export interface ExportManifest {
-  generatedAt: string;
-  groups: {
-    key: string;
-    label: string;
-    rows: ExportManifestRow[];
-  }[];
 }
 
 export interface ScriptTemplateBrief {

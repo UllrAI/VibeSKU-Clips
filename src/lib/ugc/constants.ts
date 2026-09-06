@@ -1,7 +1,6 @@
 /**
  * Delivery specification for every clip the platform produces. These values are
- * contractual: the renderer, the quality gate, and the export manifest all read
- * them from here.
+ * contractual: the renderer and quality gate both read them from here.
  */
 export const CLIP_SPEC = {
   durationSeconds: 15,

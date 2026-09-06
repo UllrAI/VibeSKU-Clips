@@ -11,10 +11,10 @@ test("starts a work from a new product and lands on the first step", async ({
   });
 
   await loginAs(page, "user");
-  await page.goto("/dashboard/works");
+  await page.goto("/dashboard/works/new");
 
   await expect(
-    page.getByRole("heading", { name: "Works", exact: true }),
+    page.getByRole("heading", { name: "New clip", exact: true }),
   ).toBeVisible();
 
   // A product that does not exist yet is created in the composer, so the
@@ -49,9 +49,13 @@ test("starts a work from a new product and lands on the first step", async ({
   ).toBeDisabled();
 
   await page.goto("/dashboard/works");
-  await expect(
-    page.getByRole("link", { name: new RegExp(name) }),
-  ).toBeVisible();
+  await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
+
+  // Status filters hide and restore the work without requiring a new page.
+  await page.getByRole("tab", { name: "Finished 0" }).click();
+  await expect(page.getByText(name, { exact: true })).toBeHidden();
+  await page.getByRole("tab", { name: "All 1" }).click();
+  await expect(page.getByText(name, { exact: true }).first()).toBeVisible();
 
   expect(
     problems.filter((text) => !text.includes("Failed to load resource")),

@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, SquarePlay, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Check, LayoutGrid, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,8 +52,8 @@ export function DoneStep({
       }
       action={
         <Button asChild>
-          <Link href="/dashboard/review">
-            <SquarePlay />
+          <Link href="/dashboard/works">
+            <LayoutGrid />
             {t("ugc_work_open_review")}
           </Link>
         </Button>

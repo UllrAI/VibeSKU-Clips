@@ -32,6 +32,7 @@ export interface WorkSummary {
   work: WorkRow;
   productName: string | null;
   coverUrl: string | null;
+  videoUrl: string | null;
   failed: boolean;
 }
 
@@ -43,6 +44,7 @@ export async function listWorks(): Promise<WorkSummary[]> {
       productName: ugcProducts.name,
       productImages: ugcProducts.images,
       clipCover: ugcClips.coverUrl,
+      videoUrl: ugcClips.videoUrl,
       taskStatus: taskRuns.status,
     })
     .from(ugcWorks)
@@ -50,13 +52,13 @@ export async function listWorks(): Promise<WorkSummary[]> {
     .leftJoin(ugcClips, eq(ugcClips.id, ugcWorks.clipId))
     .leftJoin(taskRuns, eq(taskRuns.id, ugcWorks.taskRunId))
     .where(eq(ugcWorks.userId, user.id))
-    .orderBy(desc(ugcWorks.createdAt))
-    .limit(50);
+    .orderBy(desc(ugcWorks.createdAt));
 
   return rows.map((row) => ({
     work: row.work,
     productName: row.productName,
     coverUrl: row.clipCover ?? row.productImages?.[0] ?? null,
+    videoUrl: row.videoUrl,
     failed: row.work.stepStatus === "failed" || row.taskStatus === "failed",
   }));
 }

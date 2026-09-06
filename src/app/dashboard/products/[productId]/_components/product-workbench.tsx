@@ -255,7 +255,7 @@ export function ProductWorkbench({
           </Button>
           {state.status === "ready" && (
             <Button asChild>
-              <Link href={`/dashboard/works?product=${product.id}`}>
+              <Link href={`/dashboard/works/new?product=${product.id}`}>
                 <Film />
                 {t("ugc_product_use_in_work")}
               </Link>

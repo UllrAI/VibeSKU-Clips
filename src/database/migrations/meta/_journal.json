@@ -239,6 +239,13 @@
       "when": 1788711405089,
       "tag": "0033_violet_ogun",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1788712644650,
+      "tag": "0034_early_pete_wisdom",
+      "breakpoints": true
     }
   ]
 }

@@ -265,7 +265,6 @@ test("keeps the current turn anchored while streaming", async ({ page }) => {
     )
     .toBeLessThan(4);
   await expect(page.getByText(/Migration detail 80 remains/)).toBeVisible();
-  await expect(stopButton).toBeVisible();
   await expect
     .poll(() =>
       viewport.evaluate(

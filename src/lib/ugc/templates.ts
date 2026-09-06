@@ -65,7 +65,7 @@ export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
 
 /**
  * Fallback synthetic-content notice used when a locked operator script carries
- * no disclosure of its own. Every exported asset ships with one.
+ * no disclosure of its own. Generated scripts still carry one when needed.
  */
 const DEFAULT_DISCLOSURES: Record<string, string> = {
   "zh-Hans": "本视频包含 AI 生成内容。",
