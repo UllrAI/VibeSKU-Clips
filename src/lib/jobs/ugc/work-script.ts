@@ -4,6 +4,7 @@ import { ugcProducts, ugcScripts, ugcTalents, ugcWorks } from "@/database/ugc";
 import { composeScript } from "@/lib/ugc/authoring";
 import { CREDIT_COST, type ScriptTemplate } from "@/lib/ugc/constants";
 import { defaultDisclosure } from "@/lib/ugc/templates";
+import { resolveReferenceUrls } from "@/lib/ugc/storage";
 import { recordUsage } from "@/lib/ugc/usage";
 import { defineJob, PermanentJobError } from "../definition";
 
@@ -65,19 +66,23 @@ export const workScriptJob = defineJob(
       talentId: talent?.id ?? null,
     });
 
+    const imageUrls = await resolveReferenceUrls(
+      db,
+      work.userId,
+      [talent?.imageUrl, ...product.images].filter((url): url is string =>
+        Boolean(url),
+      ),
+    );
     const draft = await composeScript({
       facts: product.facts,
       brief: product.brief,
       template: work.template as ScriptTemplate,
       locale: work.locale,
       market: work.market,
-      variantIndex: 0,
       productName: product.name,
       // The model sees what the clip will actually show, so the script can
       // describe the real object and the real performer.
-      imageUrls: [talent?.imageUrl, ...product.images].filter(
-        (url): url is string => Boolean(url),
-      ),
+      imageUrls,
       talentNote: talent ? (talent.prompt ?? talent.name) : null,
     });
 

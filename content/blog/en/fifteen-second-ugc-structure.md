@@ -46,7 +46,7 @@ The first phase ships three formats, and each is a production recipe rather than
 - **Everyday scene.** Opens on a problem, resolves it with the product in a real setting. Best when the product's value is contextual — you have to see where it goes.
 - **How to use.** Short numbered steps ending on the result. Best when the barrier is "I don't know how this works."
 
-When a batch asks for several scripts on one product, each one is given a different opening angle rather than a reworded version of the same line. Three scripts that all open on the outcome are three near-identical clips with different B-roll, and a matrix of accounts is exactly the place where that shows.
+In the guided workflow, the opening angle is explicit in the script before any frames are generated. If it is wrong or too generic, change it there instead of paying for a different-looking video built on the same weak idea.
 
 ## What a passing clip looks like
 

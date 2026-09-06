@@ -2,11 +2,11 @@
 
 [中文版](README.zh-CN.md) | English
 
-VibeSKU Clips turns product material into localised 15-second UGC video for
-TikTok Shop account matrices. An operator submits a product link or images with a
-brief; the platform reads the product, writes a market-specific script, generates
-and edits the clip, checks it against a quality gate, and hands back grouped
-assets with a delivery manifest.
+VibeSKU Clips turns product material into a localised 15-second UGC video. An
+operator submits a product link or images with a brief; the platform reads the
+product, writes a market-specific script, draws a storyboard, generates the
+clip, checks it against a quality gate, and hands back the asset with a delivery
+manifest.
 
 The platform produces material and the manifest. Account login, publishing,
 storefront links, product tagging, and performance observation stay with the
@@ -26,16 +26,15 @@ operations team.
   production recipe with its own beat structure and rotating opening angles.
 - **Talent consistency.** Upload a licensed photo or describe a fictional adult
   performer. The generated opening frame anchors the look for the whole clip.
-- **Batches that count what you asked for.** Products, scripts, clips per
-  script, and talent are explicit per line; nothing is cross-multiplied.
+- **One clip at a time.** Product, talent, script, storyboard, and video form one
+  guided path, with a human confirmation before each expensive step.
 - **A quality gate before review.** Duration, voiceover length, caption safe
   area, product accuracy, performer consistency, and local expression are
   checked on every clip.
-- **Review and regeneration.** Grouped comparison with similarity hints, three
-  decision states, retry for failures, and regeneration that keeps the original.
-- **Exports with a manifest.** Grouped by product or account tag, with the
-  reference number, product, variant, language, market, talent, licence note,
-  and disclosure line for every asset.
+- **Review and regeneration.** Each finished clip can be selected, rejected, or
+  regenerated while preserving its product, script, and talent lineage.
+- **Exports with a manifest.** Every asset includes its reference number,
+  product, language, market, talent, licence note, and disclosure line.
 - **Asset and consumption records.** Products, talent, scripts, and approved
   clips keep their source, licence, and version lineage; analysis, scripting,
   rendering, retries, and regenerations are metered separately.
@@ -45,16 +44,17 @@ publish caption, and a synthetic-content disclosure.
 
 ## 🧱 How production runs
 
-| Stage     | Job                  | What it does                                                                                                    |
-| :-------- | :------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| Intake    | `ugc.product.ingest` | Fetches the product page, reads facts from the material, and pauses only that product when something is missing |
-| Planning  | `ugc.batch.run`      | Expands the plan lines, writes the scripts, creates the clip rows, and queues rendering                         |
-| Rendering | `ugc.clip.render`    | Generates the opening frame, then the clip, archives both, writes the subtitle track, and runs the quality gate |
+| Stage      | Job                   | What it does                                                                                              |
+| :--------- | :-------------------- | :-------------------------------------------------------------------------------------------------------- |
+| Intake     | `ugc.product.ingest`  | Fetches the product page, reads facts from the material, and pauses when something is missing             |
+| Script     | `ugc.work.script`     | Writes one script from the confirmed product, talent, language, and market                                |
+| Storyboard | `ugc.work.storyboard` | Draws one key frame per beat and stops for confirmation                                                   |
+| Video      | `ugc.work.video`      | Generates one clip from the accepted storyboard, archives it, writes subtitles, and runs the quality gate |
 
-Jobs run on pg-boss through the repository's task-run outbox, so a batch
-survives a restart and every clip can be retried on its own. Media generation
-goes through Prism (`src/lib/ugc/media`), and scripting through any
-OpenAI-compatible endpoint.
+Jobs run on pg-boss through the repository's task-run outbox, so each step
+survives a restart and can be retried on its own. Media generation goes through
+Prism (`src/lib/ugc/media`), and scripting through any OpenAI-compatible
+endpoint.
 
 Business logic lives in `src/lib/ugc`, the job handlers in `src/lib/jobs/ugc`,
 and the operator surfaces under `src/app/dashboard`.
@@ -142,8 +142,9 @@ never be added to `SITE_CONFIG`.
 | `LLM_API_KEY`                  | Required when `ai` is enabled. Key for your LLM endpoint.       | `sk-...`                                            |
 | `LLM_BASE_URL`                 | Optional OpenAI-compatible endpoint; defaults to OpenRouter.    | `https://openrouter.ai/api/v1`                      |
 | `AI_DEFAULT_MODEL`             | Optional model id; defaults to `openai/gpt-5.6-luna`.           | `openai/gpt-5.6-luna`                               |
-| `PRISM_API_KEY`                | **Required for rendering.** Prism API key.                      | `pk_...`                                            |
-| `PRISM_API_SECRET`             | **Required for rendering.** Prism API secret.                   | `sk_...`                                            |
+| `PRISM_API_BASE_URL`           | Prism root; staging outside production, production in prod.     | `https://staging-prism.ullrai.com/api/v1`           |
+| `PRISM_API_KEY`                | **Required for rendering.** Prism API key for the chosen host.  | `pk_...`                                            |
+| `PRISM_API_SECRET`             | **Required for rendering.** Prism secret for the chosen host.   | `sk_...`                                            |
 | `STRIPE_SECRET_KEY`            | Required for billing. Prefer a least-privilege restricted key.  | `rk_test_...` or `rk_live_...`                      |
 | `STRIPE_ENVIRONMENT`           | Stripe mode; defaults to `test_mode`.                           | `test_mode` or `live_mode`                          |
 | `STRIPE_WEBHOOK_SECRET`        | Required when `billing` is enabled. Endpoint signing secret.    | `whsec_your_webhook_secret`                         |
@@ -186,7 +187,6 @@ Production notes:
 
 - [What actually fits in fifteen seconds](content/blog/en/fifteen-second-ugc-structure.md)
 - [Language and market are two different settings](content/blog/en/language-and-market-are-two-settings.md)
-- [How a batch counts](content/blog/en/counting-a-batch.md)
 
 #### Stripe catalog setup
 

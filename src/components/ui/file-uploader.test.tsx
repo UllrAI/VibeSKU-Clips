@@ -18,16 +18,19 @@ function HeadlessHarness({
   maxFiles = 1,
   onUploadComplete,
   transport,
+  clearCompletedOnUpload = false,
 }: {
   maxFiles?: number;
   onUploadComplete?: (files: UploadedFile[]) => void;
   transport?: UploadTransport;
+  clearCompletedOnUpload?: boolean;
 }) {
   return (
     <FileUploader
       autoUpload={false}
       acceptedFileTypes={["text/plain"]}
       maxFiles={maxFiles}
+      clearCompletedOnUpload={clearCompletedOnUpload}
       onUploadComplete={onUploadComplete}
       transport={transport}
     >
@@ -153,6 +156,40 @@ describe("FileUploader", () => {
 
     await waitFor(() => {
       expect(onUploadComplete).toHaveBeenCalledWith([uploadedFile]);
+    });
+  });
+
+  it("can clear the completed queue after handing uploaded files to its owner", async () => {
+    const uploadedFile: UploadedFile = {
+      contentType: "text/plain",
+      fileName: "product.txt",
+      key: "uploads/test/product.txt",
+      size: 11,
+      url: "/api/files/content?key=uploads%2Ftest%2Fproduct.txt",
+    };
+    const onUploadComplete = jest.fn();
+    const transport: UploadTransport = {
+      startUpload: () => ({ promise: Promise.resolve(uploadedFile) }),
+    };
+
+    render(
+      <HeadlessHarness
+        clearCompletedOnUpload
+        onUploadComplete={onUploadComplete}
+        transport={transport}
+      />,
+    );
+    fireEvent.change(screen.getByTestId("headless-input"), {
+      target: { files: [createFile("product.txt")] },
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId("item-count")).toHaveTextContent("1");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Start upload" }));
+
+    await waitFor(() => {
+      expect(onUploadComplete).toHaveBeenCalledWith([uploadedFile]);
+      expect(screen.getByTestId("item-count")).toHaveTextContent("0");
     });
   });
 });

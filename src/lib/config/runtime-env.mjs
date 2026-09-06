@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const defaultPrismApiBaseUrl =
+  process.env.NODE_ENV === "production"
+    ? "https://prism.ullrai.com/api/v1"
+    : "https://staging-prism.ullrai.com/api/v1";
+
 export const databaseUrlSchema = z
   .url()
   .refine(
@@ -33,9 +38,10 @@ export const modelEnvFields = {
 };
 
 // Media generation runs in both the Web process and the job worker, so the
-// credentials are shared rather than duplicated in each environment schema.
-// Everything else about the provider is a constant in `src/lib/ugc/constants.ts`.
+// connection settings are shared rather than duplicated in each environment
+// schema. Model choices remain product constants in `src/lib/ugc/constants.ts`.
 export const mediaEnvFields = {
+  PRISM_API_BASE_URL: z.url().default(defaultPrismApiBaseUrl),
   PRISM_API_KEY: z.preprocess(
     (value) => value || undefined,
     z.string().trim().min(1).optional(),

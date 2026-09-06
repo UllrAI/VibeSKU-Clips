@@ -48,12 +48,7 @@ export default async function ExportsPage() {
                   <p className="font-medium">{record.name}</p>
                   <p className="text-muted-foreground text-sm">
                     {new Date(record.createdAt).toLocaleString(locale)} ·{" "}
-                    {t("ugc_export_clip_count", { count: record.clipCount })} ·{" "}
-                    {t(
-                      record.groupBy === "product"
-                        ? "ugc_export_group_product"
-                        : "ugc_export_group_account",
-                    )}
+                    {t("ugc_export_clip_count", { count: record.clipCount })}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">

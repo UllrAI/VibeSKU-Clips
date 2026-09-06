@@ -49,7 +49,7 @@ export async function buildPricingMetadata(locale: SupportedLocale) {
       "ugc video production",
       "tiktok shop video",
       "short video generation",
-      "batch video",
+      "guided video production",
     ],
     openGraph: {
       ...metadata.openGraph,

@@ -45,15 +45,13 @@ provider rate limits, quotas, or billing.
 
 Because the singleton policy allows one active job per key, the scope key is
 what decides how much of a user's work runs at once. `src/lib/ugc/scope.ts`
-serialises per product (`user:<id>:product:<id>`) and per batch, and spreads clip
-rendering over a fixed number of lanes (`user:<id>:batch:<id>#<lane>`) so a
-batch does not render strictly one clip at a time.
+serialises product reading per product and guided generation per work.
 
-The three production jobs — `ugc.product.ingest`, `ugc.batch.run`, and
-`ugc.clip.render` — live in `src/lib/jobs/ugc`. `ugc.clip.render` is the
-reference for long provider work: it uses `scheduleContinuation` to poll rather
-than holding a claim open, and it archives every finished asset into R2 before
-the clip is marked ready.
+The production jobs — `ugc.product.ingest`, `ugc.work.script`,
+`ugc.work.storyboard`, and `ugc.work.video` — live in `src/lib/jobs/ugc`.
+Storyboard and video jobs use `scheduleContinuation` to poll long provider work
+without holding a claim open, and archive every finished asset into R2 before
+the step is shown for review.
 
 ## State and cancellation
 

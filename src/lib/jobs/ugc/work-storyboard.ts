@@ -9,10 +9,15 @@ import {
   ugcWorks,
 } from "@/database/ugc";
 import { CLIP_SPEC, CREDIT_COST } from "@/lib/ugc/constants";
-import { getTask, submitImage } from "@/lib/ugc/media/prism";
+import {
+  createPrismRequestId,
+  getTask,
+  submitImage,
+} from "@/lib/ugc/media/prism";
 import { archiveRemoteAsset, buildFramePrompt } from "@/lib/ugc/render";
 import {
   createClipStorage,
+  resolveReferenceUrls,
   StorageUnavailableError,
   type ClipStorage,
 } from "@/lib/ugc/storage";
@@ -144,18 +149,24 @@ export const workStoryboardJob = defineJob(
         ),
       );
 
-    const references = [talent?.imageUrl, ...product.images.slice(0, 2)].filter(
-      (url): url is string => Boolean(url),
-    );
+    const unsubmitted = frames.filter((frame) => !frame.providerTaskId);
+    const references = unsubmitted.length
+      ? await resolveReferenceUrls(
+          db,
+          work.userId,
+          [talent?.imageUrl, ...product.images.slice(0, 2)].filter(
+            (url): url is string => Boolean(url),
+          ),
+        )
+      : [];
 
     // Submit anything that has not been handed to the provider yet.
-    for (const frame of frames) {
-      if (frame.providerTaskId) continue;
+    for (const frame of unsubmitted) {
       const providerTaskId = await submitImage({
         prompt: frame.prompt,
         referenceUrls: references,
         aspectRatio: CLIP_SPEC.aspectRatio,
-        requestId: `${context.taskRunId}:${frame.id}`,
+        requestId: createPrismRequestId(context.taskRunId, frame.id),
       });
       await db
         .update(ugcWorkFrames)

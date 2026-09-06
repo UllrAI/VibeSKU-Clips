@@ -4,7 +4,6 @@ export interface ManifestClip {
   reference: string;
   locale: string;
   market: string;
-  accountTag: string | null;
   publishCaption: string | null;
   videoUrl: string | null;
   coverUrl: string | null;
@@ -28,24 +27,17 @@ function toRow(clip: ManifestClip): ExportManifestRow {
     coverUrl: clip.coverUrl,
     subtitleUrl: clip.subtitleUrl,
     disclosure: clip.disclosure,
-    accountTag: clip.accountTag,
   };
 }
 
-export function buildExportManifest(
-  clips: ManifestClip[],
-  groupBy: "product" | "accountTag",
-  unassignedLabel: string,
-): ExportManifest {
+export function buildExportManifest(clips: ManifestClip[]): ExportManifest {
   const groups = new Map<
     string,
     { label: string; rows: ExportManifestRow[] }
   >();
 
   for (const clip of clips) {
-    const key =
-      groupBy === "product" ? clip.product.name : (clip.accountTag ?? "");
-    const label = key || unassignedLabel;
+    const label = clip.product.name;
     const group = groups.get(label) ?? { label, rows: [] };
     group.rows.push(toRow(clip));
     groups.set(label, group);
@@ -53,7 +45,6 @@ export function buildExportManifest(
 
   return {
     generatedAt: new Date().toISOString(),
-    groupBy,
     groups: [...groups.values()]
       .map((group) => ({ key: group.label, ...group }))
       .sort((a, b) => a.label.localeCompare(b.label)),
@@ -66,7 +57,6 @@ const CSV_COLUMNS: (keyof ExportManifestRow)[] = [
   "variant",
   "market",
   "locale",
-  "accountTag",
   "videoUrl",
   "coverUrl",
   "subtitleUrl",

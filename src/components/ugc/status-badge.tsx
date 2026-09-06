@@ -33,18 +33,10 @@ const REVIEW_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
   rejected: { key: "ugc_review_status_rejected", variant: "destructive" },
 };
 
-const BATCH_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
-  draft: { key: "ugc_batch_status_draft", variant: "outline" },
-  running: { key: "ugc_batch_status_running", variant: "secondary" },
-  completed: { key: "ugc_batch_status_completed", variant: "default" },
-  cancelled: { key: "ugc_batch_status_cancelled", variant: "outline" },
-};
-
 const MAPS = {
   product: PRODUCT_STATUS,
   clip: CLIP_STATUS,
   review: REVIEW_STATUS,
-  batch: BATCH_STATUS,
 } as const;
 
 export function StatusBadge({

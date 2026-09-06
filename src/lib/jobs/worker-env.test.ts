@@ -11,6 +11,9 @@ describe("worker environment", () => {
     expect(env.DB_POOL_SIZE).toBe(5);
     expect(env.JOB_DB_POOL_SIZE).toBe(3);
     expect(env.WORKER_GRACEFUL_TIMEOUT_MS).toBe(30_000);
+    expect(env.PRISM_API_BASE_URL).toBe(
+      "https://staging-prism.ullrai.com/api/v1",
+    );
   });
 
   it("accepts a separate queue database and explicit pool budgets", () => {

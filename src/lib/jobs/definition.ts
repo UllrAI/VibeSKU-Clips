@@ -86,3 +86,14 @@ export class PermanentJobError extends Error {
     this.code = code;
   }
 }
+
+/** A known transient dependency failure whose code should survive retries. */
+export class RetryableJobError extends Error {
+  readonly code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = "RetryableJobError";
+    this.code = code;
+  }
+}

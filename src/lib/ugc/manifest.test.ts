@@ -10,7 +10,6 @@ function clip(overrides: Partial<ManifestClip> = {}): ManifestClip {
     reference: "VC-0001-001",
     locale: "en",
     market: "US",
-    accountTag: null,
     publishCaption: "Sofa, sorted.",
     videoUrl: "/api/files/content?key=video",
     coverUrl: "/api/files/content?key=cover",
@@ -26,20 +25,16 @@ function clip(overrides: Partial<ManifestClip> = {}): ManifestClip {
 
 describe("export manifest", () => {
   it("groups rows by product", () => {
-    const manifest = buildExportManifest(
-      [
-        clip(),
-        clip({
-          reference: "VC-0001-002",
-          product: {
-            name: "Ceramic pour-over set",
-            variant: null,
-          },
-        }),
-      ],
-      "product",
-      "Unassigned",
-    );
+    const manifest = buildExportManifest([
+      clip(),
+      clip({
+        reference: "VC-0001-002",
+        product: {
+          name: "Ceramic pour-over set",
+          variant: null,
+        },
+      }),
+    ]);
 
     expect(manifest.groups.map((group) => group.label)).toEqual([
       "Ceramic pour-over set",
@@ -47,18 +42,10 @@ describe("export manifest", () => {
     ]);
   });
 
-  it("labels clips without an account tag when grouping by account", () => {
-    const manifest = buildExportManifest([clip()], "accountTag", "Unassigned");
-
-    expect(manifest.groups[0]?.label).toBe("Unassigned");
-  });
-
   it("escapes CSV fields that contain separators", () => {
-    const manifest = buildExportManifest(
-      [clip({ publishCaption: 'Sofa, "sorted"' })],
-      "product",
-      "Unassigned",
-    );
+    const manifest = buildExportManifest([
+      clip({ publishCaption: 'Sofa, "sorted"' }),
+    ]);
     const csv = manifestToCsv(manifest);
 
     expect(csv.split("\n")[0]).toContain("reference");

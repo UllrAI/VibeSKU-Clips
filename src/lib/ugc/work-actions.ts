@@ -7,6 +7,7 @@ import { db } from "@/database";
 import {
   ugcProducts,
   ugcScripts,
+  ugcTalents,
   ugcWorkFrames,
   ugcWorks,
 } from "@/database/ugc";
@@ -20,13 +21,67 @@ import { SCRIPT_TEMPLATES } from "./constants";
 import { workScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
-const setupSchema = z.object({
-  productId: z.uuid(),
-  talentId: z.uuid().optional(),
-  locale: z.string().trim().min(2).max(16),
-  market: z.string().trim().min(2).max(16),
-  template: z.enum(SCRIPT_TEMPLATES),
-});
+const setupSchema = z
+  .object({
+    productId: z.uuid(),
+    talentId: z.uuid().optional(),
+    randomTalent: z.boolean().default(false),
+    locale: z.string().trim().min(2).max(16),
+    market: z.string().trim().min(2).max(16),
+    template: z.enum(SCRIPT_TEMPLATES),
+  })
+  .refine((input) => !(input.randomTalent && input.talentId), {
+    path: ["talentId"],
+  });
+
+const RANDOM_TALENT_PROFILES = [
+  "A confident adult creator in their late twenties, warm and conversational, with natural everyday styling",
+  "An energetic adult creator in their thirties, approachable and expressive, with clean casual styling",
+  "A calm adult creator in their forties, trustworthy and precise, with understated modern styling",
+  "A friendly adult creator in their late twenties, playful but credible, with relaxed lifestyle styling",
+  "A polished adult creator in their thirties, direct and upbeat, with contemporary commercial styling",
+] as const;
+
+async function resolveTalentSelection(
+  userId: string,
+  selection: {
+    talentId?: string;
+    randomTalent: boolean;
+    locale: string;
+    market: string;
+  },
+): Promise<string | null | undefined> {
+  if (selection.randomTalent) {
+    const profile =
+      RANDOM_TALENT_PROFILES[
+        Math.floor(Math.random() * RANDOM_TALENT_PROFILES.length)
+      ];
+    const [talent] = await db
+      .insert(ugcTalents)
+      .values({
+        userId,
+        name: `AI Talent ${crypto.randomUUID().slice(0, 4).toUpperCase()}`,
+        source: "generated",
+        prompt: `${profile}. Create a fictional adult suitable for ${selection.market}; the performance language is ${selection.locale}. Do not resemble a real public figure.`,
+        licenceNote: "Fictional adult generated for this work.",
+      })
+      .returning({ id: ugcTalents.id });
+    return talent.id;
+  }
+  if (!selection.talentId) return null;
+
+  const [talent] = await db
+    .select({ id: ugcTalents.id })
+    .from(ugcTalents)
+    .where(
+      and(
+        eq(ugcTalents.id, selection.talentId),
+        eq(ugcTalents.userId, userId),
+        eq(ugcTalents.archived, false),
+      ),
+    );
+  return talent?.id;
+}
 
 async function loadOwnedWork(workId: string, userId: string) {
   const [work] = await db
@@ -89,13 +144,16 @@ export async function createWork(
     );
   if (!product) return { ok: false, code: "not_found" };
 
+  const talentId = await resolveTalentSelection(user.id, parsed.data);
+  if (talentId === undefined) return { ok: false, code: "not_found" };
+
   const [work] = await db
     .insert(ugcWorks)
     .values({
       userId: user.id,
       title: product.name,
       productId: parsed.data.productId,
-      talentId: parsed.data.talentId ?? null,
+      talentId,
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,
@@ -140,11 +198,14 @@ export async function setWorkSetup(
     );
   if (!product) return { ok: false, code: "not_found" };
 
+  const talentId = await resolveTalentSelection(user.id, parsed.data);
+  if (talentId === undefined) return { ok: false, code: "not_found" };
+
   await db
     .update(ugcWorks)
     .set({
       productId: parsed.data.productId,
-      talentId: parsed.data.talentId ?? null,
+      talentId,
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,

@@ -144,25 +144,17 @@ bounce, or hover zoom.
 
 ### Work that takes minutes
 
-Generation runs for minutes, so the screen has to stay usable while it does.
-
-- Progress is a compact bar that sticks to the top of the work surface, not a
-  panel that pushes the surface down. It is collapsed by default and answers one
-  question — how much is left; the per-state breakdown is one click away.
-- The coloured bar is decorative. The semantics live in a `<progress>` element
-  and a polite live region, so a screen reader hears the change once, in words.
-- Progress updates itself. The operator never presses reload to find out what
-  happened, and the page says so: the work continues if they close the tab.
-- Never invent a countdown. Show what is measured — how many clips are left —
-  rather than an estimate the system cannot stand behind.
-- A batch that is still expanding shows the planned count as the denominator.
-  The unfilled part of the bar is work not yet started, not work that failed.
+Generation runs for minutes, so the current step must stay understandable while
+it does. The step rail is the progress indicator: it names what is running, says
+roughly how long that step normally takes, and updates without a manual refresh.
+Never invent a countdown or a percentage when there is only one item. If the
+task gives up, replace the working state with the specific failure and a retry
+action; never leave the interface spinning after the task is terminal.
 
 ### A flow with steps
 
-Unattended production reports progress. Attended production reports _steps_, and
-the two are not interchangeable: a person who is waiting on a step wants to know
-which step, what it produced, and what happens if they say yes.
+The production flow reports _steps_: a person who is waiting wants to know which
+step is active, what it produced, and what happens if they say yes.
 
 - The whole path is visible from the first screen. A numbered rail names every
   step, marks the ones already signed off, and carries `aria-current="step"` on
@@ -185,7 +177,7 @@ which step, what it produced, and what happens if they say yes.
   verdict: reading them, correcting them, and saving them is one gesture, and
   saving is what clears the object for production.
 
-### Selection and bulk actions
+### Review selection
 
 - The action for a selection lives in a bar that appears with the selection and
   sticks to the bottom of the viewport, next to the work. It states the count,
@@ -239,7 +231,7 @@ universally understood and has an accessible name.
 All user-visible copy comes from `src/messages/en.json` and
 `src/messages/zh-Hans.json` in exact key parity. Interface language and content
 language are separate concerns: the locale switcher never changes the language a
-clip is produced in, and a batch's output language never changes the interface.
+clip is produced in, and the selected output language never changes the interface.
 
 ## Review checklist
 

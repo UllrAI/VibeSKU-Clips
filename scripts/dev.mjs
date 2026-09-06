@@ -3,10 +3,10 @@ import { spawn } from "node:child_process";
 /**
  * Runs the app and the job worker together.
  *
- * Nothing in the product finishes without the worker: batches expand, clips
- * render and uploads are cleaned there. Running `next dev` alone leaves every
- * task sitting in the outbox with no consumer, which looks exactly like a
- * batch that is stuck — so development runs both or neither.
+ * Nothing in the product finishes without the worker: product reading, scripts,
+ * storyboards, videos and upload cleanup all run there. Running `next dev` alone
+ * leaves every task sitting in the outbox with no consumer, so development runs
+ * both processes or neither.
  */
 const children = [
   { name: "web", command: "next", args: ["dev"] },

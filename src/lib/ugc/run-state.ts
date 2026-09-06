@@ -4,7 +4,7 @@ import { db } from "@/database";
 import { taskRuns } from "@/database/schema";
 
 /** How long a queued task may sit before the console calls the run stalled. */
-export const STALL_AFTER_MS = 45_000;
+const STALL_AFTER_MS = 45_000;
 
 export interface RunState {
   /** The background step gave up. Without this a console spins forever. */

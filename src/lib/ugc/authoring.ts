@@ -95,8 +95,9 @@ export async function analyzeProduct(
               .join("\n"),
           },
           ...input.imageUrls.slice(0, 6).map((url) => ({
-            type: "image" as const,
-            image: new URL(url),
+            type: "file" as const,
+            data: new URL(url),
+            mediaType: "image",
           })),
         ],
       },
@@ -112,8 +113,6 @@ export interface ComposeScriptInput {
   template: ScriptTemplate;
   locale: string;
   market: string;
-  /** Distinguishes sibling scripts so a batch does not repeat one angle. */
-  variantIndex: number;
   productName: string;
   /** Product shots, and the talent reference when one is cast. */
   imageUrls?: string[];
@@ -125,9 +124,7 @@ function templateBrief(template: ScriptTemplate): ScriptTemplateBrief {
 }
 
 /**
- * Writes one localised 15-second script. The caller decides how many variants
- * to request; each variant is told which angle it is so the batch gets real
- * creative spread rather than reworded copies.
+ * Writes one localised 15-second script from the confirmed product facts.
  */
 export async function composeScript(
   input: ComposeScriptInput,
@@ -156,9 +153,7 @@ export async function composeScript(
     input.brief?.bannedPhrases?.length
       ? `Banned expressions: ${input.brief.bannedPhrases.join("; ")}`
       : "",
-    `Take angle ${input.variantIndex + 1}: ${
-      brief.angles[input.variantIndex % brief.angles.length]
-    }`,
+    `Creative angle: ${brief.angles[0]}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -188,8 +183,9 @@ export async function composeScript(
         content: [
           { type: "text" as const, text: brief_ },
           ...images.map((url) => ({
-            type: "image" as const,
-            image: new URL(url),
+            type: "file" as const,
+            data: new URL(url),
+            mediaType: "image",
           })),
         ],
       },

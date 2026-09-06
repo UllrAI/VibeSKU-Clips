@@ -31,6 +31,7 @@ type RootProps = ComponentPropsWithoutRef<"div">;
 export interface UseFileUploadOptions {
   acceptedFileTypes?: readonly string[];
   autoUpload?: boolean;
+  clearCompletedOnUpload?: boolean;
   disabled?: boolean;
   enableImageCompression?: boolean;
   imageCompressionQuality?: number;
@@ -172,6 +173,7 @@ function resolveUploadIssue(
 export function useFileUpload({
   acceptedFileTypes = UPLOAD_CONFIG.ALLOWED_FILE_TYPES,
   autoUpload = true,
+  clearCompletedOnUpload = false,
   disabled = false,
   enableImageCompression = false,
   imageCompressionQuality = 0.8,
@@ -295,8 +297,26 @@ export function useFileUpload({
       if (uploadedFiles.length > 0) {
         onUploadComplete?.(uploadedFiles);
       }
+
+      if (clearCompletedOnUpload) {
+        const successfulIds = new Set(
+          candidates
+            .filter((_, index) => results[index] !== null)
+            .map((item) => item.id),
+        );
+        candidates
+          .filter((item) => successfulIds.has(item.id))
+          .forEach((item) => revokePreviewUrl(item.previewUrl));
+        setItems((currentItems) => {
+          const nextItems = currentItems.filter(
+            (item) => !successfulIds.has(item.id),
+          );
+          itemsRef.current = nextItems;
+          return nextItems;
+        });
+      }
     },
-    [onUploadComplete, resolvedTransport, updateItem],
+    [clearCompletedOnUpload, onUploadComplete, resolvedTransport, updateItem],
   );
 
   const validateFile = useCallback(

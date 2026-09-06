@@ -42,7 +42,7 @@ function isPrivateAddress(address: string): boolean {
  * Product pages are operator-supplied URLs, so the fetch is deliberately
  * narrow: public HTTPS hosts only, no redirects into private space, a hard size
  * cap, and a timeout. A blocked or unreadable link pauses that one product
- * instead of failing the batch.
+ * instead of letting the product step spin forever.
  */
 export async function fetchProductSource(rawUrl: string): Promise<string> {
   let url: URL;

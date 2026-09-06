@@ -9,6 +9,7 @@ import {
   ugcWorkFrames,
   ugcWorks,
 } from "@/database/ugc";
+import { taskRuns } from "@/database/schema";
 import { requireAuth } from "@/lib/auth/permissions";
 import type { ProductRow, ScriptRow, TalentRow } from "./queries";
 import { runStateFor, type RunState } from "./run-state";
@@ -31,6 +32,7 @@ export interface WorkSummary {
   work: WorkRow;
   productName: string | null;
   coverUrl: string | null;
+  failed: boolean;
 }
 
 export async function listWorks(): Promise<WorkSummary[]> {
@@ -41,10 +43,12 @@ export async function listWorks(): Promise<WorkSummary[]> {
       productName: ugcProducts.name,
       productImages: ugcProducts.images,
       clipCover: ugcClips.coverUrl,
+      taskStatus: taskRuns.status,
     })
     .from(ugcWorks)
     .leftJoin(ugcProducts, eq(ugcProducts.id, ugcWorks.productId))
     .leftJoin(ugcClips, eq(ugcClips.id, ugcWorks.clipId))
+    .leftJoin(taskRuns, eq(taskRuns.id, ugcWorks.taskRunId))
     .where(eq(ugcWorks.userId, user.id))
     .orderBy(desc(ugcWorks.createdAt))
     .limit(50);
@@ -53,6 +57,7 @@ export async function listWorks(): Promise<WorkSummary[]> {
     work: row.work,
     productName: row.productName,
     coverUrl: row.clipCover ?? row.productImages?.[0] ?? null,
+    failed: row.work.stepStatus === "failed" || row.taskStatus === "failed",
   }));
 }
 

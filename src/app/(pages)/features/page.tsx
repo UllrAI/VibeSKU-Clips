@@ -50,7 +50,7 @@ export default function FeaturesPage({
     <>{t("features_delivered_ingest")}</>,
     <>{t("features_delivered_scripts")}</>,
     <>{t("features_delivered_talent")}</>,
-    <>{t("features_delivered_batch")}</>,
+    <>{t("features_delivered_workflow")}</>,
     <>{t("features_delivered_quality")}</>,
     <>{t("features_delivered_review")}</>,
     <>{t("features_delivered_export")}</>,

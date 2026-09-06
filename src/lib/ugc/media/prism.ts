@@ -1,18 +1,12 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
+import { PermanentJobError, RetryableJobError } from "@/lib/jobs/definition";
 import { MEDIA_PROVIDER } from "../constants";
 import { loadMediaEnv } from "./config";
 
-export class MediaProviderError extends Error {
-  readonly retryable: boolean;
-
-  constructor(message: string, retryable: boolean) {
-    super(message);
-    this.name = "MediaProviderError";
-    this.retryable = retryable;
-  }
-}
-
-const submissionSchema = z.object({ task_id: z.string().min(1) });
+const submissionSchema = z.object({
+  data: z.object({ task_id: z.string().min(1) }),
+});
 
 const taskSchema = z.object({
   status: z.string(),
@@ -23,6 +17,18 @@ const taskSchema = z.object({
 });
 
 type MediaTaskStatus = "pending" | "completed" | "failed";
+
+/** Prism requires request_id to be a UUID, including for derived frame jobs. */
+export function createPrismRequestId(...parts: string[]): string {
+  const bytes = createHash("sha256")
+    .update(parts.join("\0"))
+    .digest()
+    .subarray(0, 16);
+  bytes[6] = (bytes[6] & 0x0f) | 0x50;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = bytes.toString("hex");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 export interface MediaTask {
   status: MediaTaskStatus;
@@ -39,13 +45,14 @@ async function call<T>(
 ): Promise<T> {
   const env = loadMediaEnv();
   if (!env.PRISM_API_KEY || !env.PRISM_API_SECRET) {
-    throw new MediaProviderError(
+    throw new PermanentJobError(
+      "PRISM_NOT_CONFIGURED",
       "The media generation provider is not configured.",
-      false,
     );
   }
 
-  const response = await fetch(`${MEDIA_PROVIDER.baseUrl}${path}`, {
+  const baseUrl = env.PRISM_API_BASE_URL.replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}${path}`, {
     method: init.method,
     signal: AbortSignal.timeout(MEDIA_PROVIDER.requestTimeoutMs),
     headers: {
@@ -55,25 +62,29 @@ async function call<T>(
     },
     body: init.body ? JSON.stringify(init.body) : undefined,
   }).catch(() => {
-    throw new MediaProviderError(
+    throw new RetryableJobError(
+      "PRISM_UNREACHABLE",
       "The media generation provider could not be reached.",
-      true,
     );
   });
 
   if (!response.ok) {
-    // 4xx means the request itself is wrong; retrying it changes nothing.
-    throw new MediaProviderError(
-      `The media generation provider returned HTTP ${response.status}.`,
-      response.status >= 500 || response.status === 429,
-    );
+    const message = `The media generation provider returned HTTP ${response.status}.`;
+    if (response.status === 401 || response.status === 403) {
+      throw new PermanentJobError("PRISM_AUTH_FAILED", message);
+    }
+    if (response.status === 429 || response.status >= 500) {
+      throw new RetryableJobError("PRISM_UNAVAILABLE", message);
+    }
+    // Other 4xx responses mean the payload is invalid; retrying cannot change it.
+    throw new PermanentJobError("PRISM_REQUEST_REJECTED", message);
   }
 
   const parsed = schema.safeParse(await response.json());
   if (!parsed.success) {
-    throw new MediaProviderError(
+    throw new PermanentJobError(
+      "PRISM_INVALID_RESPONSE",
       "The media generation provider returned an unexpected response.",
-      false,
     );
   }
   return parsed.data;
@@ -87,13 +98,14 @@ export interface ImageRequest {
 }
 
 export async function submitImage(request: ImageRequest): Promise<string> {
-  const { task_id } = await call(
+  const submission = await call(
     "/image-gen",
     {
       method: "POST",
       body: {
         prompt: request.prompt,
         model: MEDIA_PROVIDER.imageModel,
+        image_size: MEDIA_PROVIDER.imageSize,
         quality: MEDIA_PROVIDER.imageQuality,
         aspect_ratio: request.aspectRatio,
         request_id: request.requestId,
@@ -104,7 +116,7 @@ export async function submitImage(request: ImageRequest): Promise<string> {
     },
     submissionSchema,
   );
-  return task_id;
+  return submission.data.task_id;
 }
 
 export interface VideoRequest {
@@ -121,7 +133,7 @@ export interface VideoRequest {
 }
 
 export async function submitVideo(request: VideoRequest): Promise<string> {
-  const { task_id } = await call(
+  const submission = await call(
     "/video-gen",
     {
       method: "POST",
@@ -131,6 +143,7 @@ export async function submitVideo(request: VideoRequest): Promise<string> {
         duration: request.durationSeconds,
         aspect_ratio: request.aspectRatio,
         resolution: MEDIA_PROVIDER.videoResolution,
+        generate_audio: true,
         request_id: request.requestId,
         ...(request.referenceUrls.length
           ? {
@@ -144,7 +157,7 @@ export async function submitVideo(request: VideoRequest): Promise<string> {
     },
     submissionSchema,
   );
-  return task_id;
+  return submission.data.task_id;
 }
 
 export async function getTask(taskId: string): Promise<MediaTask> {

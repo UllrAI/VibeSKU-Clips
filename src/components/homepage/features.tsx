@@ -7,7 +7,7 @@ import {
   Boxes,
   FolderDown,
   Globe,
-  Layers,
+  ListChecks,
   ScanSearch,
   ShieldCheck,
   SquarePlay,
@@ -61,10 +61,10 @@ export function Features({
       description: <>{t("home_feature_talent_description")}</>,
     },
     {
-      id: "batch",
-      icon: Layers,
-      title: <>{t("home_feature_batch_title")}</>,
-      description: <>{t("home_feature_batch_description")}</>,
+      id: "workflow",
+      icon: ListChecks,
+      title: <>{t("home_feature_workflow_title")}</>,
+      description: <>{t("home_feature_workflow_description")}</>,
     },
     {
       id: "quality",

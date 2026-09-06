@@ -2,9 +2,9 @@
 
 中文版 | [English](README.md)
 
-VibeSKU Clips 把商品资料转化为面向 TikTok Shop 账号矩阵的 15 秒本地化 UGC 视频。
-运营提交商品链接或图片与创作要求，平台连续完成商品理解、脚本创作、视听生成、
-剪辑与质检，交付可分组导出的素材与交付清单。
+VibeSKU Clips 把商品资料转化为一条 15 秒本地化 UGC 视频。运营提交商品链接或
+图片与创作要求，平台依次完成商品理解、脚本创作、分镜、视听生成与质检，交付
+成片及清单。
 
 平台负责素材生产与交付清单；账号登录、内容发布、挂车商品与效果观察由运营
 团队通过既有工具完成。
@@ -21,14 +21,12 @@ VibeSKU Clips 把商品资料转化为面向 TikTok Shop 账号矩阵的 15 秒�
   的开场角度。
 - **人物一致性。** 上传获授权的照片，或描述虚构成年形象；生成的开场帧用于锁定整条
   视频的人物与商品外观。
-- **数量按配置汇总。** 商品、脚本、每脚本视频数与模特均为明确配置，不会自动进行
-  全排列。
+- **一次做好一条。** 商品、模特、脚本、分镜与成片是一条引导路径，每个高成本步骤
+  都先由人确认。
 - **先质检再交付审核。** 逐条检查时长、口播长度、字幕安全区、商品准确性、人物一致性
   与目标语言表达。
-- **审核与再生成。** 分组对比、相似内容提示、三种选用状态；失败可单独重试，再生成
-  保留原结果以便比较。
-- **导出附交付清单。** 按商品或账号标签分组，逐条包含素材编号、商品、变体、语言、
-  市场、模特、授权说明与合规声明。
+- **审核与再生成。** 每条成片可选用、拒绝或重新生成，并保留商品、脚本与模特关系。
+- **导出附交付清单。** 每条素材包含编号、商品、语言、市场、模特、授权说明与合规声明。
 - **资产与消耗记录。** 商品、模特、脚本与合格成片保留来源、授权与版本关系；解析、
   脚本、生成、重试与再生成分别计量。
 
@@ -36,15 +34,15 @@ VibeSKU Clips 把商品资料转化为面向 TikTok Shop 账号矩阵的 15 秒�
 
 ## 🧱 生产流程
 
-| 阶段 | 任务                 | 说明                                             |
-| :--- | :------------------- | :----------------------------------------------- |
-| 录入 | `ugc.product.ingest` | 抓取商品页并提取事实，资料缺失时只暂停该商品     |
-| 编排 | `ugc.batch.run`      | 展开配置行、撰写脚本、创建视频记录并排队生成     |
-| 生成 | `ugc.clip.render`    | 生成开场帧与成片、归档素材、写入字幕轨并执行质检 |
+| 阶段 | 任务                  | 说明                                               |
+| :--- | :-------------------- | :------------------------------------------------- |
+| 录入 | `ugc.product.ingest`  | 抓取商品页并提取事实，资料缺失时停下等待补充       |
+| 脚本 | `ugc.work.script`     | 根据确认的商品、模特、语言和市场写一份脚本         |
+| 分镜 | `ugc.work.storyboard` | 每一拍画一张关键帧，画完停下等待确认               |
+| 成片 | `ugc.work.video`      | 根据确认的分镜生成一条视频、归档、写字幕并执行质检 |
 
-任务通过 pg-boss 与仓库既有的 task-run 出箱机制执行，批次可在重启后继续，
-单条视频可独立重试。视听生成走 Prism（`src/lib/ugc/media`），脚本创作走任意
-OpenAI 兼容接口。
+任务通过 pg-boss 与仓库既有的 task-run 出箱机制执行，每一步都可在重启后继续或
+独立重试。视听生成走 Prism（`src/lib/ugc/media`），脚本创作走任意 OpenAI 兼容接口。
 
 业务逻辑位于 `src/lib/ugc`，任务处理器位于 `src/lib/jobs/ugc`，操作界面位于
 `src/app/dashboard`。
@@ -111,35 +109,36 @@ cp .env.example .env
 
 #### 环境变量说明
 
-| 变量名                       | 描述                                                 | 示例                                                |
-| :--------------------------- | :--------------------------------------------------- | :-------------------------------------------------- |
-| `DATABASE_URL`               | **必需。** PostgreSQL 连接字符串。                   | `postgresql://user:password@localhost:5432/db_name` |
-| `JOB_DATABASE_URL`           | 可选。pg-boss 数据库，默认使用 `DATABASE_URL`。      | `postgresql://user:password@localhost:5432/db_name` |
-| `JOB_DB_POOL_SIZE`           | 可选。每进程 pg-boss 连接池大小，默认 `3`。          | `3`                                                 |
-| `WORKER_GRACEFUL_TIMEOUT_MS` | 可选。Worker 收到 SIGTERM 后的排空时限，默认 30 秒。 | `30000`                                             |
-| `RATE_LIMIT_IP_HEADER`       | **选填。** 可信客户端 IP 请求头，默认适配 Zeabur。   | `x-forwarded-for`                                   |
-| `NEXT_PUBLIC_APP_URL`        | **必需。** 您应用部署后的公开 URL。                  | `http://localhost:3000` 或 `https://yourdomain.com` |
-| `BETTER_AUTH_SECRET`         | **必需。** 至少 32 个字符的随机会话密钥。            | 使用 `openssl rand -base64 32` 生成                 |
-| `RESEND_API_KEY`             | 启用 `emailAuth` 时必需。Resend API Key。            | `re_xxxxxxxxxxxxxxxx`                               |
-| `RESEND_EMAIL_FROM`          | 启用 `emailAuth` 时必需。已验证的发件地址。          | `noreply@your-verified-domain.com`                  |
-| `LLM_API_KEY`                | 启用 `ai` 时必需。LLM 端点的 API Key。               | `sk-...`                                            |
-| `LLM_BASE_URL`               | 可选的 OpenAI 兼容端点，默认 OpenRouter。            | `https://openrouter.ai/api/v1`                      |
-| `AI_DEFAULT_MODEL`           | 可选的模型 id，默认 `openai/gpt-5.6-luna`。          | `openai/gpt-5.6-luna`                               |
-| `PRISM_API_KEY`              | **视频生成必填。** Prism API Key。                   | `pk_...`                                            |
-| `PRISM_API_SECRET`           | **视频生成必填。** Prism API Secret。                | `sk_...`                                            |
-| `STRIPE_SECRET_KEY`          | 启用 `billing` 时必需。需与环境模式匹配。            | `sk_test_...` 或 `sk_live_...`                      |
-| `STRIPE_ENVIRONMENT`         | Stripe 环境模式，默认为 `test_mode`。                | `test_mode` 或 `live_mode`                          |
-| `STRIPE_WEBHOOK_SECRET`      | 启用 `billing` 时必需。Endpoint 签名密钥。           | `whsec_your_webhook_secret`                         |
-| `R2_ENDPOINT`                | 启用 `uploads` 时必需。Cloudflare R2 API 端点。      | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`     |
-| `R2_ACCESS_KEY_ID`           | 启用 `uploads` 时必需。R2 访问密钥 ID。              | `your_r2_access_key_id`                             |
-| `R2_SECRET_ACCESS_KEY`       | 启用 `uploads` 时必需。R2 秘密访问密钥。             | `your_r2_secret_access_key`                         |
-| `R2_BUCKET_NAME`             | 启用 `uploads` 时必需。R2 存储桶名称。               | `your_r2_bucket_name`                               |
-| `GITHUB_CLIENT_ID`           | _可选。_ 用于 GitHub OAuth 的 Client ID。            | `your_github_client_id`                             |
-| `GITHUB_CLIENT_SECRET`       | _可选。_ 用于 GitHub OAuth 的 Client Secret。        | `your_github_client_secret`                         |
-| `GOOGLE_CLIENT_ID`           | _可选。_ 用于 Google OAuth 的 Client ID。            | `your_google_client_id`                             |
-| `GOOGLE_CLIENT_SECRET`       | _可选。_ 用于 Google OAuth 的 Client Secret。        | `your_google_client_secret`                         |
-| `LINKEDIN_CLIENT_ID`         | _可选。_ 用于 LinkedIn OAuth 的 Client ID。          | `your_linkedin_client_id`                           |
-| `LINKEDIN_CLIENT_SECRET`     | _可选。_ 用于 LinkedIn OAuth 的 Client Secret。      | `your_linkedin_client_secret`                       |
+| 变量名                       | 描述                                                  | 示例                                                |
+| :--------------------------- | :---------------------------------------------------- | :-------------------------------------------------- |
+| `DATABASE_URL`               | **必需。** PostgreSQL 连接字符串。                    | `postgresql://user:password@localhost:5432/db_name` |
+| `JOB_DATABASE_URL`           | 可选。pg-boss 数据库，默认使用 `DATABASE_URL`。       | `postgresql://user:password@localhost:5432/db_name` |
+| `JOB_DB_POOL_SIZE`           | 可选。每进程 pg-boss 连接池大小，默认 `3`。           | `3`                                                 |
+| `WORKER_GRACEFUL_TIMEOUT_MS` | 可选。Worker 收到 SIGTERM 后的排空时限，默认 30 秒。  | `30000`                                             |
+| `RATE_LIMIT_IP_HEADER`       | **选填。** 可信客户端 IP 请求头，默认适配 Zeabur。    | `x-forwarded-for`                                   |
+| `NEXT_PUBLIC_APP_URL`        | **必需。** 您应用部署后的公开 URL。                   | `http://localhost:3000` 或 `https://yourdomain.com` |
+| `BETTER_AUTH_SECRET`         | **必需。** 至少 32 个字符的随机会话密钥。             | 使用 `openssl rand -base64 32` 生成                 |
+| `RESEND_API_KEY`             | 启用 `emailAuth` 时必需。Resend API Key。             | `re_xxxxxxxxxxxxxxxx`                               |
+| `RESEND_EMAIL_FROM`          | 启用 `emailAuth` 时必需。已验证的发件地址。           | `noreply@your-verified-domain.com`                  |
+| `LLM_API_KEY`                | 启用 `ai` 时必需。LLM 端点的 API Key。                | `sk-...`                                            |
+| `LLM_BASE_URL`               | 可选的 OpenAI 兼容端点，默认 OpenRouter。             | `https://openrouter.ai/api/v1`                      |
+| `AI_DEFAULT_MODEL`           | 可选的模型 id，默认 `openai/gpt-5.6-luna`。           | `openai/gpt-5.6-luna`                               |
+| `PRISM_API_BASE_URL`         | Prism 根地址；开发默认 staging，生产默认 production。 | `https://staging-prism.ullrai.com/api/v1`           |
+| `PRISM_API_KEY`              | **生成必填。** 当前 Prism 环境的 API Key。            | `pk_...`                                            |
+| `PRISM_API_SECRET`           | **生成必填。** 当前 Prism 环境的 API Secret。         | `sk_...`                                            |
+| `STRIPE_SECRET_KEY`          | 启用 `billing` 时必需。需与环境模式匹配。             | `sk_test_...` 或 `sk_live_...`                      |
+| `STRIPE_ENVIRONMENT`         | Stripe 环境模式，默认为 `test_mode`。                 | `test_mode` 或 `live_mode`                          |
+| `STRIPE_WEBHOOK_SECRET`      | 启用 `billing` 时必需。Endpoint 签名密钥。            | `whsec_your_webhook_secret`                         |
+| `R2_ENDPOINT`                | 启用 `uploads` 时必需。Cloudflare R2 API 端点。       | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`     |
+| `R2_ACCESS_KEY_ID`           | 启用 `uploads` 时必需。R2 访问密钥 ID。               | `your_r2_access_key_id`                             |
+| `R2_SECRET_ACCESS_KEY`       | 启用 `uploads` 时必需。R2 秘密访问密钥。              | `your_r2_secret_access_key`                         |
+| `R2_BUCKET_NAME`             | 启用 `uploads` 时必需。R2 存储桶名称。                | `your_r2_bucket_name`                               |
+| `GITHUB_CLIENT_ID`           | _可选。_ 用于 GitHub OAuth 的 Client ID。             | `your_github_client_id`                             |
+| `GITHUB_CLIENT_SECRET`       | _可选。_ 用于 GitHub OAuth 的 Client Secret。         | `your_github_client_secret`                         |
+| `GOOGLE_CLIENT_ID`           | _可选。_ 用于 Google OAuth 的 Client ID。             | `your_google_client_id`                             |
+| `GOOGLE_CLIENT_SECRET`       | _可选。_ 用于 Google OAuth 的 Client Secret。         | `your_google_client_secret`                         |
+| `LINKEDIN_CLIENT_ID`         | _可选。_ 用于 LinkedIn OAuth 的 Client ID。           | `your_linkedin_client_id`                           |
+| `LINKEDIN_CLIENT_SECRET`     | _可选。_ 用于 LinkedIn OAuth 的 Client Secret。       | `your_linkedin_client_secret`                       |
 
 > **提示:** 您可以使用以下命令生成一个安全的密钥：
 > `openssl rand -base64 32`

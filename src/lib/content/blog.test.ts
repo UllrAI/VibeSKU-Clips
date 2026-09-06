@@ -11,7 +11,6 @@ import {
 } from "./blog";
 
 const BILINGUAL_SLUGS = [
-  "counting-a-batch",
   "fifteen-second-ugc-structure",
   "language-and-market-are-two-settings",
 ];

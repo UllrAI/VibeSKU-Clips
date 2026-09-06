@@ -202,7 +202,7 @@ export function PricingSection({ className }: { className?: string }) {
   const featureDefinitions = [
     { id: "product-intake", label: <>{t("billing_feature_product_intake")}</> },
     { id: "script-formats", label: <>{t("billing_feature_script_formats")}</> },
-    { id: "batch-render", label: <>{t("billing_feature_batch_render")}</> },
+    { id: "guided-render", label: <>{t("billing_feature_guided_render")}</> },
     { id: "talent-library", label: <>{t("billing_feature_talent_library")}</> },
     {
       id: "review-workbench",
@@ -230,14 +230,14 @@ export function PricingSection({ className }: { className?: string }) {
   > = {
     plus: {
       description: <>{t("billing_tier_solo_description")}</>,
-      includedFeatureIds: ["product-intake", "script-formats", "batch-render"],
+      includedFeatureIds: ["product-intake", "script-formats", "guided-render"],
     },
     pro: {
       description: <>{t("billing_tier_team_description")}</>,
       includedFeatureIds: [
         "product-intake",
         "script-formats",
-        "batch-render",
+        "guided-render",
         "talent-library",
         "review-workbench",
         "multi-market",

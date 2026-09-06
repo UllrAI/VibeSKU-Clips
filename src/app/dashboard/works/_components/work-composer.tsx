@@ -46,6 +46,7 @@ import type { ProductRow, TalentRow } from "@/lib/ugc/queries";
 import { createWork } from "@/lib/ugc/work-actions";
 
 const NO_TALENT = "none";
+const RANDOM_TALENT = "random";
 
 /**
  * Everything the first step needs, asked once. The product is the subject, so
@@ -106,7 +107,11 @@ export function WorkComposer({
 
       const work = await createWork({
         productId: id,
-        talentId: talentId === NO_TALENT ? undefined : talentId,
+        talentId:
+          talentId === NO_TALENT || talentId === RANDOM_TALENT
+            ? undefined
+            : talentId,
+        randomTalent: talentId === RANDOM_TALENT,
         locale,
         market,
         template,
@@ -241,6 +246,9 @@ export function WorkComposer({
               <SelectItem value={NO_TALENT}>
                 {t("ugc_work_no_talent")}
               </SelectItem>
+              <SelectItem value={RANDOM_TALENT}>
+                {t("ugc_work_random_talent")}
+              </SelectItem>
               {talents.map((talent) => (
                 <SelectItem key={talent.id} value={talent.id}>
                   {talent.name}
@@ -248,6 +256,11 @@ export function WorkComposer({
               ))}
             </SelectContent>
           </Select>
+          {talentId === RANDOM_TALENT && (
+            <p className="text-muted-foreground text-xs">
+              {t("ugc_work_random_talent_hint")}
+            </p>
+          )}
         </div>
 
         <Collapsible className="border-border rounded-lg border">

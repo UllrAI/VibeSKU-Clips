@@ -218,6 +218,13 @@
       "when": 1788702407578,
       "tag": "0030_broken_frightful_four",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1788707638480,
+      "tag": "0031_broken_enchantress",
+      "breakpoints": true
     }
   ]
 }

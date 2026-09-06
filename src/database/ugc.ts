@@ -16,7 +16,6 @@ import type {
   ProductFacts,
   ScriptBeat,
   ExportManifest,
-  BatchPlanConfig,
 } from "@/lib/ugc/types";
 
 export const ugcProductStatusEnum = pgEnum("ugc_product_status", [
@@ -70,13 +69,6 @@ export const ugcFrameStatusEnum = pgEnum("ugc_frame_status", [
   "failed",
 ]);
 
-export const ugcBatchStatusEnum = pgEnum("ugc_batch_status", [
-  "draft",
-  "running",
-  "completed",
-  "cancelled",
-]);
-
 export const ugcClipStatusEnum = pgEnum("ugc_clip_status", [
   "pending",
   "scripting",
@@ -111,8 +103,8 @@ export const ugcProducts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     sourceUrl: text("sourceUrl"),
-    // Storefront link for the market the clip will be published in. Kept apart
-    // from sourceUrl so a reference page is never exported as a shoppable link.
+    // Variant of the product shown in this work; publishing links stay outside
+    // the product model.
     variant: text("variant"),
     market: text("market"),
     images: jsonb("images").$type<string[]>().notNull().default([]),
@@ -207,38 +199,6 @@ export const ugcScripts = pgTable(
   }),
 );
 
-export const ugcBatches = pgTable(
-  "ugc_batches",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    name: text("name").notNull(),
-    accountTag: text("accountTag"),
-    config: jsonb("config").$type<BatchPlanConfig>().notNull(),
-    plannedCount: integer("plannedCount").notNull(),
-    estimatedCredits: integer("estimatedCredits").notNull(),
-    status: ugcBatchStatusEnum("status").notNull().default("draft"),
-    // Why a run produced less than it planned, in the operator's words. Set by
-    // the expansion job; null when everything the plan asked for was created.
-    note: text("note"),
-    taskRunId: uuid("taskRunId"),
-    createdAt: timestamp("createdAt", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => ({
-    userCreatedAtIdx: index("ugc_batches_userId_createdAt_idx").on(
-      table.userId,
-      table.createdAt.desc(),
-    ),
-  }),
-);
-
 export const ugcClips = pgTable(
   "ugc_clips",
   {
@@ -246,11 +206,6 @@ export const ugcClips = pgTable(
     userId: text("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    // Null for a clip produced one step at a time through `ugc_works`; a clip
-    // belongs to a batch or to a work, never to both.
-    batchId: uuid("batchId").references(() => ugcBatches.id, {
-      onDelete: "cascade",
-    }),
     productId: uuid("productId")
       .notNull()
       .references(() => ugcProducts.id, { onDelete: "cascade" }),
@@ -260,15 +215,12 @@ export const ugcClips = pgTable(
     talentId: uuid("talentId").references(() => ugcTalents.id, {
       onDelete: "set null",
     }),
-    // Serial number printed on the export manifest, unique inside a batch.
+    // Stable serial number printed on the export manifest.
     reference: text("reference").notNull(),
     locale: text("locale").notNull(),
     market: text("market").notNull(),
-    accountTag: text("accountTag"),
     template: ugcScriptTemplateEnum("template").notNull(),
     status: ugcClipStatusEnum("status").notNull().default("pending"),
-    taskRunId: uuid("taskRunId"),
-    attempts: integer("attempts").notNull().default(0),
     videoUrl: text("videoUrl"),
     coverUrl: text("coverUrl"),
     subtitleUrl: text("subtitleUrl"),
@@ -281,7 +233,6 @@ export const ugcClips = pgTable(
       .notNull()
       .default("pending"),
     reviewNote: text("reviewNote"),
-    regeneratedFrom: uuid("regeneratedFrom"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -290,7 +241,6 @@ export const ugcClips = pgTable(
       .defaultNow(),
   },
   (table) => ({
-    batchIdx: index("ugc_clips_batchId_idx").on(table.batchId),
     userReviewIdx: index("ugc_clips_userId_reviewStatus_idx").on(
       table.userId,
       table.reviewStatus,
@@ -314,7 +264,6 @@ export const ugcExports = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
-    groupBy: text("groupBy").notNull(),
     clipCount: integer("clipCount").notNull(),
     manifest: jsonb("manifest").$type<ExportManifest>().notNull(),
     createdAt: timestamp("createdAt", { withTimezone: true })
@@ -336,7 +285,6 @@ export const ugcUsageEvents = pgTable(
     userId: text("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    batchId: uuid("batchId"),
     clipId: uuid("clipId"),
     kind: ugcUsageKindEnum("kind").notNull(),
     credits: integer("credits").notNull(),
@@ -355,9 +303,8 @@ export const ugcUsageEvents = pgTable(
 
 /**
  * One clip produced step by step, with a person confirming each step before
- * the next one spends anything. Batches run the same pipeline unattended; a
- * work is the same pipeline with the brakes on, and it reuses the product,
- * script and clip tables rather than keeping a private copy of any of them.
+ * the next one spends anything. A work reuses the product, script and clip
+ * tables rather than keeping a private copy of any of them.
  */
 export const ugcWorks = pgTable(
   "ugc_works",

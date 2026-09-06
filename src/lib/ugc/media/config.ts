@@ -21,12 +21,3 @@ export function loadMediaEnv(
   }
   return parsed.data;
 }
-
-export function isMediaProviderConfigured(
-  source: NodeJS.ProcessEnv = process.env,
-): boolean {
-  const parsed = mediaEnvSchema.safeParse(source);
-  return Boolean(
-    parsed.success && parsed.data.PRISM_API_KEY && parsed.data.PRISM_API_SECRET,
-  );
-}

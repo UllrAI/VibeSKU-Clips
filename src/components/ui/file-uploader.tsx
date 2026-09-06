@@ -182,7 +182,7 @@ function ImageQueueTile({
 }) {
   const { t } = useTranslation();
   return (
-    <div className="bg-muted relative aspect-square overflow-hidden rounded-xl border">
+    <div className="bg-muted relative size-24 overflow-hidden rounded-xl border">
       {item.previewUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -456,7 +456,7 @@ export function FileUploader({
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+          <div className="flex flex-wrap gap-3">
             {uploader.items.map((item) => (
               <ImageQueueTile
                 key={item.id}
@@ -473,7 +473,7 @@ export function FileUploader({
               <div
                 {...uploader.getRootProps({
                   className: cn(
-                    "text-muted-foreground hover:border-primary/50 hover:text-foreground flex aspect-square flex-col items-center justify-center rounded-xl border border-dashed text-center transition-colors",
+                    "text-muted-foreground hover:border-primary/50 hover:text-foreground flex size-24 flex-col items-center justify-center rounded-xl border border-dashed text-center transition-colors",
                     uploader.isDragActive && "border-primary bg-muted/50",
                   ),
                 })}

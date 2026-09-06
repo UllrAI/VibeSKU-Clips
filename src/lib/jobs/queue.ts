@@ -17,6 +17,7 @@ import {
   type JobDefinition,
   type JobHandlerContext,
   PermanentJobError,
+  RetryableJobError,
 } from "./definition";
 
 const envelopeSchema = z
@@ -523,10 +524,17 @@ export class JobQueue {
     } catch (caught) {
       const cause = toError(caught);
       const permanent = cause instanceof PermanentJobError;
+      const knownCode =
+        cause instanceof PermanentJobError || cause instanceof RetryableJobError
+          ? cause.code
+          : null;
       const retriesExhausted = job.retryCount >= job.retryLimit;
       const error: TaskRunError = {
-        code: permanent ? cause.code : "JOB_HANDLER_FAILED",
-        message: permanent ? cause.message : "Background task failed.",
+        code: knownCode ?? "JOB_HANDLER_FAILED",
+        message:
+          permanent || retriesExhausted
+            ? cause.message
+            : "Background task failed.",
         retryable: !permanent && !retriesExhausted,
         attempt,
       };

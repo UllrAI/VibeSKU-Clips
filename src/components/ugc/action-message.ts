@@ -4,12 +4,9 @@ const MESSAGE_KEYS: Record<string, string> = {
   product_needs_link_or_image: "ugc_error_product_needs_link_or_image",
   talent_needs_image: "ugc_error_talent_needs_image",
   talent_needs_prompt: "ugc_error_talent_needs_prompt",
-  batch_too_large: "ugc_error_batch_too_large",
   media_provider_unconfigured: "ugc_error_media_provider_unconfigured",
-  clip_not_failed: "ugc_error_clip_not_failed",
   work_needs_product: "ugc_error_work_needs_product",
   product_not_read: "ugc_error_product_not_read",
-  clip_from_work: "ugc_error_clip_from_work",
   work_needs_frames: "ugc_error_work_needs_frames",
 };
 
@@ -37,6 +34,12 @@ const JOB_FAILURE_KEYS: Record<string, string> = {
   UGC_STORYBOARD_TIMEOUT: "ugc_work_failure_timeout",
   UGC_RENDER_TIMEOUT: "ugc_work_failure_timeout",
   UGC_RENDER_FAILED: "ugc_work_failure_render",
+  PRISM_NOT_CONFIGURED: "ugc_work_failure_prism_config",
+  PRISM_AUTH_FAILED: "ugc_work_failure_prism_auth",
+  PRISM_REQUEST_REJECTED: "ugc_work_failure_prism_request",
+  PRISM_INVALID_RESPONSE: "ugc_work_failure_prism_response",
+  PRISM_UNREACHABLE: "ugc_work_failure_prism_unavailable",
+  PRISM_UNAVAILABLE: "ugc_work_failure_prism_unavailable",
   QUEUE_JOB_TERMINATED: "ugc_work_failure_terminated",
 };
 

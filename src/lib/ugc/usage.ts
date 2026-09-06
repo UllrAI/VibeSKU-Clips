@@ -9,8 +9,7 @@ export type UsageKind =
   | "regenerate";
 
 /**
- * Every unit of paid work is recorded, including system retries and operator
- * regenerations, so consumption can be reconciled against the planned count.
+ * Every unit of paid work is recorded, including retries and regenerations.
  */
 export async function recordUsage(
   db: AppDatabase,
@@ -18,7 +17,6 @@ export async function recordUsage(
     userId: string;
     kind: UsageKind;
     credits: number;
-    batchId?: string | null;
     clipId?: string | null;
     note?: string | null;
   },
@@ -27,7 +25,6 @@ export async function recordUsage(
     userId: input.userId,
     kind: input.kind,
     credits: input.credits,
-    batchId: input.batchId ?? null,
     clipId: input.clipId ?? null,
     note: input.note ?? null,
   });

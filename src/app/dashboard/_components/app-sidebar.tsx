@@ -10,9 +10,7 @@ import {
   FileText,
   Film,
   FolderDown,
-  Home,
   KeyRound,
-  ListChecks,
   LucideIcon,
   Package,
   Settings,
@@ -152,24 +150,10 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const navigation = (
     [
       {
-        id: "home",
-        label: <>{t("dashboard_home")}</>,
-        url: "/dashboard",
-        icon: Home,
-        matchMode: "exact",
-      },
-      {
         id: "works",
         label: <>{t("ugc_nav_works")}</>,
         url: "/dashboard/works",
         icon: Film,
-        matchMode: "prefix",
-      },
-      {
-        id: "batches",
-        label: <>{t("ugc_nav_batches")}</>,
-        url: "/dashboard/batches",
-        icon: ListChecks,
         matchMode: "prefix",
       },
       {

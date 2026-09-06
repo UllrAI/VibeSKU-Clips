@@ -1,7 +1,7 @@
 ---
 title: Language and Market Are Two Different Settings
 publishedDate: 2026-09-04
-excerpt: Spanish for Mexico and Spanish for Spain are not the same script. Keeping the output language separate from the target market is what stops a batch from producing six clips that all sound imported.
+excerpt: Spanish for Mexico and Spanish for Spain are not the same script. Output language and target market solve different parts of localisation.
 tags:
   - Localisation
   - Markets
@@ -11,7 +11,7 @@ author: admin
 
 The quickest way to make a localised clip feel imported is to translate the English one. The words are correct, the grammar is fine, and every native speaker watching knows within three seconds that it was written somewhere else.
 
-So the platform treats output language and target market as two independent settings on every production line. You can run Spanish for Mexico and Spanish for Spain in the same batch, and they will not be the same script.
+So the platform treats output language and target market as two independent settings in every work. A Spanish clip for Mexico and one for Spain should not be the same script.
 
 ## What the market setting actually changes
 
@@ -41,4 +41,4 @@ So a localised script is written fresh against that market's product material an
 
 None of this replaces a native speaker. The workflow we recommend is the boring one: produce the first samples for a market, have someone who lives with the language review them, then run volume. The platform's checks catch length, safe areas, and factual drift. Whether a line sounds like something a person would actually say is a judgement, and it belongs to a human who speaks the language.
 
-What the platform can promise is that when that person approves a sample, the next fifty clips in that market are built from the same rules — and that the ones for the market next door were never assumed to be the same.
+What the platform can promise is that each approved clip was written against the selected market instead of assuming the market next door is the same.

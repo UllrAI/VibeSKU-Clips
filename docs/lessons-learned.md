@@ -161,6 +161,30 @@
 
 `next/image` 的服务端优化请求不会携带访问者 session。私有上传预览应使用 `unoptimized`，由浏览器请求鉴权地址；仅取消公共桶地址而保留优化路径会让合法预览变成 401。
 
+### 应用内文件地址不能直接交给远程模型
+
+**现象**：商品带有一张已上传图片，读取任务却在 `new URL(image)` 处报 `TypeError: Invalid URL`；同一地址在浏览器预览正常。
+
+**原因**：上传记录保存的是 `/api/files/content?key=...` 这类需要当前会话的应用内相对地址。Worker 没有页面基址，远程模型也没有用户 session；即使补成本站绝对地址，模型请求仍会得到 401。
+
+**正确做法**：数据库继续保存受保护的应用内地址；Worker 在调用模型或媒体服务的边界校验文件归属，并换成短期 R2 签名读取地址。不要在领域数据里持久化会过期的 provider URL。
+
+### AI SDK 的图片消息已经统一为文件消息
+
+**现象**：多图商品读取能运行，但每张图片都会打印 `Deprecated: "image" content part`。
+
+**原因**：AI SDK 仍兼容旧的 `{ type: "image", image }`，但交给模型的消息已统一为 file part。
+
+**正确做法**：图片输入使用 `{ type: "file", data: new URL(url), mediaType: "image" }`。不要屏蔽警告；旧格式仍成功只代表兼容层还没有移除。
+
+### Prism 凭据和 API 主机必须成对配置
+
+**现象**：Worker 向 Prism 提交分镜时持续返回 HTTP 401，自动重试也只会再次失败。
+
+**原因**：开发凭据属于 staging，但客户端把 API 主机硬编码成 production。请求头和路径都正确，凭据在错误的主机上仍然只会得到 401。
+
+**正确做法**：通过 `PRISM_API_BASE_URL` 选择环境，开发默认 staging，部署时显式配置目标主机及其配套凭据。诊断时用同一凭据读取一个不存在的任务：404 说明鉴权通过，401/403 说明环境或凭据不匹配；这类错误必须 fast fail，不能消耗重试次数。
+
 ### Drizzle 客户端上的底层 postgres.js JSON fixture
 
 Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)` 写集成测试临时表可能把数组送到字符串编码器。此时显式 `JSON.stringify(value)` 并在参数后加 `::jsonb`，不要误判为数据库迁移失败。

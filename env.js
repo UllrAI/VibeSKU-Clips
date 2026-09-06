@@ -198,6 +198,7 @@ const env = createEnv({
     AI_DEFAULT_MODEL: process.env.AI_DEFAULT_MODEL,
 
     // Media generation
+    PRISM_API_BASE_URL: process.env.PRISM_API_BASE_URL,
     PRISM_API_KEY: process.env.PRISM_API_KEY,
     PRISM_API_SECRET: process.env.PRISM_API_SECRET,
 

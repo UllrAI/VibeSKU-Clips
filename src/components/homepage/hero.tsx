@@ -14,24 +14,26 @@ export function Hero({
 } = {}) {
   const { t } = getStaticTranslations(locale);
 
-  const planRows = [
+  const workSteps = [
     {
-      id: "us",
-      product: t("home_plan_row_product_one"),
-      setting: t("home_plan_row_setting_one"),
-      clips: 6,
+      id: "product",
+      label: t("ugc_work_step_product"),
+      state: t("ugc_work_state_done"),
     },
     {
-      id: "mx",
-      product: t("home_plan_row_product_two"),
-      setting: t("home_plan_row_setting_two"),
-      clips: 6,
+      id: "script",
+      label: t("ugc_work_step_script"),
+      state: t("ugc_work_state_review"),
     },
     {
-      id: "br",
-      product: t("home_plan_row_product_three"),
-      setting: t("home_plan_row_setting_three"),
-      clips: 8,
+      id: "storyboard",
+      label: t("ugc_work_step_storyboard"),
+      state: t("ugc_work_state_idle"),
+    },
+    {
+      id: "video",
+      label: t("ugc_work_step_video"),
+      state: t("ugc_work_state_idle"),
     },
   ];
 
@@ -87,21 +89,19 @@ export function Hero({
             </div>
 
             <ul className="divide-border divide-y">
-              {planRows.map((row) => (
+              {workSteps.map((step, index) => (
                 <li
-                  key={row.id}
+                  key={step.id}
                   className="flex items-center justify-between gap-4 px-5 py-4"
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {row.product}
-                    </p>
-                    <p className="text-muted-foreground truncate text-sm">
-                      {row.setting}
-                    </p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="text-muted-foreground font-mono text-xs tabular-nums">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <p className="truncate text-sm font-medium">{step.label}</p>
                   </div>
-                  <span className="text-sm tabular-nums">
-                    {t("home_plan_card_clips", { count: row.clips })}
+                  <span className="text-muted-foreground text-sm">
+                    {step.state}
                   </span>
                 </li>
               ))}
@@ -111,7 +111,7 @@ export function Hero({
               <span className="text-sm font-medium">
                 {t("home_plan_card_total")}
               </span>
-              <span className="text-lg font-semibold tabular-nums">20</span>
+              <span className="text-lg font-semibold tabular-nums">1</span>
             </div>
           </div>
         </div>

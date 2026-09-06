@@ -62,22 +62,20 @@ export const CREDIT_COST = {
 } as const;
 
 /** A generation attempt is abandoned after this many system retries. */
-export const MAX_RENDER_ATTEMPTS = 3;
-
-export const MAX_BATCH_CLIPS = 200;
 
 /**
  * Prism is a first-party service and the models below are a product decision,
  * not a per-deployment setting. Only the credentials come from the environment.
  */
 export const MEDIA_PROVIDER = {
-  baseUrl: "https://prism.ullrai.com/api/v1",
   /** `quality` is only honoured by Prism's gpt-image-* family. */
   imageModel: "gpt-image-2",
+  imageSize: "1K",
   imageQuality: "low",
   /** H3 takes up to nine reference images and a 1-15 second duration. */
   videoModel: "minimax-h3",
-  videoResolution: "1080p",
+  // Prism maps this to H3's native 768p mode; H3 rejects 1080p.
+  videoResolution: "720p",
   maxVideoReferences: 9,
   requestTimeoutMs: 60_000,
 } as const;

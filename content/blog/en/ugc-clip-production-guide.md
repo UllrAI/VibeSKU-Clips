@@ -1,254 +1,90 @@
 ---
 title: The VibeSKU Clips Production Guide
 publishedDate: 2026-09-05
-excerpt: A complete walkthrough of a production run, from pasting a product link to handing a folder of approved vertical clips to whoever posts them. Read it once before your first batch of eighty.
+excerpt: A complete walkthrough of one production run, from product material to one reviewed vertical clip.
 tags:
   - Guide
   - Production
-  - Operations
-  - TikTok Shop
+  - UGC
 author: admin
 ---
 
-This is the long version. It follows one production run end to end and explains
-what each step is actually doing, so that when something looks wrong at clip
-fifty-three you know which stage to go and look at.
+VibeSKU Clips makes one 15-second product video at a time. Each work follows the
+same visible path: product, script, storyboard, video, and review. You see and
+confirm the result of each step before the next expensive step starts.
 
-The short version is four sentences. You register a product and let the system
-read its material. You write or generate scripts for it. You build a batch that
-says, in explicit lines, how many clips you want and in what language. Then you
-review what came back and export the ones you will post.
+## 1. Start with the product
 
-## What this tool is for
+Choose an existing product or add one from a source link and product images. The
+reader turns that material into a fact sheet: appearance, specifications,
+selling points, scenarios, and sources. Facts are the claims the script is
+allowed to make; your brief supplies the audience, angle, tone, scene, and any
+phrases to avoid.
 
-It produces short vertical video for shoppable feeds. Every clip is 15 seconds,
-9:16, 1080×1920, with burned-in captions and a separate subtitle file. That
-specification is not configurable, and that is deliberate: it is the shape the
-placements want, and fixing it means every downstream check — duration, caption
-safe area, file naming — can be strict instead of advisory.
+Read the extracted facts before continuing. If a link cannot be opened or an
+image is no longer available, the product stops at **Needs input** with a useful
+message. It does not stay in a loading state forever. Correct the material and
+run the product step again.
 
-It is built for account matrices. The assumption is that you are not making one
-video, you are making forty for eleven accounts across three markets, and that
-the hard part is not generation but keeping track of which asset belongs where
-and which ones a person has actually approved.
+Language and market remain separate choices. Language controls speech and
+captions. Market controls wording, units, context, and disclosure expectations.
 
-It is not an editor. There is no timeline, no keyframes, no colour grading. If
-a clip is nearly right but needs a trim, the answer here is to regenerate it,
-not to nudge it.
+## 2. Confirm the script
 
-## 1. The product comes first
+The script is written against the confirmed facts, selected format, language,
+market, product images, and optional talent reference. It includes a hook,
+timed beats, voiceover, on-screen captions, a publish caption, and disclosure.
 
-Everything downstream inherits from the product record, so mistakes here are
-expensive. A product needs a name, and then as much of the following as you have:
-a source link, product images, a market, a variant, and a short brief.
+Edit anything that is wrong or too generic, then confirm it. This is the least
+expensive place to change the creative direction, so the workflow deliberately
+stops here before making images.
 
-When you save a product with a source link, a background job fetches the page
-and reads it. What it extracts becomes the product's **facts**: the claims that
-are safe to say on camera. Materials, sizes, what is in the box, the one or two
-things that genuinely differentiate it. Facts are not marketing. "Machine
-washable" is a fact; "the last laundry bag you will ever buy" is not.
+## 3. Confirm the storyboard
 
-Your **brief** is separate and sits above the facts in precedence. It is where
-you put the things the page does not know: the angle you want, the objection you
-want handled, a phrase legal has asked you to avoid. When the brief and the
-facts disagree, the brief wins, because you are the one who has to answer for
-the claim.
+The system draws one key frame for each script beat. These frames show the
+product, talent, setting, framing, and intended action before video generation.
+You can edit and redraw an individual frame without discarding the rest.
 
-If the link cannot be read — it is dead, it is behind a login, it returns
-something that is not a page — the product is marked as needing input and left
-alone. It does not silently proceed with an empty fact sheet, and it does not
-take the rest of your queue down with it. You add images or write the facts
-yourself, and it rejoins the pipeline.
+The storyboard is the last cheap checkpoint. Confirm that the real product is
+recognisable, the talent stays consistent, and the sequence tells the same
+story as the script.
 
-One field is worth calling out because operators skip it and regret it: the
-**market**. It is not the language. More on that in a moment.
+## 4. Generate the video
 
-What a product record does not hold is a storefront link. Which listing an asset
-ends up attached to, and whether it is in stock, belongs to whoever publishes it.
-This tool makes the video and says exactly what it is; it does not pretend to
-know that anything is ready to sell.
+After confirmation, the accepted frames, product references, talent reference,
+and script are sent to the video model. Long provider work is polled in the
+background, so closing the tab does not cancel it. Finished media is copied to
+private object storage instead of depending on an expiring provider URL.
 
-## 2. Talents are reusable, and they are on the record
+The delivery specification is fixed: 15 seconds, 9:16, 1080×1920. A quality
+report checks duration, spoken length, caption safety, factual accuracy, talent
+consistency, and locale expression.
 
-A talent is the person on camera. You can upload a reference image or describe
-one and have it generated, and either way the talent is saved and reused, so the
-same face can carry ten products across two months.
+If the provider gives up after its bounded retries, the current step becomes a
+visible failure with a retry action. The interface never reports a terminal
+task as still producing.
 
-Each talent carries a licence note. If you uploaded a real person's likeness,
-that field is where the release lives. If the likeness was generated, say so
-there. This is not bureaucracy — the export manifest reads that field, and a
-handover that cannot say where a face came from is a handover that will
-eventually cost you a takedown.
+## 5. Review and export
 
-A batch line can name zero, one, or several talents. Zero means product-led
-footage with no presenter. Several means the same script performed by each of
-them, which is the cheapest useful A/B test this tool offers: identical words,
-different delivery, and you find out whether your hook or your casting was the
-problem.
+The completed clip appears in the review workbench with its product, script,
+talent, language, market, and quality findings. Select, shortlist, or reject it.
+If the creative needs work, return to its guided work and reopen the script or
+storyboard step instead of launching a blind regeneration.
 
-## 3. Scripts: three shapes, and two settings people confuse
+Exports contain the selected clip files and a product-grouped manifest. The
+manifest records the stable clip reference, product and variant, language,
+market, publish caption, disclosure, and archived media URLs.
 
-Three templates cover the formats that actually convert in this placement.
+VibeSKU Clips stops at the deliverable. Storefront matching, stock, publishing,
+and performance remain the responsibility of the person or system that posts
+the clip.
 
-**Spokesperson** is a person talking to camera. Hook, claim, proof, call to
-action. It carries specific factual claims better than anything else, and it
-lives or dies on the first two seconds.
+## A useful first run
 
-**Scenario** dramatises the problem before the product appears. The problem has
-to be recognisable within about three seconds or the viewer is gone, so it works
-best for products that solve a visible, physical annoyance.
+Start with one product that has a clear photo and a trustworthy source page.
+Read and correct its facts. Pick one format, one language, one market, and one
+talent if the format needs a presenter. Then move through script, storyboard,
+video, and review without skipping the confirmations.
 
-**Tutorial** shows the thing being used, step by step. It is the most forgiving
-of a weak hook because the demonstration itself is the hook, and it is the right
-choice for anything where "how does that even work" is the main objection.
-
-A generated script comes back as a hook, a small set of timed beats, a voiceover
-line, caption lines, a publish caption, and a disclosure line appropriate to the
-locale. The voiceover is length-checked against the 15-second budget before it
-ever reaches a renderer — roughly 210 characters for Latin scripts, 90 for CJK.
-A script that cannot be read in time is not a script, it is a reshoot.
-
-Now the part that causes the most confusion in practice: **language and market
-are two different settings.** Language is what the clip is spoken and captioned
-in. Market is where the clip will run — which listing it describes, which
-disclosure wording is required, which cultural references land. Portuguese for
-Brazil and Portuguese for Portugal are the same language setting and different
-market settings, and treating them as one field is how you end up with a
-technically correct video that reads as foreign.
-
-Scripts are versioned. Editing one does not overwrite it; it creates a revision
-that keeps a pointer to what it came from. Clips remember which version they
-were rendered against, so "why does this clip say something the script doesn't"
-always has an answer.
-
-## 4. Batches are arithmetic you can do in your head
-
-A batch is a list of explicit lines. Each line names a product, a language, a
-market, a template, how many scripts to write, how many clips per script, and
-which talents to use. The clips that line produces are:
-
-```
-scripts × clips per script × max(1, talents on this line)
-```
-
-Nothing takes the cross-product of your settings. Adding a language does not
-re-run every other line in that language; it adds one line, and the total goes
-up by exactly what that line produces. Before you submit, the summary shows the
-clip count, the number of new scripts, the products involved, and the estimated
-credits — computed by the same function the server uses to expand the plan, so
-the number you approved is the number that runs.
-
-There is a switch worth using on anything above about thirty clips: **review
-scripts first**. It writes all the scripts, then stops and waits. You read them,
-fix the two that are wrong, and release the batch for rendering. Reading thirty
-scripts takes ten minutes. Watching thirty wrong clips render takes longer and
-costs more.
-
-Rendering runs across several lanes per batch, so a slow clip does not hold up
-the rest, and a batch that is half done is genuinely half done — the finished
-clips are already in review while the others are still working.
-
-## 5. What the renderer actually does
-
-Each clip is produced in two stages, and knowing this explains most of what you
-will see in the console.
-
-First, an opening frame is generated: the talent, the product, the setting, the
-framing. This is a still image, and it is fast and cheap relative to video.
-Second, that frame is handed to the video model as the reference the motion
-starts from. This is why a talent looks like the same person across ten clips
-and why the product does not quietly become a different product halfway through
-a batch. It is also why a bad opening frame is worth catching early — everything
-after it inherits the mistake.
-
-Then the subtitle track is built from the script's timed beats, and the finished
-video, cover, and subtitle file are copied into your own storage. Generation
-providers expire their URLs; an export that stops resolving three weeks later is
-not a deliverable, so nothing is left pointing at a temporary link.
-
-## 6. The quality gate
-
-Before a clip reaches you, six checks run against it.
-
-**Duration** compares the actual runtime with the 15-second target, within a
-tolerance of about seven tenths of a second. **Voiceover length** confirms the
-words fit the time at a natural pace. **Caption safe area** confirms the burned
-captions sit clear of the regions where the platform puts its own interface —
-captions hidden behind a shop button are captions nobody read. **Product
-accuracy** checks the spoken claims against the product's facts. **Talent
-consistency** compares the delivered frames with the talent reference.
-**Locale expression** flags copy that is grammatically correct but reads as
-translated.
-
-A clip that fails a check is marked failed with the specific finding attached.
-You are never shown a bare "something went wrong" when the system knows which
-check fired.
-
-## 7. Review is where the decisions happen
-
-The review workbench exists because comparing near-identical takes is genuinely
-hard and most tools make it harder. Clips are shown at identical frame size with
-their metadata in the same order every time, so your eye can actually do the
-comparison. Decisions are one click and one keystroke.
-
-The workbench surfaces **similarity hints**. When two clips in a batch are
-textually close enough that they would read as the same video to anyone
-scrolling — the same hook, the same beats, a synonym swap — it tells you. Eleven
-accounts posting eleven near-identical clips on the same day is exactly the
-outcome an account matrix is supposed to avoid.
-
-Two actions look similar and are not:
-
-**Retry** re-attempts a clip that failed. Your target count does not move; you
-asked for twenty and you still want twenty.
-
-**Regenerate** is you asking for another version of a clip that succeeded. It
-produces a new clip that keeps a link back to its source, and the original stays
-where it was so you can compare them. This adds to what was produced, because
-you asked for it.
-
-Both consume credits, and every unit of work — analysis, script, render, retry,
-regeneration — is recorded separately with its own cost. That is what makes cost
-per _delivered_ clip a number you can compute rather than estimate.
-
-## 8. Export, and where our job ends
-
-Exports group approved clips the way the next person needs them: by product, by
-account, by market, or by language. Each export produces a manifest listing
-every asset with its reference number, product, variant, language, market,
-template, talent, licence note, publish caption, and disclosure line.
-
-The manifest deliberately stops there. Attaching an asset to a listing, checking
-stock, and posting it belong to whoever publishes — and drawing that line is
-what keeps the handover honest, because nothing here can claim an asset is ready
-to sell when nobody has checked the listing. Two states get conflated constantly
-and are worth keeping apart: **generated** means the clip exists and passed the
-gate; **selected** means a person watched it and chose it. Only selected clips
-reach a manifest.
-
-## 9. When things go wrong
-
-They will, and the design principle is that failure stays local.
-
-A product whose material cannot be read is paused on its own; its lines are
-skipped and the rest of the batch runs. A clip that fails is marked failed with
-its reason and can be retried by itself. Automatic retries have a hard limit, so
-a broken input cannot burn a budget in a loop overnight. Cancelling a batch
-stops what is queued and in flight without touching what is already delivered —
-clips that passed the gate stay in review exactly where you left them.
-
-The one failure mode the tool cannot protect you from is a wrong product record.
-Facts, brief, market: get those right and everything downstream is a matter of
-taste. Get them wrong and you will have eighty well-produced
-videos saying the wrong thing.
-
-## A reasonable first run
-
-Register three products with links and images. Wait for the analysis. Read the
-facts it extracted and correct anything wrong. Create one talent. Build a batch
-of one line per product — one script, two clips per script, one talent, your
-home language and market — with review-scripts-first turned on. That is six
-clips. Read the three scripts, release the batch, and review what comes back.
-
-You will know within twenty minutes whether your product records are good, and
-that is the only thing worth learning before you commit to eighty.
+The goal of the first run is not volume. It is to make one clip whose facts,
+look, language, and handoff you trust from end to end.

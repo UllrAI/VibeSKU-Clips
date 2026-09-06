@@ -61,7 +61,7 @@ logs to verify Worker health; Web readiness does not cover it.
 
 The Worker does the media work, so it needs more than Web does: the same four R2
 credentials and upload quotas, plus `LLM_API_KEY` and the `PRISM_*` credentials.
-A Worker without them accepts batches and then fails every render.
+A Worker without them accepts work and then fails its media steps.
 
 There is no additional always-on migration service: GitHub Actions uses the
 `production` environment's `PRODUCTION_DATABASE_URL` for the one-shot release

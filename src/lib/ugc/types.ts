@@ -58,26 +58,6 @@ export interface ClipQualityReport {
   passed: boolean;
 }
 
-export interface BatchPlanItem {
-  productId: string;
-  locale: string;
-  market: string;
-  template: string;
-  talentIds: string[];
-  scriptCount: number;
-  clipsPerScript: number;
-  /** Reuse an approved script instead of writing a new one. */
-  scriptId?: string;
-  accountTag?: string;
-}
-
-export interface BatchPlanConfig {
-  items: BatchPlanItem[];
-  sharedBrief?: ProductBrief;
-  /** Ask for script approval before any media is generated. */
-  reviewScriptsFirst: boolean;
-}
-
 export interface ExportManifestRow {
   reference: string;
   productName: string;
@@ -89,12 +69,10 @@ export interface ExportManifestRow {
   coverUrl: string | null;
   subtitleUrl: string | null;
   disclosure: string | null;
-  accountTag: string | null;
 }
 
 export interface ExportManifest {
   generatedAt: string;
-  groupBy: "product" | "accountTag";
   groups: {
     key: string;
     label: string;
@@ -106,7 +84,7 @@ export interface ScriptTemplateBrief {
   /** How the 15 seconds are spent, expressed for the writing model. */
   structure: string;
   voice: string;
-  /** Rotated per variant so sibling scripts open on different angles. */
+  /** Candidate opening angles; the single-clip flow uses the first one. */
   angles: string[];
   shots: string[];
 }

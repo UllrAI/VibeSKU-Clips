@@ -19,16 +19,16 @@ record the data extraction date, and annotate releases before comparing trends.
 
 ## Index inventory and baseline
 
-The public sitemap currently expects 23 canonical URLs while billing is enabled:
+The public sitemap currently expects 21 canonical URLs while billing is enabled:
 
 | Template                            | English | Simplified Chinese | Expected total |
 | ----------------------------------- | ------: | -----------------: | -------------: |
 | Homepage and public marketing pages |       8 |                  8 |             16 |
-| Blog posts                          |       4 |                  3 |              7 |
-| Total                               |      12 |                 11 |             23 |
+| Blog posts                          |       3 |                  2 |              5 |
+| Total                               |      11 |                 10 |             21 |
 
 The eight localized marketing routes are `/`, `/features`, `/pricing`, `/about`,
-`/contact`, `/privacy`, `/terms`, and `/blog`. Three articles are published in
+`/contact`, `/privacy`, `/terms`, and `/blog`. Two articles are published in
 both locales; the production guide is English-only and is exposed to Chinese
 readers through the source-locale fallback rather than a machine translation.
 
@@ -53,17 +53,16 @@ Owner: repository maintainer. Review cadence: every 28 complete days.
 One primary intent is assigned to each page. Related phrases support the primary
 intent; they must not trigger a second near-duplicate page.
 
-| Primary intent                            | Buyer stage    | Canonical page                               | Role and conversion                        |
-| ----------------------------------------- | -------------- | -------------------------------------------- | ------------------------------------------ |
-| bulk UGC video production for TikTok Shop | Implementation | `/blog/ugc-clip-production-guide`            | Pillar guide; signup click                 |
-| how to structure a 15-second UGC ad       | Consideration  | `/blog/fifteen-second-ugc-structure`         | Format spoke; continue to the pillar       |
-| localising short video for a new market   | Consideration  | `/blog/language-and-market-are-two-settings` | Localisation spoke; continue to the pillar |
-| how many clips does a batch produce       | Implementation | `/blog/counting-a-batch`                     | Cost and planning spoke; pricing view      |
-| AI UGC video generator for product ads    | Decision       | `/features`                                  | Capability summary; signup click           |
-| AI UGC video generator pricing            | Decision       | `/pricing`                                   | Plan decision; payment start               |
-| VibeSKU Clips                             | Navigational   | `/`                                          | Brand hub; signup click                    |
+| Primary intent                          | Buyer stage    | Canonical page                               | Role and conversion                        |
+| --------------------------------------- | -------------- | -------------------------------------------- | ------------------------------------------ |
+| guided UGC video production             | Implementation | `/blog/ugc-clip-production-guide`            | Pillar guide; signup click                 |
+| how to structure a 15-second UGC ad     | Consideration  | `/blog/fifteen-second-ugc-structure`         | Format spoke; continue to the pillar       |
+| localising short video for a new market | Consideration  | `/blog/language-and-market-are-two-settings` | Localisation spoke; continue to the pillar |
+| AI UGC video generator for product ads  | Decision       | `/features`                                  | Capability summary; signup click           |
+| AI UGC video generator pricing          | Decision       | `/pricing`                                   | Plan decision; payment start               |
+| VibeSKU Clips                           | Navigational   | `/`                                          | Brand hub; signup click                    |
 
-The production guide is the hub: it links to all three spokes, and each spoke
+The production guide is the hub: it links to both spokes, and each spoke
 links back to it and to the relevant product page. Chinese content is published
 only when it is fully localized; English-only pages do not emit fake Chinese
 alternates.
@@ -92,9 +91,9 @@ baseline.
 
 ## Qualified discovery and backlink campaign
 
-The audience is people who already run product video at volume: TikTok Shop
-sellers, agency creative leads, and the operations staff who assemble handover
-folders. Write for them or do not publish. Campaign links use
+The audience is people who need a reliable product-video workflow: TikTok Shop
+sellers, creative leads, and the operators who assemble handover folders. Write
+for them or do not publish. Campaign links use
 `utm_source=<surface>&utm_medium=referral&utm_campaign=seo_growth_2026q4`.
 No paid links, mass submission, reciprocal networks, or generic guest posts.
 
@@ -105,7 +104,7 @@ community membership, or editorial judgement is logged before it is sent.
 | Prospect                          | Relevance / editorial bar                                   | Contact path                     | Target asset               | Status                                  |
 | --------------------------------- | ----------------------------------------------------------- | -------------------------------- | -------------------------- | --------------------------------------- |
 | Product Hunt                      | Product discovery; launch assets and an active maker needed | Launch dashboard                 | Production demo            | Needs launch package                    |
-| Indie Hackers                     | Builder audience; transparent numbers expected              | Community post                   | Batch-economics write-up   | Needs outcome data from a real run      |
+| Indie Hackers                     | Builder audience; transparent numbers expected              | Community post                   | Workflow write-up          | Needs outcome data from a real run      |
 | Reddit r/ecommerce, r/dropship    | Exact seller audience; strict self-promotion norms          | Community post after rule review | Production guide           | Needs rule review and a useful summary  |
 | TikTok Shop seller communities    | Direct buyer audience; practitioner tone required           | Public seller forums and groups  | 15-second structure spoke  | Needs a member account in good standing |
 | E-commerce operations newsletters | Editorial audience for process content                      | Editor pitch                     | Production guide           | Needs a shortlist of live newsletters   |

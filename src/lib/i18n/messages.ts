@@ -49,7 +49,7 @@ export const MARKETING_CLIENT_MESSAGE_KEYS = [
   "billing_feature_review_workbench",
   "billing_subscription_already_active",
   "billing_feature_talent_library",
-  "billing_feature_batch_render",
+  "billing_feature_guided_render",
   "billing_subscription",
   "common_error_404",
   "payment_status_access_dashboard",

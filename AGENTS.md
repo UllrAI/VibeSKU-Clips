@@ -5,11 +5,10 @@ This file is the single source of truth for repository-specific agent instructio
 
 ## 0. What This Product Is
 
-VibeSKU Clips produces short vertical product video in batches for shoppable
-feeds. An operator registers a product, the system reads its material into
-verifiable facts, scripts are written against those facts, a batch renders a
-stated number of clips, a person reviews them, and approved clips are exported
-with a manifest.
+VibeSKU Clips produces one short vertical product video at a time for shoppable
+feeds. An operator chooses a product, the system reads its material into
+verifiable facts, and a guided work moves through script, storyboard, video,
+review, and export with a person confirming each expensive step.
 
 Two rules run through the whole codebase and are worth internalising before
 changing anything:
@@ -17,14 +16,8 @@ changing anything:
 - **Delivery spec is fixed.** 15 seconds, 9:16, 1080x1920. `CLIP_SPEC` in
   `src/lib/ugc/constants.ts` is the only definition; downstream checks are
   strict because of it.
-- **A batch is explicit, never a cross-product.** A plan line produces
-  `scripts x clipsPerScript x max(1, talents)` clips and nothing multiplies
-  unless the operator asked for it. `countClipsForItem` in
-  `src/lib/ugc/planning.ts` is used by both the client estimate and the server
-  expansion so the approved number is the number that runs.
-
-Also: interface language and clip language are separate settings, and language
-is separate from market. Do not collapse them.
+  Also: interface language and clip language are separate settings, and language
+  is separate from market. Do not collapse them.
 
 **Scope boundary.** The platform produces video and a delivery manifest. It does
 not manage storefront links, stock, publishing, or performance — those belong to
@@ -81,7 +74,7 @@ pnpm stripe:sync-products
 
 ## 3. Project Snapshot
 
-- Product: batch UGC video production for TikTok Shop account matrices
+- Product: guided single-clip UGC video production for shoppable feeds
 - Framework: Next.js 16 App Router
 - Runtime UI stack: React 19, Tailwind CSS v4, shadcn/ui, Radix UI
 - Package manager: `pnpm`
@@ -106,7 +99,7 @@ pnpm stripe:sync-products
 - UI primitives: `src/components/ui`
 - Forms: `src/components/forms`
 - Business logic: `src/lib`
-- UGC domain logic (planning, QC, similarity, manifest, render prompts): `src/lib/ugc`
+- UGC domain logic (QC, similarity, manifest, render prompts): `src/lib/ugc`
 - UGC server actions and queries: `src/lib/ugc/actions.ts`, `src/lib/ugc/queries.ts`
 - Stepped single-clip flow: `src/lib/ugc/works.ts`, `src/lib/ugc/work-actions.ts`, `src/app/dashboard/works`
 - Background-run state shared by the product and work consoles: `src/lib/ugc/run-state.ts`
@@ -129,24 +122,20 @@ pnpm stripe:sync-products
 
 ## 5. UGC Production Pipeline
 
-Three durable jobs, registered in `src/lib/jobs/catalog.ts`:
+Four durable jobs are registered in `src/lib/jobs/catalog.ts`:
 
-| Job                   | Handler                               | What it does                                                                                    |
-| --------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Fetches the source link, extracts product facts, or marks the product `needs_input`             |
-| `ugc.batch.run`       | `src/lib/jobs/ugc/batch-run.ts`       | Expands plan lines into scripts and clip rows, then enqueues renders unless scripts are held    |
-| `ugc.clip.render`     | `src/lib/jobs/ugc/clip-render.ts`     | Opening frame, then video from that frame, then subtitles and archival; polls via continuations |
-| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it      |
-| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands                |
-| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the accepted frames, product and talent to the video model and writes the finished clip   |
+| Job                   | Handler                               | What it does                                                                                  |
+| --------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Fetches the source link, extracts product facts, or marks the product `needs_input`           |
+| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it    |
+| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands              |
+| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the accepted frames, product and talent to the video model and writes the finished clip |
 
-A batch runs those three unattended. A **work** (`ugc_works`) runs the same
-pipeline one step at a time with a person confirming each step, using the same
-products, scripts and clips tables — a clip belongs to a batch or to a work, so
-`ugc_clips.batchId` is null for the latter. Steps are `product -> script ->
-storyboard -> video`; the step's own task run is the only record of why a step
-gave up, so the console reads failure and stall state from `task_runs` rather
-than from a status column (`src/lib/ugc/run-state.ts`).
+A **work** (`ugc_works`) runs one clip through `product -> script -> storyboard
+-> video`, stopping for confirmation at each step. Products, scripts, frames,
+and clips remain separate records so every output is traceable. The step's own
+task run records why it gave up, so the console reads failure and stall state
+from `task_runs` (`src/lib/ugc/run-state.ts`) and never spins indefinitely.
 
 The work composer asks for the product, talent, format, language and market in
 one card, and creates the product in place when it does not exist yet. Creating
@@ -162,17 +151,14 @@ Rules that are easy to break:
   Node process: `server-only` throws there and `@/env` validates Next-only
   variables. Build storage and the model from `process.env` (`src/lib/ugc/storage.ts`,
   `src/lib/ugc/model.ts`) and take the database from `JobHandlerContext`.
-- **Renders are spread across lanes.** pg-boss `singleton` allows one active job
-  per `singletonKey`, so `renderScopeKey(userId, batchId, laneIndex)` in
-  `src/lib/ugc/scope.ts` is what stops a user's clips from rendering serially.
 - **Archive generated media into R2.** Provider URLs expire; an export that stops
   resolving is not a deliverable.
-- **A failure stays local.** An unreadable product pauses itself and its lines are
-  skipped; a failed clip is marked failed with its finding and can be retried
-  alone. Automatic retries are capped by `MAX_RENDER_ATTEMPTS`.
-- **Retry and regenerate are different.** Retry re-attempts a failed clip and does
-  not change the target count. Regenerate is an operator decision that adds a new
-  clip linked to its source. Both are metered through `recordUsage`.
+- **Private image references are resolved at the Worker boundary.** Saved app
+  URLs require authentication and cannot be sent to a remote model directly.
+  Validate ownership, then issue a short-lived signed R2 URL.
+- **Failure is terminal and visible.** An unreadable product becomes
+  `needs_input`; exhausted task retries surface as a failed step with a retry
+  action. A work never remains visually "running" after its task has failed.
 
 ## 6. Engineering Rules
 

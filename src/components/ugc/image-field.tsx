@@ -29,11 +29,11 @@ export function ImageField({
     <div className="space-y-3">
       <p className="text-sm font-medium">{label}</p>
       {value.length > 0 && (
-        <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+        <ul className="flex flex-wrap gap-2">
           {value.map((url) => (
             <li
               key={url}
-              className="border-border relative aspect-square overflow-hidden rounded-md border"
+              className="border-border relative size-16 overflow-hidden rounded-md border sm:size-20"
             >
               <Image
                 src={url}
@@ -60,6 +60,7 @@ export function ImageField({
       {value.length < maxFiles && (
         <FileUploader
           acceptedFileTypes={IMAGE_TYPES}
+          clearCompletedOnUpload
           maxFiles={maxFiles - value.length}
           onUploadComplete={(files) =>
             onChange([...value, ...files.map((file) => file.url)])

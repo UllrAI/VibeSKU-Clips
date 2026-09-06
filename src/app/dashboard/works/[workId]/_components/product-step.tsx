@@ -37,6 +37,7 @@ import type { WorkDetail } from "@/lib/ugc/works";
 import { StepCard } from "./step-card";
 
 const NO_TALENT = "none";
+const RANDOM_TALENT = "random";
 
 /**
  * The first step is a confirmation, not a form: the composer already asked
@@ -69,7 +70,11 @@ export function ProductStep({
   const save = () =>
     setWorkSetup(work.id, {
       productId,
-      talentId: talentId === NO_TALENT ? undefined : talentId,
+      talentId:
+        talentId === NO_TALENT || talentId === RANDOM_TALENT
+          ? undefined
+          : talentId,
+      randomTalent: talentId === RANDOM_TALENT,
       locale,
       market,
       template,
@@ -215,6 +220,9 @@ export function ProductStep({
                   <SelectItem value={NO_TALENT}>
                     {t("ugc_work_no_talent")}
                   </SelectItem>
+                  <SelectItem value={RANDOM_TALENT}>
+                    {t("ugc_work_random_talent")}
+                  </SelectItem>
                   {talents.map((entry) => (
                     <SelectItem key={entry.id} value={entry.id}>
                       {entry.name}
@@ -222,6 +230,11 @@ export function ProductStep({
                   ))}
                 </SelectContent>
               </Select>
+              {talentId === RANDOM_TALENT && (
+                <p className="text-muted-foreground text-xs">
+                  {t("ugc_work_random_talent_hint")}
+                </p>
+              )}
             </div>
           </div>
 

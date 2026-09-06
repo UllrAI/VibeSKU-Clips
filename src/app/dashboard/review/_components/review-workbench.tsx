@@ -3,14 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Copy,
-  FolderDown,
-  RefreshCw,
-  Repeat2,
-  SquarePen,
-  X,
-} from "lucide-react";
+import { Copy, FolderDown, SquarePen, X } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -38,12 +31,7 @@ import { StatusBadge } from "@/components/ugc/status-badge";
 import { actionMessageKey } from "@/components/ugc/action-message";
 import { contentLocaleKey, marketKey } from "@/components/ugc/labels";
 import { useTranslation } from "@/lib/i18n/translation/client";
-import {
-  createExport,
-  regenerateClip,
-  retryClip,
-  setClipReview,
-} from "@/lib/ugc/actions";
+import { createExport, setClipReview } from "@/lib/ugc/actions";
 import type { ClipDetail } from "@/lib/ugc/queries";
 import type { SimilarityHint } from "@/lib/ugc/similarity";
 
@@ -74,7 +62,6 @@ export function ReviewWorkbench({
   const [selection, setSelection] = useState<string[]>([]);
   const [exportOpen, setExportOpen] = useState(false);
   const [exportName, setExportName] = useState("");
-  const [groupBy, setGroupBy] = useState<"product" | "accountTag">("product");
 
   const hintById = useMemo(
     () => new Map(hints.map((hint) => [hint.id, hint])),
@@ -122,10 +109,10 @@ export function ReviewWorkbench({
 
   const submitExport = () =>
     startTransition(async () => {
-      const result = await createExport(
-        { name: exportName.trim(), groupBy, clipIds: selection },
-        t("ugc_export_unassigned_group"),
-      );
+      const result = await createExport({
+        name: exportName.trim(),
+        clipIds: selection,
+      });
       if (!result.ok) {
         toast.error(t(actionMessageKey(result.code)));
         return;
@@ -232,7 +219,6 @@ export function ReviewWorkbench({
                           t(contentLocaleKey(detail.clip.locale)),
                           t(marketKey(detail.clip.market)),
                           detail.talentName,
-                          detail.clip.accountTag,
                         ]
                           .filter(Boolean)
                           .join(" · ")}
@@ -291,40 +277,12 @@ export function ReviewWorkbench({
                     <div className="flex flex-wrap items-center gap-2">
                       {/* A clip made step by step is changed in its work, not
                           re-run blind from here. */}
-                      {detail.workId ? (
+                      {detail.workId && (
                         <Button size="sm" variant="ghost" asChild>
                           <Link href={`/dashboard/works/${detail.workId}`}>
                             <SquarePen />
                             {t("ugc_clip_open_work")}
                           </Link>
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={pending}
-                          onClick={() =>
-                            run(
-                              () =>
-                                detail.clip.status === "failed"
-                                  ? retryClip(detail.clip.id)
-                                  : regenerateClip(detail.clip.id),
-                              detail.clip.status === "failed"
-                                ? "ugc_clip_retry_queued"
-                                : "ugc_clip_regenerate_queued",
-                            )
-                          }
-                        >
-                          {detail.clip.status === "failed" ? (
-                            <RefreshCw />
-                          ) : (
-                            <Repeat2 />
-                          )}
-                          {t(
-                            detail.clip.status === "failed"
-                              ? "ugc_clip_retry"
-                              : "ugc_clip_regenerate",
-                          )}
                         </Button>
                       )}
                       <Button
@@ -397,27 +355,6 @@ export function ReviewWorkbench({
                 onChange={(event) => setExportName(event.target.value)}
                 placeholder={t("ugc_export_name_placeholder")}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="export-group">{t("ugc_export_group_by")}</Label>
-              <Select
-                value={groupBy}
-                onValueChange={(value) =>
-                  setGroupBy(value as "product" | "accountTag")
-                }
-              >
-                <SelectTrigger id="export-group">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="product">
-                    {t("ugc_export_group_product")}
-                  </SelectItem>
-                  <SelectItem value="accountTag">
-                    {t("ugc_export_group_account")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
           <DialogFooter>

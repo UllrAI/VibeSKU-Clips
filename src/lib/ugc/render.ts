@@ -16,7 +16,7 @@ export interface RenderSubject {
 /**
  * The opening frame is generated first and then handed to the video model as
  * the first frame, which is what keeps the performer and the product looking
- * the same across every clip in a batch.
+ * the same throughout the finished clip.
  */
 export function buildCoverPrompt(
   subject: RenderSubject,

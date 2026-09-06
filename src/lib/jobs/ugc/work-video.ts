@@ -21,6 +21,7 @@ import {
 import { similarityKeyFor } from "@/lib/ugc/similarity";
 import {
   createClipStorage,
+  resolveReferenceUrls,
   StorageUnavailableError,
   type ClipStorage,
 } from "@/lib/ugc/storage";
@@ -59,7 +60,7 @@ function storage(db: AppDatabase): ClipStorage {
  * and talent shots — H3 reads them together rather than treating one as a
  * strict first frame, which is what holds the face and the object steady for
  * the full fifteen seconds. The result lands in `ugc_clips`, so review and
- * export work on it exactly as they do on a batch clip.
+ * export it from the same review surface as any finished work.
  */
 export const workVideoJob = defineJob(
   "ugc.work.video",
@@ -131,16 +132,21 @@ export const workVideoJob = defineJob(
     };
 
     if (!payload.providerTaskId) {
-      const providerTaskId = await submitVideo({
-        prompt: buildVideoPrompt(subject, beats),
-        referenceUrls: [
+      const references = await resolveReferenceUrls(
+        db,
+        work.userId,
+        [
           ...frames.map((frame) => frame.imageUrl),
           talent?.imageUrl,
           ...product.images.slice(0, 2),
         ].filter((url): url is string => Boolean(url)),
+      );
+      const providerTaskId = await submitVideo({
+        prompt: buildVideoPrompt(subject, beats),
+        referenceUrls: references,
         durationSeconds: CLIP_SPEC.durationSeconds,
         aspectRatio: CLIP_SPEC.aspectRatio,
-        requestId: `${context.taskRunId}:video`,
+        requestId: context.taskRunId,
       });
       await context.updateProgress({ step: "video" });
       await context.scheduleContinuation(
@@ -204,7 +210,6 @@ export const workVideoJob = defineJob(
       .insert(ugcClips)
       .values({
         userId: work.userId,
-        batchId: null,
         productId: product.id,
         scriptId: script.id,
         talentId: talent?.id ?? null,
