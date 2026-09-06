@@ -1,0 +1,254 @@
+"use client";
+
+import { useTranslation } from "@/lib/i18n/translation/client";
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { AlertTriangle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { getVisiblePageNumbers } from "./pagination";
+interface TableColumn<T> {
+  key: string;
+  label: string | ReactNode;
+  render?: (item: T) => ReactNode;
+  sortable?: boolean;
+}
+interface FilterOption {
+  value: string;
+  label: ReactNode;
+}
+interface PaginationData {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+interface AdminTableBaseProps<T> {
+  columns: TableColumn<T>[];
+  data: T[];
+  loading: boolean;
+  error: boolean;
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  filterValue?: string;
+  onFilterChange?: (value: string) => void;
+  filterOptions?: FilterOption[];
+  filterPlaceholder?: string | ReactNode;
+  pagination: PaginationData;
+  onPageChange: (page: number) => void;
+  searchPlaceholder?: string | ReactNode;
+  emptyMessage?: ReactNode;
+}
+function extractTextContent(node: ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") {
+    return String(node);
+  }
+  if (Array.isArray(node)) {
+    return node.map(extractTextContent).join("");
+  }
+  if (node && typeof node === "object" && "props" in node) {
+    return extractTextContent(
+      (
+        node as {
+          props?: {
+            children?: ReactNode;
+          };
+        }
+      ).props?.children,
+    );
+  }
+  return "";
+}
+export function AdminTableBase<
+  T extends {
+    id: string | number;
+  },
+>({
+  columns,
+  data,
+  loading,
+  error,
+  searchTerm,
+  onSearchChange,
+  filterValue,
+  onFilterChange,
+  filterOptions,
+  filterPlaceholder,
+  pagination,
+  onPageChange,
+  searchPlaceholder,
+  emptyMessage,
+}: AdminTableBaseProps<T>) {
+  const { t } = useTranslation();
+  const resolvedEmptyMessage = emptyMessage ?? <>{t("common_no_data_found")}</>;
+  const resolvedFilterPlaceholder = extractTextContent(
+    filterPlaceholder ?? t("admin_table_filter_placeholder"),
+  );
+  const resolvedSearchPlaceholder = extractTextContent(
+    searchPlaceholder ?? t("admin_table_search_placeholder"),
+  );
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-destructive flex items-center space-x-2">
+          <AlertTriangle className="h-4 w-4" />
+          <span>{t("admin_table_load_error")}</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-4">
+      {/* Search and Filter Controls */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative max-w-sm flex-1">
+          <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
+          <Input
+            placeholder={resolvedSearchPlaceholder}
+            value={searchTerm}
+            onChange={(event) => onSearchChange(event.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {filterOptions && onFilterChange && (
+          <Select value={filterValue} onValueChange={onFilterChange}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder={resolvedFilterPlaceholder} />
+            </SelectTrigger>
+            <SelectContent position="popper">
+              {filterOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+
+      {/* Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {columns.map((column) => (
+                <TableHead key={String(column.key)}>
+                  {typeof column.label === "string"
+                    ? column.label
+                    : column.label}
+                </TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              Array.from({
+                length: 5,
+              }).map((_, i) => (
+                <TableRow key={i}>
+                  {columns.map((column) => (
+                    <TableCell key={String(column.key)}>
+                      <div className="bg-muted h-4 w-full animate-pulse rounded" />
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : data.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  {resolvedEmptyMessage}
+                </TableCell>
+              </TableRow>
+            ) : (
+              data.map((item) => (
+                <TableRow key={item.id}>
+                  {columns.map((column) => (
+                    <TableCell key={column.key}>
+                      {column.render
+                        ? column.render(item)
+                        : column.key in item
+                          ? String(item[column.key as keyof T])
+                          : ""}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <div className="text-muted-foreground text-sm">
+            {t("common_showing_results", {
+              expression0: (pagination.page - 1) * pagination.limit + 1,
+              expression1: Math.min(
+                pagination.page * pagination.limit,
+                pagination.total,
+              ),
+              expression2: pagination.total,
+            })}
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(pagination.page - 1)}
+              disabled={pagination.page <= 1 || loading}
+            >
+              <ChevronLeft className="h-4 w-4" />
+              {t("common_previous")}
+            </Button>
+            <div className="flex items-center space-x-1">
+              {getVisiblePageNumbers(
+                pagination.page,
+                pagination.totalPages,
+              ).map((pageNumber) => (
+                <Button
+                  key={pageNumber}
+                  variant={
+                    pagination.page === pageNumber ? "default" : "outline"
+                  }
+                  size="sm"
+                  onClick={() => onPageChange(pageNumber)}
+                  disabled={loading}
+                >
+                  {pageNumber}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(pagination.page + 1)}
+              disabled={pagination.page >= pagination.totalPages || loading}
+            >
+              {t("common_next_admin")}
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

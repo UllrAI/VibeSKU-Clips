@@ -1,0 +1,562 @@
+# VibeSKU Clips
+
+[中文版](README.zh-CN.md) | English
+
+VibeSKU Clips turns product material into localised 15-second UGC video for
+TikTok Shop account matrices. An operator submits a product link or images with a
+brief; the platform reads the product, writes a market-specific script, generates
+and edits the clip, checks it against a quality gate, and hands back grouped
+assets with a product manifest.
+
+The platform produces material and the manifest. Account login, publishing,
+product tagging, and performance observation stay with the operations team.
+
+![VibeSKU Clips](./public/og.png)
+
+## ✨ What it does
+
+- **Product understanding.** Reads a product link, uploaded images, and a brief
+  into recorded product facts. Anything the material does not support is flagged
+  for a top-up rather than invented.
+- **Localised scripts.** Output language and target market are separate
+  settings, so Spanish for Mexico and Spanish for Spain are different scripts,
+  each with its own voiceover, subtitles, and publish caption.
+- **Three delivery formats.** Presenter, everyday scene, and how-to-use, each a
+  production recipe with its own beat structure and rotating opening angles.
+- **Talent consistency.** Upload a licensed photo or describe a fictional adult
+  performer. The generated opening frame anchors the look for the whole clip.
+- **Batches that count what you asked for.** Products, scripts, clips per
+  script, and talent are explicit per line; nothing is cross-multiplied.
+- **A quality gate before review.** Duration, voiceover length, caption safe
+  area, product accuracy, performer consistency, and local expression are
+  checked on every clip.
+- **Review and regeneration.** Grouped comparison with similarity hints, three
+  decision states, retry for failures, and regeneration that keeps the original.
+- **Exports with a manifest.** Grouped by product or account tag, with the
+  reference number, variant, storefront link, and an explicit
+  awaiting-product-match flag.
+- **Asset and consumption records.** Products, talent, scripts, and approved
+  clips keep their source, licence, and version lineage; analysis, scripting,
+  rendering, retries, and regenerations are metered separately.
+
+Delivery specification: 15 seconds, 9:16, 1080×1920, with cover, subtitles,
+publish caption, and a synthetic-content disclosure.
+
+## 🧱 How production runs
+
+| Stage     | Job                  | What it does                                                                                                    |
+| :-------- | :------------------- | :-------------------------------------------------------------------------------------------------------------- |
+| Intake    | `ugc.product.ingest` | Fetches the product page, reads facts from the material, and pauses only that product when something is missing |
+| Planning  | `ugc.batch.run`      | Expands the plan lines, writes the scripts, creates the clip rows, and queues rendering                         |
+| Rendering | `ugc.clip.render`    | Generates the opening frame, then the clip, archives both, writes the subtitle track, and runs the quality gate |
+
+Jobs run on pg-boss through the repository's task-run outbox, so a batch
+survives a restart and every clip can be retried on its own. Media generation
+goes through Prism (`src/lib/ugc/media`), and scripting through any
+OpenAI-compatible endpoint.
+
+Business logic lives in `src/lib/ugc`, the job handlers in `src/lib/jobs/ugc`,
+and the operator surfaces under `src/app/dashboard`.
+
+## 🛠️ Tech Stack
+
+| Category            | Technology                                                                                                                                             |
+| :------------------ | :----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Framework**       | [Next.js](https://nextjs.org/) 16                                                                                                                      |
+| **Language**        | [TypeScript](https://www.typescriptlang.org/)                                                                                                          |
+| **UI**              | [React](https://react.dev/), [shadcn/ui](https://ui.shadcn.com/), [Tailwind v4](https://tailwindcss.com/), [Lucide React](https://lucide.dev/) (icons) |
+| **Auth**            | [Better-Auth](https://better-auth.com/)                                                                                                                |
+| **Database**        | [PostgreSQL](https://www.postgresql.org/)                                                                                                              |
+| **ORM**             | [Drizzle ORM](https://orm.drizzle.team/)                                                                                                               |
+| **Payments**        | [Stripe](https://stripe.com/)                                                                                                                          |
+| **Media**           | [Prism](https://prism.ullrai.com/) (image and video generation)                                                                                        |
+| **AI**              | [Vercel AI SDK](https://ai-sdk.dev/) v7, any OpenAI-compatible LLM endpoint                                                                            |
+| **Email**           | [Resend](https://resend.com/), [React Email](https://react.email/)                                                                                     |
+| **Forms**           | [React Hook Form](https://react-hook-form.com/), [Zod](https://zod.dev/)                                                                               |
+| **Deployment**      | [Zeabur](https://zeabur.com/) or Docker                                                                                                                |
+| **Package Manager** | [pnpm](https://pnpm.io/)                                                                                                                               |
+
+## 🚀 Quick Start
+
+### 1. Environment Setup
+
+Ensure you have the following software installed in your development environment:
+
+- [Node.js](https://nodejs.org/en/) 22 or newer
+- [pnpm](https://pnpm.io/installation)
+
+### 2. Project Clone & Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/UllrAI/VibeSKU-Clips.git
+
+# Enter project directory
+cd vibesku-clips
+
+# Install dependencies with pnpm
+pnpm install
+```
+
+### 3. Environment Configuration
+
+The project is configured through environment variables. First, copy the example file:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` and fill in the core values plus the credentials for the
+features enabled in `src/lib/config/site.js`.
+
+#### Starter feature selection
+
+`SITE_CONFIG` is the client-safe source of truth for brand, contact, links,
+assets, and the static `emailAuth`, `billing`, `uploads`, and `ai` feature
+switches. All features default to enabled. Disable an unused feature there before
+removing its environment variables. Disabled features are removed from
+navigation and guarded at their pages, APIs, plugins, and server actions.
+
+If `emailAuth` is disabled, configure at least one complete OAuth provider so
+the web sign-in flow remains usable. Credentials remain server-only and must
+never be added to `SITE_CONFIG`.
+
+#### Environment Variables
+
+| Variable Name                    | Description                                                     | Example                                             |
+| :------------------------------- | :-------------------------------------------------------------- | :-------------------------------------------------- |
+| `DATABASE_URL`                   | **Required.** PostgreSQL connection string.                     | `postgresql://user:password@localhost:5432/db_name` |
+| `JOB_DATABASE_URL`               | Optional pg-boss database; defaults to `DATABASE_URL`.          | `postgresql://user:password@localhost:5432/db_name` |
+| `JOB_DB_POOL_SIZE`               | Optional pg-boss pool size per process; defaults to `3`.        | `3`                                                 |
+| `WORKER_GRACEFUL_TIMEOUT_MS`     | Optional Worker SIGTERM drain deadline; defaults to 30 seconds. | `30000`                                             |
+| `RATE_LIMIT_IP_HEADER`           | Optional trusted client-IP header; defaults to Zeabur.          | `x-forwarded-for`                                   |
+| `NEXT_PUBLIC_APP_URL`            | **Required.** Public URL of your deployed app.                  | `http://localhost:3000` or `https://yourdomain.com` |
+| `BING_SITE_VERIFICATION`         | Optional Bing Webmaster `msvalidate.01` verification token.     | Value issued for your deployed hostname             |
+| `NEXT_PUBLIC_UMAMI_SCRIPT_URL`   | Optional Umami tracker URL; set all three Umami variables.      | `https://analytics.example.com/script.js`           |
+| `NEXT_PUBLIC_UMAMI_WEBSITE_ID`   | Optional deployment-specific Umami website UUID.                | `00000000-0000-4000-8000-000000000000`              |
+| `NEXT_PUBLIC_UMAMI_DOMAINS`      | Optional comma-separated host allowlist for this deployment.    | `yourdomain.com`                                    |
+| `BETTER_AUTH_SECRET`             | **Required.** Random session secret, at least 32 characters.    | Generate with `openssl rand -base64 32`             |
+| `RESEND_API_KEY`                 | Required when `emailAuth` is enabled. Resend API key.           | `re_xxxxxxxxxxxxxxxx`                               |
+| `RESEND_EMAIL_FROM`              | Required when `emailAuth` is enabled. Verified sender.          | `noreply@your-verified-domain.com`                  |
+| `LLM_API_KEY`                    | Required when `ai` is enabled. Key for your LLM endpoint.       | `sk-...`                                            |
+| `LLM_BASE_URL`                   | Optional Responses API endpoint; defaults to OpenAI.            | `https://api.openai.com/v1`                         |
+| `AI_DEFAULT_MODEL`               | Optional chat model id; defaults to `gpt-5.6-luna`.             | `gpt-5.6-luna`                                      |
+| `PRISM_API_KEY`                  | **Required for rendering.** Prism API key.                      | `pk_...`                                            |
+| `PRISM_API_SECRET`               | **Required for rendering.** Prism API secret.                   | `sk_...`                                            |
+| `PRISM_API_BASE_URL`             | Optional Prism host; defaults to the production endpoint.       | `https://prism.ullrai.com/api/v1`                   |
+| `PRISM_IMAGE_MODEL`              | Optional opening-frame model; defaults to `nano-banana-pro`.    | `nano-banana-pro`                                   |
+| `PRISM_VIDEO_MODEL`              | Optional clip model; defaults to `sora2`.                       | `sora2`                                             |
+| `STRIPE_SECRET_KEY`              | Required for billing. Prefer a least-privilege restricted key.  | `rk_test_...` or `rk_live_...`                      |
+| `STRIPE_ENVIRONMENT`             | Stripe mode; defaults to `test_mode`.                           | `test_mode` or `live_mode`                          |
+| `STRIPE_WEBHOOK_SECRET`          | Required when `billing` is enabled. Endpoint signing secret.    | `whsec_your_webhook_secret`                         |
+| `R2_ENDPOINT`                    | Required when `uploads` is enabled. R2 API endpoint.            | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`     |
+| `R2_ACCESS_KEY_ID`               | Required when `uploads` is enabled. R2 access key ID.           | `your_r2_access_key_id`                             |
+| `R2_SECRET_ACCESS_KEY`           | Required when `uploads` is enabled. R2 secret key.              | `your_r2_secret_access_key`                         |
+| `R2_BUCKET_NAME`                 | Required when `uploads` is enabled. R2 bucket name.             | `your_r2_bucket_name`                               |
+| `UPLOAD_CLEANUP_SECRET`          | Required when `uploads` is enabled. 32+ character secret.       | Generate with `openssl rand -base64 32`             |
+| `UPLOAD_DAILY_QUOTA_BYTES`       | Optional rolling 24-hour upload quota per user.                 | `1073741824` (1 GiB)                                |
+| `UPLOAD_TOTAL_QUOTA_BYTES`       | Optional total stored and reserved bytes per user.              | `5368709120` (5 GiB)                                |
+| `UPLOAD_LEGACY_COMPLETION_SINCE` | Optional ISO-8601 start of the bounded v1 compatibility window. | Set with `UPLOAD_LEGACY_COMPLETION_UNTIL` only      |
+| `UPLOAD_LEGACY_COMPLETION_UNTIL` | Optional ISO-8601 end of the bounded v1 compatibility window.   | At most 24 hours after the matching start           |
+| `GITHUB_CLIENT_ID`               | _Optional._ GitHub OAuth Client ID.                             | `your_github_client_id`                             |
+| `GITHUB_CLIENT_SECRET`           | _Optional._ GitHub OAuth Client Secret.                         | `your_github_client_secret`                         |
+| `GOOGLE_CLIENT_ID`               | _Optional._ Google OAuth Client ID.                             | `your_google_client_id`                             |
+| `GOOGLE_CLIENT_SECRET`           | _Optional._ Google OAuth Client Secret.                         | `your_google_client_secret`                         |
+| `LINKEDIN_CLIENT_ID`             | _Optional._ LinkedIn OAuth Client ID.                           | `your_linkedin_client_id`                           |
+| `LINKEDIN_CLIENT_SECRET`         | _Optional._ LinkedIn OAuth Client Secret.                       | `your_linkedin_client_secret`                       |
+
+> **Tip:** You can generate a secure key using the following command:
+> `openssl rand -base64 32`
+>
+> **Optional local CLI auth:** for scripts, local agents, or quick terminal access, you can export `VIBESKU_CLI_API_KEY=ssk_...` instead of storing credentials in the CLI config.
+
+#### Analytics
+
+Umami tracking is optional and disabled unless all three public Umami variables
+are set. Each deployment must create its own website in Umami and use its own
+website ID; never copy the maintainer deployment's ID into a fork. The tracker
+honors Do Not Track, excludes URL search parameters, and only records the hosts
+listed in `NEXT_PUBLIC_UMAMI_DOMAINS`.
+
+The stable event vocabulary is `cta_click`, `signup_click`, `signup_submit`,
+`signup_link_sent`, `login_submit`, `login_link_sent`, `signup_success`,
+`pricing_view`, `payment_start`, and `payment_success`.
+Tracking is best-effort and never controls authentication or billing behavior.
+Umami's accounting remains separate from provider webhooks and database records.
+
+This configuration is cookieless, but operators remain responsible for their
+privacy notice and any consent flow required by the data they add or the
+jurisdictions they serve. Verification and SEO measurement procedures are in
+[SEO growth operations](docs/seo-growth.md).
+
+Production notes:
+
+- [What actually fits in fifteen seconds](content/blog/en/fifteen-second-ugc-structure.md)
+- [Language and market are two different settings](content/blog/en/language-and-market-are-two-settings.md)
+- [How a batch counts](content/blog/en/counting-a-batch.md)
+
+#### Stripe catalog setup
+
+Test and live Stripe catalog IDs are intentionally separate in
+`src/lib/billing/stripe/prices.ts`. Set `STRIPE_ENVIRONMENT` and its matching
+`STRIPE_SECRET_KEY`, then run `pnpm stripe:sync-products`. Each tier owns one
+stable Stripe Product; a price change creates a new Price under that Product,
+deactivates the old Price for new checkouts, and leaves existing subscriptions
+on their original amount. Webhooks resolve the tier from the Product ID, so no
+finite or unbounded retired-Price list is needed. Review and commit the
+selected-environment configuration change before deploying. Checkout fails
+closed when the active environment has no configured Price ID.
+
+Webhook retry, idempotency, and manual replay behavior are documented in
+[Billing webhook operations](docs/webhooks.md).
+
+### 4. Database Setup
+
+This project uses a single Drizzle config file, `src/database/config.ts`, and a single committed migration history in `src/database/migrations/`. The target database is selected only by `DATABASE_URL`.
+
+#### Local development
+
+For fast local iteration against your own database:
+
+```bash
+pnpm db:push
+```
+
+If the schema change should be reviewed, committed, or shared with other environments, create and apply a real migration instead:
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+```
+
+#### Staging and production
+
+Shared environments should use committed SQL migrations only:
+
+```bash
+# 1. Generate and commit the migration from your schema change
+pnpm db:generate
+
+# 2. Run the committed migration once against the target DATABASE_URL
+pnpm db:migrate
+
+# 3. Deploy the application after the migration succeeds
+```
+
+> **Recommended release practice**
+>
+> - **Never** use `pnpm db:push` in staging or production.
+> - Keep one migration history for all environments. Do not split migrations into dev/prod trees.
+> - Run `pnpm db:migrate` as a dedicated one-shot release step in CI/CD or your deploy platform.
+> - Do **not** run migrations on every application process startup.
+> - Make schema changes backward-compatible when possible, so app rollout and migration timing stay safe.
+
+### 5. Content Management (Content Collections)
+
+The project uses Content Collections plus plain Markdown files for blog content. Posts live in locale-scoped paths such as `content/blog/en/*.md` and `content/blog/zh-Hans/*.md`, authors live in `content/authors/*.json`, and build-time generation produces typed collections for the blog pages and sitemap.
+
+- **Authoring workflow:** Add or edit posts directly in the repository with frontmatter and Markdown content.
+- **Generated content data:** Run `pnpm content:build` to refresh the generated collections manually. The Next.js plugin handles development and production builds; test and type-check scripts invoke the generator explicitly.
+- **Production behavior:** There is no CMS admin route or runtime content API. All blog content is built from the repository content files.
+
+### 6. Agent-Friendly API and CLI Auth
+
+This starter distinguishes clearly between human auth and machine auth:
+
+- **Browser users:** Better Auth session cookies for the web app
+- **Server-to-server and agent access:** user-managed API keys
+- **Local developer tools:** browser-approved device login via `vibesku-cli`
+
+What ships today:
+
+- versioned machine endpoints under `/api/v1/*`
+- API key creation and revocation in Dashboard Settings
+- CLI session review and revocation in Dashboard Settings
+- a terminal workflow for signing in from local tools without reusing browser session tokens
+
+Quick examples:
+
+```bash
+# Sign in a local CLI through the browser
+pnpm vibesku-cli -- auth login --base-url http://localhost:3000
+
+# Check current CLI auth state
+pnpm vibesku-cli -- auth status --base-url http://localhost:3000
+
+# Use an API key for scripts or coding agents
+VIBESKU_CLI_API_KEY=ssk_your_key_here pnpm vibesku-cli -- auth status --base-url http://localhost:3000
+```
+
+The web app exposes management surfaces at `/dashboard/developer` for both API keys and authorized CLI sessions.
+
+### 7. Start Development Server
+
+```bash
+pnpm dev
+```
+
+Now your application should be running at [http://localhost:3000](http://localhost:3000)!
+
+### 8. Admin Account Setup
+
+For security reasons, the first registered user is not promoted automatically. Use the admin script after the user has signed up normally:
+
+```bash
+pnpm set:admin --email=your-email@example.com
+```
+
+The command loads `.env` if it exists and otherwise uses the current process environment, so the same command works locally and on a server.
+
+After successful execution, the user receives `super_admin` privileges and can access `/dashboard/admin`.
+
+**Security tips**
+
+- Grant this role only to trusted users.
+- Run the command in a secure environment with the correct `DATABASE_URL`.
+
+## 📜 Available Scripts
+
+#### Application Scripts
+
+| Script                 | Description                                                    |
+| :--------------------- | :------------------------------------------------------------- |
+| `pnpm dev`             | Start development server.                                      |
+| `pnpm build`           | Build application for production.                              |
+| `pnpm start`           | Start production server.                                       |
+| `pnpm vibesku-cli`     | Run the first-party CLI for device login and API verification. |
+| `pnpm lint`            | Check code for linting errors.                                 |
+| `pnpm dead-code:check` | Detect unused files, exports, and dependencies.                |
+| `pnpm type-check`      | Run TypeScript type checking.                                  |
+| `pnpm test`            | Run the Jest test suite.                                       |
+| `pnpm test:coverage`   | Run Jest and generate a coverage report.                       |
+| `pnpm test:e2e`        | Build and run Playwright E2E smoke tests.                      |
+| `pnpm prettier:format` | Format all code using Prettier.                                |
+| `pnpm set:admin`       | Promote specified email user to super admin.                   |
+
+## 🧪 E2E Testing
+
+This repository includes a Playwright smoke test suite in `e2e/` for the most important browser-level flows:
+
+- unauthenticated dashboard redirect
+- authenticated dashboard access
+- admin permission gating
+- locale canonicalization for marketing routes
+- API key creation and machine-auth verification
+- browser-approved device auth for CLI sign-in
+
+## Layout Widths
+
+- Use `ShellContainer` for the marketing header, footer, and other truly wide layouts.
+- Use `SectionContainer` for standard marketing sections and non-dashboard page bodies.
+- Use `ReadingContainer` for blog articles, legal pages, and other long-form reading surfaces.
+- Use `CompactContainer` for auth flows.
+- Use `FocusContainer` for payment status and other centered cards that need more space.
+- Keep full-bleed backgrounds separate from content width. Backgrounds can span the viewport while content stays inside one semantic container.
+
+Run the suite with:
+
+```bash
+createdb vibesku_e2e
+# Add E2E_DATABASE_URL=postgresql://.../vibesku_e2e to .env
+pnpm test:e2e
+```
+
+`E2E_DATABASE_URL` is mandatory and must point to a dedicated local PostgreSQL database whose name contains a standalone `e2e` or `test` segment. Outside CI, the runner rejects the regular `DATABASE_URL` to prevent test users, API keys, CLI tokens, device codes, and rate-limit state from reaching a development or shared database. It applies migrations, builds the app, starts the production server, and cleans E2E fixtures before and after the suite.
+
+The test-only session route is enabled only while Playwright is running against the declared E2E database. It also requires an explicit `E2E_TEST_SECRET` of at least 32 characters and is disabled for non-local production deployments. Playwright generates a per-run secret when CI does not provide one.
+
+#### Bundle Analysis Scripts
+
+| Script             | Description                                            |
+| :----------------- | :----------------------------------------------------- |
+| `pnpm analyze`     | Build application and generate bundle analysis report. |
+| `pnpm analyze:dev` | Enable bundle analysis in development mode.            |
+
+#### Database Scripts
+
+| Script             | Description                                                                 |
+| :----------------- | :-------------------------------------------------------------------------- |
+| `pnpm db:generate` | Generate SQL migration files from schema changes.                           |
+| `pnpm db:migrate`  | Apply committed migrations to the database selected by `DATABASE_URL`.      |
+| `pnpm db:push`     | **Local development only.** Sync schema directly without creating migration |
+
+## 📁 File Upload Feature
+
+This project integrates a secure file upload system based on Cloudflare R2.
+Direct and server-side uploads share the same short-lived upload intent,
+per-user byte quotas, one-time completion, and orphan cleanup flow.
+
+### 1. Cloudflare R2 Configuration
+
+1. **Create R2 Bucket**: Log into Cloudflare Dashboard, navigate to R2 and create a new bucket.
+2. **Get API Token**: In the R2 overview page, click "Manage R2 API Tokens", create a token with "Object Read & Write" permissions. Note down the `Access Key ID` and `Secret Access Key`.
+3. **Set Environment Variables**: Fill your R2 credentials and information into the `.env` file.
+4. **Configure CORS Policy**: To allow browsers to upload files directly, you need to configure CORS policy in your R2 bucket's "Settings". Add the following configuration, replacing the URLs in `AllowedOrigins` with your own:
+
+```json
+[
+  {
+    "AllowedOrigins": ["http://localhost:3000", "https://yourdomain.com"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["Content-Type", "If-None-Match"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+Direct uploads use protocol version 2. The presign response declares the
+required `Content-Type` and `If-None-Match: *` headers, so an issued object key
+can only be written once. The signed URL lasts 15 minutes and its database
+reservation lasts one hour. Cancelling releases quota immediately without
+shortening that original expiry. After expiry, cleanup deletes the object but
+retains a tombstone for 24 hours and deletes the object again before removing
+the intent. This second check catches a late PUT that began while the signed URL
+was still valid. Clients built against the older unsigned-header protocol must
+be refreshed when this version is deployed.
+
+For a rolling v1-to-v2 deployment, set `UPLOAD_LEGACY_COMPLETION_SINCE` to the
+rollout start and `UPLOAD_LEGACY_COMPLETION_UNTIL` to an absolute timestamp no
+more than 24 hours later. The compatibility path only accepts the authenticated
+user's timestamp-and-UUID v1 keys issued up to 15 minutes before that start,
+verifies the declared URL and actual R2 metadata, applies upload quotas, and is
+idempotent. Remove both variables after the cutoff. Then perform a one-time,
+dry-run inventory comparison between R2's `uploads/` prefix and the upload
+records' `"fileKey"` values; review the difference before deleting untracked
+legacy objects. New clients always require a database-backed v2 intent.
+
+### 2. Schedule Upload Cleanup
+
+Call the cleanup endpoint once per day from your deployment platform. It claims
+expired upload intents and deletes abandoned R2 objects. At this cadence,
+expired objects may remain until a later daily run. A tombstone that becomes
+eligible just after the fixed run can wait through one additional daily cycle;
+quota accounting stops counting intents as soon as they expire.
+
+```bash
+curl -fsS -X POST \
+  -H "Authorization: Bearer $UPLOAD_CLEANUP_SECRET" \
+  "https://yourdomain.com/api/internal/uploads/cleanup"
+```
+
+The endpoint processes up to five batches of 100 intents per run and recovers
+stale cleanup claims automatically. If a run reports five full batches,
+invoke it again or schedule it more frequently until the queue is drained. R2
+lifecycle rules may additionally abort incomplete multipart uploads after one
+day, but they do not replace this database-aware cleanup.
+
+### 3. Using the `FileUploader` Component
+
+We provide a powerful `FileUploader` component that supports drag-and-drop, progress display, image compression, and error handling.
+
+#### Basic Usage
+
+```tsx
+import { FileUploader } from "@/components/ui/file-uploader";
+
+function MyComponent() {
+  const handleUploadComplete = (files) => {
+    console.log("Upload complete:", files);
+    // Handle uploaded file information here
+  };
+
+  return (
+    <FileUploader
+      acceptedFileTypes={["image/png", "image/jpeg", "application/pdf"]}
+      maxFileSize={5 * 1024 * 1024} // 5MB
+      maxFiles={3}
+      onUploadComplete={handleUploadComplete}
+    />
+  );
+}
+```
+
+> **Note**: This project uses a `src` directory structure. All components and library files are located in the `src/` directory and can be accessed through the `@/` path mapping which resolves to `src/`.
+
+#### Image Compression
+
+The component includes built-in client-side image compression functionality that can reduce image file size before upload, saving bandwidth and storage space.
+
+```tsx
+<FileUploader
+  acceptedFileTypes={["image/png", "image/jpeg", "image/webp"]}
+  enableImageCompression={true}
+  imageCompressionQuality={0.7} // Compression quality (0.1-1.0)
+  imageCompressionMaxWidth={1200} // Maximum width after compression
+/>
+```
+
+## 📊 Bundle Size Monitoring & Optimization
+
+This project integrates `@next/bundle-analyzer` to help you analyze and optimize your application's bundle size.
+
+### How to Run Analysis
+
+```bash
+# Analyze production build
+pnpm analyze
+
+# Analyze in development mode
+pnpm analyze:dev
+```
+
+After execution, bundle size analysis reports for both client and server will automatically open in your browser.
+
+### Optimization Strategies
+
+- **Dynamic Imports**: Use `next/dynamic` for code splitting of large components or libraries that aren't needed on first screen.
+- **Dependency Optimization**:
+  - **Tree Shaking**: Ensure you only import what you need from libraries, e.g., `import { debounce } from 'lodash-es';` instead of `import _ from 'lodash';`.
+  - **Lightweight Alternatives**: Consider using lighter libraries, e.g., replace `moment.js` with `date-fns`.
+- **Image Optimization**: Prioritize using Next.js `<Image>` component and enable WebP format.
+
+## ☁️ Deployment
+
+The production reference deployment uses [Zeabur](https://zeabur.com/). The
+repository also includes a standalone multi-stage Docker build.
+
+> **Save 10% on a Zeabur server:** Purchase a server at
+> [Zeabur](https://zeabur.com/) and enter referral code `visoar` at checkout.
+
+Configure the production Zeabur service to deploy the `prod` branch, not
+the default development branch (`main` in this repository). Pushing a
+`release/vX.Y.Z` tag matching the version in `package.json` runs
+[`promote-release-to-prod.yml`](.github/workflows/promote-release-to-prod.yml),
+which verifies that the tagged commit belongs to the repository's default
+branch (`main` at present) before moving `prod` to that commit. Zeabur deploys
+only after the promotion succeeds. Fork maintainers can reuse the same setup;
+see [the Zeabur deployment guide](docs/deployment-zeabur.md#using-the-workflow-in-a-fork).
+
+1. Merge the reviewed commit into the default branch and wait for the Quality
+   workflow to pass.
+2. Configure every required variable from `.env.example`. Set
+   `NEXT_PUBLIC_APP_URL` to the final HTTPS origin before building because
+   canonical URLs and client configuration are compiled from it. Keep the user
+   upload bucket private; see [private-file cutover](docs/architecture-remediation.md#deployment-requirements).
+3. Set `PRODUCTION_DATABASE_URL` in the GitHub `production` environment, plus
+   `PRODUCTION_JOB_DATABASE_URL` for a separate queue database. The release
+   workflow checks the exact SHA's Quality result and runs migrations before promotion.
+4. Update the version in `package.json`, then tag that commit with an annotated
+   `release/vX.Y.Z` tag using the same version and push it:
+
+   ```bash
+   git tag -a release/v1.2.3 -m "Release v1.2.3"
+   git push origin release/v1.2.3
+   ```
+
+5. Wait for the promotion workflow and the subsequent Zeabur deployment to
+   succeed. Use `/api/health` for liveness and `/api/ready` for database-backed
+   readiness.
+6. Schedule an authenticated `POST /api/internal/uploads/cleanup` once per day.
+7. Verify the public origin, both locale URL variants, authentication redirects,
+   Dashboard access, `robots.txt`, `sitemap.xml`, and application logs.
+
+Docker Compose follows the same order with a one-shot `migrate` service. See
+[docker/README.md](docker/README.md) for local and self-hosted instructions.
+The optional GitHub maintenance schedule is best-effort and runs only from the
+default branch. Enable scheduled Actions explicitly in a fork, monitor its
+latest successful run, and use a platform scheduler when timing is an SLA.
+
+## 📄 License
+
+This project is licensed under the [MIT](./LICENSE) license.

@@ -1,0 +1,575 @@
+import { db } from "@/database";
+import * as schema from "@/database/schema";
+import {
+  subscriptions,
+  payments,
+  productEntitlements,
+  users,
+  webhookEvents,
+} from "@/database/tables";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  isNull,
+  max,
+  sql,
+  getTableColumns,
+} from "drizzle-orm";
+import type { PgTransaction } from "drizzle-orm/pg-core";
+import type { PostgresJsQueryResultHKT } from "drizzle-orm/postgres-js";
+import type { Subscription, SubscriptionStatus } from "@/types/billing";
+import { getProductTierById } from "@/lib/config/products";
+import {
+  canManageSubscription,
+  hasCurrentSubscriptionAccess,
+} from "@/lib/billing/access";
+import { ExtractTablesWithRelations } from "drizzle-orm";
+
+export type Tx = PgTransaction<
+  PostgresJsQueryResultHKT,
+  typeof schema,
+  ExtractTablesWithRelations<typeof schema>
+>;
+
+interface UpsertSubscriptionData {
+  userId: string;
+  customerId: string;
+  subscriptionId: string;
+  productId: string;
+  status: SubscriptionStatus;
+  currentPeriodStart?: Date;
+  currentPeriodEnd?: Date;
+  canceledAt?: Date | null;
+  lastWebhookCreatedAt: Date;
+}
+
+interface UpsertPaymentData {
+  userId: string;
+  customerId: string;
+  subscriptionId?: string | null;
+  productId: string;
+  paymentId: string;
+  paymentIntentId?: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  paymentType: string;
+}
+
+interface GrantProductEntitlementData {
+  userId: string;
+  productId: string;
+  sourcePaymentId: string;
+}
+
+export interface PaymentReferenceRecord {
+  paymentId: string;
+  paymentType: string;
+  productId: string;
+  status: string;
+  subscriptionId: string | null;
+  userId: string;
+}
+
+const getDb = (tx?: Tx) => tx || db;
+
+export async function upsertSubscription(
+  data: UpsertSubscriptionData,
+  tx?: Tx,
+) {
+  const dbase = getDb(tx);
+  const now = new Date();
+
+  return dbase
+    .insert(subscriptions)
+    .values({ ...data, updatedAt: now })
+    .onConflictDoUpdate({
+      target: subscriptions.subscriptionId,
+      set: {
+        status: data.status,
+        productId: data.productId,
+        currentPeriodStart: data.currentPeriodStart,
+        currentPeriodEnd: data.currentPeriodEnd,
+        canceledAt: data.canceledAt,
+        lastWebhookCreatedAt: data.lastWebhookCreatedAt,
+        updatedAt: now,
+      },
+      setWhere: sql`${subscriptions.lastWebhookCreatedAt} is null or ${subscriptions.lastWebhookCreatedAt} <= ${data.lastWebhookCreatedAt}`,
+    })
+    .returning();
+}
+
+export async function upsertPayment(data: UpsertPaymentData, tx?: Tx) {
+  const dbase = getDb(tx);
+  const now = new Date();
+  const currency = data.currency.trim().toLowerCase();
+  if (!/^[a-z]{3}$/.test(currency)) {
+    throw new Error("Payment currency must be a three-letter ISO code.");
+  }
+  const normalizedData = {
+    ...data,
+    currency,
+  };
+
+  const rows = await dbase
+    .insert(payments)
+    .values({ ...normalizedData, updatedAt: now })
+    .onConflictDoUpdate({
+      target: payments.paymentId,
+      set: {
+        status: sql`case
+          when ${payments.status} in ('partially_refunded', 'refunded', 'disputed')
+            then ${payments.status}
+          when ${payments.status} = 'succeeded' and ${data.status} = 'failed'
+            then ${payments.status}
+          else ${data.status}
+        end`,
+        paymentIntentId: sql`coalesce(${payments.paymentIntentId}, ${data.paymentIntentId ?? null})`,
+        updatedAt: now,
+      },
+    })
+    .returning();
+
+  const payment = rows[0];
+  if (
+    !payment ||
+    payment.userId !== data.userId ||
+    payment.customerId !== data.customerId ||
+    payment.productId !== data.productId ||
+    payment.amount !== data.amount ||
+    payment.currency !== normalizedData.currency ||
+    payment.paymentType !== data.paymentType ||
+    payment.subscriptionId !== (data.subscriptionId ?? null) ||
+    // An event may arrive without the optional PaymentIntent reference after
+    // an earlier replay already filled it in. Preserve the stored reference;
+    // only reject a non-null reference that conflicts with the existing one.
+    (data.paymentIntentId !== null &&
+      data.paymentIntentId !== undefined &&
+      payment.paymentIntentId !== data.paymentIntentId)
+  ) {
+    throw new Error(
+      `Payment ${data.paymentId} conflicts with existing immutable payment data.`,
+    );
+  }
+
+  return rows;
+}
+
+export async function grantProductEntitlement(
+  data: GrantProductEntitlementData,
+  tx?: Tx,
+) {
+  return getDb(tx)
+    .insert(productEntitlements)
+    .values(data)
+    .onConflictDoUpdate({
+      target: [productEntitlements.userId, productEntitlements.productId],
+      set: {
+        sourcePaymentId: data.sourcePaymentId,
+        revokedAt: null,
+        revocationReason: null,
+      },
+    })
+    .returning();
+}
+
+export async function revokeProductEntitlementByPaymentId(
+  sourcePaymentId: string,
+  reason: "refunded" | "disputed",
+  tx?: Tx,
+) {
+  const dbase = getDb(tx);
+  const revokedRows = await dbase
+    .update(productEntitlements)
+    .set({
+      revokedAt: new Date(),
+      revocationReason: reason,
+    })
+    .where(
+      and(
+        eq(productEntitlements.sourcePaymentId, sourcePaymentId),
+        isNull(productEntitlements.revokedAt),
+      ),
+    )
+    .returning({
+      id: productEntitlements.id,
+      userId: productEntitlements.userId,
+      productId: productEntitlements.productId,
+    });
+
+  for (const entitlement of revokedRows) {
+    const [fallbackPayment] = await dbase
+      .select({ paymentId: payments.paymentId })
+      .from(payments)
+      .where(
+        and(
+          eq(payments.userId, entitlement.userId),
+          eq(payments.productId, entitlement.productId),
+          eq(payments.paymentType, "one_time"),
+          eq(payments.status, "succeeded"),
+        ),
+      )
+      .orderBy(desc(payments.createdAt))
+      .limit(1);
+
+    if (fallbackPayment) {
+      await dbase
+        .update(productEntitlements)
+        .set({
+          sourcePaymentId: fallbackPayment.paymentId,
+          revokedAt: null,
+          revocationReason: null,
+        })
+        .where(eq(productEntitlements.id, entitlement.id));
+    }
+  }
+
+  return revokedRows;
+}
+
+export async function updatePaymentStatus(
+  paymentId: string,
+  status: "partially_refunded" | "refunded" | "disputed",
+  tx?: Tx,
+) {
+  const rows = await getDb(tx)
+    .update(payments)
+    .set({
+      status: sql`case
+        when ${payments.status} = 'disputed' then ${payments.status}
+        when ${payments.status} = 'refunded' and ${status} = 'partially_refunded'
+          then ${payments.status}
+        else ${status}
+      end`,
+      updatedAt: new Date(),
+    })
+    .where(eq(payments.paymentId, paymentId))
+    .returning();
+
+  if (rows.length === 0) {
+    throw new Error(
+      `Payment ${paymentId} is not available for a billing adjustment yet.`,
+    );
+  }
+
+  return rows;
+}
+
+export async function reconcilePaymentAfterDispute(
+  paymentId: string,
+  status: "partially_refunded" | "refunded" | "succeeded",
+  tx?: Tx,
+) {
+  const rows = await getDb(tx)
+    .update(payments)
+    .set({ status, updatedAt: new Date() })
+    .where(eq(payments.paymentId, paymentId))
+    .returning();
+
+  if (rows.length === 0) {
+    throw new Error(
+      `Payment ${paymentId} is not available for dispute reconciliation yet.`,
+    );
+  }
+
+  return rows;
+}
+
+function normalizePaymentReferences(paymentReferences: string[]): string[] {
+  return [
+    ...new Set(paymentReferences.map((value) => value.trim()).filter(Boolean)),
+  ];
+}
+
+export async function findPaymentByReferences(
+  paymentReferences: string[],
+  tx?: Tx,
+): Promise<PaymentReferenceRecord | null> {
+  const references = normalizePaymentReferences(paymentReferences);
+  const dbase = getDb(tx);
+
+  for (const reference of references) {
+    const [payment] = await dbase
+      .select({
+        paymentId: payments.paymentId,
+        paymentType: payments.paymentType,
+        productId: payments.productId,
+        status: payments.status,
+        subscriptionId: payments.subscriptionId,
+        userId: payments.userId,
+      })
+      .from(payments)
+      .where(
+        sql`${payments.paymentId} = ${reference} or ${payments.paymentIntentId} = ${reference}`,
+      )
+      .limit(1);
+    if (payment) return payment;
+  }
+
+  return null;
+}
+
+export async function lockPaymentAdjustmentScope(
+  paymentReferences: string[],
+  tx: Tx,
+): Promise<string> {
+  const references = normalizePaymentReferences(paymentReferences);
+  if (references.length === 0) {
+    throw new Error("A payment reference is required for an adjustment.");
+  }
+
+  const payment = await findPaymentByReferences(references, tx);
+
+  if (!payment) {
+    throw new Error(
+      `Payment ${references.join(", ")} is not available for a billing adjustment yet.`,
+    );
+  }
+
+  await lockBillingProductScope(payment.userId, payment.productId, tx);
+
+  const [lockedPayment] = await tx
+    .select({ id: payments.id })
+    .from(payments)
+    .where(eq(payments.paymentId, payment.paymentId))
+    .for("update");
+
+  if (!lockedPayment) {
+    throw new Error(
+      `Payment ${payment.paymentId} is not available for a billing adjustment yet.`,
+    );
+  }
+
+  return payment.paymentId;
+}
+
+export async function lockBillingProductScope(
+  userId: string,
+  productId: string,
+  tx: Tx,
+) {
+  const lockKey = `${userId.length}:${userId}:${productId}`;
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`,
+  );
+}
+
+export async function hasUserProductEntitlement(
+  userId: string,
+  productId: string,
+): Promise<boolean> {
+  const [entitlement] = await db
+    .select({ id: productEntitlements.id })
+    .from(productEntitlements)
+    .where(
+      and(
+        eq(productEntitlements.userId, userId),
+        eq(productEntitlements.productId, productId),
+        isNull(productEntitlements.revokedAt),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(entitlement);
+}
+
+export async function getUserProductEntitlement(
+  userId: string,
+): Promise<typeof productEntitlements.$inferSelect | null> {
+  const rows = await db
+    .select()
+    .from(productEntitlements)
+    .where(
+      and(
+        eq(productEntitlements.userId, userId),
+        isNull(productEntitlements.revokedAt),
+      ),
+    );
+
+  return (
+    rows
+      .map((row) => ({
+        row,
+        tier: getProductTierById(row.productId),
+      }))
+      .filter(
+        (
+          item,
+        ): item is typeof item & {
+          tier: NonNullable<typeof item.tier>;
+        } => Boolean(item.tier),
+      )
+      .sort(
+        (left, right) => right.tier.prices.oneTime - left.tier.prices.oneTime,
+      )
+      .at(0)?.row ?? null
+  );
+}
+
+export async function findUserByCustomerId(customerId: string, tx?: Tx) {
+  const dbase = getDb(tx);
+  const result = await dbase
+    .select()
+    .from(users)
+    .where(eq(users.paymentProviderCustomerId, customerId))
+    .limit(1);
+  return result[0] ?? null;
+}
+
+export async function getUserSubscription(
+  userId: string,
+): Promise<Subscription | null> {
+  const userSubscriptions = await db
+    .select({
+      ...getTableColumns(subscriptions),
+      accessRestricted: sql<boolean>`exists (
+        select 1 from ${payments}
+        where ${payments.subscriptionId} = ${subscriptions.subscriptionId}
+          and ${payments.status} in ('refunded', 'disputed')
+      )`,
+    })
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+    .orderBy(desc(subscriptions.createdAt)); // Order by creation date descending for deterministic behavior
+
+  const mappedSubscriptions: Subscription[] = userSubscriptions.map(
+    (subscription) => ({
+      id: subscription.id,
+      userId: subscription.userId,
+      customerId: subscription.customerId,
+      subscriptionId: subscription.subscriptionId,
+      status: subscription.status as SubscriptionStatus,
+      tierId: subscription.productId,
+      accessRestricted: subscription.accessRestricted,
+      currentPeriodStart: subscription.currentPeriodStart,
+      currentPeriodEnd: subscription.currentPeriodEnd,
+      canceledAt: subscription.canceledAt,
+    }),
+  );
+
+  const now = new Date();
+  const accessibleSubscriptions = mappedSubscriptions.filter((subscription) =>
+    hasCurrentSubscriptionAccess(subscription, now),
+  );
+  const manageableSubscriptions = mappedSubscriptions.filter(
+    (subscription) =>
+      !hasCurrentSubscriptionAccess(subscription, now) &&
+      canManageSubscription(subscription),
+  );
+
+  if (accessibleSubscriptions.length > 1) {
+    console.warn(
+      `User ${userId} has ${accessibleSubscriptions.length} currently accessible subscriptions. ` +
+        "This may indicate a data consistency issue. Returning the most recent one.",
+      {
+        userId,
+        subscriptionIds: accessibleSubscriptions.map(
+          ({ subscriptionId }) => subscriptionId,
+        ),
+        statuses: accessibleSubscriptions.map(({ status }) => status),
+      },
+    );
+  }
+
+  return (
+    accessibleSubscriptions[0] ??
+    manageableSubscriptions[0] ??
+    mappedSubscriptions[0] ??
+    null
+  );
+}
+
+export async function getUserPayments(userId: string, limit: number = 10) {
+  const userPayments = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.userId, userId))
+    .orderBy(desc(payments.createdAt)) // Order by creation date descending (newest first)
+    .limit(limit);
+
+  return userPayments.map((payment) => {
+    const tier = getProductTierById(payment.productId);
+    return {
+      ...payment,
+      tierId: tier?.id || payment.productId,
+      tierName: tier?.name || "Unknown Product",
+      // Keep amount in cents (original database value)
+    };
+  });
+}
+
+export async function getUserPaymentCount(
+  userId: string,
+  status?: string,
+): Promise<number> {
+  return (await getUserPaymentSummary(userId, status)).count;
+}
+
+export async function getUserPaymentSummary(userId: string, status?: string) {
+  const [result] = await db
+    .select({
+      count: count(),
+      latestCreatedAt: max(payments.createdAt),
+    })
+    .from(payments)
+    .where(
+      status
+        ? and(eq(payments.userId, userId), eq(payments.status, status))
+        : eq(payments.userId, userId),
+    );
+
+  return {
+    count: result?.count ?? 0,
+    latestCreatedAt: result?.latestCreatedAt ?? null,
+  };
+}
+
+/**
+ * Best-effort duplicate check outside the transaction. `claimWebhookEvent`
+ * remains the authoritative guard; this only avoids redundant work on replays.
+ */
+export async function isWebhookEventProcessed(
+  eventId: string,
+  provider: string = "stripe",
+): Promise<boolean> {
+  const [existing] = await db
+    .select({ id: webhookEvents.id })
+    .from(webhookEvents)
+    .where(
+      and(
+        eq(webhookEvents.provider, provider),
+        eq(webhookEvents.eventId, eventId),
+      ),
+    )
+    .limit(1);
+
+  return Boolean(existing);
+}
+
+/**
+ * Claim a provider event in the same transaction as its business changes.
+ * A committed row means the event completed successfully.
+ */
+export async function claimWebhookEvent(
+  eventId: string,
+  eventType: string,
+  provider: string = "stripe",
+  tx?: Tx,
+): Promise<boolean> {
+  const dbase = getDb(tx);
+  const inserted = await dbase
+    .insert(webhookEvents)
+    .values({
+      eventId,
+      eventType,
+      provider,
+    })
+    .onConflictDoNothing({
+      target: [webhookEvents.provider, webhookEvents.eventId],
+    })
+    .returning({ id: webhookEvents.id });
+
+  return inserted.length > 0;
+}

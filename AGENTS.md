@@ -1,0 +1,283 @@
+# AGENTS.md
+
+This file is the single source of truth for repository-specific agent instructions.
+`CLAUDE.md` must only point here. If any other instruction file disagrees with this file, follow `AGENTS.md`.
+
+## 0. What This Product Is
+
+VibeSKU Clips produces short vertical product video in batches for shoppable
+feeds. An operator registers a product, the system reads its material into
+verifiable facts, scripts are written against those facts, a batch renders a
+stated number of clips, a person reviews them, and approved clips are exported
+with a manifest.
+
+Two rules run through the whole codebase and are worth internalising before
+changing anything:
+
+- **Delivery spec is fixed.** 15 seconds, 9:16, 1080x1920. `CLIP_SPEC` in
+  `src/lib/ugc/constants.ts` is the only definition; downstream checks are
+  strict because of it.
+- **A batch is explicit, never a cross-product.** A plan line produces
+  `scripts x clipsPerScript x max(1, talents)` clips and nothing multiplies
+  unless the operator asked for it. `countClipsForItem` in
+  `src/lib/ugc/planning.ts` is used by both the client estimate and the server
+  expansion so the approved number is the number that runs.
+
+Also: interface language and clip language are separate settings, and language
+is separate from market. Do not collapse them.
+
+## 1. Working Agreement
+
+- Make minimal, correct, production-ready changes. Avoid over-engineering.
+- Prefer simple modules, low cyclomatic complexity, and reusable logic.
+- Check existing patterns before adding new abstractions.
+- Keep user-visible behavior complete. Do not leave mock data, placeholder flows, or half-finished paths.
+- Read `design.md` before user-facing design or UI work. It is the repository's visual and interaction source of truth.
+- When documentation in this file conflicts with the codebase, verify the codebase and update the documentation to match reality.
+- Read `docs/lessons-learned.md` before non-trivial work. It records counter-intuitive failures this repository has actually hit, which is exactly where prior knowledge tends to be wrong. Add an entry whenever you lose time to a surprise.
+
+## 2. Development Commands
+
+### Core commands
+
+```bash
+pnpm install
+pnpm dev
+pnpm build
+pnpm start
+pnpm lint
+pnpm dead-code:check
+pnpm type-check
+pnpm test
+pnpm test:watch
+pnpm test:coverage
+pnpm test:e2e
+pnpm test:e2e:headed
+pnpm analyze
+pnpm analyze:dev
+pnpm prettier:check
+pnpm prettier:format
+```
+
+### Database commands
+
+```bash
+pnpm db:generate
+pnpm db:migrate
+pnpm db:push
+```
+
+### Utilities
+
+```bash
+pnpm set:admin
+pnpm stripe:sync-products
+```
+
+## 3. Project Snapshot
+
+- Product: batch UGC video production for TikTok Shop account matrices
+- Framework: Next.js 16 App Router
+- Runtime UI stack: React 19, Tailwind CSS v4, shadcn/ui, Radix UI
+- Package manager: `pnpm`
+- Database: PostgreSQL with Drizzle ORM
+- Auth: Better Auth, magic link via Resend, optional OAuth providers
+- Billing: provider abstraction in `src/lib/billing/provider.ts`, current implementation uses Stripe
+- Storage: Cloudflare R2 with presigned uploads
+- AI: Vercel AI SDK v7 agent loop over any OpenAI-compatible endpoint (`LLM_API_KEY`/`LLM_BASE_URL`), tools and skills registered in `src/lib/ai`, feature-gated by `SITE_CONFIG.features.ai` (see `docs/ai-agent.md`)
+- Media generation: Prism (`PRISM_*`), image then video, called only from the Worker
+- Durable jobs: pg-boss with a task-run outbox (`src/lib/jobs`, `src/lib/tasks`)
+- Content: Content Collections plus repository-managed Markdown
+- Localization: `next-intl`
+
+## 4. Important Paths
+
+- App routes: `src/app`
+- Public marketing pages: `src/app/(pages)`
+- Auth routes: `src/app/(auth)`
+- Protected app: `src/app/dashboard`
+- API routes: `src/app/api`
+- Shared components: `src/components`
+- UI primitives: `src/components/ui`
+- Forms: `src/components/forms`
+- Business logic: `src/lib`
+- UGC domain logic (planning, QC, similarity, manifest, render prompts): `src/lib/ugc`
+- UGC server actions and queries: `src/lib/ugc/actions.ts`, `src/lib/ugc/queries.ts`
+- UGC job handlers: `src/lib/jobs/ugc`
+- Job queue, definitions, and worker environment: `src/lib/jobs`
+- Auth logic: `src/lib/auth`
+- Billing logic: `src/lib/billing`
+- AI agent logic (models, tools, skills, agents): `src/lib/ai`
+- AI chat route: `src/app/api/chat`
+- i18n helpers: `src/lib/i18n`, `src/lib/config/i18n.ts`, `src/lib/config/i18n-routing.ts`
+- Translation catalogs: `src/messages`
+- Database schema and migrations: `src/database`, `src/database/migrations`
+- Drizzle entry point (re-exports both schema files): `src/database/tables.ts`
+- UGC tables: `src/database/ugc.ts`
+- Email templates: `src/emails`
+- Environment validation: `env.js`
+- Route protection: `src/proxy.ts`
+- Next config: `next.config.ts`
+- next-intl request config: `src/i18n/request.ts`
+
+## 5. UGC Production Pipeline
+
+Three durable jobs, registered in `src/lib/jobs/catalog.ts`:
+
+| Job                  | Handler                              | What it does                                                                                    |
+| -------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| `ugc.product.ingest` | `src/lib/jobs/ugc/product-ingest.ts` | Fetches the source link, extracts product facts, or marks the product `needs_input`             |
+| `ugc.batch.run`      | `src/lib/jobs/ugc/batch-run.ts`      | Expands plan lines into scripts and clip rows, then enqueues renders unless scripts are held    |
+| `ugc.clip.render`    | `src/lib/jobs/ugc/clip-render.ts`    | Opening frame, then video from that frame, then subtitles and archival; polls via continuations |
+
+Rules that are easy to break:
+
+- **Job modules must not import `server-only` or `@/env`.** The Worker is a plain
+  Node process: `server-only` throws there and `@/env` validates Next-only
+  variables. Build storage and the model from `process.env` (`src/lib/ugc/storage.ts`,
+  `src/lib/ugc/model.ts`) and take the database from `JobHandlerContext`.
+- **Renders are spread across lanes.** pg-boss `singleton` allows one active job
+  per `singletonKey`, so `renderScopeKey(userId, batchId, laneIndex)` in
+  `src/lib/ugc/scope.ts` is what stops a user's clips from rendering serially.
+- **Archive generated media into R2.** Provider URLs expire; an export that stops
+  resolving is not a deliverable.
+- **A failure stays local.** An unreadable product pauses itself and its lines are
+  skipped; a failed clip is marked failed with its finding and can be retried
+  alone. Automatic retries are capped by `MAX_RENDER_ATTEMPTS`.
+- **Retry and regenerate are different.** Retry re-attempts a failed clip and does
+  not change the target count. Regenerate is an operator decision that adds a new
+  clip linked to its source. Both are metered through `recordUsage`.
+
+## 6. Engineering Rules
+
+### TypeScript and module design
+
+- Keep types explicit and strict. Do not introduce `any`.
+- Prefer small focused modules over large files.
+- Reuse existing components and utilities before creating new ones.
+- Follow repository naming patterns:
+  - Components: PascalCase
+  - Functions and variables: camelCase
+- Keep code readable without clever indirection. If a pattern needs a long explanation, it is probably too complex.
+
+### Next.js and React
+
+- Default to Server Components. Add Client Components only when interactivity or browser APIs require them.
+- Push `"use client"` down to the smallest interactive leaf.
+- Follow App Router conventions for pages, layouts, route handlers, and colocated `_components`.
+- Use real implementations. Do not ship fake data, fake success states, or dead-end UI.
+- Add page metadata where appropriate.
+
+### Layout and page width
+
+- Use the semantic containers from `src/components/layout/page-container.tsx` instead of page-local `max-w-*` wrappers when working outside the dashboard.
+- Use `ShellContainer` for global chrome and genuinely wide split layouts such as the marketing header, footer, and homepage hero.
+- Use `SectionContainer` for standard marketing sections and most non-dashboard page bodies.
+- Use `ReadingContainer` for article content, legal copy, and other long-form reading surfaces.
+- Use `CompactContainer` for narrow auth flows.
+- Use `FocusContainer` for status pages and single-card flows that need more space.
+- Treat full-bleed backgrounds and content width as separate concerns: a section may span the viewport, but its content should still sit inside one semantic container.
+- Do not add new ad hoc width systems or scatter `max-w-*` utilities through page modules unless a one-off component truly cannot be expressed with the existing containers.
+
+### Forms and validation
+
+- Use React Hook Form with Zod for form validation.
+- Keep schemas close to the form or in a clearly named schema module.
+- Handle loading, validation, and error states explicitly.
+
+## 7. Localization and next-intl
+
+### Core policy
+
+- Do not hardcode user-visible language in code. Add copy to both `src/messages/en.json` and `src/messages/zh-Hans.json`.
+- Treat free-form business data such as `banReason` as raw content. It does not need translation, but any surrounding UI copy still must follow i18n rules.
+- Use stable, semantic message keys for new copy. Existing hash keys are retained only for migration compatibility.
+- Shipped UI must respect the active locale and must not mix English with translated copy in the same view.
+
+### Source of truth for locale behavior
+
+- Keep `createNextIntlPlugin()` active in `next.config.ts` and request configuration in `src/i18n/request.ts`.
+- Keep locale detection and persistence in `src/lib/i18n/server-locale.ts`, `src/lib/i18n/locale-client.ts`, and `src/proxy.ts`.
+- In server code, read request locale through `src/lib/i18n/server-locale.ts`.
+- If a locale switch must change the URL for locale-prefixed marketing routes, use canonical `href`s, persist locale, and let the browser navigate.
+- Use `LocalizedLink` for links to public marketing routes so the active locale is preserved.
+- For numbers and dates, format with the active locale via helpers such as `resolveIntlLocale`. Do not hardcode `en-US`.
+
+### Message usage
+
+- Use `useTranslation()` in synchronous components and `getServerTranslations()` in async Server Components or metadata.
+- Pass an explicit `locale` to `getServerTranslations({ locale })` for work detached from the current request, such as email rendering.
+- Keep English fallback text at the call site during the migrated-key transition and keep both catalogs in exact key parity.
+- Use next-intl rich-text tags for mixed text and React elements. Catalog tag names and call-site values must match exactly.
+- Use standard ICU `{name}` placeholders for primitive values and rich-text tags for React nodes. The compatibility adapter supports both forms.
+- Mark technical content that browsers should not translate with the standard `translate="no"` attribute.
+- Do not branch copy with locale conditionals or pass raw external error text to the UI.
+- Prefer full-sentence messages over concatenated fragments.
+- Prefer controlled UI message codes over raw strings in state for transient feedback such as payment status errors and checkout results; render the final localized message in JSX at the boundary.
+- Real localization and SEO QA must use `pnpm build`, `pnpm start`, and inspect rendered HTML for every supported locale.
+
+## 8. Data, Billing, and Security
+
+- Validate Web environment variables through `env.js`; Worker reads its process subset through `src/lib/jobs/worker-env.ts`. Shared database/model rules belong in `src/lib/config/runtime-env.mjs`.
+- Database CLI configuration may validate only `DATABASE_URL` so a one-shot
+  migrator does not require unrelated application credentials.
+- Keep server and client environment variables separated and validated.
+- Preserve the billing provider abstraction. Route payment behavior through `src/lib/billing/provider.ts`.
+- Follow existing upload security flow in `src/lib/config/upload.ts` and related server logic.
+- Keep webhook handling idempotent and validation-first.
+- Media provider credentials (`PRISM_*`) belong to the Worker. Web must never call
+  the provider directly; it enqueues work and reads task state.
+- Do not bypass existing auth, permission, or validation boundaries.
+
+## 9. Database Workflow
+
+- Maintain a single committed migration history in `src/database/migrations`.
+- Use `pnpm db:push` only for fast local iteration against disposable or personal development databases.
+- Use `pnpm db:generate` to create migration files that will be committed and shared across staging and production.
+- Use `pnpm db:migrate` to apply committed migrations to whichever database is selected by `DATABASE_URL`.
+- Do not split migration history by environment. Environment differences belong in deployment configuration, not in separate SQL trees.
+- In CI/CD, run migrations as a dedicated one-shot release step, not on every app process startup.
+- Keep schema, queries, and types aligned when data models change.
+
+## 10. Production Promotion
+
+- The production Zeabur service tracks `prod`, not the default development
+  branch.
+- Publish production changes by pushing a `release/vX.Y.Z` tag that matches
+  `package.json` on a reviewed commit from the repository's default branch.
+- `.github/workflows/promote-release-to-prod.yml` validates the tag ancestry and
+  updates `prod`. Do not push or merge directly into `prod`.
+- Resolve the default branch dynamically in release automation. The current
+  branch is `main`, but forks may use `master` or another name.
+- The release workflow verifies Quality for the exact default-branch SHA and runs production migrations as a dedicated step before updating `prod`. Configure the `production` environment database secrets before releasing.
+
+## 11. Testing and Verification
+
+- After every meaningful change, run the narrowest relevant checks first, then the broader project checks.
+- Minimum expectation for code changes:
+  - `pnpm lint`
+  - `pnpm type-check`
+- Run `pnpm test` when logic, state handling, routing, validation, billing, auth, or i18n behavior changes.
+- Run `pnpm test:e2e` before opening or updating a PR when user-visible flows,
+  persisted UI state, authentication, routing, or behavior already covered by
+  Playwright changes. Update affected E2E assertions in the same commit as the
+  behavior change.
+- E2E runs must use a dedicated database selected through `E2E_DATABASE_URL`;
+  its database name must contain `e2e` or `test`. Never point E2E at a
+  development, staging, or production database.
+- Run `pnpm build` when changing app structure, configuration, localization behavior, or anything that could affect production compilation.
+- Do not mark work complete without reporting what was verified and what was not.
+
+## 12. Commit Policy
+
+- Commit both locale catalogs whenever message keys or copy change.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

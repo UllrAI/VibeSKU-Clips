@@ -1,0 +1,189 @@
+import { getStaticTranslations } from "@/lib/i18n/translation/static";
+import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ReadingContainer } from "@/components/layout/page-container";
+import { BlogPostMeta } from "./blog-post-meta";
+import { ArrowLeft } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { calculateReadingTime } from "@/lib/utils";
+import { SOURCE_LOCALE, type SupportedLocale } from "@/lib/config/i18n";
+interface BlogPostHeaderProps {
+  title: string;
+  excerpt?: string;
+  heroImage?: string;
+  publishedDate?: string;
+  updatedDate?: string;
+  featured?: boolean;
+  tags?: string[];
+  backHref?: string;
+  backText?: string;
+  author?: ReactNode;
+  content: string;
+  locale?: SupportedLocale;
+}
+export function BlogPostHeader({
+  title,
+  excerpt,
+  heroImage,
+  publishedDate,
+  updatedDate,
+  featured = false,
+  tags = [],
+  backHref = "/blog",
+  backText,
+  author,
+  content,
+  locale,
+}: BlogPostHeaderProps) {
+  const { t } = getStaticTranslations(locale ?? SOURCE_LOCALE);
+  const resolvedBackText = backText ?? t("blog_back_to_blog");
+  const hasImage = !!heroImage;
+  if (hasImage) {
+    return (
+      <>
+        {/* Hero Image Layout */}
+        <section className="bg-background relative overflow-hidden">
+          <div className="relative h-[50vh] overflow-hidden lg:h-[60vh]">
+            <Image
+              src={heroImage}
+              alt={title}
+              fill
+              className="object-cover"
+              priority
+              sizes="100vw"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
+            {/* Back button overlay */}
+            <div className="absolute top-4 left-4 z-10 sm:top-6 sm:left-6">
+              <Button
+                variant="ghost"
+                asChild
+                className="bg-background/90 hover:bg-background transition-colors"
+              >
+                <Link href={backHref}>
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">{resolvedBackText}</span>
+                  <span className="sm:hidden">{t("blog_back")}</span>
+                </Link>
+              </Button>
+            </div>
+
+            {/* Article header overlay */}
+            <div className="absolute right-0 bottom-0 left-0 p-4 sm:p-6 lg:p-12">
+              <div className="mx-auto max-w-5xl text-center">
+                <BlogPostMeta
+                  publishedDate={publishedDate}
+                  updatedDate={updatedDate}
+                  featured={featured}
+                  variant="overlay"
+                  className="mb-6 justify-center"
+                  showBadge={true}
+                  author={author}
+                  readingMinutes={calculateReadingTime(content)}
+                  locale={locale}
+                />
+
+                <h1 className="mb-4 text-2xl font-bold tracking-tight text-white drop-shadow-lg sm:mb-6 sm:text-4xl md:text-5xl lg:text-6xl">
+                  {title}
+                </h1>
+
+                {excerpt && (
+                  <p className="mx-auto mb-6 max-w-3xl text-sm leading-relaxed text-white/90 drop-shadow sm:text-xl">
+                    {excerpt}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Tags section for hero image layout */}
+        {tags.length > 0 && (
+          <section className="bg-background/50 py-6 sm:py-8">
+            <ReadingContainer>
+              <div className="flex flex-wrap justify-center gap-2">
+                {tags.map((tag, index) => (
+                  <Badge
+                    key={index}
+                    variant="outline"
+                    className="hover:bg-primary/10 text-xs transition-colors"
+                  >
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+            </ReadingContainer>
+          </section>
+        )}
+      </>
+    );
+  }
+
+  // Non-hero image layout
+  return (
+    <section className="bg-background">
+      <div className="py-6 md:py-12">
+        <ReadingContainer>
+          {/* Back button */}
+          <div className="mb-6 sm:mb-8">
+            <Button
+              variant="ghost"
+              asChild
+              className="hover:bg-background/80 pl-0 transition-colors"
+            >
+              <Link href={backHref}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">{resolvedBackText}</span>
+                <span className="sm:hidden">{t("blog_back")}</span>
+              </Link>
+            </Button>
+          </div>
+
+          {/* Article header */}
+          <header>
+            <BlogPostMeta
+              publishedDate={publishedDate}
+              updatedDate={updatedDate}
+              featured={featured}
+              className="mb-6 justify-center sm:mb-8"
+              showBadge={true}
+              author={author}
+              readingMinutes={calculateReadingTime(content)}
+              locale={locale}
+            />
+
+            <h1 className="text-foreground mb-6 text-3xl font-bold tracking-tight sm:mb-8 sm:text-4xl lg:text-5xl xl:text-6xl">
+              {title}
+            </h1>
+
+            {excerpt && (
+              <p className="text-muted-foreground mx-auto mb-6 max-w-3xl text-lg leading-relaxed sm:mb-8 sm:text-xl">
+                {excerpt}
+              </p>
+            )}
+
+            {/* Tags section */}
+            {tags.length > 0 && (
+              <div className="mt-6 sm:mt-8">
+                <div className="flex flex-wrap justify-center gap-2">
+                  {tags.map((tag, index) => (
+                    <Badge
+                      key={index}
+                      variant="outline"
+                      className="hover:bg-primary/10 text-xs transition-colors"
+                    >
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </header>
+        </ReadingContainer>
+      </div>
+    </section>
+  );
+}

@@ -1,0 +1,158 @@
+import { getStaticTranslations } from "@/lib/i18n/translation/static";
+import type { ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
+import { CalendarDays, Clock, Sparkles, User } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { resolveIntlLocale } from "@/lib/locale";
+import { SOURCE_LOCALE, type SupportedLocale } from "@/lib/config/i18n";
+interface BlogPostMetaProps {
+  publishedDate?: string;
+  updatedDate?: string;
+  featured?: boolean;
+  tags?: string[];
+  readingMinutes?: number;
+  author?: ReactNode;
+  showBadge?: boolean;
+  locale?: SupportedLocale;
+  variant?: "overlay" | "default";
+  className?: string;
+}
+export function BlogPostMeta({
+  publishedDate,
+  updatedDate,
+  featured = false,
+  tags = [],
+  readingMinutes,
+  author,
+  showBadge = true,
+  locale,
+  variant = "default",
+  className,
+}: BlogPostMetaProps) {
+  const supportedLocale = locale ?? SOURCE_LOCALE;
+  const { t } = getStaticTranslations(supportedLocale);
+  const resolvedAuthor = author ?? <>{t("blog_anonymous")}</>;
+  const isOverlay = variant === "overlay";
+  const textColor = isOverlay ? "text-white/80" : "text-muted-foreground";
+  const badgeVariant = featured ? "default" : "secondary";
+  const isCenter = className?.includes("justify-center");
+  const featuredBadgeClasses = isOverlay
+    ? "bg-primary text-primary-foreground border-primary"
+    : "bg-primary/10 text-primary border-primary/20";
+  const articleBadgeClasses = isOverlay
+    ? "bg-background text-foreground border-border"
+    : "bg-muted/50 text-muted-foreground border-muted";
+  const intlLocale = resolveIntlLocale(supportedLocale);
+  const formattedUpdatedDate = updatedDate
+    ? new Date(updatedDate).toLocaleDateString(intlLocale, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : undefined;
+  return (
+    <div className={cn("space-y-4", className)}>
+      {/* Badge */}
+      {showBadge && (
+        <div
+          className={cn(
+            "flex items-center gap-2",
+            isCenter && "justify-center",
+          )}
+        >
+          {featured ? (
+            <Badge
+              variant={badgeVariant}
+              className={cn(
+                "hover:bg-primary/20 transition-colors",
+                featuredBadgeClasses,
+              )}
+            >
+              <Sparkles className="mr-1 h-3 w-3" />
+              {t("blog_featured")}
+            </Badge>
+          ) : (
+            <Badge
+              variant={badgeVariant}
+              className={cn(
+                "hover:bg-muted transition-colors",
+                articleBadgeClasses,
+              )}
+            >
+              {t("blog_article")}
+            </Badge>
+          )}
+        </div>
+      )}
+
+      {/* Meta info */}
+      <div
+        className={cn(
+          "flex flex-col gap-2 sm:flex-row sm:gap-6",
+          isCenter && "items-center justify-center",
+        )}
+      >
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-3 text-sm sm:gap-6",
+            textColor,
+            isCenter && "justify-center",
+          )}
+        >
+          {publishedDate && (
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 flex-shrink-0" />
+              <span className="whitespace-nowrap">
+                {new Date(publishedDate).toLocaleDateString(intlLocale, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+          )}
+          {formattedUpdatedDate && updatedDate !== publishedDate && (
+            <div className="flex items-center gap-2">
+              <span className="whitespace-nowrap">
+                {t("blog_updated_on", { date: formattedUpdatedDate })}
+              </span>
+            </div>
+          )}
+          {readingMinutes && (
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 flex-shrink-0" />
+              <span className="whitespace-nowrap">
+                {t("blog_reading_time", {
+                  minutes: readingMinutes,
+                })}
+              </span>
+            </div>
+          )}
+          {resolvedAuthor && (
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4 flex-shrink-0" />
+              <span className="whitespace-nowrap">{resolvedAuthor}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Tags */}
+      {tags.length > 0 && (
+        <div
+          className={cn("flex flex-wrap gap-2", isCenter && "justify-center")}
+        >
+          {tags.map((tag, index) => (
+            <Badge
+              key={index}
+              variant="outline"
+              className="hover:bg-primary/10 text-xs transition-colors"
+            >
+              {tag}
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

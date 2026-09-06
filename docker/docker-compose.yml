@@ -1,0 +1,157 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vibesku_clips
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vibesku-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  migrate:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: migrator
+    restart: "no"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vibesku_clips
+      JOB_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vibesku_clips
+      JOB_DB_POOL_SIZE: 3
+      SKIP_ENV_VALIDATION: "1"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - vibesku-network
+
+  # Next.js Application
+  app:
+    image: vibesku-clips:local
+    build: &application-build
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?Set NEXT_PUBLIC_APP_URL to the public deployment origin}
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # Database
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vibesku_clips
+      JOB_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vibesku_clips
+
+      # Database connection pool settings
+      DB_POOL_SIZE: 20
+      DB_IDLE_TIMEOUT: 300
+      DB_MAX_LIFETIME: 14400
+      DB_CONNECT_TIMEOUT: 4
+      JOB_DB_POOL_SIZE: 3
+      RATE_LIMIT_IP_HEADER: ${RATE_LIMIT_IP_HEADER:-x-forwarded-for}
+
+      # Application URL
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?Set NEXT_PUBLIC_APP_URL}
+
+      # Auth Secret (generate a new one for production)
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET}
+
+      # OAuth (optional - configure as needed)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID:-}
+      LINKEDIN_CLIENT_SECRET: ${LINKEDIN_CLIENT_SECRET:-}
+
+      # Email service (configure with your Resend API key)
+      RESEND_API_KEY: ${RESEND_API_KEY:?Set RESEND_API_KEY}
+      RESEND_EMAIL_FROM: ${RESEND_EMAIL_FROM:?Set RESEND_EMAIL_FROM}
+
+      # Cloudflare R2 Storage (configure with your credentials)
+      R2_ENDPOINT: ${R2_ENDPOINT:?Set R2_ENDPOINT}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?Set R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?Set R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:?Set R2_BUCKET_NAME}
+      UPLOAD_CLEANUP_SECRET: ${UPLOAD_CLEANUP_SECRET:?Set UPLOAD_CLEANUP_SECRET}
+      UPLOAD_DAILY_QUOTA_BYTES: ${UPLOAD_DAILY_QUOTA_BYTES:-1073741824}
+      UPLOAD_TOTAL_QUOTA_BYTES: ${UPLOAD_TOTAL_QUOTA_BYTES:-5368709120}
+      UPLOAD_LEGACY_COMPLETION_SINCE: ${UPLOAD_LEGACY_COMPLETION_SINCE:-}
+      UPLOAD_LEGACY_COMPLETION_UNTIL: ${UPLOAD_LEGACY_COMPLETION_UNTIL:-}
+
+      LLM_API_KEY: ${LLM_API_KEY:?Set LLM_API_KEY}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-gpt-5.6-luna}
+      AI_DAILY_TOKEN_LIMIT: ${AI_DAILY_TOKEN_LIMIT:-2000000}
+      AI_DAILY_IMAGE_LIMIT: ${AI_DAILY_IMAGE_LIMIT:-10}
+
+      # Payment provider (configure with your Stripe credentials)
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:?Set STRIPE_SECRET_KEY}
+      STRIPE_ENVIRONMENT: ${STRIPE_ENVIRONMENT:-test_mode}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:?Set STRIPE_WEBHOOK_SECRET}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - vibesku-network
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--quiet",
+          "--spider",
+          "http://127.0.0.1:3000/api/ready",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    image: vibesku-clips:local
+    build: *application-build
+    command: ["node", "dist/worker/worker.mjs"]
+    restart: unless-stopped
+    stop_grace_period: 45s
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vibesku_clips
+      JOB_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vibesku_clips
+      DB_POOL_SIZE: 5
+      DB_IDLE_TIMEOUT: 300
+      DB_MAX_LIFETIME: 14400
+      DB_CONNECT_TIMEOUT: 4
+      JOB_DB_POOL_SIZE: 3
+      WORKER_GRACEFUL_TIMEOUT_MS: 30000
+      R2_ENDPOINT: ${R2_ENDPOINT:?Set R2_ENDPOINT}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?Set R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?Set R2_SECRET_ACCESS_KEY}
+      R2_BUCKET_NAME: ${R2_BUCKET_NAME:?Set R2_BUCKET_NAME}
+      UPLOAD_DAILY_QUOTA_BYTES: ${UPLOAD_DAILY_QUOTA_BYTES:-1073741824}
+      UPLOAD_TOTAL_QUOTA_BYTES: ${UPLOAD_TOTAL_QUOTA_BYTES:-5368709120}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      AI_DEFAULT_MODEL: ${AI_DEFAULT_MODEL:-gpt-5.6-luna}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - vibesku-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  vibesku-network:
+    driver: bridge

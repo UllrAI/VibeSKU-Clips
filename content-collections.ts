@@ -1,0 +1,113 @@
+import { defineCollection, defineConfig } from "@content-collections/core";
+import { z } from "zod";
+import { type SupportedLocale, SUPPORTED_LOCALES } from "./src/lib/config/i18n";
+
+const supportedLocaleSet = new Set<string>(SUPPORTED_LOCALES);
+
+function getPostLocaleAndSlug(path: string): {
+  locale: SupportedLocale;
+  pathSlug: string;
+} {
+  const [localeSegment, ...slugSegments] = path.split("/");
+
+  if (!localeSegment || slugSegments.length === 0) {
+    throw new Error(
+      `Blog post path must be namespaced by locale, received "${path}".`,
+    );
+  }
+
+  if (!supportedLocaleSet.has(localeSegment)) {
+    throw new Error(
+      `Unsupported blog post locale "${localeSegment}" in "${path}".`,
+    );
+  }
+
+  return {
+    locale: localeSegment as SupportedLocale,
+    pathSlug: slugSegments.join("/"),
+  };
+}
+
+function containsMarkdownH1(content: string): boolean {
+  let fenceMarker: "```" | "~~~" | null = null;
+
+  for (const line of content.split("\n")) {
+    const trimmedLine = line.trimStart();
+    const marker = trimmedLine.startsWith("```")
+      ? "```"
+      : trimmedLine.startsWith("~~~")
+        ? "~~~"
+        : null;
+
+    if (marker) {
+      fenceMarker = fenceMarker === marker ? null : (fenceMarker ?? marker);
+      continue;
+    }
+
+    if (!fenceMarker && /^#\s+/.test(trimmedLine)) return true;
+  }
+
+  return false;
+}
+
+const authors = defineCollection({
+  name: "authors",
+  directory: "content/authors",
+  include: "*.json",
+  parser: "json",
+  schema: z.object({
+    name: z.string(),
+    avatar: z
+      .string()
+      .nullish()
+      .transform((avatar) => avatar ?? undefined),
+  }),
+  transform: (author) => ({
+    ...author,
+    slug: author._meta.path,
+  }),
+});
+
+const posts = defineCollection({
+  name: "posts",
+  directory: "content/blog",
+  include: "**/*.md",
+  schema: z
+    .object({
+      slug: z.string().optional(),
+      title: z.string(),
+      publishedDate: z.iso.date(),
+      updatedDate: z.iso.date().optional(),
+      author: z.string().optional(),
+      excerpt: z.string().optional(),
+      tags: z.array(z.string()).default([]),
+      featured: z.boolean().default(false),
+      heroImage: z.string().optional(),
+      content: z.string(),
+    })
+    .refine(
+      (post) => !post.updatedDate || post.updatedDate >= post.publishedDate,
+      {
+        message: "updatedDate must not be earlier than publishedDate",
+        path: ["updatedDate"],
+      },
+    )
+    .refine((post) => !containsMarkdownH1(post.content), {
+      message:
+        "Blog Markdown must not contain H1 headings; the page template renders the article title as the single H1",
+      path: ["content"],
+    }),
+  transform: (post) => {
+    const { locale, pathSlug } = getPostLocaleAndSlug(post._meta.path);
+
+    return {
+      ...post,
+      locale,
+      slug: post.slug?.trim() || pathSlug,
+    };
+  },
+});
+
+export default defineConfig({
+  content: [authors, posts],
+});

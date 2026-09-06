@@ -1,0 +1,83 @@
+name: Quality
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: vibesku_e2e
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d vibesku_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vibesku_e2e
+      JOBS_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vibesku_e2e
+      E2E_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/vibesku_e2e
+      BETTER_AUTH_SECRET: ci-only-secret-at-least-32-characters
+      RESEND_API_KEY: re_ci_placeholder
+      RESEND_EMAIL_FROM: noreply@example.com
+      R2_ENDPOINT: https://example.r2.cloudflarestorage.com
+      R2_ACCESS_KEY_ID: ci-placeholder
+      R2_SECRET_ACCESS_KEY: ci-placeholder
+      R2_BUCKET_NAME: ci-placeholder
+      UPLOAD_CLEANUP_SECRET: ci-only-upload-cleanup-secret-32-chars
+      STRIPE_SECRET_KEY: sk_test_ci_placeholder
+      STRIPE_ENVIRONMENT: test_mode
+      STRIPE_WEBHOOK_SECRET: whsec_ci_placeholder
+      LLM_API_KEY: ci-placeholder-llm-key
+      NEXT_PUBLIC_APP_URL: https://example.com
+
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
+      - name: Verify committed migration history
+        run: |
+          if [ -n "$(git status --porcelain -- src/database/migrations)" ]; then
+            git status --short -- src/database/migrations
+            exit 1
+          fi
+      - run: pnpm db:migrate
+      - run: pnpm prettier:check
+      - run: pnpm lint
+      - run: pnpm dead-code:check
+      - run: pnpm type-check
+      - run: pnpm test --runInBand
+      - run: pnpm test:jobs:integration
+      - run: pnpm build:worker
+      - run: pnpm worker:smoke
+      - run: pnpm worker:shutdown-smoke
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e

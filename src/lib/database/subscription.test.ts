@@ -1,0 +1,1413 @@
+import {
+  describe,
+  it,
+  expect,
+  jest,
+  beforeEach,
+  afterEach,
+} from "@jest/globals";
+
+// Mock all external dependencies
+const mockDb = {
+  select: jest.fn(),
+  insert: jest.fn(),
+  update: jest.fn(),
+};
+
+const mockSubscriptions = {
+  subscriptionId: "subscriptions.subscriptionId",
+  userId: "subscriptions.userId",
+  customerId: "subscriptions.customerId",
+  productId: "subscriptions.productId",
+  status: "subscriptions.status",
+  currentPeriodStart: "subscriptions.currentPeriodStart",
+  currentPeriodEnd: "subscriptions.currentPeriodEnd",
+  canceledAt: "subscriptions.canceledAt",
+  lastWebhookCreatedAt: "subscriptions.lastWebhookCreatedAt",
+  createdAt: "subscriptions.createdAt",
+  updatedAt: "subscriptions.updatedAt",
+};
+
+const mockPayments = {
+  paymentId: "payments.paymentId",
+  userId: "payments.userId",
+  customerId: "payments.customerId",
+  productId: "payments.productId",
+  amount: "payments.amount",
+  currency: "payments.currency",
+  status: "payments.status",
+  paymentType: "payments.paymentType",
+  createdAt: "payments.createdAt",
+  updatedAt: "payments.updatedAt",
+};
+
+const mockProductEntitlements = {
+  id: "productEntitlements.id",
+  userId: "productEntitlements.userId",
+  productId: "productEntitlements.productId",
+  sourcePaymentId: "productEntitlements.sourcePaymentId",
+  revokedAt: "productEntitlements.revokedAt",
+  revocationReason: "productEntitlements.revocationReason",
+  createdAt: "productEntitlements.createdAt",
+};
+
+const mockUsers = {
+  id: "users.id",
+  paymentProviderCustomerId: "users.paymentProviderCustomerId",
+};
+
+const mockWebhookEvents = {
+  eventId: "webhookEvents.eventId",
+  eventType: "webhookEvents.eventType",
+  provider: "webhookEvents.provider",
+};
+
+const mockEq = jest.fn();
+const mockAnd = jest.fn((...conditions: unknown[]) => conditions);
+const mockCount = jest.fn();
+const mockDesc = jest.fn();
+const mockMax = jest.fn();
+const mockSql = jest.fn(
+  (strings: TemplateStringsArray, ...values: unknown[]) => ({
+    strings,
+    values,
+  }),
+);
+
+const mockGetProductTierById = jest.fn();
+
+// Mock all imports
+jest.mock("@/database", () => ({
+  db: mockDb,
+}));
+
+jest.mock("@/database/tables", () => ({
+  subscriptions: mockSubscriptions,
+  payments: mockPayments,
+  productEntitlements: mockProductEntitlements,
+  users: mockUsers,
+  webhookEvents: mockWebhookEvents,
+}));
+
+jest.mock("drizzle-orm", () => ({
+  getTableColumns: (table: unknown) => table,
+  and: mockAnd,
+  count: mockCount,
+  eq: mockEq,
+  desc: mockDesc,
+  max: mockMax,
+  isNull: jest.fn((value: unknown) => ["isNull", value]),
+  sql: mockSql,
+}));
+
+jest.mock("@/lib/config/products", () => ({
+  getProductTierById: mockGetProductTierById,
+}));
+
+describe("Database Subscription Functions", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSql.mockImplementation(
+      (strings: TemplateStringsArray, ...values: unknown[]) => ({
+        strings,
+        values,
+      }),
+    );
+
+    // Setup default mock implementations
+    mockDb.select.mockReturnValue({
+      from: jest.fn().mockReturnValue({
+        where: jest.fn().mockReturnValue({
+          limit: jest.fn().mockResolvedValue([]),
+          orderBy: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+        orderBy: jest.fn().mockReturnValue({
+          limit: jest.fn().mockResolvedValue([]),
+        }),
+        limit: jest.fn().mockResolvedValue([]),
+      }),
+    });
+
+    mockDb.insert.mockReturnValue({
+      values: jest.fn().mockReturnValue({
+        onConflictDoUpdate: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([]),
+        }),
+        onConflictDoNothing: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([{ id: "event-row-id" }]),
+        }),
+        returning: jest.fn().mockResolvedValue([]),
+      }),
+    });
+
+    mockGetProductTierById.mockReturnValue({
+      id: "tier_pro",
+      name: "Pro Plan",
+    });
+  });
+
+  afterEach(() => {
+    jest.resetAllMocks();
+  });
+
+  describe("upsertSubscription", () => {
+    it("should create a new subscription", async () => {
+      const subscriptionData = {
+        userId: "user-123",
+        customerId: "customer-123",
+        subscriptionId: "sub-123",
+        productId: "tier_pro",
+        status: "active" as const,
+        currentPeriodStart: new Date("2024-01-01"),
+        currentPeriodEnd: new Date("2024-02-01"),
+        canceledAt: null,
+        lastWebhookCreatedAt: new Date("2024-01-01T00:00:00Z"),
+      };
+
+      const mockResult = [{ id: "subscription-id", ...subscriptionData }];
+
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          onConflictDoUpdate: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue(mockResult),
+          }),
+        }),
+      });
+
+      const { upsertSubscription } = await import("./subscription");
+
+      const result = await upsertSubscription(subscriptionData);
+
+      expect(result).toEqual(mockResult);
+      expect(mockDb.insert).toHaveBeenCalledWith(mockSubscriptions);
+    });
+
+    it("should update existing subscription on conflict", async () => {
+      const subscriptionData = {
+        userId: "user-123",
+        customerId: "customer-123",
+        subscriptionId: "sub-123",
+        productId: "product-123",
+        status: "canceled" as const,
+        currentPeriodStart: new Date("2024-01-01"),
+        currentPeriodEnd: new Date("2024-02-01"),
+        canceledAt: new Date("2024-01-15"),
+        lastWebhookCreatedAt: new Date("2024-01-15T00:00:00Z"),
+      };
+
+      const mockUpdateResult = [{ id: "subscription-id", ...subscriptionData }];
+
+      const mockOnConflictDoUpdate = jest.fn().mockReturnValue({
+        returning: jest.fn().mockResolvedValue(mockUpdateResult),
+      });
+
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          onConflictDoUpdate: mockOnConflictDoUpdate,
+        }),
+      });
+
+      const { upsertSubscription } = await import("./subscription");
+
+      const result = await upsertSubscription(subscriptionData);
+
+      expect(result).toEqual(mockUpdateResult);
+      expect(mockOnConflictDoUpdate).toHaveBeenCalledWith({
+        target: mockSubscriptions.subscriptionId,
+        set: expect.objectContaining({
+          status: "canceled",
+          productId: "product-123",
+          canceledAt: subscriptionData.canceledAt,
+          lastWebhookCreatedAt: subscriptionData.lastWebhookCreatedAt,
+          updatedAt: expect.any(Date),
+        }),
+        setWhere: expect.any(Object),
+      });
+    });
+
+    it("should work with transaction", async () => {
+      const subscriptionData = {
+        userId: "user-123",
+        customerId: "customer-123",
+        subscriptionId: "sub-123",
+        productId: "product-123",
+        status: "active" as const,
+        lastWebhookCreatedAt: new Date("2024-01-01T00:00:00Z"),
+      };
+
+      const mockTx = {
+        insert: jest.fn().mockReturnValue({
+          values: jest.fn().mockReturnValue({
+            onConflictDoUpdate: jest.fn().mockReturnValue({
+              returning: jest.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+      };
+
+      const { upsertSubscription } = await import("./subscription");
+
+      await upsertSubscription(subscriptionData, mockTx as any);
+
+      expect(mockTx.insert).toHaveBeenCalledWith(mockSubscriptions);
+    });
+  });
+
+  describe("upsertPayment", () => {
+    it("normalizes ISO currency codes when creating a payment", async () => {
+      const paymentData = {
+        userId: "user-123",
+        customerId: "customer-123",
+        subscriptionId: "sub-123",
+        productId: "product-123",
+        paymentId: "payment-123",
+        amount: 1000,
+        currency: "USD",
+        status: "succeeded",
+        paymentType: "subscription",
+      };
+
+      const mockResult = [
+        { id: "payment-id", ...paymentData, currency: "usd" },
+      ];
+      const mockValues = jest.fn().mockReturnValue({
+        onConflictDoUpdate: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue(mockResult),
+        }),
+      });
+
+      mockDb.insert.mockReturnValue({
+        values: mockValues,
+      });
+
+      const { upsertPayment } = await import("./subscription");
+
+      const result = await upsertPayment(paymentData);
+
+      expect(result).toEqual(mockResult);
+      expect(mockDb.insert).toHaveBeenCalledWith(mockPayments);
+      expect(mockValues).toHaveBeenCalledWith(
+        expect.objectContaining({ currency: "usd" }),
+      );
+    });
+
+    it("should update existing payment on conflict", async () => {
+      const paymentData = {
+        userId: "user-123",
+        customerId: "customer-123",
+        paymentId: "payment-123",
+        productId: "product-123",
+        amount: 1000,
+        currency: "usd",
+        status: "failed",
+        paymentType: "subscription",
+      };
+
+      const mockOnConflictDoUpdate = jest.fn().mockReturnValue({
+        returning: jest.fn().mockResolvedValue([
+          {
+            ...paymentData,
+            subscriptionId: null,
+          },
+        ]),
+      });
+
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          onConflictDoUpdate: mockOnConflictDoUpdate,
+        }),
+      });
+
+      const { upsertPayment } = await import("./subscription");
+
+      await upsertPayment(paymentData);
+
+      expect(mockOnConflictDoUpdate).toHaveBeenCalledWith({
+        target: mockPayments.paymentId,
+        set: expect.objectContaining({
+          status: expect.anything(),
+          updatedAt: expect.any(Date),
+        }),
+      });
+      expect(mockSql).toHaveBeenCalled();
+    });
+
+    it("does not downgrade a succeeded invoice when a failed event arrives late", async () => {
+      const paymentData = {
+        userId: "user-123",
+        customerId: "customer-123",
+        paymentId: "invoice-123",
+        productId: "product-123",
+        amount: 1000,
+        currency: "usd",
+        status: "failed",
+        paymentType: "subscription",
+      };
+      const onConflictDoUpdate = jest.fn().mockReturnValue({
+        returning: jest.fn().mockResolvedValue([
+          {
+            ...paymentData,
+            subscriptionId: null,
+            status: "succeeded",
+          },
+        ]),
+      });
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockReturnValue({ onConflictDoUpdate }),
+      });
+      const { upsertPayment } = await import("./subscription");
+
+      await upsertPayment(paymentData);
+
+      const statusExpression = onConflictDoUpdate.mock.calls[0]?.[0].set
+        .status as { strings: string[]; values: unknown[] };
+      expect(statusExpression.strings.join(" ")).toContain("= 'succeeded' and");
+      expect(statusExpression.values).toContain("failed");
+    });
+
+    it("preserves a previously linked PaymentIntent when a replay omits it", async () => {
+      const paymentData = {
+        userId: "user-123",
+        customerId: "customer-123",
+        subscriptionId: "sub-123",
+        productId: "product-123",
+        paymentId: "invoice-123",
+        amount: 1000,
+        currency: "usd",
+        status: "failed",
+        paymentType: "subscription",
+      };
+      const onConflictDoUpdate = jest.fn().mockReturnValue({
+        returning: jest
+          .fn()
+          .mockResolvedValue([
+            { ...paymentData, paymentIntentId: "pi_existing" },
+          ]),
+      });
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockReturnValue({ onConflictDoUpdate }),
+      });
+
+      const { upsertPayment } = await import("./subscription");
+
+      await expect(upsertPayment(paymentData)).resolves.toHaveLength(1);
+    });
+
+    it("should handle nullable subscriptionId", async () => {
+      const paymentData = {
+        userId: "user-123",
+        customerId: "customer-123",
+        subscriptionId: null,
+        productId: "product-123",
+        paymentId: "payment-123",
+        amount: 1000,
+        currency: "usd",
+        status: "succeeded",
+        paymentType: "one_time",
+      };
+
+      const { upsertPayment } = await import("./subscription");
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          onConflictDoUpdate: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([paymentData]),
+          }),
+        }),
+      });
+
+      await upsertPayment(paymentData);
+
+      expect(mockDb.insert).toHaveBeenCalled();
+    });
+
+    it("rejects invalid currency codes before writing", async () => {
+      const { upsertPayment } = await import("./subscription");
+
+      await expect(
+        upsertPayment({
+          userId: "user-123",
+          customerId: "customer-123",
+          subscriptionId: null,
+          productId: "product-123",
+          paymentId: "payment-123",
+          amount: 1000,
+          currency: "US dollars",
+          status: "succeeded",
+          paymentType: "one_time",
+        }),
+      ).rejects.toThrow("three-letter ISO code");
+      expect(mockDb.insert).not.toHaveBeenCalled();
+    });
+
+    it("rejects a conflicting payment owner or product", async () => {
+      const paymentData = {
+        userId: "user-123",
+        customerId: "customer-123",
+        subscriptionId: null,
+        productId: "product-123",
+        paymentId: "payment-123",
+        amount: 1000,
+        currency: "usd",
+        status: "succeeded",
+        paymentType: "one_time",
+      };
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          onConflictDoUpdate: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([
+              {
+                ...paymentData,
+                userId: "different-user",
+              },
+            ]),
+          }),
+        }),
+      });
+      const { upsertPayment } = await import("./subscription");
+
+      await expect(upsertPayment(paymentData)).rejects.toThrow(
+        "conflicts with existing immutable payment data",
+      );
+    });
+  });
+
+  describe("product entitlements", () => {
+    it("grants or reactivates an entitlement for one user and product", async () => {
+      const returning = jest.fn().mockResolvedValue([{ id: "entitlement-1" }]);
+      const onConflictDoUpdate = jest.fn().mockReturnValue({ returning });
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockReturnValue({ onConflictDoUpdate }),
+      });
+      const { grantProductEntitlement } = await import("./subscription");
+
+      await grantProductEntitlement({
+        userId: "user-1",
+        productId: "pro",
+        sourcePaymentId: "payment-1",
+      });
+
+      expect(onConflictDoUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          target: [
+            mockProductEntitlements.userId,
+            mockProductEntitlements.productId,
+          ],
+          set: expect.objectContaining({
+            sourcePaymentId: "payment-1",
+            revokedAt: null,
+            revocationReason: null,
+          }),
+        }),
+      );
+    });
+
+    it("checks only active entitlements for the requested user and product", async () => {
+      const limit = jest.fn().mockResolvedValue([{ id: "entitlement-1" }]);
+      const where = jest.fn().mockReturnValue({ limit });
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({ where }),
+      });
+      const { hasUserProductEntitlement } = await import("./subscription");
+
+      await expect(hasUserProductEntitlement("user-1", "pro")).resolves.toBe(
+        true,
+      );
+      expect(where).toHaveBeenCalled();
+    });
+
+    it("selects the highest known active lifetime tier", async () => {
+      mockGetProductTierById.mockImplementation((id: string) => {
+        const prices = { plus: 20, pro: 30, team: 60 };
+        const price = prices[id as keyof typeof prices];
+        return price ? { id, prices: { oneTime: price } } : undefined;
+      });
+      const rows = [
+        { id: "unknown", productId: "legacy" },
+        { id: "plus", productId: "plus" },
+        { id: "team", productId: "team" },
+      ];
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue(rows),
+        }),
+      });
+      const { getUserProductEntitlement } = await import("./subscription");
+
+      await expect(getUserProductEntitlement("user-1")).resolves.toEqual(
+        rows[2],
+      );
+    });
+
+    it("falls back to another successful purchase when the source is revoked", async () => {
+      const firstWhere = jest.fn().mockReturnValue({
+        returning: jest.fn().mockResolvedValue([
+          {
+            id: "entitlement-1",
+            userId: "user-1",
+            productId: "pro",
+          },
+        ]),
+      });
+      const firstSet = jest.fn().mockReturnValue({ where: firstWhere });
+      const secondWhere = jest.fn().mockResolvedValue([]);
+      const secondSet = jest.fn().mockReturnValue({ where: secondWhere });
+      mockDb.update
+        .mockReturnValueOnce({ set: firstSet })
+        .mockReturnValueOnce({ set: secondSet });
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockReturnValue({
+              limit: jest
+                .fn()
+                .mockResolvedValue([{ paymentId: "payment-fallback" }]),
+            }),
+          }),
+        }),
+      });
+      const { revokeProductEntitlementByPaymentId } =
+        await import("./subscription");
+
+      await revokeProductEntitlementByPaymentId("payment-refunded", "refunded");
+
+      expect(secondSet).toHaveBeenCalledWith({
+        sourcePaymentId: "payment-fallback",
+        revokedAt: null,
+        revocationReason: null,
+      });
+    });
+
+    it("rejects an adjustment before its payment exists", async () => {
+      mockDb.update.mockReturnValue({
+        set: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            returning: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+      });
+      const { updatePaymentStatus } = await import("./subscription");
+
+      await expect(
+        updatePaymentStatus("payment-missing", "disputed"),
+      ).rejects.toThrow("not available for a billing adjustment yet");
+    });
+
+    it("uses a monotonic status expression for payment adjustments", async () => {
+      const returning = jest.fn().mockResolvedValue([{ id: "payment-1" }]);
+      const where = jest.fn().mockReturnValue({ returning });
+      const set = jest.fn().mockReturnValue({ where });
+      mockDb.update.mockReturnValue({ set });
+      const { updatePaymentStatus } = await import("./subscription");
+
+      await updatePaymentStatus("payment-1", "partially_refunded");
+
+      expect(set).toHaveBeenCalledWith(
+        expect.objectContaining({ status: expect.anything() }),
+      );
+      expect(mockSql).toHaveBeenCalled();
+    });
+  });
+
+  describe("lockPaymentAdjustmentScope", () => {
+    it("takes the product transaction lock before locking the payment", async () => {
+      const paymentLimit = jest
+        .fn()
+        .mockResolvedValue([
+          { paymentId: "payment-1", userId: "user-1", productId: "pro" },
+        ]);
+      const paymentForUpdate = jest
+        .fn()
+        .mockResolvedValue([{ id: "payment-row" }]);
+      const execute = jest.fn().mockResolvedValue([]);
+      const select = jest
+        .fn()
+        .mockReturnValueOnce({
+          from: jest.fn().mockReturnValue({
+            where: jest.fn().mockReturnValue({ limit: paymentLimit }),
+          }),
+        })
+        .mockReturnValueOnce({
+          from: jest.fn().mockReturnValue({
+            where: jest.fn().mockReturnValue({ for: paymentForUpdate }),
+          }),
+        });
+      const tx = { execute, select };
+      const { lockPaymentAdjustmentScope } = await import("./subscription");
+
+      await expect(
+        lockPaymentAdjustmentScope(["payment-1"], tx as any),
+      ).resolves.toBe("payment-1");
+
+      expect(paymentLimit).toHaveBeenCalledWith(1);
+      expect(execute).toHaveBeenCalled();
+      expect(paymentForUpdate).toHaveBeenCalledWith("update");
+      expect(execute.mock.invocationCallOrder[0]).toBeLessThan(
+        paymentForUpdate.mock.invocationCallOrder[0]!,
+      );
+    });
+  });
+
+  describe("findUserByCustomerId", () => {
+    it("should find user by customer ID", async () => {
+      const mockUser = {
+        id: "user-123",
+        email: "user@example.com",
+        paymentProviderCustomerId: "customer-123",
+      };
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue([mockUser]),
+          }),
+        }),
+      });
+
+      const { findUserByCustomerId } = await import("./subscription");
+
+      const result = await findUserByCustomerId("customer-123");
+
+      expect(result).toEqual(mockUser);
+      expect(mockEq).toHaveBeenCalledWith(
+        mockUsers.paymentProviderCustomerId,
+        "customer-123",
+      );
+    });
+
+    it("should return null when user not found", async () => {
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+      });
+
+      const { findUserByCustomerId } = await import("./subscription");
+
+      const result = await findUserByCustomerId("nonexistent-customer");
+
+      expect(result).toBeNull();
+    });
+
+    it("should work with transaction", async () => {
+      const mockTx = {
+        select: jest.fn().mockReturnValue({
+          from: jest.fn().mockReturnValue({
+            where: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue([]),
+            }),
+          }),
+        }),
+      };
+
+      const { findUserByCustomerId } = await import("./subscription");
+
+      await findUserByCustomerId("customer-123", mockTx as any);
+
+      expect(mockTx.select).toHaveBeenCalled();
+    });
+  });
+
+  describe("getUserSubscription", () => {
+    it("should return null when no subscriptions found", async () => {
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+      });
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      expect(result).toBeNull();
+    });
+
+    it("should return active subscription when available", async () => {
+      const mockSubscription = {
+        id: "sub-db-id",
+        userId: "user-123",
+        customerId: "customer-123",
+        subscriptionId: "sub-123",
+        productId: "tier_pro",
+        status: "active",
+        currentPeriodStart: new Date("2024-01-01"),
+        currentPeriodEnd: new Date("2024-02-01"),
+        canceledAt: null,
+        createdAt: new Date("2024-01-01"),
+      };
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue([mockSubscription]),
+          }),
+        }),
+      });
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      expect(result).toEqual({
+        id: "sub-db-id",
+        userId: "user-123",
+        customerId: "customer-123",
+        subscriptionId: "sub-123",
+        status: "active",
+        tierId: "tier_pro",
+        currentPeriodStart: mockSubscription.currentPeriodStart,
+        currentPeriodEnd: mockSubscription.currentPeriodEnd,
+        canceledAt: null,
+      });
+    });
+
+    it("should prefer active subscription over canceled ones", async () => {
+      const mockSubscriptions = [
+        {
+          id: "sub-canceled",
+          userId: "user-123",
+          subscriptionId: "sub-canceled",
+          productId: "product-123",
+          status: "canceled",
+          createdAt: new Date("2024-01-02"),
+        },
+        {
+          id: "sub-active",
+          userId: "user-123",
+          subscriptionId: "sub-active",
+          productId: "product-123",
+          status: "active",
+          createdAt: new Date("2024-01-01"),
+        },
+      ];
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue(mockSubscriptions),
+          }),
+        }),
+      });
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      expect(result?.subscriptionId).toBe("sub-active");
+    });
+
+    it("should prefer an unexpired canceled subscription over a newer incomplete one", async () => {
+      const mockSubscriptions = [
+        {
+          id: "sub-incomplete",
+          userId: "user-123",
+          subscriptionId: "sub-incomplete",
+          productId: "product-123",
+          status: "incomplete",
+          createdAt: new Date("2024-01-02"),
+        },
+        {
+          id: "sub-canceled",
+          userId: "user-123",
+          subscriptionId: "sub-canceled",
+          productId: "product-123",
+          status: "canceled",
+          currentPeriodEnd: new Date("2099-01-01"),
+          createdAt: new Date("2024-01-01"),
+        },
+      ];
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue(mockSubscriptions),
+          }),
+        }),
+      });
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      expect(result?.subscriptionId).toBe("sub-canceled");
+    });
+
+    it("should prefer scheduled cancellation over a newer expired subscription", async () => {
+      const mockSubscriptions = [
+        {
+          id: "sub-expired",
+          userId: "user-123",
+          subscriptionId: "sub-expired",
+          productId: "product-123",
+          status: "expired",
+          createdAt: new Date("2024-01-02"),
+        },
+        {
+          id: "sub-scheduled",
+          userId: "user-123",
+          subscriptionId: "sub-scheduled",
+          productId: "product-123",
+          status: "scheduled_cancel",
+          createdAt: new Date("2024-01-01"),
+        },
+      ];
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue(mockSubscriptions),
+          }),
+        }),
+      });
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      expect(result?.subscriptionId).toBe("sub-scheduled");
+    });
+
+    it("should prefer a manageable subscription over a newer terminal one", async () => {
+      const mockSubscriptions = [
+        {
+          id: "sub-expired",
+          userId: "user-123",
+          subscriptionId: "sub-expired",
+          productId: "product-123",
+          status: "expired",
+          createdAt: new Date("2024-01-02"),
+        },
+        {
+          id: "sub-past-due",
+          userId: "user-123",
+          subscriptionId: "sub-past-due",
+          productId: "product-123",
+          status: "past_due",
+          createdAt: new Date("2024-01-01"),
+        },
+      ];
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue(mockSubscriptions),
+          }),
+        }),
+      });
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      expect(result?.subscriptionId).toBe("sub-past-due");
+    });
+
+    it("should handle trialing subscriptions", async () => {
+      const mockSubscription = {
+        id: "sub-trial",
+        userId: "user-123",
+        subscriptionId: "sub-trial",
+        productId: "product-123",
+        status: "trialing",
+        createdAt: new Date("2024-01-01"),
+      };
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue([mockSubscription]),
+          }),
+        }),
+      });
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      expect(result?.status).toBe("trialing");
+    });
+
+    it("should log warning for multiple active subscriptions", async () => {
+      const mockSubscriptions = [
+        {
+          id: "sub1",
+          userId: "user-123",
+          subscriptionId: "sub-123-1",
+          productId: "product-123",
+          status: "active",
+          currentPeriodEnd: new Date(Date.now() + 86_400_000),
+          createdAt: new Date("2024-01-02"),
+        },
+        {
+          id: "sub2",
+          userId: "user-123",
+          subscriptionId: "sub-123-2",
+          productId: "product-123",
+          status: "active",
+          currentPeriodEnd: new Date(Date.now() + 86_400_000),
+          createdAt: new Date("2024-01-01"),
+        },
+      ];
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue(mockSubscriptions),
+          }),
+        }),
+      });
+
+      const consoleSpy = jest.spyOn(console, "warn").mockImplementation();
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "User user-123 has 2 currently accessible subscriptions",
+        ),
+        expect.objectContaining({
+          userId: "user-123",
+          subscriptionIds: ["sub-123-1", "sub-123-2"],
+          statuses: ["active", "active"],
+        }),
+      );
+
+      // Should return the most recent active subscription
+      expect(result?.subscriptionId).toBe("sub-123-1");
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should fallback to product ID when tier not found", async () => {
+      const mockSubscription = {
+        id: "sub-id",
+        userId: "user-123",
+        subscriptionId: "sub-123",
+        productId: "unknown-product",
+        status: "active",
+        createdAt: new Date("2024-01-01"),
+      };
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue([mockSubscription]),
+          }),
+        }),
+      });
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      expect(result?.tierId).toBe("unknown-product");
+    });
+
+    it("should handle edge case with empty subscriptions array after sorting", async () => {
+      // Test the line "if (!subToReturn) return null;" at line 139
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue([]), // Empty array
+          }),
+        }),
+      });
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      expect(result).toBeNull();
+    });
+
+    it("should return most recent subscription when no active/trialing ones exist", async () => {
+      const mockSubscriptions = [
+        {
+          id: "sub-canceled-recent",
+          userId: "user-123",
+          subscriptionId: "sub-canceled-recent",
+          productId: "product-123",
+          status: "canceled",
+          createdAt: new Date("2024-01-02"),
+        },
+        {
+          id: "sub-expired-old",
+          userId: "user-123",
+          subscriptionId: "sub-expired-old",
+          productId: "product-123",
+          status: "expired",
+          createdAt: new Date("2024-01-01"),
+        },
+      ];
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue(mockSubscriptions),
+          }),
+        }),
+      });
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      // Should return the most recent subscription even if not active
+      expect(result?.subscriptionId).toBe("sub-canceled-recent");
+      expect(result?.status).toBe("canceled");
+    });
+
+    it("should handle mixed trialing and active subscriptions", async () => {
+      const mockSubscriptions = [
+        {
+          id: "sub-trialing",
+          userId: "user-123",
+          subscriptionId: "sub-trialing",
+          productId: "product-123",
+          status: "trialing",
+          currentPeriodEnd: new Date(Date.now() + 86_400_000),
+          createdAt: new Date("2024-01-03"),
+        },
+        {
+          id: "sub-active",
+          userId: "user-123",
+          subscriptionId: "sub-active",
+          productId: "product-123",
+          status: "active",
+          currentPeriodEnd: new Date(Date.now() + 86_400_000),
+          createdAt: new Date("2024-01-02"),
+        },
+        {
+          id: "sub-canceled",
+          userId: "user-123",
+          subscriptionId: "sub-canceled",
+          productId: "product-123",
+          status: "canceled",
+          createdAt: new Date("2024-01-01"),
+        },
+      ];
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockResolvedValue(mockSubscriptions),
+          }),
+        }),
+      });
+
+      const { getUserSubscription } = await import("./subscription");
+
+      const result = await getUserSubscription("user-123");
+
+      // Should return the most recent active/trialing subscription
+      expect(result?.subscriptionId).toBe("sub-trialing");
+      expect(result?.status).toBe("trialing");
+    });
+  });
+
+  describe("getUserPayments", () => {
+    it("should return user payments with default limit", async () => {
+      const mockPayments = [
+        {
+          id: "payment1",
+          userId: "user-123",
+          paymentId: "pay-123",
+          productId: "product-123",
+          amount: 1000,
+          currency: "usd",
+          status: "succeeded",
+          createdAt: new Date("2024-01-01"),
+        },
+      ];
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue(mockPayments),
+            }),
+          }),
+        }),
+      });
+
+      const { getUserPayments } = await import("./subscription");
+
+      const result = await getUserPayments("user-123");
+
+      expect(result).toEqual([
+        {
+          ...mockPayments[0],
+          tierId: "tier_pro",
+          tierName: "Pro Plan",
+        },
+      ]);
+
+      expect(mockGetProductTierById).toHaveBeenCalledWith("product-123");
+    });
+
+    it("should respect custom limit", async () => {
+      const mockLimit = jest.fn().mockResolvedValue([]);
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockReturnValue({
+              limit: mockLimit,
+            }),
+          }),
+        }),
+      });
+
+      const { getUserPayments } = await import("./subscription");
+
+      await getUserPayments("user-123", 25);
+
+      expect(mockLimit).toHaveBeenCalledWith(25);
+    });
+
+    it("should map stored tier ids to catalog metadata", async () => {
+      const mockPayments = [
+        {
+          id: "payment1",
+          userId: "user-123",
+          paymentId: "pay-123",
+          productId: "tier-123",
+          amount: 1000,
+          currency: "usd",
+          status: "succeeded",
+          createdAt: new Date("2024-01-01"),
+        },
+      ];
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue(mockPayments),
+            }),
+          }),
+        }),
+      });
+
+      mockGetProductTierById.mockReturnValue({
+        id: "tier_basic",
+        name: "Basic Plan",
+      });
+
+      const { getUserPayments } = await import("./subscription");
+
+      const result = await getUserPayments("user-123");
+
+      expect(result[0].tierId).toBe("tier_basic");
+      expect(result[0].tierName).toBe("Basic Plan");
+      expect(mockGetProductTierById).toHaveBeenCalledWith("tier-123");
+    });
+
+    it("should handle unknown products gracefully", async () => {
+      const mockPayments = [
+        {
+          id: "payment1",
+          userId: "user-123",
+          paymentId: "pay-123",
+          productId: "unknown-product",
+          amount: 1000,
+          currency: "usd",
+          status: "succeeded",
+          createdAt: new Date("2024-01-01"),
+        },
+      ];
+
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            orderBy: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue(mockPayments),
+            }),
+          }),
+        }),
+      });
+
+      mockGetProductTierById.mockReturnValue(null);
+
+      const { getUserPayments } = await import("./subscription");
+
+      const result = await getUserPayments("user-123");
+
+      expect(result[0].tierId).toBe("unknown-product");
+      expect(result[0].tierName).toBe("Unknown Product");
+    });
+  });
+
+  describe("getUserPaymentCount", () => {
+    it("counts all payments for a user", async () => {
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([
+            {
+              count: 12,
+              latestCreatedAt: new Date("2026-02-03T00:00:00Z"),
+            },
+          ]),
+        }),
+      });
+
+      const { getUserPaymentCount } = await import("./subscription");
+
+      await expect(getUserPaymentCount("user-123")).resolves.toBe(12);
+      expect(mockCount).toHaveBeenCalledTimes(1);
+      expect(mockEq).toHaveBeenCalledWith(mockPayments.userId, "user-123");
+    });
+
+    it("returns the latest matching payment alongside its count", async () => {
+      const latestCreatedAt = new Date("2026-02-03T00:00:00Z");
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([{ count: 12, latestCreatedAt }]),
+        }),
+      });
+
+      const { getUserPaymentSummary } = await import("./subscription");
+
+      await expect(getUserPaymentSummary("user-123")).resolves.toEqual({
+        count: 12,
+        latestCreatedAt,
+      });
+      expect(mockMax).toHaveBeenCalledWith(mockPayments.createdAt);
+    });
+
+    it("optionally limits the count to one payment status", async () => {
+      mockDb.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockResolvedValue([{ count: 4 }]),
+        }),
+      });
+
+      const { getUserPaymentCount } = await import("./subscription");
+
+      await expect(getUserPaymentCount("user-123", "succeeded")).resolves.toBe(
+        4,
+      );
+      expect(mockEq).toHaveBeenCalledWith(mockPayments.status, "succeeded");
+      expect(mockAnd).toHaveBeenCalled();
+    });
+  });
+
+  describe("claimWebhookEvent", () => {
+    it("should claim an event without retaining its raw payload", async () => {
+      const values = jest.fn().mockReturnValue({
+        onConflictDoNothing: jest.fn().mockReturnValue({
+          returning: jest.fn().mockResolvedValue([{ id: "event-row-id" }]),
+        }),
+      });
+      mockDb.insert.mockReturnValue({
+        values,
+      });
+
+      const { claimWebhookEvent } = await import("./subscription");
+      const result = await claimWebhookEvent(
+        "event-123",
+        "payment.succeeded",
+        "stripe",
+      );
+
+      expect(result).toBe(true);
+      expect(mockDb.insert).toHaveBeenCalledWith(mockWebhookEvents);
+      expect(values).toHaveBeenCalledWith({
+        eventId: "event-123",
+        eventType: "payment.succeeded",
+        provider: "stripe",
+      });
+    });
+
+    it("should use default provider when not specified", async () => {
+      const { claimWebhookEvent } = await import("./subscription");
+
+      await claimWebhookEvent("event-123", "payment.succeeded");
+
+      expect(mockDb.insert).toHaveBeenCalled();
+    });
+
+    it("should work with transaction", async () => {
+      const mockTx = {
+        insert: jest.fn().mockReturnValue({
+          values: jest.fn().mockReturnValue({
+            onConflictDoNothing: jest.fn().mockReturnValue({
+              returning: jest.fn().mockResolvedValue([{ id: "event-row-id" }]),
+            }),
+          }),
+        }),
+      };
+
+      const { claimWebhookEvent } = await import("./subscription");
+
+      await claimWebhookEvent(
+        "event-123",
+        "payment.succeeded",
+        "stripe",
+        mockTx as any,
+      );
+
+      expect(mockTx.insert).toHaveBeenCalledWith(mockWebhookEvents);
+    });
+
+    it("should ignore conflicts gracefully", async () => {
+      const mockReturning = jest.fn().mockResolvedValue([]);
+      const mockOnConflictDoNothing = jest.fn().mockReturnValue({
+        returning: mockReturning,
+      });
+
+      mockDb.insert.mockReturnValue({
+        values: jest.fn().mockReturnValue({
+          onConflictDoNothing: mockOnConflictDoNothing,
+        }),
+      });
+
+      const { claimWebhookEvent } = await import("./subscription");
+
+      const result = await claimWebhookEvent("event-123", "payment.succeeded");
+
+      expect(result).toBe(false);
+      expect(mockOnConflictDoNothing).toHaveBeenCalledWith({
+        target: [mockWebhookEvents.provider, mockWebhookEvents.eventId],
+      });
+      expect(mockReturning).toHaveBeenCalled();
+    });
+  });
+
+  describe("Helper function getDb", () => {
+    it("should return transaction when provided", async () => {
+      const mockTx = { select: jest.fn() };
+
+      // Test indirectly through a function that uses getDb
+      const { findUserByCustomerId } = await import("./subscription");
+
+      mockTx.select.mockReturnValue({
+        from: jest.fn().mockReturnValue({
+          where: jest.fn().mockReturnValue({
+            limit: jest.fn().mockResolvedValue([]),
+          }),
+        }),
+      });
+
+      await findUserByCustomerId("customer-123", mockTx as any);
+
+      expect(mockTx.select).toHaveBeenCalled();
+      expect(mockDb.select).not.toHaveBeenCalled();
+    });
+
+    it("should return db when no transaction provided", async () => {
+      const { findUserByCustomerId } = await import("./subscription");
+
+      await findUserByCustomerId("customer-123");
+
+      expect(mockDb.select).toHaveBeenCalled();
+    });
+  });
+});

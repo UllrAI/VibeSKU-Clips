@@ -1,0 +1,278 @@
+import { getStaticTranslations } from "@/lib/i18n/translation/static";
+import { notFound } from "next/navigation";
+import Script from "next/script";
+import env from "@/env";
+import { createMetadataDefaults } from "@/lib/metadata";
+import { BlogPostHeader } from "@/components/blog/blog-post-header";
+import { ReadingContainer } from "@/components/layout/page-container";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import type { Metadata } from "next";
+import { SOURCE_LOCALE, type SupportedLocale } from "@/lib/config/i18n";
+import { COMPANY_NAME } from "@/lib/config/constants";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import {
+  getAllPostSlugs,
+  getAuthorBySlug,
+  getLocalizedBlogPath,
+  getLocalizedBlogPostPath,
+  getPostBySlug,
+  getPostLocalizations,
+} from "@/lib/content/blog";
+import { absoluteUrl } from "@/lib/url";
+interface BlogPostPageProps {
+  params: Promise<{
+    slug: string;
+  }>;
+}
+export async function generateStaticParams() {
+  return getAllPostSlugs().map((slug) => ({
+    slug,
+  }));
+}
+export function generateBlogPostMetadata({
+  slug,
+  locale,
+}: {
+  slug: string;
+  locale: SupportedLocale;
+}): Metadata {
+  const { t } = getStaticTranslations(locale);
+  const post = getPostBySlug(slug, locale);
+  if (!post) {
+    const metadata = createMetadataDefaults({ locale });
+    const title = t("blog_post_not_found_title");
+    const description = t("blog_post_not_found_description");
+    return {
+      ...metadata,
+      title,
+      description,
+      robots: {
+        index: false,
+        follow: false,
+      },
+      openGraph: {
+        ...metadata.openGraph,
+        title,
+        description,
+      },
+      twitter: {
+        ...metadata.twitter,
+        title,
+        description,
+      },
+    };
+  }
+  const localizations = getPostLocalizations(slug);
+  const languageAlternates = Object.fromEntries(
+    localizations.map((localizedPost) => [
+      localizedPost.locale,
+      getLocalizedBlogPostPath(slug, localizedPost.locale),
+    ]),
+  );
+  const defaultLocalizedPost = localizations.find(
+    (localizedPost) => localizedPost.locale === SOURCE_LOCALE,
+  );
+  const description =
+    post.excerpt || t("blog_post_default_description", { title: post.title });
+  const publishedTime = post.publishedDate
+    ? new Date(post.publishedDate).toISOString()
+    : undefined;
+  const modifiedTime = post.updatedDate
+    ? new Date(post.updatedDate).toISOString()
+    : undefined;
+  const metadata = createMetadataDefaults({
+    locale,
+    openGraph: {
+      type: "article",
+      publishedTime,
+      modifiedTime,
+      images: post.heroImage
+        ? [
+            {
+              url: post.heroImage,
+              alt: post.title,
+            },
+          ]
+        : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      images: post.heroImage ? [post.heroImage] : undefined,
+    },
+    alternates: {
+      canonical: getLocalizedBlogPostPath(slug, post.locale),
+      languages: {
+        ...languageAlternates,
+        "x-default": getLocalizedBlogPostPath(
+          slug,
+          defaultLocalizedPost?.locale ?? post.locale,
+        ),
+      },
+    },
+  });
+  return {
+    ...metadata,
+    title: post.title,
+    description,
+    openGraph: {
+      ...metadata.openGraph,
+      title: post.title,
+      description,
+    },
+    twitter: {
+      ...metadata.twitter,
+      title: post.title,
+      description,
+    },
+  };
+}
+export async function generateMetadata({
+  params,
+}: BlogPostPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  return generateBlogPostMetadata({
+    slug,
+    locale: SOURCE_LOCALE,
+  });
+}
+export async function BlogPostPageContent({
+  locale,
+  params,
+}: BlogPostPageProps & {
+  locale: SupportedLocale;
+}) {
+  const { t } = getStaticTranslations(locale);
+  const { slug } = await params;
+  const post = getPostBySlug(slug, locale);
+  if (!post) {
+    notFound();
+  }
+  const author = getAuthorBySlug(post.author);
+  const canonicalUrl = new URL(
+    getLocalizedBlogPostPath(slug, post.locale),
+    env.NEXT_PUBLIC_APP_URL,
+  ).toString();
+  const articleStructuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        headline: post.title,
+        description: post.excerpt,
+        image: post.heroImage ? [post.heroImage] : undefined,
+        datePublished: post.publishedDate
+          ? new Date(post.publishedDate).toISOString()
+          : undefined,
+        dateModified: post.updatedDate
+          ? new Date(post.updatedDate).toISOString()
+          : undefined,
+        author: author?.name
+          ? {
+              "@type": "Person",
+              name: author.name,
+            }
+          : undefined,
+        publisher: {
+          "@type": "Organization",
+          "@id": absoluteUrl("/#organization"),
+          name: COMPANY_NAME,
+          logo: {
+            "@type": "ImageObject",
+            url: absoluteUrl("/icon-512.png"),
+            width: 512,
+            height: 512,
+          },
+        },
+        mainEntityOfPage: canonicalUrl,
+        inLanguage: post.locale,
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          {
+            "@type": "ListItem",
+            position: 1,
+            name: t("blog_title"),
+            item: new URL(
+              getLocalizedBlogPath(locale),
+              env.NEXT_PUBLIC_APP_URL,
+            ).toString(),
+          },
+          {
+            "@type": "ListItem",
+            position: 2,
+            name: post.title,
+            item: canonicalUrl,
+          },
+        ],
+      },
+    ],
+  };
+  return (
+    <>
+      <Script
+        id={`article-structured-data-${slug}`}
+        type="application/ld+json"
+        strategy="beforeInteractive"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(articleStructuredData).replace(
+            /</g,
+            "\\u003c",
+          ),
+        }}
+      />
+
+      <BlogPostHeader
+        title={post.title}
+        excerpt={post.excerpt || undefined}
+        heroImage={post.heroImage || undefined}
+        publishedDate={post.publishedDate || undefined}
+        updatedDate={post.updatedDate || undefined}
+        featured={post.featured}
+        tags={post.tags ? [...post.tags] : undefined}
+        content={post.content}
+        author={author?.name}
+        locale={locale}
+        backHref={getLocalizedBlogPath(locale)}
+      />
+
+      {/* Article Content */}
+      <section className="bg-background py-12 sm:py-16">
+        <ReadingContainer>
+          <article className="prose prose-base prose-slate dark:prose-invert markdown-content sm:prose-lg mx-auto max-w-none [&_pre]:max-w-full [&_pre]:overflow-x-auto">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {post.content}
+            </ReactMarkdown>
+          </article>
+        </ReadingContainer>
+      </section>
+
+      {/* Footer */}
+      <section className="bg-muted/40 py-12 sm:py-16">
+        <ReadingContainer>
+          <div className="text-center">
+            <h2 className="text-foreground mb-4 text-xl font-bold sm:text-2xl">
+              {t("blog_thanks_reading")}
+            </h2>
+            <p className="text-muted-foreground mb-6 text-sm sm:mb-8 sm:text-base">
+              {t("blog_want_read_more_articles_check_out")}
+            </p>
+            <Link href={getLocalizedBlogPath(locale)}>
+              <Button
+                size="lg"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground transition-colors"
+              >
+                {t("blog_explore_more_articles")}
+              </Button>
+            </Link>
+          </div>
+        </ReadingContainer>
+      </section>
+    </>
+  );
+}
+export default async function BlogPostPage({ params }: BlogPostPageProps) {
+  return <BlogPostPageContent locale={SOURCE_LOCALE} params={params} />;
+}

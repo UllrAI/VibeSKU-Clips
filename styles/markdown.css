@@ -1,0 +1,111 @@
+/* Markdown content styling */
+.markdown-content {
+  @apply text-foreground;
+}
+
+.markdown-content h1 {
+  @apply mt-8 mb-4 text-3xl font-bold tracking-tight first:mt-0;
+}
+
+.markdown-content h2 {
+  @apply mt-8 mb-4 text-2xl font-semibold tracking-tight first:mt-0;
+}
+
+.markdown-content h3 {
+  @apply mt-6 mb-3 text-xl font-semibold tracking-tight first:mt-0;
+}
+
+.markdown-content h4 {
+  @apply mt-6 mb-3 text-lg font-semibold tracking-tight first:mt-0;
+}
+
+.markdown-content h5 {
+  @apply mt-4 mb-2 text-base font-semibold tracking-tight first:mt-0;
+}
+
+.markdown-content h6 {
+  @apply mt-4 mb-2 text-sm font-semibold tracking-tight first:mt-0;
+}
+
+.markdown-content p {
+  @apply mb-4 text-base leading-7;
+}
+
+.markdown-content ul {
+  @apply mb-4 list-inside list-disc space-y-2;
+}
+
+.markdown-content ol {
+  @apply mb-4 list-inside list-decimal space-y-2;
+}
+
+.markdown-content li {
+  @apply text-base leading-7;
+}
+
+.markdown-content li > ul,
+.markdown-content li > ol {
+  @apply mt-2 ml-4;
+}
+
+.markdown-content blockquote {
+  @apply border-primary text-muted-foreground bg-muted/30 mb-4 border-l-4 py-2 pl-4;
+}
+
+.markdown-content code {
+  @apply bg-muted px-1.5 py-0.5 font-mono text-sm;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.markdown-content pre {
+  @apply bg-muted mb-4 overflow-x-auto border p-6;
+}
+
+.markdown-content pre code {
+  @apply bg-transparent p-0 text-sm;
+  overflow-wrap: normal;
+  white-space: pre;
+  word-break: normal;
+}
+
+.markdown-content a {
+  @apply text-primary hover:text-primary/80 underline underline-offset-4 transition-colors;
+}
+
+.markdown-content img {
+  @apply mb-4 h-auto max-w-full border;
+}
+
+.markdown-content table {
+  @apply border-border mb-4 w-full border-collapse border;
+}
+
+.markdown-content th {
+  @apply border-border bg-muted border px-4 py-2 text-left font-semibold;
+}
+
+.markdown-content td {
+  @apply border-border border px-4 py-2;
+}
+
+.markdown-content hr {
+  @apply border-border my-8 border-0 border-t;
+}
+
+.markdown-content strong {
+  @apply font-semibold;
+}
+
+.markdown-content em {
+  @apply italic;
+}
+
+/* Code syntax highlighting */
+.markdown-content pre[class*="language-"] {
+  @apply bg-muted;
+}
+
+.markdown-content code[class*="language-"] {
+  @apply text-foreground;
+}

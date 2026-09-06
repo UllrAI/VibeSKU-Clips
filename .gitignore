@@ -1,6 +1,7 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
+/.swc
 /node_modules
 /.pnp
 .pnp.*
@@ -12,34 +13,34 @@
 
 # testing
 /coverage
+/playwright-report
+/test-results
 
 # next.js
 /.next/
 /out/
+.content-collections
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
 *.pem
+*.bak
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
-.env*
-
-# 数据目录（数据库、上传文件、输出视频）
-/data/
-
-# Claude Code
-CLAUDE.md
-AGENTS.md
-.claude/
+.env.local*
+.env.development*
+.env.test*
+.env.production*
+.env
 
 # vercel
 .vercel
@@ -47,3 +48,6 @@ AGENTS.md
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local data
+/data/

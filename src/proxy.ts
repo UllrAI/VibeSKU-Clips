@@ -1,0 +1,213 @@
+import { NextResponse, type NextRequest } from "next/server";
+import { buildLoginRedirectPath } from "@/lib/auth/callback-url";
+import { hasAuthenticatedSession } from "@/lib/auth/session";
+import {
+  LOCALE_COOKIE_NAME,
+  LOCALE_HEADER_NAME,
+  SOURCE_LOCALE,
+  extractLocaleFromPath,
+  getEnglishFallbackPathForUnsupportedLocale,
+  isMarketingPath,
+  resolvePreferredLocale,
+  withLocalePrefix,
+  normalizeLocaleCandidate,
+} from "@/lib/config/i18n-routing";
+
+const APPLICATION_ROUTE_PREFIXES = [
+  "/auth",
+  "/dashboard",
+  "/device",
+  "/login",
+  "/signup",
+] as const;
+const NOT_FOUND_ROUTE_PATH = "/not-found-response";
+
+function isApplicationRoute(pathname: string): boolean {
+  return APPLICATION_ROUTE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+}
+
+function isDashboardRoute(pathname: string): boolean {
+  return pathname === "/dashboard" || pathname.startsWith("/dashboard/");
+}
+
+function setLocaleCookieIfChanged(
+  response: NextResponse,
+  currentLocale: string | undefined,
+  locale: string,
+): void {
+  const normalizedCurrentLocale = normalizeLocaleCandidate(currentLocale);
+  if (
+    normalizedCurrentLocale === locale ||
+    (!currentLocale && locale === SOURCE_LOCALE)
+  ) {
+    return;
+  }
+
+  response.cookies.set({
+    name: LOCALE_COOKIE_NAME,
+    value: locale,
+    path: "/",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+}
+
+function createLocalizedRequestHeaders(
+  request: NextRequest,
+  locale: string,
+): Headers {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(LOCALE_HEADER_NAME, locale);
+  return requestHeaders;
+}
+
+export default async function authMiddleware(request: NextRequest) {
+  const requestUrl = new URL(request.url);
+  const { pathname, search } = requestUrl;
+  const localeFromCookie = request.cookies.get(LOCALE_COOKIE_NAME)?.value;
+  const preferredLocale = resolvePreferredLocale({
+    cookieLocale: localeFromCookie,
+    acceptLanguage: request.headers.get("accept-language"),
+  });
+  const englishFallbackPath =
+    getEnglishFallbackPathForUnsupportedLocale(pathname);
+  if (englishFallbackPath) {
+    const redirectUrl = new URL(request.url);
+    redirectUrl.pathname = englishFallbackPath;
+    const response = NextResponse.redirect(redirectUrl, { status: 308 });
+    setLocaleCookieIfChanged(response, localeFromCookie, SOURCE_LOCALE);
+    return response;
+  }
+
+  const pathLocale = extractLocaleFromPath(pathname);
+  const basePathname = pathLocale.locale
+    ? pathLocale.strippedPathname
+    : pathname;
+
+  // Keep dashboard auth checks fast and deterministic.
+  const isDashboardPage = isDashboardRoute(pathname);
+  if (isDashboardPage) {
+    const requestHeaders = createLocalizedRequestHeaders(
+      request,
+      preferredLocale,
+    );
+
+    // Use better-auth helper to check the session cookie.
+    const hasSession = await hasAuthenticatedSession(request);
+
+    // Redirect unauthenticated users to login with callbackUrl.
+    if (!hasSession) {
+      const callbackUrl = `${pathname}${search}`;
+      const loginUrl = new URL(
+        buildLoginRedirectPath(callbackUrl),
+        request.url,
+      );
+      return NextResponse.redirect(loginUrl);
+    }
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
+
+  const isMarketingRequest = isMarketingPath(basePathname);
+  if (!isMarketingRequest) {
+    const requestHeaders = createLocalizedRequestHeaders(
+      request,
+      preferredLocale,
+    );
+
+    if (
+      pathname !== NOT_FOUND_ROUTE_PATH &&
+      !pathLocale.locale &&
+      !isApplicationRoute(pathname)
+    ) {
+      const notFoundUrl = new URL(NOT_FOUND_ROUTE_PATH, request.url);
+      return NextResponse.rewrite(notFoundUrl, {
+        status: 404,
+        request: {
+          headers: requestHeaders,
+        },
+      });
+    }
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
+
+  // Locale-prefixed path handling.
+  if (pathLocale.locale) {
+    // Canonical English path does not include /en prefix.
+    if (pathLocale.locale === SOURCE_LOCALE) {
+      const redirectUrl = new URL(request.url);
+      redirectUrl.pathname = pathLocale.strippedPathname;
+      const response = NextResponse.redirect(redirectUrl, 308);
+      setLocaleCookieIfChanged(response, localeFromCookie, SOURCE_LOCALE);
+      return response;
+    }
+
+    const canonicalLocalizedPath = withLocalePrefix(
+      pathLocale.strippedPathname,
+      pathLocale.locale,
+    );
+
+    // Canonicalize locale aliases such as /zh/... to /zh-Hans/...
+    if (
+      !pathLocale.isCanonicalLocaleSegment ||
+      pathname !== canonicalLocalizedPath
+    ) {
+      const redirectUrl = new URL(request.url);
+      redirectUrl.pathname = canonicalLocalizedPath;
+      const response = NextResponse.redirect(redirectUrl, 308);
+      setLocaleCookieIfChanged(response, localeFromCookie, pathLocale.locale);
+      return response;
+    }
+
+    const requestHeaders = createLocalizedRequestHeaders(
+      request,
+      pathLocale.locale,
+    );
+    const response = NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
+    return response;
+  }
+
+  // Keep language detection redirects user-specific so shared caches cannot
+  // serve one visitor's locale choice to another visitor.
+  if (preferredLocale !== SOURCE_LOCALE) {
+    const redirectUrl = new URL(request.url);
+    redirectUrl.pathname = withLocalePrefix(pathname, preferredLocale);
+    const response = NextResponse.redirect(redirectUrl, { status: 307 });
+    response.headers.set("Cache-Control", "private, no-store");
+    response.headers.set("Vary", "Accept-Language, Cookie");
+    setLocaleCookieIfChanged(response, localeFromCookie, preferredLocale);
+    return response;
+  }
+
+  // English uses canonical, unprefixed marketing URLs.
+  const requestHeaders = createLocalizedRequestHeaders(request, SOURCE_LOCALE);
+  const response = NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
+  response.headers.set("Cache-Control", "private, no-store");
+  response.headers.set("Vary", "Accept-Language, Cookie");
+  setLocaleCookieIfChanged(response, localeFromCookie, SOURCE_LOCALE);
+  return response;
+}
+
+export const config = {
+  // Exclude API/static assets, and handle both auth and locale routing in one place.
+  matcher: ["/((?!api|_next|_vercel|.*\\..*).*)"],
+};
