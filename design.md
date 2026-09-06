@@ -152,6 +152,29 @@ Generation runs for minutes, so the screen has to stay usable while it does.
 - A batch that is still expanding shows the planned count as the denominator.
   The unfilled part of the bar is work not yet started, not work that failed.
 
+### A flow with steps
+
+Unattended production reports progress. Attended production reports _steps_, and
+the two are not interchangeable: a person who is waiting on a step wants to know
+which step, what it produced, and what happens if they say yes.
+
+- The whole path is visible from the first screen. A numbered rail names every
+  step, marks the ones already signed off, and carries `aria-current="step"` on
+  the one the operator is in. A spinner with no rail behind it is the failure
+  this replaced.
+- Every step has the same shape: what it is, what it made, and one action that
+  moves on. The primary action sits in the same place on every step so it never
+  has to be hunted for.
+- Nothing expensive runs without a confirmation, and each step shows its output
+  before asking for one. Generation is preceded by the words that produced it.
+- Going back is always offered, and going back never destroys the step's work
+  until the operator asks for it again.
+- A step that is working says what it is working on and roughly how long that
+  takes. A step that gave up says so in the operator's language, keeps its place
+  in the rail, and offers to run again — it never spins forever.
+- Cheap changes come before expensive ones. Words are edited before frames,
+  frames before the render, because that is the order of what they cost.
+
 ### Selection and bulk actions
 
 - The action for a selection lives in a bar that appears with the selection and

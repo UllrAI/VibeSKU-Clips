@@ -9,6 +9,7 @@ import {
   Clapperboard,
   CreditCard,
   FileText,
+  Film,
   FolderDown,
   Home,
   KeyRound,
@@ -159,6 +160,13 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         url: "/dashboard",
         icon: Home,
         matchMode: "exact",
+      },
+      {
+        id: "works",
+        label: <>{t("ugc_nav_works")}</>,
+        url: "/dashboard/works",
+        icon: Film,
+        matchMode: "prefix",
       },
       {
         id: "new-batch",

@@ -204,3 +204,11 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 **原因**：`dev` 脚本只跑 `next dev`。Worker 是独立进程（`pnpm worker:dev`）。任务被写进 outbox、pg-boss 也收下了，但没有任何消费者，于是批次永远停在入队那一刻。这跟"任务失败"看起来一模一样，但排查方向完全相反。
 
 **正确做法**：`pnpm dev` 同时拉起两个进程（`scripts/dev.mjs`），任一退出就一起停。更重要的是**让界面自己说出来**：`task_runs` 里存在 `queued` 且超过 45 秒没被领取的行，就是"没有 Worker 在消费"，批次页和批次列表直接显示「队列停滞」。任何环境漏跑 Worker 都会立刻可见，而不是让人盯着一个不动的进度条去翻服务器日志。
+
+### 从 `"use client"` 模块里导入常量到 Server Component，会在运行时炸
+
+**现象**：`/dashboard/works` 列表页直接渲染成「Something went wrong」，构建、类型检查、lint 全绿，本地组件单测也过。
+
+**原因**：`WORK_STEPS` 这个普通数组常量声明在 `step-rail.tsx` 里，而那个文件顶部有 `"use client"`。Server Component 从客户端模块导入任何东西拿到的都是 client reference（一个只能被序列化、不能被读取的占位对象），`WORK_STEPS.indexOf(...)` 于是在服务端抛错。类型系统看到的是原始类型，所以什么都察觉不到。
+
+**正确做法**：两端都要用的纯数据和纯函数，放进不带任何指令的中立模块（`src/lib/ugc/work-steps.ts`），`"use client"` 文件只留组件。顺带一提：这类错误只有真正渲染页面才暴露，所以新页面至少要有一条 E2E 走一遍。

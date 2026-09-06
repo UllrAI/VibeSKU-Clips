@@ -115,6 +115,9 @@ export interface ComposeScriptInput {
   /** Distinguishes sibling scripts so a batch does not repeat one angle. */
   variantIndex: number;
   productName: string;
+  /** Product shots, and the talent reference when one is cast. */
+  imageUrls?: string[];
+  talentNote?: string | null;
 }
 
 function templateBrief(template: ScriptTemplate): ScriptTemplateBrief {
@@ -136,6 +139,30 @@ export async function composeScript(
     return lockedScriptFrom(input.brief.providedScript, input);
   }
 
+  const images = (input.imageUrls ?? []).slice(0, 6);
+  const brief_ = [
+    `Product: ${input.productName}`,
+    `Summary: ${input.facts.summary}`,
+    `Appearance: ${input.facts.appearance}`,
+    `Selling points: ${input.facts.sellingPoints.join("; ")}`,
+    input.facts.specs.length ? `Specs: ${input.facts.specs.join("; ")}` : "",
+    input.facts.scenarios.length
+      ? `Scenarios: ${input.facts.scenarios.join("; ")}`
+      : "",
+    input.talentNote ? `Performer: ${input.talentNote}` : "",
+    input.brief?.audience ? `Audience: ${input.brief.audience}` : "",
+    input.brief?.tone ? `Tone: ${input.brief.tone}` : "",
+    input.brief?.scenes ? `Requested scenes: ${input.brief.scenes}` : "",
+    input.brief?.bannedPhrases?.length
+      ? `Banned expressions: ${input.brief.bannedPhrases.join("; ")}`
+      : "",
+    `Take angle ${input.variantIndex + 1}: ${
+      brief.angles[input.variantIndex % brief.angles.length]
+    }`,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
   const { object } = await generateObject({
     model: getAuthoringModel(),
     schema: scriptSchema,
@@ -149,28 +176,24 @@ export async function composeScript(
       "Captions must be short enough to sit clear of the platform buttons and the product card, and must never describe a tappable shopping element.",
       "`disclosure` is a single sentence stating that the clip is AI-generated content, written in the same language.",
       "Beat timings must cover the full duration without gaps or overlap.",
-    ].join("\n"),
-    prompt: [
-      `Product: ${input.productName}`,
-      `Summary: ${input.facts.summary}`,
-      `Appearance: ${input.facts.appearance}`,
-      `Selling points: ${input.facts.sellingPoints.join("; ")}`,
-      input.facts.specs.length ? `Specs: ${input.facts.specs.join("; ")}` : "",
-      input.facts.scenarios.length
-        ? `Scenarios: ${input.facts.scenarios.join("; ")}`
+      images.length
+        ? "Reference images of the product and the performer are attached. Describe what is actually in them; do not invent a colour, a finish, or a component you cannot see."
         : "",
-      input.brief?.audience ? `Audience: ${input.brief.audience}` : "",
-      input.brief?.tone ? `Tone: ${input.brief.tone}` : "",
-      input.brief?.scenes ? `Requested scenes: ${input.brief.scenes}` : "",
-      input.brief?.bannedPhrases?.length
-        ? `Banned expressions: ${input.brief.bannedPhrases.join("; ")}`
-        : "",
-      `Take angle ${input.variantIndex + 1}: ${
-        brief.angles[input.variantIndex % brief.angles.length]
-      }`,
     ]
       .filter(Boolean)
       .join("\n"),
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text" as const, text: brief_ },
+          ...images.map((url) => ({
+            type: "image" as const,
+            image: new URL(url),
+          })),
+        ],
+      },
+    ],
   });
 
   return object;

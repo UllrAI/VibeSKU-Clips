@@ -1,8 +1,16 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Copy, FolderDown, RefreshCw, Repeat2, X } from "lucide-react";
+import {
+  Copy,
+  FolderDown,
+  RefreshCw,
+  Repeat2,
+  SquarePen,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -281,33 +289,44 @@ export function ReviewWorkbench({
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={pending}
-                        onClick={() =>
-                          run(
-                            () =>
+                      {/* A clip made step by step is changed in its work, not
+                          re-run blind from here. */}
+                      {detail.workId ? (
+                        <Button size="sm" variant="ghost" asChild>
+                          <Link href={`/dashboard/works/${detail.workId}`}>
+                            <SquarePen />
+                            {t("ugc_clip_open_work")}
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={pending}
+                          onClick={() =>
+                            run(
+                              () =>
+                                detail.clip.status === "failed"
+                                  ? retryClip(detail.clip.id)
+                                  : regenerateClip(detail.clip.id),
                               detail.clip.status === "failed"
-                                ? retryClip(detail.clip.id)
-                                : regenerateClip(detail.clip.id),
+                                ? "ugc_clip_retry_queued"
+                                : "ugc_clip_regenerate_queued",
+                            )
+                          }
+                        >
+                          {detail.clip.status === "failed" ? (
+                            <RefreshCw />
+                          ) : (
+                            <Repeat2 />
+                          )}
+                          {t(
                             detail.clip.status === "failed"
-                              ? "ugc_clip_retry_queued"
-                              : "ugc_clip_regenerate_queued",
-                          )
-                        }
-                      >
-                        {detail.clip.status === "failed" ? (
-                          <RefreshCw />
-                        ) : (
-                          <Repeat2 />
-                        )}
-                        {t(
-                          detail.clip.status === "failed"
-                            ? "ugc_clip_retry"
-                            : "ugc_clip_regenerate",
-                        )}
-                      </Button>
+                              ? "ugc_clip_retry"
+                              : "ugc_clip_regenerate",
+                          )}
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant={checked ? "secondary" : "ghost"}

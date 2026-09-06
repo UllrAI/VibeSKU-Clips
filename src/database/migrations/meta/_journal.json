@@ -211,6 +211,13 @@
       "when": 1788697369922,
       "tag": "0029_brief_nextwave",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1788702407578,
+      "tag": "0030_broken_frightful_four",
+      "breakpoints": true
     }
   ]
 }

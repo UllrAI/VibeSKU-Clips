@@ -13,6 +13,10 @@ export function batchScopeKey(userId: string, batchId: string): string {
   return `user:${userId}:batch:${batchId}`;
 }
 
+export function workScopeKey(userId: string, workId: string): string {
+  return `user:${userId}:work:${workId}`;
+}
+
 export function renderScopeKey(
   userId: string,
   batchId: string,

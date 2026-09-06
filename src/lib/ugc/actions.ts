@@ -379,6 +379,9 @@ export async function retryClip(clipId: string): Promise<ActionResult> {
     .where(and(eq(ugcClips.id, clipId), eq(ugcClips.userId, user.id)));
   if (!clip) return { ok: false, code: "not_found" };
   if (clip.status !== "failed") return { ok: false, code: "clip_not_failed" };
+  // A clip produced step by step is re-rendered from its work, which still
+  // holds the storyboard the operator approved.
+  if (!clip.batchId) return { ok: false, code: "clip_from_work" };
 
   await db
     .update(ugcClips)
@@ -409,6 +412,7 @@ export async function regenerateClip(clipId: string): Promise<ActionResult> {
     .from(ugcClips)
     .where(and(eq(ugcClips.id, clipId), eq(ugcClips.userId, user.id)));
   if (!source) return { ok: false, code: "not_found" };
+  if (!source.batchId) return { ok: false, code: "clip_from_work" };
 
   const [clip] = await db
     .insert(ugcClips)
@@ -432,7 +436,7 @@ export async function regenerateClip(clipId: string): Promise<ActionResult> {
 
   await enqueueClipRender(db, {
     userId: user.id,
-    batchId: clip.batchId,
+    batchId: source.batchId,
     clipId: clip.id,
     laneIndex: 0,
     queue: serverJobQueue,

@@ -108,6 +108,7 @@ pnpm stripe:sync-products
 - Business logic: `src/lib`
 - UGC domain logic (planning, QC, similarity, manifest, render prompts): `src/lib/ugc`
 - UGC server actions and queries: `src/lib/ugc/actions.ts`, `src/lib/ugc/queries.ts`
+- Stepped single-clip flow: `src/lib/ugc/works.ts`, `src/lib/ugc/work-actions.ts`, `src/app/dashboard/works`
 - UGC job handlers: `src/lib/jobs/ugc`
 - Job queue, definitions, and worker environment: `src/lib/jobs`
 - Auth logic: `src/lib/auth`
@@ -129,11 +130,22 @@ pnpm stripe:sync-products
 
 Three durable jobs, registered in `src/lib/jobs/catalog.ts`:
 
-| Job                  | Handler                              | What it does                                                                                    |
-| -------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| `ugc.product.ingest` | `src/lib/jobs/ugc/product-ingest.ts` | Fetches the source link, extracts product facts, or marks the product `needs_input`             |
-| `ugc.batch.run`      | `src/lib/jobs/ugc/batch-run.ts`      | Expands plan lines into scripts and clip rows, then enqueues renders unless scripts are held    |
-| `ugc.clip.render`    | `src/lib/jobs/ugc/clip-render.ts`    | Opening frame, then video from that frame, then subtitles and archival; polls via continuations |
+| Job                   | Handler                               | What it does                                                                                    |
+| --------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Fetches the source link, extracts product facts, or marks the product `needs_input`             |
+| `ugc.batch.run`       | `src/lib/jobs/ugc/batch-run.ts`       | Expands plan lines into scripts and clip rows, then enqueues renders unless scripts are held    |
+| `ugc.clip.render`     | `src/lib/jobs/ugc/clip-render.ts`     | Opening frame, then video from that frame, then subtitles and archival; polls via continuations |
+| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it      |
+| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands                |
+| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the accepted frames, product and talent to the video model and writes the finished clip   |
+
+A batch runs those three unattended. A **work** (`ugc_works`) runs the same
+pipeline one step at a time with a person confirming each step, using the same
+products, scripts and clips tables — a clip belongs to a batch or to a work, so
+`ugc_clips.batchId` is null for the latter. Steps are `product -> script ->
+storyboard -> video`; the step's own task run is the only record of why a step
+gave up, so the console reads failure and stall state from `task_runs` rather
+than from a status column.
 
 Rules that are easy to break:
 

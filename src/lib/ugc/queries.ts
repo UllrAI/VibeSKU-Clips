@@ -9,13 +9,15 @@ import {
   ugcScripts,
   ugcTalents,
   ugcUsageEvents,
+  ugcWorks,
 } from "@/database/ugc";
 import { taskRuns } from "@/database/schema";
 import { requireAuth } from "@/lib/auth/permissions";
 import { findSimilarityHints, type SimilarityHint } from "./similarity";
 
 /** How long a queued task may sit before the console calls the run stalled. */
-const STALL_AFTER_MS = 45_000;
+/** A task still queued this long after it was created means nobody is consuming the outbox. */
+export const STALL_AFTER_MS = 45_000;
 
 export type ProductRow = typeof ugcProducts.$inferSelect;
 export type TalentRow = typeof ugcTalents.$inferSelect;
@@ -103,7 +105,7 @@ async function progressFor(
   if (batchIds.length === 0) return new Map();
   const rows = await db
     .select({
-      batchId: ugcClips.batchId,
+      batchId: sql<string>`${ugcClips.batchId}`,
       status: ugcClips.status,
       total: count(),
     })
@@ -157,6 +159,8 @@ export interface ClipDetail {
   scriptHook: string | null;
   scriptVoiceover: string | null;
   talentName: string | null;
+  /** Set when the clip was produced step by step, so review can send the operator back to it. */
+  workId: string | null;
 }
 
 async function clipDetails(
@@ -171,11 +175,13 @@ async function clipDetails(
       scriptHook: ugcScripts.hook,
       scriptVoiceover: ugcScripts.voiceover,
       talentName: ugcTalents.name,
+      workId: ugcWorks.id,
     })
     .from(ugcClips)
     .innerJoin(ugcProducts, eq(ugcProducts.id, ugcClips.productId))
     .leftJoin(ugcScripts, eq(ugcScripts.id, ugcClips.scriptId))
     .leftJoin(ugcTalents, eq(ugcTalents.id, ugcClips.talentId))
+    .leftJoin(ugcWorks, eq(ugcWorks.clipId, ugcClips.id))
     .where(where)
     .orderBy(desc(ugcClips.createdAt))
     .limit(300);
@@ -188,6 +194,7 @@ async function clipDetails(
     scriptHook: row.scriptHook,
     scriptVoiceover: row.scriptVoiceover,
     talentName: row.talentName,
+    workId: row.workId,
   }));
 }
 

@@ -16,8 +16,10 @@ const CLIP_END_STATES: ClipStatus[] = ["ready", "failed", "cancelled"];
  */
 export async function settleBatchIfFinished(
   db: AppDatabase,
-  batchId: string,
+  batchId: string | null,
 ): Promise<boolean> {
+  // A clip produced through a work has no batch to settle.
+  if (!batchId) return false;
   const unfinished = await db
     .select({ id: ugcClips.id })
     .from(ugcClips)

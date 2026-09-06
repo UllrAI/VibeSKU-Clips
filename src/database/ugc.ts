@@ -44,6 +44,32 @@ export const ugcScriptStatusEnum = pgEnum("ugc_script_status", [
   "locked",
 ]);
 
+/**
+ * A work walks these steps in order and stops on each one for a person. The
+ * step is where it is; `ugcWorkStepStatusEnum` is what that step is doing.
+ */
+export const ugcWorkStepEnum = pgEnum("ugc_work_step", [
+  "product",
+  "script",
+  "storyboard",
+  "video",
+  "done",
+]);
+
+export const ugcWorkStepStatusEnum = pgEnum("ugc_work_step_status", [
+  "idle",
+  "running",
+  "review",
+  "failed",
+]);
+
+export const ugcFrameStatusEnum = pgEnum("ugc_frame_status", [
+  "pending",
+  "generating",
+  "ready",
+  "failed",
+]);
+
 export const ugcBatchStatusEnum = pgEnum("ugc_batch_status", [
   "draft",
   "running",
@@ -220,9 +246,11 @@ export const ugcClips = pgTable(
     userId: text("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    batchId: uuid("batchId")
-      .notNull()
-      .references(() => ugcBatches.id, { onDelete: "cascade" }),
+    // Null for a clip produced one step at a time through `ugc_works`; a clip
+    // belongs to a batch or to a work, never to both.
+    batchId: uuid("batchId").references(() => ugcBatches.id, {
+      onDelete: "cascade",
+    }),
     productId: uuid("productId")
       .notNull()
       .references(() => ugcProducts.id, { onDelete: "cascade" }),
@@ -321,6 +349,90 @@ export const ugcUsageEvents = pgTable(
     userCreatedAtIdx: index("ugc_usage_events_userId_createdAt_idx").on(
       table.userId,
       table.createdAt.desc(),
+    ),
+  }),
+);
+
+/**
+ * One clip produced step by step, with a person confirming each step before
+ * the next one spends anything. Batches run the same pipeline unattended; a
+ * work is the same pipeline with the brakes on, and it reuses the product,
+ * script and clip tables rather than keeping a private copy of any of them.
+ */
+export const ugcWorks = pgTable(
+  "ugc_works",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    step: ugcWorkStepEnum("step").notNull().default("product"),
+    stepStatus: ugcWorkStepStatusEnum("stepStatus").notNull().default("idle"),
+    productId: uuid("productId").references(() => ugcProducts.id, {
+      onDelete: "set null",
+    }),
+    talentId: uuid("talentId").references(() => ugcTalents.id, {
+      onDelete: "set null",
+    }),
+    locale: text("locale").notNull().default("en"),
+    market: text("market").notNull().default("US"),
+    template: ugcScriptTemplateEnum("template")
+      .notNull()
+      .default("spokesperson"),
+    scriptId: uuid("scriptId").references(() => ugcScripts.id, {
+      onDelete: "set null",
+    }),
+    clipId: uuid("clipId").references(() => ugcClips.id, {
+      onDelete: "set null",
+    }),
+    taskRunId: uuid("taskRunId"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userCreatedAtIdx: index("ugc_works_userId_createdAt_idx").on(
+      table.userId,
+      table.createdAt.desc(),
+    ),
+  }),
+);
+
+/**
+ * One storyboard key frame. The frames are the operator's last cheap chance to
+ * change what the clip looks like: they are generated from the script beats,
+ * can be reworded and regenerated individually, and are then handed to the
+ * video model together as its reference set.
+ */
+export const ugcWorkFrames = pgTable(
+  "ugc_work_frames",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workId: uuid("workId")
+      .notNull()
+      .references(() => ugcWorks.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    prompt: text("prompt").notNull(),
+    imageUrl: text("imageUrl"),
+    status: ugcFrameStatusEnum("status").notNull().default("pending"),
+    /** The provider's own task id, so a poll can resume after a restart. */
+    providerTaskId: text("providerTaskId"),
+    failureReason: text("failureReason"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    workPositionIdx: index("ugc_work_frames_workId_position_idx").on(
+      table.workId,
+      table.position,
     ),
   }),
 );

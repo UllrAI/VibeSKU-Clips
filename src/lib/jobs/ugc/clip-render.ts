@@ -136,7 +136,7 @@ function clipStorage(db: AppDatabase): ClipStorage {
 
 async function failClip(
   db: AppDatabase,
-  clip: { id: string; batchId: string },
+  clip: { id: string; batchId: string | null },
   reason: string,
 ): Promise<void> {
   await db
