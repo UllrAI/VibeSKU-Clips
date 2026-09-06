@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { AppDatabase } from "@/database/client";
 import {
@@ -10,7 +10,11 @@ import {
 } from "@/database/ugc";
 import { composeScript } from "@/lib/ugc/authoring";
 import { CREDIT_COST, type ScriptTemplate } from "@/lib/ugc/constants";
-import { buildClipReference, summarizePlan } from "@/lib/ugc/planning";
+import {
+  buildClipReference,
+  countProductsAwaitingFacts,
+  summarizePlan,
+} from "@/lib/ugc/planning";
 import { similarityKeyFor } from "@/lib/ugc/similarity";
 import { defaultDisclosure } from "@/lib/ugc/templates";
 import type { BatchPlanItem, ScriptDraft } from "@/lib/ugc/types";
@@ -18,9 +22,23 @@ import { recordUsage } from "@/lib/ugc/usage";
 import { defineJob, PermanentJobError } from "../definition";
 import { enqueueClipRender } from "./enqueue";
 
+/**
+ * A product registered from the composer is still being read when its batch is
+ * enqueued. Waiting is the correct answer: skipping the line would silently
+ * produce nothing from a batch the operator just paid for.
+ */
+const INGEST_WAIT_SECONDS = 15;
+const MAX_INGEST_WAITS = 20;
+
 export const batchRunJob = defineJob(
   "ugc.batch.run",
-  z.object({ batchId: z.uuid(), userId: z.string().min(1) }).strict(),
+  z
+    .object({
+      batchId: z.uuid(),
+      userId: z.string().min(1),
+      waits: z.number().int().min(0).default(0),
+    })
+    .strict(),
   async (payload, context) => {
     const db = context.db;
     const [batch] = await db
@@ -40,6 +58,36 @@ export const batchRunJob = defineJob(
     }
 
     const plan = summarizePlan(batch.config);
+
+    const productIds = [
+      ...new Set(plan.lines.map((line) => line.item.productId)),
+    ];
+    const products = await db
+      .select({
+        id: ugcProducts.id,
+        status: ugcProducts.status,
+        facts: ugcProducts.facts,
+      })
+      .from(ugcProducts)
+      .where(
+        and(
+          inArray(ugcProducts.id, productIds),
+          eq(ugcProducts.userId, batch.userId),
+        ),
+      );
+    const stillReading = countProductsAwaitingFacts(products);
+    if (stillReading > 0 && payload.waits < MAX_INGEST_WAITS) {
+      await context.updateProgress({
+        step: "reading_products",
+        pending: stillReading,
+      });
+      await context.scheduleContinuation(
+        { ...payload, waits: payload.waits + 1 },
+        INGEST_WAIT_SECONDS,
+      );
+      return { waitingForProducts: stillReading, waits: payload.waits + 1 };
+    }
+
     const sequence = Math.abs(hashCode(batch.id)) % 10_000;
     let clipIndex = 0;
     let blocked = 0;

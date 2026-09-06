@@ -3,6 +3,7 @@ import { CREDIT_COST } from "./constants";
 import {
   buildClipReference,
   countClipsForItem,
+  countProductsAwaitingFacts,
   summarizePlan,
 } from "./planning";
 import type { BatchPlanItem } from "./types";
@@ -79,5 +80,34 @@ describe("batch planning", () => {
   it("builds stable, sortable clip references", () => {
     expect(buildClipReference(7, 0)).toBe("VC-0007-001");
     expect(buildClipReference(7, 11)).toBe("VC-0007-012");
+  });
+});
+
+describe("countProductsAwaitingFacts", () => {
+  it("counts products that are still being read", () => {
+    expect(
+      countProductsAwaitingFacts([
+        { status: "draft", facts: null },
+        { status: "analyzing", facts: null },
+      ]),
+    ).toBe(2);
+  });
+
+  it("does not wait on a product that already has facts", () => {
+    expect(
+      countProductsAwaitingFacts([
+        { status: "analyzing", facts: { summary: "kettle" } },
+        { status: "ready", facts: { summary: "kettle" } },
+      ]),
+    ).toBe(0);
+  });
+
+  it("does not wait on a settled failure", () => {
+    expect(
+      countProductsAwaitingFacts([
+        { status: "needs_input", facts: null },
+        { status: "failed", facts: null },
+      ]),
+    ).toBe(0);
   });
 });

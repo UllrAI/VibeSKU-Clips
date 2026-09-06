@@ -15,8 +15,16 @@ export interface BatchProgressCounts {
 const BASE_INTERVAL_MS = 4_000;
 const MAX_INTERVAL_MS = 30_000;
 
-function isSettled(counts: BatchProgressCounts): boolean {
-  return counts.running + counts.pending === 0;
+/**
+ * A batch is live until it is finished or cancelled, which is not the same as
+ * having clips in flight: while its products are still being read there are no
+ * clip rows at all, and the console must not report that as done.
+ */
+export function isBatchLive(counts: BatchProgressCounts): boolean {
+  if (counts.status === "completed" || counts.status === "cancelled") {
+    return false;
+  }
+  return counts.ready + counts.failed < counts.total;
 }
 
 /**
@@ -36,7 +44,7 @@ export function useBatchProgress(
   const signatureRef = useRef(JSON.stringify(initial));
 
   useEffect(() => {
-    if (isSettled(counts)) return;
+    if (!isBatchLive(counts)) return;
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;

@@ -266,7 +266,7 @@ export async function createBatch(
     queue: serverJobQueue,
     definition: batchRunJob,
     scopeKey: batchScopeKey(user.id, batch.id),
-    payload: { batchId: batch.id, userId: user.id },
+    payload: { batchId: batch.id, userId: user.id, waits: 0 },
     idempotencyKey: batch.id,
   });
 

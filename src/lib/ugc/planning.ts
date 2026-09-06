@@ -53,6 +53,23 @@ export function summarizePlan(config: BatchPlanConfig): PlanSummary {
   };
 }
 
+/**
+ * How many of a batch's products have not been read yet. A product registered
+ * from the composer is still being ingested when its batch is enqueued, and a
+ * batch that starts too early would skip those lines and deliver nothing.
+ * `needs_input` and `failed` are settled answers, not waiting — those lines are
+ * skipped on purpose.
+ */
+export function countProductsAwaitingFacts(
+  products: readonly { status: string; facts: unknown }[],
+): number {
+  return products.filter(
+    (product) =>
+      !product.facts &&
+      (product.status === "draft" || product.status === "analyzing"),
+  ).length;
+}
+
 /** Reference numbers are stable within a batch and appear on the manifest. */
 export function buildClipReference(
   batchSequence: number,

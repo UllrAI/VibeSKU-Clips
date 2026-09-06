@@ -120,8 +120,16 @@ bounce, or hover zoom.
 - **Library and gallery.** Search and filters form one control group. Cards keep
   consistent geometry; media, title, metadata, and state sit in the same
   positions across peers.
-- **Creation workspace.** The plan being built is the focal object. Controls
-  cluster by task, and the running total stays visible before submission.
+- **Composer.** Creating something is one card, not a stack of form sections:
+  the subject on top, the choices under it, and the running cost pinned to the
+  button that spends it. Nothing that is optional gets first-screen space, so
+  bookkeeping fields sit behind a disclosure and the primary action is reachable
+  on the first screen. `Cmd`/`Ctrl` + `Enter` submits from anywhere in it.
+- **Never make someone leave to come back.** If a step needs an object that
+  does not exist yet, the composer accepts enough to create it in place; it does
+  not send the operator to another route with instructions to return. When the
+  new object needs background work before the run can use it, the run waits for
+  it rather than starting without it.
 - **Review workbench.** Clips are compared, so their frames must be identical in
   size and their metadata in the same order. Decisions are one click, and the
   current decision is legible without colour alone.

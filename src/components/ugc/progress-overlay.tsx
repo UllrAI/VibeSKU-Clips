@@ -9,7 +9,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import type { BatchProgressCounts } from "@/hooks/use-batch-progress";
+import {
+  isBatchLive,
+  type BatchProgressCounts,
+} from "@/hooks/use-batch-progress";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +55,7 @@ export function ProgressOverlay({ counts }: { counts: BatchProgressCounts }) {
 
   const total = counts.total;
   const done = counts.ready + counts.failed;
-  const live = counts.running + counts.pending > 0;
+  const live = isBatchLive(counts);
   const segments = SEGMENT_ORDER.map((id) => ({ id, count: counts[id] }));
 
   return (

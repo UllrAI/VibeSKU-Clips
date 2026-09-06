@@ -131,7 +131,9 @@ describe("Dashboard Home Page", () => {
 
     expect(screen.getByText("No batches yet")).toBeInTheDocument();
     expect(
-      screen.getByText("Add a product, then submit your first batch."),
+      screen.getByText(
+        "Paste a product link on the new batch page and production starts from there.",
+      ),
     ).toBeInTheDocument();
   });
 });
