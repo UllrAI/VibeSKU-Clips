@@ -74,6 +74,14 @@ jest.mock("@/components/ui/sidebar", () => ({
   ),
 }));
 
+jest.mock("@/components/locale-switcher", () => ({
+  LocaleSwitcher: () => <button data-testid="locale-switcher">Language</button>,
+}));
+
+jest.mock("@/components/mode-toggle", () => ({
+  ModeToggle: () => <button data-testid="mode-toggle">Theme</button>,
+}));
+
 describe("DashboardPageHeader", () => {
   it("should render with required props", () => {
     render(<DashboardPageHeader title="Test Title" />);
@@ -107,18 +115,11 @@ describe("DashboardPageHeader", () => {
     );
   });
 
-  it("leaves appearance and language to the sidebar", () => {
+  it("keeps appearance and language in the top right of every page", () => {
     render(<DashboardPageHeader title="Test Title" />);
 
-    expect(screen.queryByTestId("mode-toggle")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("locale-switcher")).not.toBeInTheDocument();
-  });
-
-  it("should render actions when provided", () => {
-    const actions = <button data-testid="custom-action">Action</button>;
-    render(<DashboardPageHeader title="Test Title" actions={actions} />);
-
-    expect(screen.getByTestId("custom-action")).toBeInTheDocument();
+    expect(screen.getByTestId("locale-switcher")).toBeInTheDocument();
+    expect(screen.getByTestId("mode-toggle")).toBeInTheDocument();
   });
 
   it("should hide sidebar trigger when showSidebarTrigger is false", () => {
@@ -138,13 +139,11 @@ describe("DashboardPageHeader", () => {
   });
 
   it("should render with all props", () => {
-    const actions = <button data-testid="custom-action">Action</button>;
     render(
       <DashboardPageHeader
         title="Child Page"
         parentTitle="Parent Page"
         parentUrl="/parent"
-        actions={actions}
         showSidebarTrigger={true}
       />,
     );
@@ -155,7 +154,6 @@ describe("DashboardPageHeader", () => {
     expect(screen.getByTestId("breadcrumb-page")).toHaveTextContent(
       "Child Page",
     );
-    expect(screen.getByTestId("custom-action")).toBeInTheDocument();
     expect(screen.getByTestId("sidebar-trigger")).toBeInTheDocument();
   });
 

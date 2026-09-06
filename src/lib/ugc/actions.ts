@@ -104,6 +104,7 @@ export async function updateProduct(
 
   if (updated.length === 0) return { ok: false, code: "not_found" };
   revalidatePath("/dashboard/products");
+  revalidatePath(`/dashboard/products/${productId}`);
   return { ok: true, id: productId };
 }
 
@@ -126,8 +127,62 @@ export async function startProductAnalysis(
     idempotencyKey: `${product.id}:${product.updatedAt.getTime()}`,
   });
 
+  // Say so before the worker picks it up: a queued read is still a read, and
+  // the operator should never wonder whether their click did anything.
+  await db
+    .update(ugcProducts)
+    .set({ status: "analyzing", issue: null })
+    .where(eq(ugcProducts.id, product.id));
+
   revalidatePath("/dashboard/products");
+  revalidatePath(`/dashboard/products/${product.id}`);
   return { ok: true, id: product.id };
+}
+
+const factsSchema = z.object({
+  summary: z.string().trim().min(1).max(1000),
+  appearance: z.string().trim().min(1).max(1000),
+  specs: z.array(z.string().trim().min(1).max(200)).max(12),
+  sellingPoints: z.array(z.string().trim().min(1).max(200)).min(1).max(8),
+  scenarios: z.array(z.string().trim().min(1).max(200)).max(6),
+});
+
+/**
+ * Accepts what the reader understood, with the operator's corrections. A
+ * person who has checked the facts is a better authority than the extraction,
+ * so saving them also clears the product for production.
+ */
+export async function saveProductFacts(
+  productId: string,
+  input: z.infer<typeof factsSchema>,
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const parsed = factsSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_input" };
+
+  const [product] = await db
+    .select({ facts: ugcProducts.facts })
+    .from(ugcProducts)
+    .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)));
+  if (!product) return { ok: false, code: "not_found" };
+
+  await db
+    .update(ugcProducts)
+    .set({
+      facts: {
+        ...parsed.data,
+        // Provenance is the reader's, not the editor's: keep what it recorded.
+        sources: product.facts?.sources ?? [],
+      },
+      status: "ready",
+      issue: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(ugcProducts.id, productId));
+
+  revalidatePath(`/dashboard/products/${productId}`);
+  revalidatePath("/dashboard/products");
+  return { ok: true, id: productId };
 }
 
 export async function deleteProduct(productId: string): Promise<ActionResult> {

@@ -9,6 +9,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb-client";
+import { LocaleSwitcher } from "@/components/locale-switcher";
+import { ModeToggle } from "@/components/mode-toggle";
 import { Separator } from "@/components/ui/separator";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
@@ -16,21 +18,24 @@ interface DashboardPageHeaderProps {
   title: ReactNode;
   parentTitle?: ReactNode;
   parentUrl?: string;
-  actions?: ReactNode;
   showSidebarTrigger?: boolean;
 }
 
+/**
+ * Where the operator is, and the two controls that belong to the session
+ * rather than to any page. Page actions live with the content they act on, so
+ * the header never competes with the work surface for the primary action.
+ */
 export function DashboardPageHeader({
   title,
   parentTitle,
   parentUrl,
-  actions,
   showSidebarTrigger = true,
 }: DashboardPageHeaderProps) {
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b">
-      <div className="flex w-full items-center justify-between gap-1 px-4 lg:gap-2 lg:px-6">
-        <div className="flex items-center gap-1 lg:gap-2">
+    <header className="bg-background/95 supports-backdrop-filter:bg-background/75 sticky top-0 z-20 flex h-(--header-height) shrink-0 items-center gap-2 border-b backdrop-blur">
+      <div className="flex w-full items-center justify-between gap-2 px-4 lg:px-6">
+        <div className="flex min-w-0 items-center gap-1 lg:gap-2">
           {showSidebarTrigger && (
             <>
               <SidebarTrigger className="-ml-1" />
@@ -52,15 +57,18 @@ export function DashboardPageHeader({
                   <BreadcrumbSeparator className="hidden md:block" />
                 </>
               )}
-              <BreadcrumbItem>
-                <BreadcrumbPage className="font-semibold">
+              <BreadcrumbItem className="min-w-0">
+                <BreadcrumbPage className="truncate font-semibold">
                   {title}
                 </BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
-        {actions && <div className="flex items-center gap-2">{actions}</div>}
+        <div className="flex shrink-0 items-center gap-1">
+          <LocaleSwitcher variant="ghost" size="icon" />
+          <ModeToggle variant="ghost" size="icon" />
+        </div>
       </div>
     </header>
   );

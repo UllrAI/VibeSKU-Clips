@@ -8,13 +8,11 @@ jest.mock("./dashboard-page-header", () => ({
     title,
     parentTitle,
     parentUrl,
-    actions,
     showSidebarTrigger,
   }: {
     title: React.ReactNode;
     parentTitle?: React.ReactNode;
     parentUrl?: string;
-    actions?: React.ReactNode;
     showSidebarTrigger?: boolean;
   }) => (
     <header data-testid="dashboard-page-header">
@@ -23,7 +21,6 @@ jest.mock("./dashboard-page-header", () => ({
         <span data-testid="header-parent-title">{parentTitle}</span>
       )}
       {parentUrl && <span data-testid="header-parent-url">{parentUrl}</span>}
-      {actions && <div data-testid="header-actions">{actions}</div>}
       <span data-testid="header-sidebar-trigger">
         {showSidebarTrigger ? "true" : "false"}
       </span>
@@ -47,14 +44,12 @@ describe("DashboardPageWrapper", () => {
   });
 
   it("should pass all props to DashboardPageHeader", () => {
-    const actions = <button data-testid="custom-action">Action</button>;
     render(
       <DashboardPageWrapper
         title="Child Page"
         parentTitle="Parent Page"
         parentUrl="/parent"
         description="Test description"
-        actions={actions}
         showSidebarTrigger={false}
       >
         <div data-testid="child-content">Child Content</div>
@@ -69,8 +64,6 @@ describe("DashboardPageWrapper", () => {
       "/parent",
     );
     expect(screen.getByText("Test description")).toBeInTheDocument();
-    expect(screen.getByTestId("header-actions")).toBeInTheDocument();
-    expect(screen.getByTestId("custom-action")).toBeInTheDocument();
     expect(screen.getByTestId("header-sidebar-trigger")).toHaveTextContent(
       "false",
     );
@@ -177,7 +170,6 @@ describe("DashboardPageWrapper", () => {
       "Minimal Content",
     );
     expect(screen.queryByTestId("header-parent-title")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("header-actions")).not.toBeInTheDocument();
   });
 
   it("should render complex children elements", () => {

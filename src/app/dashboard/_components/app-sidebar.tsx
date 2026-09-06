@@ -6,7 +6,6 @@ import { LocalizedLink as Link } from "@/components/localized-link";
 import {
   BarChart3,
   Bot,
-  Clapperboard,
   CreditCard,
   FileText,
   Film,
@@ -40,8 +39,6 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LocaleSwitcher } from "@/components/locale-switcher";
-import { ModeToggle } from "@/components/mode-toggle";
 import { UserButton } from "./user-btn";
 import { Logo } from "@/components/logo";
 import { cn } from "@/lib/utils";
@@ -167,13 +164,6 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         url: "/dashboard/works",
         icon: Film,
         matchMode: "prefix",
-      },
-      {
-        id: "new-batch",
-        label: <>{t("ugc_nav_new_batch")}</>,
-        url: "/dashboard/batches/new",
-        icon: Clapperboard,
-        matchMode: "exact",
       },
       {
         id: "batches",
@@ -342,12 +332,6 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         )}
       </SidebarContent>
       <SidebarFooter className="border-sidebar-divider border-t p-2">
-        {/* Appearance and language belong to the session, not to a page, so
-            they live with the account rather than repeating in every header. */}
-        <div className="flex items-center gap-1 group-data-[collapsible=icon]:flex-col">
-          <LocaleSwitcher variant="ghost" size="icon" />
-          <ModeToggle variant="ghost" size="icon" />
-        </div>
         <UserButton user={getNormalizedUser()} />
       </SidebarFooter>
       <SidebarRail />

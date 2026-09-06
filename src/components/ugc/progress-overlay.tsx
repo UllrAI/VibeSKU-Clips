@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Check, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,10 +51,13 @@ const SEGMENT_ORDER: readonly SegmentId[] = [
 export function ProgressOverlay({
   counts,
   meta,
+  status,
 }: {
   counts: BatchProgressCounts;
   /** Plan facts that belong with the detail, not with the running summary. */
   meta?: string;
+  /** The run's own state, shown where the run is rather than in the title bar. */
+  status?: ReactNode;
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -67,7 +70,7 @@ export function ProgressOverlay({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="bg-background/95 supports-[backdrop-filter]:bg-background/75 border-border sticky top-0 z-10 rounded-lg border backdrop-blur">
+      <div className="bg-background/95 supports-[backdrop-filter]:bg-background/75 border-border sticky top-(--header-height) z-10 rounded-lg border backdrop-blur">
         <div className="flex flex-col gap-2 px-3 py-2">
           <output
             id={labelId}
@@ -89,9 +92,13 @@ export function ProgressOverlay({
                 failed: counts.failed,
               })}
             </span>
+            {status && <span className="ml-auto shrink-0">{status}</span>}
             <Badge
               variant="secondary"
-              className="ml-auto h-5 shrink-0 px-1.5 text-[10px] tabular-nums"
+              className={cn(
+                "h-5 shrink-0 px-1.5 text-[10px] tabular-nums",
+                !status && "ml-auto",
+              )}
             >
               {live
                 ? t("ugc_batch_remaining", { count: Math.max(total - done, 0) })

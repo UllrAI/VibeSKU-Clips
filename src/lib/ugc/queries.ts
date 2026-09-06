@@ -13,11 +13,13 @@ import {
 } from "@/database/ugc";
 import { taskRuns } from "@/database/schema";
 import { requireAuth } from "@/lib/auth/permissions";
+import {
+  latestRunStateForScope,
+  STALL_AFTER_MS,
+  type RunState,
+} from "./run-state";
+import { productScopeKey } from "./scope";
 import { findSimilarityHints, type SimilarityHint } from "./similarity";
-
-/** How long a queued task may sit before the console calls the run stalled. */
-/** A task still queued this long after it was created means nobody is consuming the outbox. */
-export const STALL_AFTER_MS = 45_000;
 
 export type ProductRow = typeof ugcProducts.$inferSelect;
 export type TalentRow = typeof ugcTalents.$inferSelect;
@@ -33,6 +35,67 @@ export async function listProducts(): Promise<ProductRow[]> {
     .from(ugcProducts)
     .where(eq(ugcProducts.userId, user.id))
     .orderBy(desc(ugcProducts.createdAt));
+}
+
+export async function getProduct(
+  productId: string,
+): Promise<ProductRow | null> {
+  const user = await requireAuth();
+  const [product] = await db
+    .select()
+    .from(ugcProducts)
+    .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)));
+  return product ?? null;
+}
+
+export interface ProductState {
+  status: ProductRow["status"];
+  /** Facts have landed, so the page has something to show and edit. */
+  read: boolean;
+  issue: string | null;
+  /** What became of the reading task, so a dead read never spins forever. */
+  run: RunState;
+  /** Changes whenever the page would render differently. */
+  revision: string;
+}
+
+/**
+ * The cheap half of `getProduct`, polled while the reader is working. Reading
+ * a product takes a model call, and the operator should watch it land rather
+ * than press reload to find out whether it did.
+ */
+export async function getProductState(
+  productId: string,
+): Promise<ProductState | null> {
+  const user = await requireAuth();
+  const [row] = await db
+    .select({
+      status: ugcProducts.status,
+      issue: ugcProducts.issue,
+      facts: ugcProducts.facts,
+      updatedAt: ugcProducts.updatedAt,
+    })
+    .from(ugcProducts)
+    .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)));
+  if (!row) return null;
+
+  const run = await latestRunStateForScope(
+    productScopeKey(user.id, productId),
+    "ugc.product.ingest",
+  );
+  return {
+    status: row.status,
+    read: Boolean(row.facts),
+    issue: row.issue,
+    run,
+    revision: [
+      row.status,
+      String(Boolean(row.facts)),
+      String(run.failed),
+      String(run.stalled),
+      row.updatedAt.toISOString(),
+    ].join("|"),
+  };
 }
 
 export async function listTalents(): Promise<TalentRow[]> {

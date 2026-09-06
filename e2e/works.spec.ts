@@ -2,7 +2,9 @@ import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 import { loginAs } from "./helpers/auth";
 
-test("starts a work and lands on the first step", async ({ page }) => {
+test("starts a work from a new product and lands on the first step", async ({
+  page,
+}) => {
   const problems: string[] = [];
   page.on("console", (message) => {
     if (message.type() === "error") problems.push(message.text());
@@ -15,15 +17,23 @@ test("starts a work and lands on the first step", async ({ page }) => {
     page.getByRole("heading", { name: "Works", exact: true }),
   ).toBeVisible();
 
-  const title = `Playwright work ${Date.now()}`;
-  await page.getByLabel("What are you making?").fill(title);
-  await page.getByRole("button", { name: "Start" }).click();
+  // A product that does not exist yet is created in the composer, so the
+  // operator never leaves the page to come back to it.
+  const name = `Playwright product ${Date.now()}`;
+  await page.getByRole("tab", { name: "New product" }).click();
+  await page.getByLabel("Product name").fill(name);
+  await page
+    .getByLabel("Reference link")
+    .fill("https://example.com/playwright-product");
+  await page
+    .getByRole("button", { name: "Start and write the script" })
+    .click();
 
   await expect(page).toHaveURL(/\/dashboard\/works\/[0-9a-f-]{36}$/);
-  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expect(page.getByRole("heading", { name })).toBeVisible();
 
   // The rail is the whole point of the stepped flow: four named steps, with
-  // the first one current before anything has been generated.
+  // the first one current until the product has been read.
   const steps = page.getByRole("listitem").filter({ hasText: /^\d/ });
   await expect(
     page.getByText("Product", { exact: true }).first(),
@@ -40,7 +50,7 @@ test("starts a work and lands on the first step", async ({ page }) => {
 
   await page.goto("/dashboard/works");
   await expect(
-    page.getByRole("link", { name: new RegExp(title) }),
+    page.getByRole("link", { name: new RegExp(name) }),
   ).toBeVisible();
 
   expect(

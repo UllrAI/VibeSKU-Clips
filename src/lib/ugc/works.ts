@@ -9,60 +9,13 @@ import {
   ugcWorkFrames,
   ugcWorks,
 } from "@/database/ugc";
-import { taskRuns } from "@/database/schema";
 import { requireAuth } from "@/lib/auth/permissions";
-import {
-  STALL_AFTER_MS,
-  type ProductRow,
-  type ScriptRow,
-  type TalentRow,
-} from "./queries";
+import type { ProductRow, ScriptRow, TalentRow } from "./queries";
+import { runStateFor, type RunState } from "./run-state";
 
 type WorkRow = typeof ugcWorks.$inferSelect;
 export type WorkFrameRow = typeof ugcWorkFrames.$inferSelect;
 export type ClipRow = typeof ugcClips.$inferSelect;
-
-interface WorkRunState {
-  /** The step's task run gave up. Without this the console spins forever. */
-  failed: boolean;
-  /** Our own error code, resolved to copy at the boundary. */
-  failureCode: string | null;
-  /** Queued long past the point a worker should have taken it. */
-  stalled: boolean;
-}
-
-const IDLE_RUN: WorkRunState = {
-  failed: false,
-  failureCode: null,
-  stalled: false,
-};
-
-/**
- * What became of the step's background task. The work row records what the
- * operator asked for; the task run is the only place that knows whether
- * anything actually happened, so a step that died is read from here rather
- * than left spinning.
- */
-async function runStateFor(taskRunId: string | null): Promise<WorkRunState> {
-  if (!taskRunId) return IDLE_RUN;
-  const [run] = await db
-    .select({
-      status: taskRuns.status,
-      error: taskRuns.error,
-      createdAt: taskRuns.createdAt,
-    })
-    .from(taskRuns)
-    .where(eq(taskRuns.id, taskRunId));
-  if (!run) return IDLE_RUN;
-
-  return {
-    failed: run.status === "failed" || run.status === "cancelled",
-    failureCode: run.error?.code ?? null,
-    stalled:
-      run.status === "queued" &&
-      run.createdAt.getTime() < Date.now() - STALL_AFTER_MS,
-  };
-}
 
 export interface WorkDetail {
   work: WorkRow;
@@ -71,7 +24,7 @@ export interface WorkDetail {
   script: ScriptRow | null;
   clip: ClipRow | null;
   frames: WorkFrameRow[];
-  run: WorkRunState;
+  run: RunState;
 }
 
 export interface WorkSummary {
@@ -162,7 +115,7 @@ export interface WorkState {
   step: WorkRow["step"];
   stepStatus: WorkRow["stepStatus"];
   productState: ReturnType<typeof productStepState>;
-  run: WorkRunState;
+  run: RunState;
   /** Changes whenever anything on the page would render differently. */
   revision: string;
 }

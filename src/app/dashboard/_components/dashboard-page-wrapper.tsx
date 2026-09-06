@@ -8,7 +8,6 @@ interface DashboardPageWrapperProps {
   parentTitle?: ReactNode;
   parentUrl?: string;
   description?: ReactNode;
-  actions?: ReactNode;
   showSidebarTrigger?: boolean;
   mainClassName?: string;
   children: ReactNode;
@@ -20,7 +19,6 @@ export function DashboardPageWrapper({
   parentTitle,
   parentUrl,
   description,
-  actions,
   showSidebarTrigger = true,
   mainClassName,
   children,
@@ -31,7 +29,6 @@ export function DashboardPageWrapper({
         title={title}
         parentTitle={parentTitle}
         parentUrl={parentUrl}
-        actions={actions}
         showSidebarTrigger={showSidebarTrigger}
       />
       <main

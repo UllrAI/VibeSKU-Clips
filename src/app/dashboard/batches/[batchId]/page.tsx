@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { DashboardPageWrapper } from "../../_components/dashboard-page-wrapper";
-import { StatusBadge } from "@/components/ugc/status-badge";
 import { getServerTranslations } from "@/lib/i18n/translation/server";
 import { createMetadataDefaults } from "@/lib/metadata";
 import { getBatchDetail } from "@/lib/ugc/queries";
@@ -33,7 +32,6 @@ export default async function BatchDetailPage({
       parentTitle={<>{t("ugc_nav_batches")}</>}
       parentUrl="/dashboard/batches"
       description={<>{t("ugc_batch_detail_description")}</>}
-      actions={<StatusBadge kind="batch" status={progress.batch.status} />}
     >
       <BatchConsole progress={progress} clips={clips} />
     </DashboardPageWrapper>

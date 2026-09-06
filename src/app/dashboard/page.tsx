@@ -3,6 +3,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Clapperboard,
+  Film,
   FolderDown,
   ListChecks,
   SquarePlay,
@@ -74,15 +75,22 @@ export default async function DashboardOverviewPage() {
     <DashboardPageWrapper
       title={<>{t("ugc_overview_title")}</>}
       description={<>{t("ugc_overview_description")}</>}
-      actions={
-        <Button asChild size="sm">
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <Button asChild>
+          <Link href="/dashboard/works">
+            <Film />
+            {t("ugc_overview_start_work")}
+          </Link>
+        </Button>
+        <Button asChild variant="outline">
           <Link href="/dashboard/batches/new">
             <Clapperboard />
             {t("ugc_nav_new_batch")}
           </Link>
         </Button>
-      }
-    >
+      </div>
+
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {tiles.map((tile) => (
           <Card key={tile.key}>

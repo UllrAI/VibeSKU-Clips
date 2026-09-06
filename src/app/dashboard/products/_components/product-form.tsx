@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,6 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -112,6 +118,12 @@ export function ProductForm({
       }
       toast.success(t(product ? "ugc_product_updated" : "ugc_product_created"));
       onOpenChange(false);
+      // A new product goes straight to its own page: the read it just started
+      // is the next thing the operator needs to see.
+      if (!product && result.id) {
+        router.push(`/dashboard/products/${result.id}`);
+        return;
+      }
       router.refresh();
     });
   };
@@ -192,14 +204,22 @@ export function ProductForm({
             label={t("ugc_product_images")}
           />
 
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-base font-medium">{t("ugc_brief_title")}</h3>
-              <p className="text-muted-foreground text-sm">
-                {t("ugc_brief_description")}
-              </p>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+          <Collapsible className="border-border rounded-lg border">
+            <CollapsibleTrigger className="hover:bg-accent/50 group flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left transition-colors">
+              <span>
+                <span className="block text-sm font-medium">
+                  {t("ugc_brief_title")}
+                </span>
+                <span className="text-muted-foreground block text-xs">
+                  {t("ugc_brief_description")}
+                </span>
+              </span>
+              <ChevronDown
+                className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180"
+                aria-hidden
+              />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="border-border grid gap-4 border-t p-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="brief-audience">
                   {t("ugc_brief_audience")}
@@ -266,8 +286,8 @@ export function ProductForm({
                   {t("ugc_brief_script_hint")}
                 </p>
               </div>
-            </div>
-          </div>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
 
         <DialogFooter>

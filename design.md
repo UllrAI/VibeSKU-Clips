@@ -114,17 +114,23 @@ bounce, or hover zoom.
 
 ## Page composition
 
-- **Standard page.** `DashboardPageWrapper` with a title, one orienting
-  sentence, and actions beside the title on wide screens. The wrapper renders
-  the title as the page `h1`.
+- **Standard page.** `DashboardPageWrapper` with a title and one orienting
+  sentence. The wrapper renders the title as the page `h1`.
+- **Title bar.** The breadcrumb bar carries where you are on the left and the
+  two session controls — language and appearance — on the right. It never
+  carries a page action: an action belongs beside the content it acts on, so
+  a list's primary action sits above the list, and an object's actions sit in
+  the card that shows the object.
 - **Library and gallery.** Search and filters form one control group. Cards keep
   consistent geometry; media, title, metadata, and state sit in the same
   positions across peers.
 - **Composer.** Creating something is one card, not a stack of form sections:
   the subject on top, the choices under it, and the running cost pinned to the
-  button that spends it. Nothing that is optional gets first-screen space, so
-  bookkeeping fields sit behind a disclosure and the primary action is reachable
-  on the first screen. `Cmd`/`Ctrl` + `Enter` submits from anywhere in it.
+  button that spends it. The composer asks for everything the first step needs,
+  so the object it creates is never born half-answered. Nothing that is
+  optional gets first-screen space, so bookkeeping fields sit behind a
+  disclosure and the primary action is reachable on the first screen.
+  `Cmd`/`Ctrl` + `Enter` submits from anywhere in it.
 - **Never make someone leave to come back.** If a step needs an object that
   does not exist yet, the composer accepts enough to create it in place; it does
   not send the operator to another route with instructions to return. When the
@@ -174,6 +180,10 @@ which step, what it produced, and what happens if they say yes.
   in the rail, and offers to run again — it never spins forever.
 - Cheap changes come before expensive ones. Words are edited before frames,
   frames before the render, because that is the order of what they cost.
+- What a machine understood is shown before it is used, in the same shape the
+  operator can edit. Extracted product facts are a draft with an author, not a
+  verdict: reading them, correcting them, and saving them is one gesture, and
+  saving is what clears the object for production.
 
 ### Selection and bulk actions
 

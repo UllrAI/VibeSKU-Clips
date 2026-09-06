@@ -11,6 +11,7 @@ import { PendingStep } from "./pending-step";
 import { ProductStep } from "./product-step";
 import { ScriptStep } from "./script-step";
 import { StoryboardStep } from "./storyboard-step";
+import { WorkSummary } from "./work-summary";
 
 /**
  * One work, one step at a time. The rail says where the operator is in the
@@ -78,8 +79,9 @@ export function WorkConsole({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <StepRail step={work.step} busy={work.stepStatus === "running"} />
+      <WorkSummary detail={detail} />
       {body}
     </div>
   );

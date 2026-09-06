@@ -212,3 +212,11 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 **原因**：`WORK_STEPS` 这个普通数组常量声明在 `step-rail.tsx` 里，而那个文件顶部有 `"use client"`。Server Component 从客户端模块导入任何东西拿到的都是 client reference（一个只能被序列化、不能被读取的占位对象），`WORK_STEPS.indexOf(...)` 于是在服务端抛错。类型系统看到的是原始类型，所以什么都察觉不到。
 
 **正确做法**：两端都要用的纯数据和纯函数，放进不带任何指令的中立模块（`src/lib/ugc/work-steps.ts`），`"use client"` 文件只留组件。顺带一提：这类错误只有真正渲染页面才暴露，所以新页面至少要有一条 E2E 走一遍。
+
+### 把 Radix Tooltip 放进消息滚动区的头部，会让"跳到最新"失效
+
+**现象**：把 AI 免责声明（`AiResponseDisclaimer`，一个 Radix Tooltip 触发器）从页面标题栏挪进 `ChatPanel` 顶栏后，`keeps the current turn anchored while streaming` 这条 E2E 稳定失败：滚动到顶部后，「跳到最新」按钮仍是 `data-active="false" inert`，点击被消息内容拦截。移除该按钮即恢复，重新加回即复现，两次可复现。
+
+**原因**：未定位到根因。可观察的事实是：滚动器在测试里没有解除 autoscroll（viewport 仍带 `data-autoscrolling`），于是它认为自己已在底部，按钮保持 inert。把同一个组件放到输入区那一行则完全正常。
+
+**正确做法**：这类「AI 可能出错」的说明本来就应该贴着产出文本的输入框，而不是塞进标题栏或消息区的 chrome 里。另外：改动消息滚动区周边的 DOM 时，必须跑一遍这条 E2E——单测和类型检查完全看不见它。

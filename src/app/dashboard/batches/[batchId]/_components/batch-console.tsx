@@ -87,6 +87,7 @@ export function BatchConsole({
         meta={`${t("ugc_batch_planned")} ${progress.batch.plannedCount} · ${t(
           "ugc_plan_estimated_credits",
         )} ${progress.batch.estimatedCredits}`}
+        status={<StatusBadge kind="batch" status={progress.batch.status} />}
       />
 
       {counts.stalled && (

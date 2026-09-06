@@ -66,6 +66,7 @@ import { formatFileSize } from "@/lib/config/upload";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import { cn } from "@/lib/utils";
 import { getChatErrorKey } from "./chat-error";
+import { AiResponseDisclaimer } from "./ai-response-disclaimer";
 import { readSavedDocument } from "./saved-document";
 import { findActiveToolApprovalId } from "./tool-approval";
 
@@ -967,6 +968,10 @@ export function ChatPanel({
                 ))}
               </SelectContent>
             </Select>
+
+            {/* The caveat belongs next to the thing that produces the text,
+                not in the page's title bar. */}
+            <AiResponseDisclaimer message={t("ai_chat_disclaimer")} />
 
             <div className="ml-auto">
               {isBusy ? (

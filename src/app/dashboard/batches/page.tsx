@@ -26,15 +26,18 @@ export default async function BatchesPage() {
     <DashboardPageWrapper
       title={<>{t("ugc_batches_title")}</>}
       description={<>{t("ugc_batches_description")}</>}
-      actions={
-        <Button asChild size="sm">
-          <Link href="/dashboard/batches/new">
-            <Clapperboard />
-            {t("ugc_nav_new_batch")}
-          </Link>
-        </Button>
-      }
     >
+      {batches.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button asChild>
+            <Link href="/dashboard/batches/new">
+              <Clapperboard />
+              {t("ugc_nav_new_batch")}
+            </Link>
+          </Button>
+        </div>
+      )}
+
       {batches.length === 0 ? (
         <EmptyState
           icon={<Clapperboard />}

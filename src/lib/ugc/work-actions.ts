@@ -36,12 +36,74 @@ async function loadOwnedWork(workId: string, userId: string) {
   return work ?? null;
 }
 
-export async function createWork(title: string): Promise<ActionResult> {
+/**
+ * Hands the script step to the worker. Creating a work and re-running a failed
+ * script step are the same request from here down, so they share this.
+ */
+async function enqueueScript(workId: string, userId: string): Promise<void> {
+  const { taskRun } = await createBackgroundTask({
+    db,
+    queue: serverJobQueue,
+    definition: workScriptJob,
+    scopeKey: workScopeKey(userId, workId),
+    payload: { workId, userId },
+    idempotencyKey: `${workId}:script:${Date.now()}`,
+  });
+
+  await db
+    .update(ugcWorks)
+    .set({
+      step: "script",
+      stepStatus: "running",
+      scriptId: null,
+      taskRunId: taskRun.id,
+      updatedAt: new Date(),
+    })
+    .where(eq(ugcWorks.id, workId));
+}
+
+/**
+ * Starts a clip from a product that already exists. Everything the script
+ * needs is answered here, so a work is never created in a state where the
+ * operator has to be told to go and fetch something.
+ *
+ * A product that has already been read goes straight to writing; one still
+ * being read stops on the product step, where its facts can be checked before
+ * anything is spent on them.
+ */
+export async function createWork(
+  input: z.infer<typeof setupSchema>,
+): Promise<ActionResult> {
   const user = await requireAuth();
+  const parsed = setupSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_input" };
+
+  const [product] = await db
+    .select({ name: ugcProducts.name, facts: ugcProducts.facts })
+    .from(ugcProducts)
+    .where(
+      and(
+        eq(ugcProducts.id, parsed.data.productId),
+        eq(ugcProducts.userId, user.id),
+      ),
+    );
+  if (!product) return { ok: false, code: "not_found" };
+
   const [work] = await db
     .insert(ugcWorks)
-    .values({ userId: user.id, title: title.trim() || "Untitled" })
+    .values({
+      userId: user.id,
+      title: product.name,
+      productId: parsed.data.productId,
+      talentId: parsed.data.talentId ?? null,
+      locale: parsed.data.locale,
+      market: parsed.data.market,
+      template: parsed.data.template,
+    })
     .returning();
+
+  if (product.facts) await enqueueScript(work.id, user.id);
+
   revalidatePath("/dashboard/works");
   return { ok: true, id: work.id };
 }
@@ -112,25 +174,7 @@ export async function startWorkScript(workId: string): Promise<ActionResult> {
     .where(eq(ugcProducts.id, work.productId));
   if (!product?.facts) return { ok: false, code: "product_not_read" };
 
-  const { taskRun } = await createBackgroundTask({
-    db,
-    queue: serverJobQueue,
-    definition: workScriptJob,
-    scopeKey: workScopeKey(user.id, work.id),
-    payload: { workId: work.id, userId: user.id },
-    idempotencyKey: `${work.id}:script:${Date.now()}`,
-  });
-
-  await db
-    .update(ugcWorks)
-    .set({
-      step: "script",
-      stepStatus: "running",
-      scriptId: null,
-      taskRunId: taskRun.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(ugcWorks.id, work.id));
+  await enqueueScript(work.id, user.id);
 
   revalidatePath(`/dashboard/works/${workId}`);
   return { ok: true, id: workId };

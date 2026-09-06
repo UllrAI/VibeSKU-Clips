@@ -109,6 +109,7 @@ pnpm stripe:sync-products
 - UGC domain logic (planning, QC, similarity, manifest, render prompts): `src/lib/ugc`
 - UGC server actions and queries: `src/lib/ugc/actions.ts`, `src/lib/ugc/queries.ts`
 - Stepped single-clip flow: `src/lib/ugc/works.ts`, `src/lib/ugc/work-actions.ts`, `src/app/dashboard/works`
+- Background-run state shared by the product and work consoles: `src/lib/ugc/run-state.ts`
 - UGC job handlers: `src/lib/jobs/ugc`
 - Job queue, definitions, and worker environment: `src/lib/jobs`
 - Auth logic: `src/lib/auth`
@@ -145,7 +146,15 @@ products, scripts and clips tables — a clip belongs to a batch or to a work, s
 `ugc_clips.batchId` is null for the latter. Steps are `product -> script ->
 storyboard -> video`; the step's own task run is the only record of why a step
 gave up, so the console reads failure and stall state from `task_runs` rather
-than from a status column.
+than from a status column (`src/lib/ugc/run-state.ts`).
+
+The work composer asks for the product, talent, format, language and market in
+one card, and creates the product in place when it does not exist yet. Creating
+a work therefore starts the script immediately when the product has already
+been read; a product still being read stops the work on step one, where its
+extracted facts are confirmed before anything is spent on them. Those facts are
+editable on the product's own page (`/dashboard/products/[productId]`), and
+saving them is what marks the product `ready`.
 
 Rules that are easy to break:
 
@@ -187,6 +196,9 @@ Rules that are easy to break:
 
 ### Layout and page width
 
+- The dashboard title bar (`DashboardPageHeader`) carries the breadcrumb and the
+  session controls — locale and theme — and nothing else. Page actions live with
+  the content they act on, not in the header.
 - Use the semantic containers from `src/components/layout/page-container.tsx` instead of page-local `max-w-*` wrappers when working outside the dashboard.
 - Use `ShellContainer` for global chrome and genuinely wide split layouts such as the marketing header, footer, and homepage hero.
 - Use `SectionContainer` for standard marketing sections and most non-dashboard page bodies.
