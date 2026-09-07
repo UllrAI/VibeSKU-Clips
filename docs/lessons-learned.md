@@ -141,6 +141,14 @@
 
 ## 工具链
 
+### zsh 脚本变量不要命名为 `status` 或 `path`
+
+**现象**：部署检查脚本给循环变量取名 `path` 后，后续的 `curl`、`node`、`npx`、`git` 全部报 `command not found`；给状态变量取名 `status` 则直接报 `read-only variable`。
+
+**原因**：zsh 的 `status` 是只读特殊参数，`path` 是与 `PATH` 绑定的数组。给 `path` 赋循环值会同时破坏命令搜索路径。
+
+**正确做法**：在 zsh 脚本中使用带语义前缀的普通变量名，例如 `http_status`、`route` 和 `service_id`，避开 shell 特殊参数。
+
 ### 让 agent 跑验证前,先让它读项目脚本
 
 **现象**:agent 自行执行 `npx tsc`、`eslint .` 之类的通用命令,得出「没有错误」或一堆假错误的结论。
