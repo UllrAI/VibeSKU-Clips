@@ -32,8 +32,8 @@ test("starts a work from a new product and lands on the first step", async ({
   await expect(page).toHaveURL(/\/dashboard\/works\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name })).toBeVisible();
 
-  // The rail is the whole point of the stepped flow: four named steps, with
-  // the first one current until the product has been read.
+  // The default one-take flow has three named steps, with the first one
+  // current until the product has been read.
   const steps = page.getByRole("listitem").filter({ hasText: /^\d/ });
   await expect(
     page.getByText("Product", { exact: true }).first(),
@@ -41,7 +41,7 @@ test("starts a work from a new product and lands on the first step", async ({
   await expect(
     page.locator('[aria-current="step"]').filter({ hasText: "Product" }),
   ).toBeVisible();
-  expect(await steps.count()).toBeGreaterThanOrEqual(4);
+  await expect(steps).toHaveCount(3);
 
   // Nothing can be generated until a product has actually been read.
   await expect(
@@ -123,11 +123,11 @@ test("reviews a written script and sends it to the storyboard", async ({
     const [work] = await sql`
       insert into ugc_works (
         "userId", title, step, "stepStatus", "productId", "scriptId",
-        locale, market, template
+        locale, market, template, "videoMode"
       )
       values (
         'e2e-user', 'Serum work', 'script', 'review', ${product.id},
-        ${script.id}, 'en', 'US', 'spokesperson'
+        ${script.id}, 'en', 'US', 'spokesperson', 'storyboard'
       )
       returning id
     `;
