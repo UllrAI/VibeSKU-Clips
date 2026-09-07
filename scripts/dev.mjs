@@ -13,7 +13,14 @@ const children = [
   {
     name: "worker",
     command: process.execPath,
-    args: ["--env-file-if-exists=.env", "--import", "tsx", "scripts/worker.ts"],
+    args: [
+      "--watch",
+      "--watch-preserve-output",
+      "--env-file-if-exists=.env",
+      "--import",
+      "tsx",
+      "scripts/worker.ts",
+    ],
   },
 ].map(({ name, command, args }) => {
   const child = spawn(command, args, {

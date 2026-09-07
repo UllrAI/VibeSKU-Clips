@@ -4,7 +4,7 @@ import { getServerTranslations } from "@/lib/i18n/translation/server";
 import { createMetadataDefaults } from "@/lib/metadata";
 import { listProducts, listTalents } from "@/lib/ugc/queries";
 import { activeVideoModelOptions } from "@/lib/ugc/media/video-provider";
-import { getWork, getWorkState, productStepState } from "@/lib/ugc/works";
+import { getWork, getWorkState } from "@/lib/ugc/works";
 import { WorkConsole } from "./_components/work-console";
 
 export async function generateMetadata() {
@@ -45,7 +45,6 @@ export default async function WorkDetailPage({
         detail={detail}
         products={products}
         talents={talents}
-        productState={productStepState(detail.product)}
         initialState={state}
         modelOptions={activeVideoModelOptions()}
       />

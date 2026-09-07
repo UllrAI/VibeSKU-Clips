@@ -25,6 +25,14 @@ export function useLiveState<State extends LiveState>(
   const [state, setState] = useState(initial);
   const router = useRouter();
   const revisionRef = useRef(initial.revision);
+  const initialRevisionRef = useRef(initial.revision);
+
+  useEffect(() => {
+    if (initial.revision === initialRevisionRef.current) return;
+    initialRevisionRef.current = initial.revision;
+    revisionRef.current = initial.revision;
+    setState(initial);
+  }, [initial]);
 
   useEffect(() => {
     if (!isLive(state)) return;

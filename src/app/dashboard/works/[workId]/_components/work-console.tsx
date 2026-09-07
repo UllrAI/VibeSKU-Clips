@@ -23,39 +23,37 @@ export function WorkConsole({
   detail,
   products,
   talents,
-  productState,
   initialState,
   modelOptions,
 }: {
   detail: WorkDetail;
   products: ProductRow[];
   talents: TalentRow[];
-  productState: "empty" | "reading" | "needs_input" | "ready";
   initialState: WorkState;
   modelOptions: readonly VideoModelOption[];
 }) {
   const router = useRouter();
   const refresh = () => router.refresh();
-  useWorkState(detail.work.id, initialState);
+  const liveState = useWorkState(detail.work.id, initialState);
 
   const { work, script, clip, versions, frames } = detail;
   // A step is finished with, one way or another: the work row says the
   // handler gave up, or its task run did.
-  const failed = work.stepStatus === "failed" || detail.run.failed;
+  const failed = liveState.stepStatus === "failed" || liveState.run.failed;
   const taskActive =
-    detail.run.status === "queued" ||
-    detail.run.status === "running" ||
-    detail.run.status === "waiting";
+    liveState.run.status === "queued" ||
+    liveState.run.status === "running" ||
+    liveState.run.status === "waiting";
 
   let body: ReactNode;
   const renderingNewVersion = Boolean(
     clip &&
-    work.step === "video" &&
-    work.stepStatus === "running" &&
+    liveState.step === "video" &&
+    liveState.stepStatus === "running" &&
     taskActive &&
     !failed,
   );
-  const visibleStep = clip && !renderingNewVersion ? "done" : work.step;
+  const visibleStep = clip && !renderingNewVersion ? "done" : liveState.step;
 
   if (clip) {
     body = (
@@ -71,12 +69,12 @@ export function WorkConsole({
         modelOptions={modelOptions}
         rendering={renderingNewVersion}
         generationPhase={videoGenerationPhase(
-          detail.run.status,
-          detail.run.progress,
+          liveState.run.status,
+          liveState.run.progress,
         )}
-        generationFailed={work.step === "video" && failed}
-        failureCode={detail.run.failureCode}
-        stalled={detail.run.stalled}
+        generationFailed={liveState.step === "video" && failed}
+        failureCode={liveState.run.failureCode}
+        stalled={liveState.run.stalled}
         onRefresh={refresh}
       />
     );
@@ -86,7 +84,7 @@ export function WorkConsole({
         detail={detail}
         products={products}
         talents={talents}
-        productState={productState}
+        productState={liveState.productState}
         modelOptions={modelOptions}
         onRefresh={refresh}
       />
@@ -121,8 +119,8 @@ export function WorkConsole({
               : "video"
         }
         failed={failed}
-        failureCode={detail.run.failureCode}
-        stalled={detail.run.stalled}
+        failureCode={liveState.run.failureCode}
+        stalled={liveState.run.stalled}
         frames={work.step === "video" ? frames : []}
         videoMode={work.videoMode}
         aspectRatio={work.aspectRatio}
@@ -135,7 +133,9 @@ export function WorkConsole({
     <div className="space-y-4">
       <StepRail
         step={visibleStep}
-        busy={renderingNewVersion || (!clip && work.stepStatus === "running")}
+        busy={
+          renderingNewVersion || (!clip && liveState.stepStatus === "running")
+        }
         videoMode={work.videoMode}
       />
       <WorkSummary detail={detail} />

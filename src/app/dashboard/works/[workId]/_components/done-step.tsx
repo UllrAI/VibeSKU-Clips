@@ -98,7 +98,6 @@ export function DoneStep({
   const { t } = useTranslation();
   const locale = useIntlLocale();
   const [pending, startTransition] = useTransition();
-  const [starting, setStarting] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(clip.id);
   const [nextVideoModel, setNextVideoModel] = useState(videoModel);
@@ -159,7 +158,6 @@ export function DoneStep({
 
   const generate = () => {
     if (!draft) return;
-    setStarting(true);
     startTransition(async () => {
       try {
         const result = await startNewWorkVideoVersion(workId, {
@@ -184,7 +182,6 @@ export function DoneStep({
           },
         });
         if (!result.ok) {
-          setStarting(false);
           toast.error(t(actionMessageKey(result.code)));
           return;
         }
@@ -194,16 +191,16 @@ export function DoneStep({
         );
         onRefresh();
       } catch {
-        setStarting(false);
         toast.error(t("ugc_error_unexpected"));
       }
     });
   };
 
-  const inFlight = starting || rendering;
-  const phaseKey = starting
-    ? "ugc_work_video_phase_accepted"
-    : `ugc_work_video_phase_${generationPhase}`;
+  const inFlight = pending || rendering;
+  const phaseKey =
+    pending && !rendering
+      ? "ugc_work_video_phase_accepted"
+      : `ugc_work_video_phase_${generationPhase}`;
 
   return (
     <StepCard
@@ -218,10 +215,7 @@ export function DoneStep({
         </Button>
       }
       action={
-        <Button
-          onClick={openSettings}
-          disabled={pending || inFlight || !script}
-        >
+        <Button onClick={openSettings} disabled={inFlight || !script}>
           {inFlight ? (
             <Loader2
               className="animate-spin motion-reduce:animate-none"
@@ -243,8 +237,22 @@ export function DoneStep({
     >
       {generationFailed ? (
         <Alert variant="destructive">
-          <AlertTitle>{t("ugc_work_new_version_failed")}</AlertTitle>
-          <AlertDescription>{t(jobFailureKey(failureCode))}</AlertDescription>
+          <AlertTitle>
+            {t(
+              failureCode === "INVALID_JOB_PAYLOAD"
+                ? "ugc_work_new_version_not_started"
+                : "ugc_work_new_version_failed",
+              { version: nextVersion },
+            )}
+          </AlertTitle>
+          <AlertDescription className="space-y-1">
+            <span className="block">{t(jobFailureKey(failureCode))}</span>
+            <span className="block">
+              {t("ugc_work_current_version_unchanged", {
+                version: clip.version,
+              })}
+            </span>
+          </AlertDescription>
         </Alert>
       ) : stalled ? (
         <Alert variant="destructive">

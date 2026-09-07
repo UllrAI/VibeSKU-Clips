@@ -229,6 +229,14 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 
 **正确做法**：`pnpm dev` 同时拉起两个进程（`scripts/dev.mjs`），任一退出就一起停。更重要的是**让界面自己说出来**：`task_runs` 里存在 `queued` 且超过 45 秒没被领取的行，就是"没有 Worker 在消费"，批次页和批次列表直接显示「队列停滞」。任何环境漏跑 Worker 都会立刻可见，而不是让人盯着一个不动的进度条去翻服务器日志。
 
+### Web 热更新不会顺带更新独立 Worker
+
+**现象**：开发环境里刚给任务 payload 加完字段，页面能正常入队，新任务却立刻报 `INVALID_JOB_PAYLOAD`；界面如果没有正确接回轮询状态，还会一直显示生成中，手动刷新后才看见失败。
+
+**原因**：Next 开发服务器会热更新 Web 代码，但 `scripts/dev.mjs` 原先启动的是一个普通、常驻的 Worker 进程。Web 发的是新 payload，Worker 仍拿旧的严格 Zod schema 校验，任务在调用供应商之前就失败了。
+
+**正确做法**：开发 Worker 使用 Node watch mode，让 job 定义和依赖变化后自动重启。新增或修改 payload 后仍要检查一条真实 `task_runs.error`，确认请求确实走到了供应商边界；前端轮询状态也必须同步 Server Component 刷新后传入的新 revision。
+
 ### 从 `"use client"` 模块里导入常量到 Server Component，会在运行时炸
 
 **现象**：`/dashboard/works` 列表页直接渲染成「Something went wrong」，构建、类型检查、lint 全绿，本地组件单测也过。

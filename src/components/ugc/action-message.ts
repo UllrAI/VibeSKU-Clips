@@ -34,6 +34,7 @@ const JOB_FAILURE_KEYS: Record<string, string> = {
   UGC_STORYBOARD_TIMEOUT: "ugc_work_failure_timeout",
   UGC_RENDER_TIMEOUT: "ugc_work_failure_timeout",
   UGC_RENDER_FAILED: "ugc_work_failure_render",
+  INVALID_JOB_PAYLOAD: "ugc_work_failure_invalid_task",
   PRISM_NOT_CONFIGURED: "ugc_work_failure_prism_config",
   PRISM_AUTH_FAILED: "ugc_work_failure_prism_auth",
   PRISM_REQUEST_REJECTED: "ugc_work_failure_prism_request",

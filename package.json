@@ -34,7 +34,7 @@
     "analyze:dev": "ANALYZE=true next dev --webpack",
     "set:admin": "node --env-file-if-exists=.env --import tsx scripts/set-admin.ts",
     "stripe:sync-products": "node --env-file-if-exists=.env --import tsx scripts/sync-stripe-products.ts",
-    "worker:dev": "node --env-file-if-exists=.env --import tsx scripts/worker.ts",
+    "worker:dev": "node --watch --watch-preserve-output --env-file-if-exists=.env --import tsx scripts/worker.ts",
     "worker:start": "node dist/worker/worker.mjs",
     "worker:smoke": "node scripts/worker-smoke.mjs",
     "worker:shutdown-smoke": "node scripts/worker-shutdown-smoke.mjs",
