@@ -160,3 +160,113 @@ test("reviews a written script and sends it to the storyboard", async ({
     page.getByRole("button", { name: "Drawing the storyboard" }),
   ).toBeDisabled();
 });
+
+test("keeps a finished work complete while its script and video version are reviewed", async ({
+  page,
+}) => {
+  await loginAs(page, "user");
+
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+  let workId: string;
+  try {
+    const [product] = await sql`
+      insert into ugc_products ("userId", name, images, facts, status)
+      values (
+        'e2e-user',
+        'Versioned serum',
+        '[]'::jsonb,
+        ${JSON.stringify({
+          summary: "A finished serum fixture.",
+          appearance: "Amber bottle.",
+          specs: [],
+          sellingPoints: ["Lightweight"],
+          scenarios: ["Morning routine"],
+          sources: ["fixture"],
+        })}::jsonb,
+        'ready'
+      )
+      returning id
+    `;
+    const [script] = await sql`
+      insert into ugc_scripts (
+        "userId", "productId", template, locale, market,
+        title, hook, beats, voiceover, captions, status
+      )
+      values (
+        'e2e-user', ${product.id}, 'spokesperson', 'en', 'US',
+        'The exact V1 script',
+        'This wording made V1.',
+        ${JSON.stringify([
+          {
+            start: 0,
+            end: 15,
+            shot: "Close product shot",
+            action: "Show the bottle",
+            camera: "Handheld phone camera",
+            voiceover: "This wording made V1.",
+          },
+        ])}::jsonb,
+        'This wording made V1.',
+        ${JSON.stringify(["This wording made V1."])}::jsonb,
+        'ready'
+      )
+      returning id
+    `;
+    const [work] = await sql`
+      insert into ugc_works (
+        "userId", title, step, "stepStatus", "productId", "scriptId",
+        locale, market, template
+      )
+      values (
+        'e2e-user', 'Finished version work', 'script', 'review',
+        ${product.id}, ${script.id}, 'en', 'US', 'spokesperson'
+      )
+      returning id
+    `;
+    workId = work.id;
+    const [clip] = await sql`
+      insert into ugc_clips (
+        "userId", "productId", "scriptId", "workId", version, reference,
+        locale, market, template, status, "videoUrl", "durationMs"
+      )
+      values (
+        'e2e-user', ${product.id}, ${script.id}, ${work.id}, 1,
+        'VW-E2E-V1', 'en', 'US', 'spokesperson', 'ready',
+        '/api/files/content?key=missing-e2e-video.mp4', 15000
+      )
+      returning id
+    `;
+    await sql`
+      update ugc_works set "clipId" = ${clip.id} where id = ${work.id}
+    `;
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+
+  await page.goto(`/dashboard/works/${workId}`);
+  await expect(page.getByText("Video versions", { exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "V1 Current" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Generate new version" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Generate new version" }).click();
+  await expect(page.getByRole("heading", { name: "Prepare V2" })).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Video model" }),
+  ).toContainText("Hailuo H3");
+  await expect(page.getByLabel("Title")).toHaveValue("The exact V1 script");
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await page
+    .getByRole("button", { name: "Script used for this version" })
+    .click();
+  await expect(page.getByText("The exact V1 script")).toBeVisible();
+
+  await page.goto("/dashboard/works");
+  const card = page
+    .getByRole("listitem")
+    .filter({ hasText: "Finished version work" });
+  await expect(card.getByText("Video · Finished")).toBeVisible();
+  await expect(
+    card.getByText("Current version: V1", { exact: false }),
+  ).toBeVisible();
+});

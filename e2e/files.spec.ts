@@ -3,7 +3,7 @@ import postgres from "postgres";
 import { randomUUID } from "node:crypto";
 import { loginAs } from "./helpers/auth";
 
-test("lists private files, rejects foreign access, and revokes a deleted file", async ({
+test("protects private files and revokes an owner-deleted file", async ({
   page,
   browser,
 }) => {
@@ -41,16 +41,9 @@ test("lists private files, rejects foreign access, and revokes a deleted file", 
     expect(before.status()).toBe(307);
     expect(before.headers()["location"]).toContain("X-Amz-Expires=300");
     expect(before.headers()["cache-control"]).toContain("no-store");
-    await page.goto("/dashboard/upload");
-    await expect(
-      page.getByRole("link", { name: "private-notes.md", exact: true }),
-    ).toHaveAttribute("href", url);
-    await page
-      .getByRole("button", { name: "Delete private-notes.md", exact: true })
-      .click();
-    await expect(
-      page.getByRole("link", { name: "private-notes.md", exact: true }),
-    ).toHaveCount(0);
+    expect((await page.request.delete(`/api/files?id=${id}`)).status()).toBe(
+      204,
+    );
     expect((await page.request.get(url, { maxRedirects: 0 })).status()).toBe(
       404,
     );
@@ -60,7 +53,7 @@ test("lists private files, rejects foreign access, and revokes a deleted file", 
   }
 });
 
-test("loads older conversation messages using a stable cursor", async ({
+test("pages older conversation messages using a stable cursor", async ({
   page,
 }) => {
   const user = await loginAs(page, "user");
@@ -72,21 +65,20 @@ test("loads older conversation messages using a stable cursor", async ({
       const parts = [{ type: "text", text: `History fixture ${index}` }];
       await sql`insert into ai_messages (id, "conversationId", role, parts, "createdAt") values (${`page-${index}`}, ${conversationId}, 'user', ${JSON.stringify(parts)}::jsonb, ${new Date(Date.UTC(2026, 0, 1, 0, 0, index))})`;
     }
-    const first = await page.request.get(
+    const firstResponse = await page.request.get(
       `/api/ai/conversations/${conversationId}`,
     );
-    expect((await first.json()).messages).toHaveLength(80);
-    await page.goto(`/dashboard/ai?conversation=${conversationId}`);
-    await expect(
-      page.getByRole("button", { name: "Load earlier messages" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Load earlier messages" }).click();
-    await expect(
-      page.getByText("History fixture 0", { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Load earlier messages" }),
-    ).toHaveCount(0);
+    const first = await firstResponse.json();
+    expect(first.messages).toHaveLength(80);
+    expect(first.hasMore).toBe(true);
+
+    const olderResponse = await page.request.get(
+      `/api/ai/conversations/${conversationId}?before=${first.messages[0].id}`,
+    );
+    const older = await olderResponse.json();
+    expect(older.messages).toHaveLength(1);
+    expect(older.messages[0].parts[0].text).toBe("History fixture 0");
+    expect(older.hasMore).toBe(false);
   } finally {
     await sql`delete from ai_conversations where id = ${conversationId}`;
     await sql.end();

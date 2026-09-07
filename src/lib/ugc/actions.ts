@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/database";
-import { ugcProducts, ugcScripts, ugcTalents } from "@/database/ugc";
+import { ugcProducts, ugcTalents } from "@/database/ugc";
 import { requireAuth } from "@/lib/auth/permissions";
 import { productIngestJob } from "@/lib/jobs/ugc/product-ingest";
 import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
@@ -282,58 +282,4 @@ export async function archiveTalent(talentId: string): Promise<ActionResult> {
     .where(and(eq(ugcTalents.id, talentId), eq(ugcTalents.userId, user.id)));
   revalidatePath("/dashboard/talents");
   return { ok: true };
-}
-
-const scriptRevisionSchema = z.object({
-  title: z.string().trim().min(1).max(200),
-  hook: z.string().trim().min(1).max(500),
-  voiceover: z.string().trim().min(1).max(2000),
-  captions: z.array(z.string().trim().min(1).max(200)).min(1).max(12),
-  publishCaption: z.string().trim().max(500).optional(),
-  lock: z.boolean(),
-});
-
-/**
- * Edits never overwrite a script. A revision is stored as a new version that
- * points back at its source, so a finished clip can always be traced to the
- * exact wording it was made from.
- */
-export async function saveScriptRevision(
-  scriptId: string,
-  input: z.infer<typeof scriptRevisionSchema>,
-): Promise<ActionResult> {
-  const user = await requireAuth();
-  const parsed = scriptRevisionSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, code: "invalid_input" };
-
-  const [source] = await db
-    .select()
-    .from(ugcScripts)
-    .where(and(eq(ugcScripts.id, scriptId), eq(ugcScripts.userId, user.id)));
-  if (!source) return { ok: false, code: "not_found" };
-
-  const [revision] = await db
-    .insert(ugcScripts)
-    .values({
-      userId: source.userId,
-      productId: source.productId,
-      template: source.template,
-      locale: source.locale,
-      market: source.market,
-      title: parsed.data.title,
-      hook: parsed.data.hook,
-      productionPrompt: source.productionPrompt,
-      beats: source.beats,
-      voiceover: parsed.data.voiceover,
-      captions: parsed.data.captions,
-      publishCaption: parsed.data.publishCaption ?? source.publishCaption,
-      disclosure: source.disclosure,
-      status: parsed.data.lock ? "locked" : "ready",
-      version: source.version + 1,
-      parentId: source.parentId ?? source.id,
-    })
-    .returning();
-
-  revalidatePath("/dashboard/scripts");
-  return { ok: true, id: revision.id };
 }

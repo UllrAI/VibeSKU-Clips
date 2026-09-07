@@ -5,9 +5,7 @@ import { useTranslation } from "@/lib/i18n/translation/client";
 import { LocalizedLink as Link } from "@/components/localized-link";
 import {
   BarChart3,
-  Bot,
   CreditCard,
-  FileText,
   Film,
   KeyRound,
   LucideIcon,
@@ -50,8 +48,6 @@ type NavigationItem = {
 // Navigation entries whose feature can be switched off in SITE_CONFIG.
 // Anything absent here is always shown.
 const FEATURE_BY_ITEM_ID: Record<string, keyof typeof SITE_CONFIG.features> = {
-  ai: "ai",
-  upload: "uploads",
   billing: "billing",
   payments: "billing",
   subscriptions: "billing",
@@ -170,27 +166,6 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         label: <>{t("ugc_nav_talents")}</>,
         url: "/dashboard/talents",
         icon: UserRound,
-        matchMode: "exact",
-      },
-      {
-        id: "scripts",
-        label: <>{t("ugc_nav_scripts")}</>,
-        url: "/dashboard/scripts",
-        icon: FileText,
-        matchMode: "exact",
-      },
-      {
-        id: "upload",
-        label: <>{t("ugc_nav_footage")}</>,
-        url: "/dashboard/upload",
-        icon: Upload,
-        matchMode: "exact",
-      },
-      {
-        id: "ai",
-        label: <>{t("ugc_nav_assistant")}</>,
-        url: "/dashboard/ai",
-        icon: Bot,
         matchMode: "exact",
       },
     ] satisfies NavigationItem[]

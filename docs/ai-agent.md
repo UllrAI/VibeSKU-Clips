@@ -1,9 +1,9 @@
 # AI Agent Integration (Vercel AI SDK)
 
 VibeSKU Clips ships an agent-ready AI stack built on the [Vercel AI SDK](https://ai-sdk.dev) v7:
-a multi-step agent loop, a tool registry, a composable skill system, and a streaming chat UI.
-Building your own agent means registering tools and skills — the loop, transport, auth, and UI
-are already wired.
+a multi-step agent loop, a tool registry, a composable skill system, and a streaming chat API.
+The operator dashboard does not expose a general-purpose assistant; this stack remains available
+for purpose-built product integrations.
 
 ## Architecture
 
@@ -39,7 +39,6 @@ src/lib/ai/
 
 src/app/api/ai/conversations/      # Conversation list, creation, and retrieval
 src/app/api/chat/route.ts          # Auth + persistence + rate limit + streaming
-src/app/dashboard/ai/              # Chat UI (useChat + tool-call rendering)
 ```
 
 Request flow: the chat route authenticates the session, builds an `AgentContext`, resolves an
@@ -47,18 +46,9 @@ agent factory from the registry, and returns `createAgentUIStreamResponse`. The 
 `ToolLoopAgent`: it calls the model, executes tool calls, and loops until the model finishes
 or `isStepCount` stops it.
 
-The built-in assistant at `/dashboard/ai` is a working Chat + Canvas example composed from two skills:
-`account-support` (looks up the signed-in user's profile and subscription) and
-`knowledge-base` (a search → read → answer loop over the site's published articles — ask it
-"does this product support API keys?" and watch it search, open the matching article, and
-answer with a source link). Both run on real data; there are no mocks to remove.
-Substantial Markdown drafts, returned image/video files, and generated images open in the adjacent
-canvas, where users can switch artifacts, copy them, and download them.
-
-Conversations and UI messages are stored under the authenticated user in PostgreSQL. The
-responsive history panel supports creating, switching, archiving, and restoring conversations.
-Its desktop rail can be collapsed, and the selected conversation is restored from the URL after
-refresh or sign-in on another device. History is paginated in batches of 80 messages.
+Conversations and UI messages are stored under the authenticated user in PostgreSQL. The API
+supports creating, switching, archiving, restoring, and paginating history in batches of 80
+messages.
 The server accepts one new message or approval decision with a parent ID and derives the
 provider response handle from stored history. Each user may have one running response.
 A three-minute abort, five-step limit, and 4096 output-token limit bound each run.
@@ -67,9 +57,9 @@ storage independently; stale media retries cannot overwrite a later reply. A pro
 killed before that transaction leaves a reserved interrupted run and is not automatically
 replayed. See [architecture boundaries and recovery](architecture.md).
 
-Users can attach up to six PNG, JPEG, or WebP reference images to each message, including an
-image-only message. The composer uploads them through the existing R2 flow before sending, and the
-durable URLs are stored as UI message file parts. The chat route verifies every URL against an
+Clients can attach up to six PNG, JPEG, or WebP reference images to each message, including an
+image-only message. They upload through the existing R2 flow before sending, and the durable URLs
+are stored as UI message file parts. The chat route verifies every URL against an
 upload owned by the authenticated user and issues short-lived signed reads before passing it to the model, so clients cannot inject
 arbitrary external images or another user's files. The supported formats follow the
 [OpenAI image-input guidance](https://developers.openai.com/api/docs/guides/images-vision).
@@ -81,7 +71,7 @@ The stack uses the OpenAI Responses protocol so reasoning and function tools wor
 
 | Setting            | Where                                                                     | Notes                                                          |
 | :----------------- | :------------------------------------------------------------------------ | :------------------------------------------------------------- |
-| Feature switch     | `SITE_CONFIG.features.ai` in `src/lib/config/site.js`                     | Gates the nav item, page, and API route.                       |
+| Feature switch     | `SITE_CONFIG.features.ai` in `src/lib/config/site.js`                     | Gates the API routes.                                          |
 | `LLM_API_KEY`      | `.env`                                                                    | Required while the feature is enabled.                         |
 | `LLM_BASE_URL`     | `.env`                                                                    | Optional Responses API base URL.                               |
 | `AI_DEFAULT_MODEL` | `.env`                                                                    | Optional; defaults to `openai/gpt-5.6-luna`.                   |
@@ -159,11 +149,9 @@ export function createSaveDocument(context: AgentContext) {
 }
 ```
 
-The tool loop then pauses instead of executing, and the stream emits an approval request the UI
-renders as a confirmation card (`ToolApprovalCard` in
-`src/app/dashboard/ai/_components/chat-panel.tsx`). `useChat`'s `addToolApprovalResponse` records
-the answer and `sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithApprovalResponses`
-resumes the loop.
+The tool loop then pauses instead of executing, and the stream emits an approval request. Any
+client that consumes the chat API must render that request, record the answer with
+`addToolApprovalResponse`, and resume only after the signed approval response is complete.
 
 The approval itself travels through the client, so it is signed. `withToolApprovalSecret` in
 `src/lib/ai/tool-approval.ts` attaches an HMAC key derived from `BETTER_AUTH_SECRET` to every
@@ -256,11 +244,6 @@ The user message is stored before the stream is returned, while the completed as
 is stored by the stream end callback. Regeneration updates the existing assistant message and
 cannot overwrite a message with a different role.
 
-The dashboard page at `/dashboard/ai` follows the AI Elements conversation, reasoning,
-prompt-input, tool-status, and artifact patterns while reusing this repository's shadcn primitives
-and design tokens. Wide desktop layouts add persistent history beside the split Chat + Canvas
-workspace; narrower screens open history and Canvas in independent full-height sheets.
-
 ## Usage accounting
 
 Every completed assistant turn writes one `ai_usage_events` row: the user, conversation, message,
@@ -298,5 +281,4 @@ polyfills `TransformStream` for jsdom.
 
 Patterns to copy: call a tool's `execute` directly (`tools/*.test.ts`), compose skills without a
 context (`skills/compose.test.ts`), and cover a route by mocking session, rate limit, and agent
-(`src/app/api/chat/route.test.ts`). `e2e/ai-assistant.spec.ts` covers the page and the route's
-rejection paths without calling a model, so it needs no provider credentials.
+(`src/app/api/chat/route.test.ts`).

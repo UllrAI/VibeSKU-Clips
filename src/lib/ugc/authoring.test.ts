@@ -153,6 +153,12 @@ describe("composeTalentImagePrompt", () => {
     const content = request.messages[0]!.content;
     expect(request.system).toContain("camera type");
     expect(request.system).toContain("facial identity");
+    expect(request.system).toContain("reusable identity reference");
+    expect(request.system).toContain("both hands visibly empty");
+    expect(request.system).toContain("small digital product");
+    expect(request.system).toContain(
+      "Do not reproduce any item held by the person",
+    );
     expect(content.filter((part) => part.type === "file")).toHaveLength(1);
     expect(content[0]!.text).toContain("Mia");
     expect(content[0]!.text).toContain("Mediterranean cafe");

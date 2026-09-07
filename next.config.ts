@@ -70,7 +70,6 @@ const nextConfig: NextConfig = {
   transpilePackages: [
     "ai",
     "@ai-sdk/openai",
-    "@ai-sdk/react",
     "@ai-sdk/provider",
     "@ai-sdk/provider-utils",
     // Transitive ESM-only deps of `ai` that Jest must transform too.
@@ -80,8 +79,6 @@ const nextConfig: NextConfig = {
     "serialize-error",
     "non-error",
     "cron-parser",
-    "@shadcn/helpers",
-    "@shadcn/react",
   ],
   images: {
     remotePatterns: getRemotePatterns(),

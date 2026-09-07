@@ -88,7 +88,7 @@ describe("SignUpPage", () => {
     const pageModule = await import("./page");
     const element = await pageModule.default({
       searchParams: Promise.resolve({
-        callbackUrl: "/dashboard/upload",
+        callbackUrl: "/dashboard/products",
       }),
     });
 
@@ -97,7 +97,7 @@ describe("SignUpPage", () => {
     expect(mockAuthForm).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: "signup",
-        callbackURL: "/dashboard/upload",
+        callbackURL: "/dashboard/products",
       }),
     );
   });

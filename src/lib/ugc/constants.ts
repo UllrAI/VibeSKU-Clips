@@ -57,9 +57,7 @@ export type VideoResolution = (typeof VIDEO_RESOLUTIONS)[number];
 export const VIDEO_MODELS = ["h3", "seedance-2.0", "seedance-2.5"] as const;
 export type VideoModel = (typeof VIDEO_MODELS)[number];
 
-export const VIDEO_GENERATION_PROVIDERS = ["prism", "lk666"] as const;
-export type VideoGenerationProvider =
-  (typeof VIDEO_GENERATION_PROVIDERS)[number];
+export type VideoGenerationProvider = "prism" | "lk666";
 
 export interface VideoModelOption {
   model: VideoModel;

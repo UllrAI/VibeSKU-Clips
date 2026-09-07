@@ -19,6 +19,7 @@ import {
   workStepPosition,
 } from "@/lib/ugc/work-steps";
 import type { WorkSummary } from "@/lib/ugc/works";
+import { workListStatus } from "@/lib/ugc/work-status";
 import { cn } from "@/lib/utils";
 
 type WorkFilter = "all" | "running" | "waiting" | "completed" | "failed";
@@ -31,13 +32,6 @@ const FILTERS: readonly { id: WorkFilter; labelKey: string }[] = [
   { id: "failed", labelKey: "ugc_work_state_failed" },
 ];
 
-function statusOf(summary: WorkSummary): Exclude<WorkFilter, "all"> {
-  if (summary.failed) return "failed";
-  if (summary.work.step === "done") return "completed";
-  if (summary.work.stepStatus === "running") return "running";
-  return "waiting";
-}
-
 function downloadUrl(url: string): string {
   return `${url}${url.includes("?") ? "&" : "?"}download=1`;
 }
@@ -49,18 +43,18 @@ export function WorkList({ works }: { works: WorkSummary[] }) {
   const [filter, setFilter] = useState<WorkFilter>("all");
 
   useEffect(() => {
-    if (!works.some((work) => statusOf(work) === "running")) return;
+    if (!works.some((work) => workListStatus(work) === "running")) return;
     const timer = window.setInterval(() => router.refresh(), 5000);
     return () => window.clearInterval(timer);
   }, [router, works]);
 
   const visible = works.filter(
-    (work) => filter === "all" || statusOf(work) === filter,
+    (work) => filter === "all" || workListStatus(work) === filter,
   );
   const countFor = (candidate: WorkFilter) =>
     candidate === "all"
       ? works.length
-      : works.filter((work) => statusOf(work) === candidate).length;
+      : works.filter((work) => workListStatus(work) === candidate).length;
 
   return (
     <div className="space-y-4">
@@ -104,10 +98,10 @@ export function WorkList({ works }: { works: WorkSummary[] }) {
         <ul className="space-y-3">
           {visible.map((summary) => {
             const { work } = summary;
-            const status = statusOf(summary);
+            const status = workListStatus(summary);
             const steps = workStepsFor(work.videoMode);
             const position = workStepPosition(work.step, work.videoMode);
-            const playable = status === "completed" && summary.videoUrl;
+            const playable = Boolean(summary.videoUrl);
 
             return (
               <li key={work.id}>
@@ -178,18 +172,49 @@ export function WorkList({ works }: { works: WorkSummary[] }) {
                           </p>
                         )}
                         <p className="text-muted-foreground text-sm">
-                          {t(WORK_STEP_LABEL[work.step])}
+                          {t(
+                            summary.videoUrl
+                              ? WORK_STEP_LABEL.video
+                              : WORK_STEP_LABEL[work.step],
+                          )}
                           {" · "}
                           {t(
-                            workStateKey(
-                              work.step,
-                              summary.failed ? "failed" : work.stepStatus,
-                            ),
+                            summary.videoUrl && status === "running"
+                              ? "ugc_work_state_new_version"
+                              : summary.videoUrl && summary.failed
+                                ? "ugc_work_state_new_version_failed"
+                                : workStateKey(
+                                    summary.videoUrl ? "done" : work.step,
+                                    summary.failed ? "failed" : work.stepStatus,
+                                  ),
+                            summary.videoUrl && status === "running"
+                              ? {
+                                  version: (summary.videoVersion ?? 1) + 1,
+                                }
+                              : undefined,
                           )}
                         </p>
+                        {summary.videoGenerationPhase &&
+                          status === "running" && (
+                            <p className="text-muted-foreground text-xs">
+                              {t(
+                                `ugc_work_video_phase_${summary.videoGenerationPhase}`,
+                              )}
+                            </p>
+                          )}
                         <p className="text-muted-foreground text-xs tabular-nums">
+                          {summary.videoVersion && (
+                            <>
+                              {t("ugc_work_current_version", {
+                                version: summary.videoVersion,
+                              })}
+                              {" · "}
+                            </>
+                          )}
                           {t("ugc_work_step_position", {
-                            position: Math.min(position + 1, steps.length),
+                            position: summary.videoUrl
+                              ? steps.length
+                              : Math.min(position + 1, steps.length),
                             total: steps.length,
                           })}
                           {" · "}
@@ -201,7 +226,7 @@ export function WorkList({ works }: { works: WorkSummary[] }) {
                         <Button asChild size="sm">
                           <Link href={`/dashboard/works/${work.id}`}>
                             {t(
-                              status === "waiting"
+                              status === "waiting" && !summary.videoUrl
                                 ? "ugc_works_continue"
                                 : "ugc_works_open",
                             )}
@@ -211,7 +236,11 @@ export function WorkList({ works }: { works: WorkSummary[] }) {
                           <Button asChild size="sm" variant="outline">
                             <a href={downloadUrl(summary.videoUrl)} download>
                               <Download />
-                              {t("ugc_works_download")}
+                              {summary.videoVersion
+                                ? t("ugc_work_download_version", {
+                                    version: summary.videoVersion,
+                                  })
+                                : t("ugc_works_download")}
                             </a>
                           </Button>
                         )}

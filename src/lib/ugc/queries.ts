@@ -88,17 +88,3 @@ export async function listTalents(): Promise<TalentRow[]> {
     .where(and(eq(ugcTalents.userId, user.id), eq(ugcTalents.archived, false)))
     .orderBy(desc(ugcTalents.createdAt));
 }
-
-export async function listScripts(): Promise<
-  (ScriptRow & { productName: string })[]
-> {
-  const user = await requireAuth();
-  const rows = await db
-    .select({ script: ugcScripts, productName: ugcProducts.name })
-    .from(ugcScripts)
-    .innerJoin(ugcProducts, eq(ugcProducts.id, ugcScripts.productId))
-    .where(eq(ugcScripts.userId, user.id))
-    .orderBy(desc(ugcScripts.createdAt))
-    .limit(200);
-  return rows.map((row) => ({ ...row.script, productName: row.productName }));
-}

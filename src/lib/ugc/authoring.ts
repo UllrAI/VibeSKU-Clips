@@ -44,14 +44,18 @@ export async function composeTalentImagePrompt(
     schema: talentImagePromptSchema,
     system: [
       "You write one production-ready prompt for a photorealistic adult talent reference image.",
+      "This image is a reusable identity reference, never a product scene or an advertisement. Show only the person and an ordinary unobtrusive environment.",
       "Preserve every explicit fact in the operator brief. Expand missing photographic detail coherently without changing the requested identity, clothing, setting, or mood.",
+      "The person must not hold, touch, present, point to, look at, or interact with any product, package, device, prop, tool, container, food, drink, bag, or branded object. Keep both hands visibly empty and relaxed, or place them naturally outside the crop.",
+      "If the operator brief or a reference image mentions or shows an object, use it only as context for the person's identity and omit the object completely from the generated scene. Never invent a generic substitute such as 'a small digital product'.",
       "Write in the same language as the operator brief.",
       "Describe camera type, selfie or photographer viewpoint, camera height and angle, crop, facial structure, complexion, eyes, lips, hair, complete modest outfit, accessories, pose, setting, background depth, light direction, colour temperature, expression, attitude, skin texture, and phone-camera realism.",
-      "Finish with positive identity and wardrobe locks plus concise negative constraints. The subject must be an adult. No swimwear, exposed midriff, sexualised pose, text overlay, watermark, beauty filter, plastic skin, or anatomical errors.",
+      "Finish with positive identity and wardrobe locks plus concise negative constraints. The subject must be an adult. Explicitly include empty hands and no products, props, packages, devices, logos, or branded objects. Also exclude swimwear, exposed midriff, sexualised pose, text overlay, watermark, beauty filter, plastic skin, and anatomical errors.",
       input.referenceImageUrls.length
-        ? "Reference images are attached. State that facial identity, facial proportions, complexion, eyes, and hair must match the reference exactly; use the operator brief for intentional wardrobe or setting changes."
+        ? "Reference images are attached. State that facial identity, facial proportions, complexion, eyes, and hair must match the reference exactly; use the operator brief for intentional wardrobe or setting changes. Do not reproduce any item held by the person in a reference image."
         : "No reference image is attached. Define one coherent fictional adult identity from the operator brief.",
       "Return only the final image prompt in `prompt`, with no explanation or markdown.",
+      "Before returning, audit the prompt sentence by sentence and remove every product interaction, held item, display gesture, and branded object. Identity and appearance are the only subject matter.",
     ].join("\n"),
     messages: [
       {

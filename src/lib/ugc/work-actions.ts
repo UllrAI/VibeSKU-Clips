@@ -1,16 +1,19 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { after } from "next/server";
+import { and, eq, isNotNull, max } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/database";
 import {
   ugcProducts,
+  ugcClips,
   ugcScripts,
   ugcTalents,
   ugcWorkFrames,
   ugcWorks,
 } from "@/database/ugc";
+import { taskRuns } from "@/database/schema";
 import { requireAuth } from "@/lib/auth/permissions";
 import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
 import { workScriptJob } from "@/lib/jobs/ugc/work-script";
@@ -118,6 +121,21 @@ async function loadOwnedWork(workId: string, userId: string) {
   return work ?? null;
 }
 
+async function hasActiveTask(
+  work: NonNullable<Awaited<ReturnType<typeof loadOwnedWork>>>,
+): Promise<boolean> {
+  if (work.stepStatus !== "running" || !work.taskRunId) return false;
+  const [run] = await db
+    .select({ status: taskRuns.status })
+    .from(taskRuns)
+    .where(eq(taskRuns.id, work.taskRunId));
+  return (
+    run?.status === "queued" ||
+    run?.status === "running" ||
+    run?.status === "waiting"
+  );
+}
+
 /**
  * Hands the script step to the worker. Creating a work and re-running a failed
  * script step are the same request from here down, so they share this.
@@ -214,9 +232,11 @@ export async function setWorkSetup(
   const user = await requireAuth();
   const parsed = setupSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "invalid_input" };
-  if (!(await loadOwnedWork(workId, user.id))) {
+  const work = await loadOwnedWork(workId, user.id);
+  if (!work) {
     return { ok: false, code: "not_found" };
   }
+  if (work.clipId) return { ok: false, code: "work_already_rendered" };
 
   const [product] = await db
     .select({ id: ugcProducts.id })
@@ -262,6 +282,7 @@ export async function startWorkScript(workId: string): Promise<ActionResult> {
   const user = await requireAuth();
   const work = await loadOwnedWork(workId, user.id);
   if (!work) return { ok: false, code: "not_found" };
+  if (work.clipId) return { ok: false, code: "work_already_rendered" };
   if (!work.productId) return { ok: false, code: "work_needs_product" };
 
   const [product] = await db
@@ -317,6 +338,7 @@ export async function saveWorkScript(
 
   const work = await loadOwnedWork(workId, user.id);
   if (!work?.scriptId) return { ok: false, code: "not_found" };
+  if (work.clipId) return { ok: false, code: "work_already_rendered" };
 
   const voiceover = parsed.data.beats
     .map((beat) => beat.voiceover)
@@ -376,14 +398,32 @@ async function enqueueStoryboard(
 async function enqueueVideo(
   work: NonNullable<Awaited<ReturnType<typeof loadOwnedWork>>>,
   userId: string,
+  options: {
+    idempotencyKey?: string;
+    scriptId?: string;
+    videoModel?: (typeof VIDEO_MODELS)[number];
+    resolution?: (typeof VIDEO_RESOLUTIONS)[number];
+  } = {},
 ): Promise<void> {
+  const [latestVersion] = await db
+    .select({ value: max(ugcClips.version) })
+    .from(ugcClips)
+    .where(eq(ugcClips.workId, work.id));
+  const version = (latestVersion?.value ?? 0) + 1;
   const { taskRun } = await createBackgroundTask({
     db,
-    queue: serverJobQueue,
     definition: workVideoJob,
     scopeKey: workScopeKey(userId, work.id),
-    payload: { workId: work.id, userId, polls: 0 },
-    idempotencyKey: `${work.id}:video:${Date.now()}`,
+    payload: {
+      workId: work.id,
+      userId,
+      polls: 0,
+      version,
+      scriptId: options.scriptId,
+      videoModel: options.videoModel,
+      resolution: options.resolution,
+    },
+    idempotencyKey: options.idempotencyKey ?? `${work.id}:video:${Date.now()}`,
   });
 
   await db
@@ -392,9 +432,22 @@ async function enqueueVideo(
       step: "video",
       stepStatus: "running",
       taskRunId: taskRun.id,
+      scriptId: options.scriptId ?? work.scriptId,
+      videoModel: options.videoModel ?? work.videoModel,
+      resolution: options.resolution ?? work.resolution,
       updatedAt: new Date(),
     })
     .where(eq(ugcWorks.id, work.id));
+
+  // Accept and persist the visible work state before queue delivery. The task
+  // outbox remains the recovery path if this post-response delivery is lost.
+  after(() =>
+    serverJobQueue
+      .dispatchPending(db, workVideoJob)
+      .catch((error: unknown) =>
+        console.error("Video task accepted; queue delivery will retry:", error),
+      ),
+  );
 }
 
 /** Accepts the script and starts the selected video workflow. */
@@ -404,6 +457,7 @@ export async function startWorkFromScript(
   const user = await requireAuth();
   const work = await loadOwnedWork(workId, user.id);
   if (!work?.scriptId) return { ok: false, code: "not_found" };
+  if (work.clipId) return { ok: false, code: "work_already_rendered" };
 
   await db
     .update(ugcScripts)
@@ -432,6 +486,7 @@ export async function startWorkStoryboard(
   if (!work?.scriptId || work.videoMode !== "storyboard") {
     return { ok: false, code: "not_found" };
   }
+  if (work.clipId) return { ok: false, code: "work_already_rendered" };
 
   await enqueueStoryboard(work, user.id);
   revalidatePath(`/dashboard/works/${workId}`);
@@ -447,11 +502,16 @@ export async function regenerateWorkFrame(
 ): Promise<ActionResult> {
   const user = await requireAuth();
   const [frame] = await db
-    .select({ id: ugcWorkFrames.id, workId: ugcWorkFrames.workId })
+    .select({
+      id: ugcWorkFrames.id,
+      workId: ugcWorkFrames.workId,
+      clipId: ugcWorks.clipId,
+    })
     .from(ugcWorkFrames)
     .innerJoin(ugcWorks, eq(ugcWorks.id, ugcWorkFrames.workId))
     .where(and(eq(ugcWorkFrames.id, frameId), eq(ugcWorks.userId, user.id)));
   if (!frame) return { ok: false, code: "not_found" };
+  if (frame.clipId) return { ok: false, code: "work_already_rendered" };
 
   if (prompt !== undefined) {
     const parsed = framePromptSchema.safeParse(prompt);
@@ -504,6 +564,7 @@ export async function startWorkVideo(workId: string): Promise<ActionResult> {
   const user = await requireAuth();
   const work = await loadOwnedWork(workId, user.id);
   if (!work) return { ok: false, code: "not_found" };
+  if (work.clipId) return { ok: false, code: "work_already_rendered" };
 
   if (work.videoMode === "storyboard") {
     const ready = await db
@@ -518,9 +579,101 @@ export async function startWorkVideo(workId: string): Promise<ActionResult> {
     if (ready.length === 0) return { ok: false, code: "work_needs_frames" };
   }
 
-  await enqueueVideo(work, user.id);
+  await enqueueVideo(work, user.id, {
+    idempotencyKey: `${work.id}:video-version:${work.clipId}:${work.taskRunId ?? "initial"}`,
+  });
 
   revalidatePath(`/dashboard/works/${workId}`);
+  return { ok: true, id: workId };
+}
+
+/** Renders another take while keeping every completed version available. */
+const newVideoVersionSchema = z
+  .object({
+    videoModel: z.enum(VIDEO_MODELS),
+    resolution: z.enum(VIDEO_RESOLUTIONS),
+    script: scriptEditSchema,
+  })
+  .refine(
+    (input) => isActiveVideoConfiguration(input.videoModel, input.resolution),
+    { path: ["resolution"] },
+  );
+
+export async function startNewWorkVideoVersion(
+  workId: string,
+  input: z.infer<typeof newVideoVersionSchema>,
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const parsed = newVideoVersionSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_input" };
+  const work = await loadOwnedWork(workId, user.id);
+  if (!work?.clipId || !work.scriptId) {
+    return { ok: false, code: "not_found" };
+  }
+  if (await hasActiveTask(work)) {
+    return { ok: false, code: "work_busy" };
+  }
+
+  if (work.videoMode === "storyboard") {
+    const ready = await db
+      .select({ id: ugcWorkFrames.id })
+      .from(ugcWorkFrames)
+      .where(
+        and(
+          eq(ugcWorkFrames.workId, work.id),
+          eq(ugcWorkFrames.status, "ready"),
+        ),
+      );
+    if (ready.length === 0) return { ok: false, code: "work_needs_frames" };
+  }
+
+  const [sourceScript] = await db
+    .select()
+    .from(ugcScripts)
+    .where(
+      and(eq(ugcScripts.id, work.scriptId), eq(ugcScripts.userId, user.id)),
+    );
+  if (!sourceScript) return { ok: false, code: "not_found" };
+
+  const voiceover = parsed.data.script.beats
+    .map((beat) => beat.voiceover)
+    .filter(Boolean)
+    .join(" ");
+  if (!voiceover || voiceover.length > 4000) {
+    return { ok: false, code: "invalid_input" };
+  }
+
+  const [nextScript] = await db
+    .insert(ugcScripts)
+    .values({
+      userId: sourceScript.userId,
+      productId: sourceScript.productId,
+      template: sourceScript.template,
+      locale: sourceScript.locale,
+      market: sourceScript.market,
+      title: parsed.data.script.title,
+      hook: parsed.data.script.hook,
+      productionPrompt: parsed.data.script.productionPrompt || null,
+      beats: parsed.data.script.beats,
+      voiceover,
+      captions: parsed.data.script.captions,
+      publishCaption:
+        parsed.data.script.publishCaption || sourceScript.publishCaption,
+      disclosure: sourceScript.disclosure,
+      status: "ready",
+      version: sourceScript.version + 1,
+      parentId: sourceScript.id,
+    })
+    .returning({ id: ugcScripts.id });
+
+  await enqueueVideo(work, user.id, {
+    idempotencyKey: `${work.id}:video-version:${work.clipId}:${work.taskRunId ?? "initial"}`,
+    scriptId: nextScript.id,
+    videoModel: parsed.data.videoModel,
+    resolution: parsed.data.resolution,
+  });
+  revalidatePath(`/dashboard/works/${workId}`);
+  revalidatePath("/dashboard/works");
   return { ok: true, id: workId };
 }
 
@@ -532,6 +685,7 @@ export async function reopenWorkStep(
   const user = await requireAuth();
   const work = await loadOwnedWork(workId, user.id);
   if (!work) return { ok: false, code: "not_found" };
+  if (work.clipId) return { ok: false, code: "work_already_rendered" };
   if (step === "storyboard" && work.videoMode !== "storyboard") {
     return { ok: false, code: "invalid_input" };
   }

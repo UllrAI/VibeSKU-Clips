@@ -43,6 +43,16 @@ export interface ScriptDraft {
   disclosure: string;
 }
 
+/** Fields a person may revise before accepting a render. */
+export interface EditableScript {
+  title: string;
+  hook: string;
+  productionPrompt: string;
+  beats: ScriptBeat[];
+  captions: string;
+  publishCaption?: string;
+}
+
 type QualityCheckId =
   | "duration"
   | "voiceoverLength"

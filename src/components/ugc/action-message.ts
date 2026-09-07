@@ -6,6 +6,8 @@ const MESSAGE_KEYS: Record<string, string> = {
   work_needs_product: "ugc_error_work_needs_product",
   product_not_read: "ugc_error_product_not_read",
   work_needs_frames: "ugc_error_work_needs_frames",
+  work_already_rendered: "ugc_error_work_already_rendered",
+  work_busy: "ugc_error_work_busy",
 };
 
 /**

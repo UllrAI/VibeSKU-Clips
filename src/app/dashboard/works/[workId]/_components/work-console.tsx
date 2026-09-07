@@ -7,6 +7,7 @@ import { useWorkState } from "@/hooks/use-work-state";
 import type { ProductRow, TalentRow } from "@/lib/ugc/queries";
 import type { WorkDetail, WorkState } from "@/lib/ugc/works";
 import type { VideoModelOption } from "@/lib/ugc/constants";
+import { videoGenerationPhase } from "@/lib/ugc/video-progress";
 import { DoneStep } from "./done-step";
 import { PendingStep } from "./pending-step";
 import { ProductStep } from "./product-step";
@@ -37,13 +38,49 @@ export function WorkConsole({
   const refresh = () => router.refresh();
   useWorkState(detail.work.id, initialState);
 
-  const { work, script, clip, frames } = detail;
+  const { work, script, clip, versions, frames } = detail;
   // A step is finished with, one way or another: the work row says the
   // handler gave up, or its task run did.
   const failed = work.stepStatus === "failed" || detail.run.failed;
+  const taskActive =
+    detail.run.status === "queued" ||
+    detail.run.status === "running" ||
+    detail.run.status === "waiting";
 
   let body: ReactNode;
-  if (work.step === "product") {
+  const renderingNewVersion = Boolean(
+    clip &&
+    work.step === "video" &&
+    work.stepStatus === "running" &&
+    taskActive &&
+    !failed,
+  );
+  const visibleStep = clip && !renderingNewVersion ? "done" : work.step;
+
+  if (clip) {
+    body = (
+      <DoneStep
+        key={clip.id}
+        workId={work.id}
+        clip={clip}
+        versions={versions}
+        script={script}
+        videoMode={work.videoMode}
+        videoModel={work.videoModel}
+        resolution={work.resolution}
+        modelOptions={modelOptions}
+        rendering={renderingNewVersion}
+        generationPhase={videoGenerationPhase(
+          detail.run.status,
+          detail.run.progress,
+        )}
+        generationFailed={work.step === "video" && failed}
+        failureCode={detail.run.failureCode}
+        stalled={detail.run.stalled}
+        onRefresh={refresh}
+      />
+    );
+  } else if (work.step === "product") {
     body = (
       <ProductStep
         detail={detail}
@@ -51,15 +88,6 @@ export function WorkConsole({
         talents={talents}
         productState={productState}
         modelOptions={modelOptions}
-        onRefresh={refresh}
-      />
-    );
-  } else if (work.step === "done" && clip) {
-    body = (
-      <DoneStep
-        workId={work.id}
-        clip={clip}
-        videoMode={work.videoMode}
         onRefresh={refresh}
       />
     );
@@ -106,8 +134,8 @@ export function WorkConsole({
   return (
     <div className="space-y-4">
       <StepRail
-        step={work.step}
-        busy={work.stepStatus === "running"}
+        step={visibleStep}
+        busy={renderingNewVersion || (!clip && work.stepStatus === "running")}
         videoMode={work.videoMode}
       />
       <WorkSummary detail={detail} />

@@ -1,19 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ArrowLeft, ChevronDown, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { actionMessageKey } from "@/components/ugc/action-message";
+import { ScriptEditor } from "@/components/ugc/script-editor";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   reopenWorkStep,
@@ -22,7 +14,7 @@ import {
 } from "@/lib/ugc/work-actions";
 import type { ScriptRow } from "@/lib/ugc/queries";
 import type { VideoMode } from "@/lib/ugc/constants";
-import type { ScriptBeat } from "@/lib/ugc/types";
+import type { EditableScript } from "@/lib/ugc/types";
 import { StepCard } from "./step-card";
 
 /**
@@ -43,57 +35,39 @@ export function ScriptStep({
 }) {
   const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
-  const [title, setTitle] = useState(script.title);
-  const [hook, setHook] = useState(script.hook);
-  const [productionPrompt, setProductionPrompt] = useState(
-    script.productionPrompt ?? "",
-  );
-  const [beats, setBeats] = useState<ScriptBeat[]>(() =>
-    script.beats.map((beat) => ({
+  const [value, setValue] = useState<EditableScript>(() => ({
+    title: script.title,
+    hook: script.hook,
+    productionPrompt: script.productionPrompt ?? "",
+    beats: script.beats.map((beat) => ({
       ...beat,
       camera: beat.camera ?? t("ugc_script_camera_default"),
     })),
-  );
-  const [captions, setCaptions] = useState(script.captions.join("\n"));
+    captions: script.captions.join("\n"),
+    publishCaption: script.publishCaption ?? undefined,
+  }));
 
-  const currentSnapshot = JSON.stringify({
-    title,
-    hook,
-    productionPrompt,
-    beats,
-    captions,
-  });
+  const currentSnapshot = JSON.stringify(value);
   const [savedSnapshot, setSavedSnapshot] = useState(currentSnapshot);
   const dirty = currentSnapshot !== savedSnapshot;
 
-  const updateBeat = <Key extends keyof ScriptBeat>(
-    index: number,
-    key: Key,
-    value: ScriptBeat[Key],
-  ) =>
-    setBeats((current) =>
-      current.map((beat, position) =>
-        position === index ? { ...beat, [key]: value } : beat,
-      ),
-    );
-
   const persist = async () =>
     saveWorkScript(workId, {
-      title: title.trim(),
-      hook: hook.trim(),
-      productionPrompt: productionPrompt.trim(),
-      beats: beats.map((beat) => ({
+      title: value.title.trim(),
+      hook: value.hook.trim(),
+      productionPrompt: value.productionPrompt.trim(),
+      beats: value.beats.map((beat) => ({
         ...beat,
         shot: beat.shot.trim(),
         action: beat.action.trim(),
         camera: beat.camera?.trim() || t("ugc_script_camera_default"),
         voiceover: beat.voiceover.trim(),
       })),
-      captions: captions
+      captions: value.captions
         .split("\n")
         .map((line) => line.trim())
         .filter(Boolean),
-      publishCaption: script.publishCaption ?? undefined,
+      publishCaption: value.publishCaption,
     });
 
   const save = () =>
@@ -170,7 +144,7 @@ export function ScriptStep({
         </>
       }
       action={
-        <Button onClick={accept} disabled={pending || !title.trim()}>
+        <Button onClick={accept} disabled={pending || !value.title.trim()}>
           {pending && <Loader2 className="animate-spin" aria-hidden />}
           {t(
             videoMode === "storyboard"
@@ -180,140 +154,12 @@ export function ScriptStep({
         </Button>
       }
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="work-script-title">{t("ugc_script_title")}</Label>
-          <Input
-            id="work-script-title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="work-script-hook">{t("ugc_script_hook")}</Label>
-          <Input
-            id="work-script-hook"
-            value={hook}
-            onChange={(event) => setHook(event.target.value)}
-          />
-        </div>
-      </div>
-
-      <Collapsible defaultOpen className="border-border rounded-lg border">
-        <CollapsibleTrigger className="hover:bg-accent/50 group flex w-full items-center justify-between gap-3 rounded-lg px-4 py-3 text-left transition-colors">
-          <span>
-            <span className="block text-sm font-medium">
-              {t("ugc_script_production_prompt")}
-            </span>
-            <span className="text-muted-foreground block text-xs">
-              {t("ugc_script_production_prompt_hint")}
-            </span>
-          </span>
-          <ChevronDown
-            className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180"
-            aria-hidden
-          />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="border-border border-t p-4">
-          <Textarea
-            id="work-script-production-prompt"
-            rows={18}
-            value={productionPrompt}
-            onChange={(event) => setProductionPrompt(event.target.value)}
-          />
-        </CollapsibleContent>
-      </Collapsible>
-
-      <div className="space-y-2">
-        <Label htmlFor="work-script-captions">{t("ugc_script_captions")}</Label>
-        <Textarea
-          id="work-script-captions"
-          rows={3}
-          value={captions}
-          onChange={(event) => setCaptions(event.target.value)}
-          placeholder={t("ugc_brief_one_per_line")}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-sm font-medium">{t("ugc_work_beats")}</p>
-        <p className="text-muted-foreground text-xs">
-          {t(
-            videoMode === "storyboard"
-              ? "ugc_work_beats_hint"
-              : "ugc_work_beats_one_take_hint",
-          )}
-        </p>
-        <ol className="divide-border border-border divide-y rounded-lg border">
-          {beats.map((beat, index) => (
-            <li key={beat.start} className="flex gap-3 p-4 text-sm">
-              <Badge
-                variant="secondary"
-                className="h-5 shrink-0 font-normal tabular-nums"
-                translate="no"
-              >
-                {beat.start}–{beat.end}s
-              </Badge>
-              <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">
-                <BeatField
-                  id={`beat-${index}-shot`}
-                  label={t("ugc_script_beat_shot")}
-                  value={beat.shot}
-                  onChange={(value) => updateBeat(index, "shot", value)}
-                />
-                <BeatField
-                  id={`beat-${index}-camera`}
-                  label={t("ugc_script_beat_camera")}
-                  value={beat.camera ?? ""}
-                  onChange={(value) => updateBeat(index, "camera", value)}
-                />
-                <BeatField
-                  id={`beat-${index}-action`}
-                  label={t("ugc_script_beat_visual")}
-                  value={beat.action}
-                  onChange={(value) => updateBeat(index, "action", value)}
-                  rows={4}
-                />
-                <BeatField
-                  id={`beat-${index}-voiceover`}
-                  label={t("ugc_script_beat_dialogue")}
-                  value={beat.voiceover}
-                  onChange={(value) => updateBeat(index, "voiceover", value)}
-                  rows={4}
-                />
-              </div>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </StepCard>
-  );
-}
-
-function BeatField({
-  id,
-  label,
-  value,
-  onChange,
-  rows = 2,
-}: {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  rows?: number;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <Label htmlFor={id} className="text-xs">
-        {label}
-      </Label>
-      <Textarea
-        id={id}
-        rows={rows}
+      <ScriptEditor
+        idPrefix="work-script"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={setValue}
+        videoMode={videoMode}
       />
-    </div>
+    </StepCard>
   );
 }

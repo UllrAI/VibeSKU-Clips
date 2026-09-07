@@ -2,11 +2,16 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/database";
 import { taskRuns } from "@/database/schema";
+import type { TaskRunStatus } from "@/lib/tasks/types";
 
 /** How long a queued task may sit before the console calls the run stalled. */
 const STALL_AFTER_MS = 45_000;
 
 export interface RunState {
+  /** Current durable task state, used to distinguish accepted from executing. */
+  status: TaskRunStatus | "idle";
+  /** Controlled worker progress; UI maps known steps to localized copy. */
+  progress: Record<string, unknown> | null;
   /** The background step gave up. Without this a console spins forever. */
   failed: boolean;
   /** Our own error code, resolved to copy at the boundary. */
@@ -16,17 +21,22 @@ export interface RunState {
 }
 
 const IDLE_RUN: RunState = {
+  status: "idle",
+  progress: null,
   failed: false,
   failureCode: null,
   stalled: false,
 };
 
 function toRunState(run: {
-  status: string;
+  status: TaskRunStatus;
+  progress: Record<string, unknown> | null;
   error: { code: string } | null;
   createdAt: Date;
 }): RunState {
   return {
+    status: run.status,
+    progress: run.progress,
     failed: run.status === "failed" || run.status === "cancelled",
     failureCode: run.error?.code ?? null,
     stalled:
@@ -46,6 +56,7 @@ export async function runStateFor(taskRunId: string | null): Promise<RunState> {
   const [run] = await db
     .select({
       status: taskRuns.status,
+      progress: taskRuns.progress,
       error: taskRuns.error,
       createdAt: taskRuns.createdAt,
     })
@@ -65,6 +76,7 @@ export async function latestRunStateForScope(
   const [run] = await db
     .select({
       status: taskRuns.status,
+      progress: taskRuns.progress,
       error: taskRuns.error,
       createdAt: taskRuns.createdAt,
     })

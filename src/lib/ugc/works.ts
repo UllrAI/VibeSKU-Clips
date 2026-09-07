@@ -13,10 +13,19 @@ import { taskRuns } from "@/database/schema";
 import { requireAuth } from "@/lib/auth/permissions";
 import type { ProductRow, ScriptRow, TalentRow } from "./queries";
 import { runStateFor, type RunState } from "./run-state";
+import {
+  videoGenerationPhase,
+  type VideoGenerationPhase,
+} from "./video-progress";
 
 type WorkRow = typeof ugcWorks.$inferSelect;
 export type WorkFrameRow = typeof ugcWorkFrames.$inferSelect;
 export type ClipRow = typeof ugcClips.$inferSelect;
+
+export interface WorkVersion {
+  clip: ClipRow;
+  script: ScriptRow | null;
+}
 
 export interface WorkDetail {
   work: WorkRow;
@@ -24,6 +33,7 @@ export interface WorkDetail {
   talent: TalentRow | null;
   script: ScriptRow | null;
   clip: ClipRow | null;
+  versions: WorkVersion[];
   frames: WorkFrameRow[];
   run: RunState;
 }
@@ -33,6 +43,9 @@ export interface WorkSummary {
   productName: string | null;
   coverUrl: string | null;
   videoUrl: string | null;
+  videoVersion: number | null;
+  videoGenerationPhase: VideoGenerationPhase | null;
+  taskActive: boolean;
   failed: boolean;
 }
 
@@ -45,7 +58,9 @@ export async function listWorks(): Promise<WorkSummary[]> {
       productImages: ugcProducts.images,
       clipCover: ugcClips.coverUrl,
       videoUrl: ugcClips.videoUrl,
+      videoVersion: ugcClips.version,
       taskStatus: taskRuns.status,
+      taskProgress: taskRuns.progress,
     })
     .from(ugcWorks)
     .leftJoin(ugcProducts, eq(ugcProducts.id, ugcWorks.productId))
@@ -59,6 +74,21 @@ export async function listWorks(): Promise<WorkSummary[]> {
     productName: row.productName,
     coverUrl: row.clipCover ?? row.productImages?.[0] ?? null,
     videoUrl: row.videoUrl,
+    videoVersion: row.videoVersion,
+    videoGenerationPhase:
+      row.work.step === "video" &&
+      (row.taskStatus === "queued" ||
+        row.taskStatus === "running" ||
+        row.taskStatus === "waiting")
+        ? videoGenerationPhase(
+            row.taskStatus ?? "idle",
+            row.taskProgress ?? null,
+          )
+        : null,
+    taskActive:
+      row.taskStatus === "queued" ||
+      row.taskStatus === "running" ||
+      row.taskStatus === "waiting",
     failed: row.work.stepStatus === "failed" || row.taskStatus === "failed",
   }));
 }
@@ -86,6 +116,12 @@ export async function getWork(workId: string): Promise<WorkDetail | null> {
   const [clip] = work.clipId
     ? await db.select().from(ugcClips).where(eq(ugcClips.id, work.clipId))
     : [];
+  const versions = await db
+    .select({ clip: ugcClips, script: ugcScripts })
+    .from(ugcClips)
+    .leftJoin(ugcScripts, eq(ugcScripts.id, ugcClips.scriptId))
+    .where(eq(ugcClips.workId, work.id))
+    .orderBy(desc(ugcClips.version));
   const frames = await db
     .select()
     .from(ugcWorkFrames)
@@ -99,6 +135,10 @@ export async function getWork(workId: string): Promise<WorkDetail | null> {
     talent: talent ?? null,
     script: script ?? null,
     clip: clip ?? null,
+    versions:
+      clip && !versions.some((version) => version.clip.id === clip.id)
+        ? [{ clip, script: script ?? null }, ...versions]
+        : versions,
     frames,
   };
 }
@@ -173,6 +213,8 @@ export async function getWorkState(workId: string): Promise<WorkState | null> {
       productState,
       String(run.failed),
       String(run.stalled),
+      run.status,
+      JSON.stringify(run.progress),
       row.updatedAt.toISOString(),
       frames.map((frame) => frame.status).join(""),
     ].join("|"),

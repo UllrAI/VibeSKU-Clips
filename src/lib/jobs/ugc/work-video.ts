@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, max } from "drizzle-orm";
 import { z } from "zod";
 import type { AppDatabase } from "@/database/client";
 import {
@@ -9,7 +9,12 @@ import {
   ugcWorkFrames,
   ugcWorks,
 } from "@/database/ugc";
-import { CLIP_SPEC, CREDIT_COST } from "@/lib/ugc/constants";
+import {
+  CLIP_SPEC,
+  CREDIT_COST,
+  VIDEO_MODELS,
+  VIDEO_RESOLUTIONS,
+} from "@/lib/ugc/constants";
 import { getVideoTask, submitVideo } from "@/lib/ugc/media/video-provider";
 import { evaluateClipQuality } from "@/lib/ugc/qc";
 import {
@@ -26,6 +31,7 @@ import {
 } from "@/lib/ugc/storage";
 import { recordUsage } from "@/lib/ugc/usage";
 import type { ScriptBeat } from "@/lib/ugc/types";
+import { VIDEO_PROGRESS_STEP } from "@/lib/ugc/video-progress";
 import { defineJob, PermanentJobError } from "../definition";
 
 const POLL_SECONDS = 15;
@@ -36,6 +42,10 @@ const payloadSchema = z
     workId: z.uuid(),
     userId: z.string().min(1),
     clipId: z.uuid().optional(),
+    scriptId: z.uuid().optional(),
+    version: z.number().int().positive().optional(),
+    videoModel: z.enum(VIDEO_MODELS).optional(),
+    resolution: z.enum(VIDEO_RESOLUTIONS).optional(),
     providerTaskId: z.string().optional(),
     polls: z.number().int().nonnegative().default(0),
   })
@@ -75,7 +85,8 @@ export const workVideoJob = defineJob(
           eq(ugcWorks.userId, payload.userId),
         ),
       );
-    if (!work?.scriptId || !work.productId) {
+    const scriptId = payload.scriptId ?? work?.scriptId;
+    if (!work || !scriptId || !work.productId) {
       throw new PermanentJobError(
         "UGC_WORK_INCOMPLETE",
         "The work is missing its script or product.",
@@ -85,7 +96,7 @@ export const workVideoJob = defineJob(
     const [script] = await db
       .select()
       .from(ugcScripts)
-      .where(eq(ugcScripts.id, work.scriptId));
+      .where(eq(ugcScripts.id, scriptId));
     const [product] = await db
       .select()
       .from(ugcProducts)
@@ -121,6 +132,17 @@ export const workVideoJob = defineJob(
     }
 
     const beats = script.beats as ScriptBeat[];
+    const [latestVersion] = await db
+      .select({ value: max(ugcClips.version) })
+      .from(ugcClips)
+      .where(eq(ugcClips.workId, work.id));
+    const version = payload.version ?? (latestVersion?.value ?? 0) + 1;
+    const videoModel = payload.videoModel ?? work.videoModel;
+    const resolution = payload.resolution ?? work.resolution;
+    await context.updateProgress({
+      step: VIDEO_PROGRESS_STEP.preparing,
+      version,
+    });
     const subject = {
       productName: product.name,
       appearance: product.facts?.appearance ?? "",
@@ -143,7 +165,7 @@ export const workVideoJob = defineJob(
         ].filter((url): url is string => Boolean(url)),
       );
       const providerTaskId = await submitVideo({
-        model: work.videoModel,
+        model: videoModel,
         prompt: buildVideoPrompt(subject, beats, script.productionPrompt, {
           videoMode: work.videoMode,
           aspectRatio: work.aspectRatio,
@@ -151,12 +173,15 @@ export const workVideoJob = defineJob(
         referenceUrls: references,
         durationSeconds: CLIP_SPEC.durationSeconds,
         aspectRatio: work.aspectRatio,
-        resolution: work.resolution,
+        resolution,
         requestId: context.taskRunId,
       });
-      await context.updateProgress({ step: "video" });
+      await context.updateProgress({
+        step: VIDEO_PROGRESS_STEP.rendering,
+        version,
+      });
       await context.scheduleContinuation(
-        { ...payload, providerTaskId, polls: 0 },
+        { ...payload, providerTaskId, version, polls: 0 },
         POLL_SECONDS,
       );
       context.log("work_video_submitted", {
@@ -175,8 +200,12 @@ export const workVideoJob = defineJob(
           "The provider did not finish the video in time.",
         );
       }
+      await context.updateProgress({
+        step: VIDEO_PROGRESS_STEP.rendering,
+        version,
+      });
       await context.scheduleContinuation(
-        { ...payload, polls: payload.polls + 1 },
+        { ...payload, version, polls: payload.polls + 1 },
         POLL_SECONDS,
       );
       return { waiting: true, polls: payload.polls + 1 };
@@ -188,8 +217,13 @@ export const workVideoJob = defineJob(
       );
     }
 
+    await context.updateProgress({
+      step: VIDEO_PROGRESS_STEP.archiving,
+      version,
+    });
+
     const storeFile = storage(db);
-    const reference = `VW-${work.id.slice(0, 8)}`;
+    const reference = `VW-${work.id.slice(0, 8)}-V${version}`;
     const videoUrl = await archiveRemoteAsset({
       storeFile,
       userId: work.userId,
@@ -219,13 +253,15 @@ export const workVideoJob = defineJob(
         productId: product.id,
         scriptId: script.id,
         talentId: talent?.id ?? null,
+        workId: work.id,
+        version,
         reference,
         locale: work.locale,
         market: work.market,
         template: work.template,
-        videoModel: work.videoModel,
+        videoModel,
         aspectRatio: work.aspectRatio,
-        resolution: work.resolution,
+        resolution,
         status: quality.passed ? "ready" : "failed",
         failureReason: quality.passed
           ? null
@@ -254,6 +290,9 @@ export const workVideoJob = defineJob(
       .update(ugcWorks)
       .set({
         clipId: clip.id,
+        scriptId: script.id,
+        videoModel,
+        resolution,
         step: "done",
         // A clip that trips a check is still a clip: the findings belong on
         // the finished step, not in a failure state with nothing to look at.
@@ -265,9 +304,10 @@ export const workVideoJob = defineJob(
     context.log("work_video_finished", {
       workId: work.id,
       clipId: clip.id,
+      version,
       passed: quality.passed,
     });
-    return { clipId: clip.id, passed: quality.passed };
+    return { clipId: clip.id, version, passed: quality.passed };
   },
   {
     queue: {

@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   pgTable,
   text,
   integer,
@@ -6,6 +7,7 @@ import {
   boolean,
   uuid,
   index,
+  uniqueIndex,
   pgEnum,
   jsonb,
 } from "drizzle-orm/pg-core";
@@ -234,6 +236,10 @@ export const ugcClips = pgTable(
     talentId: uuid("talentId").references(() => ugcTalents.id, {
       onDelete: "set null",
     }),
+    workId: uuid("workId").references((): AnyPgColumn => ugcWorks.id, {
+      onDelete: "cascade",
+    }),
+    version: integer("version").notNull().default(1),
     // Stable serial number shown beside the generated work.
     reference: text("reference").notNull(),
     locale: text("locale").notNull(),
@@ -263,6 +269,10 @@ export const ugcClips = pgTable(
     userCreatedAtIdx: index("ugc_clips_userId_createdAt_idx").on(
       table.userId,
       table.createdAt.desc(),
+    ),
+    workVersionIdx: uniqueIndex("ugc_clips_workId_version_idx").on(
+      table.workId,
+      table.version,
     ),
   }),
 );
