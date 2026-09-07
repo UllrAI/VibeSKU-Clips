@@ -192,6 +192,8 @@
   "admin_search_user_name_email_subscription_id": "Search by user name, email, or subscription ID...",
   "admin_search_users_name_email": "Search users by name or email...",
   "admin_selected": "{expression0} selected",
+  "admin_select_all": "Select all uploads on this page",
+  "admin_select_file": "Select {fileName}",
   "admin_settled_usd_revenue": "Settled USD Revenue",
   "admin_settled_usd_revenue_description": "All-time succeeded payments in USD",
   "admin_share_subscriptions_currently_active": "Share of subscriptions currently active",

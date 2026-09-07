@@ -1,9 +1,12 @@
 "use client";
 
 import { useTranslation } from "@/lib/i18n/translation/client";
-import { type ComponentProps, type ReactNode, useCallback } from "react";
+import { type ComponentProps, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
-import { AdminTableBase } from "@/components/admin/admin-table-base";
+import {
+  AdminTableBase,
+  type AdminTableColumn,
+} from "@/components/admin/admin-table-base";
 import { UserAvatarCell } from "@/components/admin/user-avatar-cell";
 import { PaymentWithUser } from "@/types/billing";
 import { useAdminTable } from "@/hooks/use-admin-table";
@@ -50,11 +53,7 @@ const formatDate = (dateString: string | Date, locale: string) => {
 const createColumns = (
   locale: string,
   t: (key: string) => string,
-): Array<{
-  key: keyof PaymentWithUser | string;
-  label: ReactNode;
-  render?: (item: PaymentWithUser) => ReactNode;
-}> => [
+): AdminTableColumn<PaymentWithUser>[] => [
   {
     key: "user",
     label: <>{t("admin_payment_column_user")}</>,
@@ -69,8 +68,9 @@ const createColumns = (
   {
     key: "amount",
     label: <>{t("admin_payment_column_amount")}</>,
+    align: "right" as const,
     render: (payment) => (
-      <div className="font-medium">
+      <div className="font-medium tabular-nums">
         {formatCurrency(payment.amount, payment.currency, locale)}
       </div>
     ),
@@ -99,7 +99,15 @@ const createColumns = (
   {
     key: "created",
     label: <>{t("admin_payment_column_created")}</>,
-    render: (payment) => formatDate(payment.createdAt, locale),
+    align: "right" as const,
+    render: (payment) => (
+      <time
+        className="tabular-nums"
+        dateTime={new Date(payment.createdAt).toISOString()}
+      >
+        {formatDate(payment.createdAt, locale)}
+      </time>
+    ),
   },
 ];
 export function PaymentManagementTable({
@@ -152,23 +160,23 @@ export function PaymentManagementTable({
   const statusFilterOptions = [
     {
       value: "all",
-      label: <>{t("admin_payment_filter_all_statuses")}</>,
+      label: t("admin_payment_filter_all_statuses"),
     },
     {
       value: "succeeded",
-      label: <>{getPaymentStatusLabel("succeeded", t)}</>,
+      label: getPaymentStatusLabel("succeeded", t),
     },
     {
       value: "pending",
-      label: <>{getPaymentStatusLabel("pending", t)}</>,
+      label: getPaymentStatusLabel("pending", t),
     },
     {
       value: "failed",
-      label: <>{getPaymentStatusLabel("failed", t)}</>,
+      label: getPaymentStatusLabel("failed", t),
     },
     {
       value: "canceled",
-      label: <>{getPaymentStatusLabel("canceled", t)}</>,
+      label: getPaymentStatusLabel("canceled", t),
     },
   ];
   return (
@@ -186,6 +194,7 @@ export function PaymentManagementTable({
       filterPlaceholder={<>{t("admin_filter_status")}</>}
       pagination={pagination}
       onPageChange={handlePageChange}
+      tableClassName="min-w-[860px]"
       emptyMessage={<>{t("admin_no_payments_found")}</>}
     />
   );

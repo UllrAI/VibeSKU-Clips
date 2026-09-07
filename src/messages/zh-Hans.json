@@ -192,6 +192,8 @@
   "admin_search_user_name_email_subscription_id": "按用户名、电子邮件或订阅 ID 搜索...",
   "admin_search_users_name_email": "按用户名或邮箱搜索用户...",
   "admin_selected": "已选择 {expression0} 项",
+  "admin_select_all": "选择本页全部上传文件",
+  "admin_select_file": "选择 {fileName}",
   "admin_settled_usd_revenue": "已结算美元收入",
   "admin_settled_usd_revenue_description": "所有美元成功付款的历史总额",
   "admin_share_subscriptions_currently_active": "当前活跃订阅占比",

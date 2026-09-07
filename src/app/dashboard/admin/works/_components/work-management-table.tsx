@@ -1,9 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, type ReactNode } from "react";
+import { useCallback, useEffect } from "react";
 import { ExternalLink } from "lucide-react";
 
-import { AdminTableBase } from "@/components/admin/admin-table-base";
+import {
+  AdminTableBase,
+  type AdminTableColumn,
+} from "@/components/admin/admin-table-base";
 import { UserAvatarCell } from "@/components/admin/user-avatar-cell";
 import { LocalizedLink } from "@/components/localized-link";
 import { Badge } from "@/components/ui/badge";
@@ -83,23 +86,21 @@ export function WorkManagementTable({
     return () => window.clearInterval(timer);
   }, [refresh]);
 
-  const columns: Array<{
-    key: string;
-    label: ReactNode;
-    render: (item: AdminWorkListItem) => ReactNode;
-  }> = [
+  const columns: AdminTableColumn<AdminWorkListItem>[] = [
     {
       key: "work",
       label: <>{t("admin_ops_work")}</>,
+      headerClassName: "w-[26%]",
       render: (item) => (
-        <div className="min-w-48 space-y-1">
+        <div className="min-w-0 space-y-1">
           <LocalizedLink
             href={`/dashboard/admin/works/${item.id}`}
-            className="font-medium underline-offset-4 hover:underline"
+            title={item.title}
+            className="block truncate font-medium underline-offset-4 hover:underline"
           >
             {item.title}
           </LocalizedLink>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-muted-foreground truncate text-xs">
             {item.productName ?? t("admin_ops_no_product")}
           </p>
         </div>
@@ -108,42 +109,39 @@ export function WorkManagementTable({
     {
       key: "owner",
       label: <>{t("admin_ops_owner")}</>,
+      headerClassName: "w-[23%]",
       render: (item) => (
         <UserAvatarCell
           name={item.owner.name}
           email={item.owner.email}
           image={null}
+          className="min-w-0"
         />
       ),
     },
     {
       key: "state",
       label: <>{t("admin_ops_state")}</>,
+      headerClassName: "w-[11%]",
       render: (item) => (
         <div className="space-y-1">
-          <AdminWorkStateBadge state={item.state} />
-          <p className="text-muted-foreground text-xs">
-            {t(`ugc_work_step_${item.step}`)}
-          </p>
+          {item.taskStalled && item.taskStatus ? (
+            <AdminTaskStateBadge status={item.taskStatus} stalled />
+          ) : (
+            <AdminWorkStateBadge state={item.state} />
+          )}
+          {item.step !== "done" && (
+            <p className="text-muted-foreground text-xs">
+              {t(`ugc_work_step_${item.step}`)}
+            </p>
+          )}
         </div>
       ),
     },
     {
-      key: "task",
-      label: <>{t("admin_ops_current_task")}</>,
-      render: (item) =>
-        item.taskStatus ? (
-          <AdminTaskStateBadge
-            status={item.taskStatus}
-            stalled={item.taskStalled}
-          />
-        ) : (
-          <span className="text-muted-foreground text-sm">—</span>
-        ),
-    },
-    {
       key: "settings",
       label: <>{t("admin_ops_generation_settings")}</>,
+      headerClassName: "w-[15%]",
       render: (item) => (
         <div className="space-y-1 text-sm">
           <span translate="no">{item.videoModel}</span>
@@ -161,6 +159,8 @@ export function WorkManagementTable({
     {
       key: "updatedAt",
       label: <>{t("admin_ops_updated")}</>,
+      align: "right" as const,
+      headerClassName: "w-[17%]",
       render: (item) => (
         <time
           className="text-muted-foreground text-sm tabular-nums"
@@ -176,23 +176,28 @@ export function WorkManagementTable({
     {
       key: "actions",
       label: <>{t("admin_actions")}</>,
+      align: "right" as const,
+      sticky: "right" as const,
+      headerClassName: "w-[8%]",
       render: (item) => (
-        <Button variant="ghost" size="sm" asChild>
-          <LocalizedLink href={`/dashboard/admin/works/${item.id}`}>
-            <ExternalLink className="size-4" />
-            {t("admin_ops_inspect")}
-          </LocalizedLink>
-        </Button>
+        <div className="flex justify-end">
+          <Button variant="ghost" size="sm" asChild>
+            <LocalizedLink href={`/dashboard/admin/works/${item.id}`}>
+              <ExternalLink className="size-4" />
+              {t("admin_ops_inspect")}
+            </LocalizedLink>
+          </Button>
+        </div>
       ),
     },
   ];
 
   const filters = [
-    { value: "all", label: <>{t("admin_ops_filter_all")}</> },
-    { value: "active", label: <>{t("admin_ops_work_active")}</> },
-    { value: "attention", label: <>{t("admin_ops_work_attention")}</> },
-    { value: "completed", label: <>{t("admin_ops_work_completed")}</> },
-    { value: "failed", label: <>{t("admin_ops_work_failed")}</> },
+    { value: "all", label: t("admin_ops_filter_all") },
+    { value: "active", label: t("admin_ops_work_active") },
+    { value: "attention", label: t("admin_ops_work_attention") },
+    { value: "completed", label: t("admin_ops_work_completed") },
+    { value: "failed", label: t("admin_ops_work_failed") },
   ];
 
   return (
@@ -210,6 +215,7 @@ export function WorkManagementTable({
       filterPlaceholder={<>{t("admin_ops_filter_work_state")}</>}
       pagination={pagination}
       onPageChange={setCurrentPage}
+      tableClassName="min-w-[960px] table-fixed"
       searchPlaceholder={<>{t("admin_ops_search_works")}</>}
       emptyMessage={<>{t("admin_ops_no_works")}</>}
     />

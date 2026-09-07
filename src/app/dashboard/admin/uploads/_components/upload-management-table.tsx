@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "@/lib/i18n/translation/client";
-import { useState, ReactNode, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -15,7 +15,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Trash2, Eye, ExternalLink, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { AdminTableBase } from "@/components/admin/admin-table-base";
+import {
+  AdminTableBase,
+  type AdminTableColumn,
+} from "@/components/admin/admin-table-base";
 import { UserAvatarCell } from "@/components/admin/user-avatar-cell";
 import { formatFileSize } from "@/lib/config/upload";
 import { useAdminTable } from "@/hooks/use-admin-table";
@@ -149,21 +152,22 @@ export function UploadManagementTable({
     uploads.length > 0 && selectedUploads.size === uploads.length;
   const isPartiallySelected =
     selectedUploads.size > 0 && selectedUploads.size < uploads.length;
-  const columns: Array<{
-    key: string;
-    label: ReactNode;
-    render: (item: Upload) => ReactNode;
-  }> = [
+  const columns: AdminTableColumn<Upload>[] = [
     {
       key: "select",
+      align: "center" as const,
+      headerClassName: "w-14",
+      cellClassName: "w-14",
       label: (
         <Checkbox
+          aria-label={t("admin_select_all")}
           checked={isAllSelected || (isPartiallySelected && "indeterminate")}
           onCheckedChange={(checked) => handleSelectAll(Boolean(checked))}
         />
       ),
       render: (upload) => (
         <Checkbox
+          aria-label={t("admin_select_file", { fileName: upload.fileName })}
           checked={selectedUploads.has(upload.id)}
           onCheckedChange={(checked) =>
             handleSelectUpload(upload.id, Boolean(checked))
@@ -197,17 +201,23 @@ export function UploadManagementTable({
     {
       key: "createdAt",
       label: <>{t("admin_uploaded")}</>,
+      align: "right" as const,
       render: (upload) => (
-        <p className="text-sm">
+        <time
+          className="text-sm tabular-nums"
+          dateTime={new Date(upload.createdAt).toISOString()}
+        >
           {new Date(upload.createdAt).toLocaleDateString(intlLocale)}
-        </p>
+        </time>
       ),
     },
     {
       key: "actions",
       label: <>{t("admin_actions")}</>,
+      align: "right" as const,
+      sticky: "right" as const,
       render: (upload) => (
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
             size="icon"
@@ -251,35 +261,35 @@ export function UploadManagementTable({
   const filterOptions = [
     {
       value: "all",
-      label: <>{t("admin_all_types")}</>,
+      label: t("admin_all_types"),
     },
     {
       value: "image",
-      label: <>{t("admin_images")}</>,
+      label: t("admin_images"),
     },
     {
       value: "video",
-      label: <>{t("admin_videos")}</>,
+      label: t("admin_videos"),
     },
     {
       value: "audio",
-      label: <>{t("admin_audio")}</>,
+      label: t("admin_audio"),
     },
     {
       value: "pdf",
-      label: <>{t("admin_pdf")}</>,
+      label: t("admin_pdf"),
     },
     {
       value: "text",
-      label: <>{t("admin_text")}</>,
+      label: t("admin_text"),
     },
     {
       value: "archive",
-      label: <>{t("admin_archives")}</>,
+      label: t("admin_archives"),
     },
     {
       value: "other",
-      label: <>{t("admin_other")}</>,
+      label: t("admin_other"),
     },
   ];
   return (
@@ -321,6 +331,7 @@ export function UploadManagementTable({
         filterPlaceholder={<>{t("admin_filter_type")}</>}
         pagination={pagination}
         onPageChange={setCurrentPage}
+        tableClassName="min-w-[900px]"
         searchPlaceholder={<>{t("admin_search_filename_user_email")}</>}
         emptyMessage={<>{t("admin_no_uploads_found")}</>}
       />

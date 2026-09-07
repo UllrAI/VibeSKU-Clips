@@ -20,12 +20,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AlertTriangle, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getVisiblePageNumbers } from "./pagination";
-interface TableColumn<T> {
+export interface AdminTableColumn<T> {
   key: string;
   label: string | ReactNode;
   render?: (item: T) => ReactNode;
   sortable?: boolean;
+  align?: "left" | "center" | "right";
+  sticky?: "right";
+  headerClassName?: string;
+  cellClassName?: string;
 }
 interface FilterOption {
   value: string;
@@ -38,7 +43,7 @@ interface PaginationData {
   totalPages: number;
 }
 interface AdminTableBaseProps<T> {
-  columns: TableColumn<T>[];
+  columns: AdminTableColumn<T>[];
   data: T[];
   loading: boolean;
   error: boolean;
@@ -53,7 +58,15 @@ interface AdminTableBaseProps<T> {
   onPageChange: (page: number) => void;
   searchPlaceholder?: string | ReactNode;
   emptyMessage?: ReactNode;
+  tableClassName?: string;
 }
+
+const columnAlignment = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+};
+
 function extractTextContent(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
     return String(node);
@@ -94,6 +107,7 @@ export function AdminTableBase<
   onPageChange,
   searchPlaceholder,
   emptyMessage,
+  tableClassName,
 }: AdminTableBaseProps<T>) {
   const { t } = useTranslation();
   const resolvedEmptyMessage = emptyMessage ?? <>{t("common_no_data_found")}</>;
@@ -103,6 +117,9 @@ export function AdminTableBase<
   const resolvedSearchPlaceholder = extractTextContent(
     searchPlaceholder ?? t("admin_table_search_placeholder"),
   );
+  const selectedFilterLabel = filterOptions?.find(
+    (option) => option.value === filterValue,
+  )?.label;
 
   if (error) {
     return (
@@ -129,8 +146,13 @@ export function AdminTableBase<
         </div>
         {filterOptions && onFilterChange && filterMode === "select" && (
           <Select value={filterValue} onValueChange={onFilterChange}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder={resolvedFilterPlaceholder} />
+            <SelectTrigger
+              className="w-[180px]"
+              aria-label={resolvedFilterPlaceholder}
+            >
+              <SelectValue placeholder={resolvedFilterPlaceholder}>
+                {selectedFilterLabel}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent position="popper">
               {filterOptions.map((option) => (
@@ -168,12 +190,24 @@ export function AdminTableBase<
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
+      <div className="rounded-lg border">
+        <Table
+          aria-busy={loading}
+          className={cn("min-w-[840px]", tableClassName)}
+        >
           <TableHeader>
             <TableRow>
               {columns.map((column) => (
-                <TableHead key={String(column.key)}>
+                <TableHead
+                  key={String(column.key)}
+                  className={cn(
+                    "h-11 px-4 align-middle",
+                    columnAlignment[column.align ?? "left"],
+                    column.sticky === "right" &&
+                      "bg-card sticky right-0 z-10 border-l",
+                    column.headerClassName,
+                  )}
+                >
                   {typeof column.label === "string"
                     ? column.label
                     : column.label}
@@ -188,7 +222,16 @@ export function AdminTableBase<
               }).map((_, i) => (
                 <TableRow key={i}>
                   {columns.map((column) => (
-                    <TableCell key={String(column.key)}>
+                    <TableCell
+                      key={String(column.key)}
+                      className={cn(
+                        "px-4 py-3 align-middle",
+                        columnAlignment[column.align ?? "left"],
+                        column.sticky === "right" &&
+                          "bg-card sticky right-0 z-10 border-l",
+                        column.cellClassName,
+                      )}
+                    >
                       <div className="bg-muted h-4 w-full animate-pulse rounded" />
                     </TableCell>
                   ))}
@@ -205,9 +248,18 @@ export function AdminTableBase<
               </TableRow>
             ) : (
               data.map((item) => (
-                <TableRow key={item.id}>
+                <TableRow key={item.id} className="group">
                   {columns.map((column) => (
-                    <TableCell key={column.key}>
+                    <TableCell
+                      key={column.key}
+                      className={cn(
+                        "px-4 py-3 align-middle",
+                        columnAlignment[column.align ?? "left"],
+                        column.sticky === "right" &&
+                          "bg-card group-hover:bg-muted/50 sticky right-0 z-10 border-l transition-colors",
+                        column.cellClassName,
+                      )}
+                    >
                       {column.render
                         ? column.render(item)
                         : column.key in item

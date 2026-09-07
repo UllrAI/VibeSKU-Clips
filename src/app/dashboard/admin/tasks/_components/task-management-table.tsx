@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, type ReactNode } from "react";
+import { useCallback, useEffect } from "react";
 
-import { AdminTableBase } from "@/components/admin/admin-table-base";
+import {
+  AdminTableBase,
+  type AdminTableColumn,
+} from "@/components/admin/admin-table-base";
 import { UserAvatarCell } from "@/components/admin/user-avatar-cell";
 import { LocalizedLink } from "@/components/localized-link";
-import { Badge } from "@/components/ui/badge";
 import { useAdminTable } from "@/hooks/use-admin-table";
 import { useIntlLocale } from "@/hooks/use-intl-locale";
 import type { AdminTaskListItem } from "@/lib/admin/operations";
@@ -33,6 +35,18 @@ function taskDuration(item: AdminTaskListItem): number | null {
     0,
     new Date(end).getTime() - new Date(item.startedAt).getTime(),
   );
+}
+
+function visibleProgressStep(item: AdminTaskListItem): string | null {
+  if (
+    !item.progressStep ||
+    ["completed", "failed", "cancelled"].includes(item.status)
+  ) {
+    return null;
+  }
+  return item.progressStep === item.kind.split(".").at(-1)
+    ? null
+    : item.progressStep;
 }
 
 export function TaskManagementTable({
@@ -98,21 +112,18 @@ export function TaskManagementTable({
     return () => window.clearInterval(timer);
   }, [refresh]);
 
-  const columns: Array<{
-    key: string;
-    label: ReactNode;
-    render: (item: AdminTaskListItem) => ReactNode;
-  }> = [
+  const columns: AdminTableColumn<AdminTaskListItem>[] = [
     {
       key: "task",
       label: <>{t("admin_ops_task")}</>,
+      headerClassName: "w-[18%]",
       render: (item) => (
-        <div className="min-w-52 space-y-1">
+        <div className="min-w-0 space-y-1">
           <p className="font-medium" translate="no">
             {item.kind}
           </p>
           <p
-            className="text-muted-foreground max-w-60 truncate font-mono text-xs"
+            className="text-muted-foreground max-w-full truncate font-mono text-xs"
             title={item.id}
             translate="no"
           >
@@ -124,12 +135,14 @@ export function TaskManagementTable({
     {
       key: "owner",
       label: <>{t("admin_ops_owner")}</>,
+      headerClassName: "w-[17%]",
       render: (item) =>
         item.owner ? (
           <UserAvatarCell
             name={item.owner.name}
             email={item.owner.email}
             image={null}
+            className="min-w-0"
           />
         ) : (
           <span className="text-muted-foreground text-sm">—</span>
@@ -138,17 +151,19 @@ export function TaskManagementTable({
     {
       key: "subject",
       label: <>{t("admin_ops_subject")}</>,
+      headerClassName: "w-[17%]",
       render: (item) =>
         item.work ? (
           <LocalizedLink
             href={`/dashboard/admin/works/${item.work.id}`}
-            className="text-sm underline-offset-4 hover:underline"
+            title={item.work.title}
+            className="block truncate text-sm underline-offset-4 hover:underline"
           >
             {item.work.title}
           </LocalizedLink>
         ) : (
           <span
-            className="text-muted-foreground block max-w-48 truncate font-mono text-xs"
+            className="text-muted-foreground block max-w-full truncate font-mono text-xs"
             title={item.scopeKey}
             translate="no"
           >
@@ -159,29 +174,38 @@ export function TaskManagementTable({
     {
       key: "status",
       label: <>{t("admin_ops_state")}</>,
-      render: (item) => (
-        <div className="space-y-1">
-          <AdminTaskStateBadge status={item.status} stalled={item.stalled} />
-          {item.progressStep && (
-            <p
-              className="text-muted-foreground font-mono text-xs"
-              translate="no"
-            >
-              {item.progressStep}
-            </p>
-          )}
-        </div>
-      ),
+      headerClassName: "w-[8%]",
+      render: (item) => {
+        const progressStep = visibleProgressStep(item);
+        return (
+          <div className="space-y-1">
+            <AdminTaskStateBadge status={item.status} stalled={item.stalled} />
+            {progressStep && (
+              <p
+                className="text-muted-foreground font-mono text-xs"
+                translate="no"
+              >
+                {progressStep}
+              </p>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "error",
       label: <>{t("admin_ops_error")}</>,
+      headerClassName: "w-[15%]",
       render: (item) =>
         item.errorCode ? (
           <div className="space-y-1">
-            <Badge variant="destructive" translate="no">
+            <code
+              className="text-destructive block max-w-full truncate text-xs font-medium"
+              title={item.errorCode}
+              translate="no"
+            >
               {item.errorCode}
-            </Badge>
+            </code>
             {item.attempt !== null && (
               <p className="text-muted-foreground text-xs tabular-nums">
                 {t("admin_ops_attempt", { attempt: item.attempt })}
@@ -195,6 +219,8 @@ export function TaskManagementTable({
     {
       key: "timing",
       label: <>{t("admin_ops_timing")}</>,
+      align: "right" as const,
+      headerClassName: "w-[15%]",
       render: (item) => (
         <div className="space-y-1 text-sm tabular-nums">
           <time dateTime={new Date(item.createdAt).toISOString()}>
@@ -212,25 +238,30 @@ export function TaskManagementTable({
     {
       key: "actions",
       label: <>{t("admin_actions")}</>,
+      align: "right" as const,
+      sticky: "right" as const,
+      headerClassName: "w-[10%]",
       render: (item) => (
-        <TaskActionButtons
-          taskRunId={item.id}
-          status={item.status}
-          onChanged={refresh}
-        />
+        <div className="flex justify-end">
+          <TaskActionButtons
+            taskRunId={item.id}
+            status={item.status}
+            onChanged={refresh}
+          />
+        </div>
       ),
     },
   ];
 
   const filters = [
-    { value: "all", label: <>{t("admin_ops_filter_all")}</> },
-    { value: "stalled", label: <>{t("admin_ops_task_stalled")}</> },
-    { value: "queued", label: <>{t("admin_ops_task_queued")}</> },
-    { value: "running", label: <>{t("admin_ops_task_running")}</> },
-    { value: "waiting", label: <>{t("admin_ops_task_waiting")}</> },
-    { value: "failed", label: <>{t("admin_ops_task_failed")}</> },
-    { value: "completed", label: <>{t("admin_ops_task_completed")}</> },
-    { value: "cancelled", label: <>{t("admin_ops_task_cancelled")}</> },
+    { value: "all", label: t("admin_ops_filter_all") },
+    { value: "stalled", label: t("admin_ops_task_stalled") },
+    { value: "queued", label: t("admin_ops_task_queued") },
+    { value: "running", label: t("admin_ops_task_running") },
+    { value: "waiting", label: t("admin_ops_task_waiting") },
+    { value: "failed", label: t("admin_ops_task_failed") },
+    { value: "completed", label: t("admin_ops_task_completed") },
+    { value: "cancelled", label: t("admin_ops_task_cancelled") },
   ];
 
   return (
@@ -248,6 +279,7 @@ export function TaskManagementTable({
       filterPlaceholder={<>{t("admin_ops_filter_task_state")}</>}
       pagination={pagination}
       onPageChange={setCurrentPage}
+      tableClassName="min-w-[1040px] table-fixed"
       searchPlaceholder={<>{t("admin_ops_search_tasks")}</>}
       emptyMessage={<>{t("admin_ops_no_tasks")}</>}
     />

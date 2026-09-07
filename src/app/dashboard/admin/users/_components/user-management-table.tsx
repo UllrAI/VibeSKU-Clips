@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "@/lib/i18n/translation/client";
-import { useState, ReactNode, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Edit, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { AdminTableBase } from "@/components/admin/admin-table-base";
+import {
+  AdminTableBase,
+  type AdminTableColumn,
+} from "@/components/admin/admin-table-base";
 import { UserAvatarCell } from "@/components/admin/user-avatar-cell";
 import { userRoleEnum } from "@/database/schema";
 import type { UserRole } from "@/lib/config/roles";
@@ -172,11 +175,7 @@ export function UserManagementTable({
       day: "numeric",
     });
   };
-  const columns: Array<{
-    key: keyof UserWithSubscription | string;
-    label: ReactNode;
-    render?: (item: UserWithSubscription) => ReactNode;
-  }> = [
+  const columns: AdminTableColumn<UserWithSubscription>[] = [
     {
       key: "user",
       label: <>{t("admin_user")}</>,
@@ -225,26 +224,48 @@ export function UserManagementTable({
     {
       key: "createdAt",
       label: <>{t("admin_joined")}</>,
-      render: (user) => formatDate(user.createdAt),
+      align: "right" as const,
+      render: (user) => (
+        <time
+          className="tabular-nums"
+          dateTime={new Date(user.createdAt).toISOString()}
+        >
+          {formatDate(user.createdAt)}
+        </time>
+      ),
     },
     {
       key: "actions",
       label: <>{t("admin_actions")}</>,
+      align: "right" as const,
+      sticky: "right" as const,
       render: (user) => (
-        <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)}>
-          <Edit className="h-4 w-4" />
-        </Button>
+        <div className="flex justify-end">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={t("admin_edit_user")}
+            onClick={() => handleEditUser(user)}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];
   const roleFilterOptions = [
     {
       value: "all",
-      label: <>{t("admin_all_roles")}</>,
+      label: t("admin_all_roles"),
     },
     ...userRoleEnum.enumValues.map((role) => ({
       value: role,
-      label: <RoleLabel role={role as UserRole} />,
+      label:
+        role === "user"
+          ? t("common_user")
+          : role === "admin"
+            ? t("common_admin")
+            : t("common_super_admin"),
     })),
   ];
   return (
@@ -262,6 +283,7 @@ export function UserManagementTable({
         filterPlaceholder={<>{t("admin_filter_role")}</>}
         pagination={pagination}
         onPageChange={handlePageChange}
+        tableClassName="min-w-[880px]"
         searchPlaceholder={<>{t("admin_search_users_name_email")}</>}
         emptyMessage={<>{t("admin_no_users_found")}</>}
       />

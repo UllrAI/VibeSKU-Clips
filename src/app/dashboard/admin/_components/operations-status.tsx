@@ -11,9 +11,9 @@ const WORK_STATES: Record<
   AdminWorkState,
   { key: string; variant: BadgeVariant }
 > = {
-  active: { key: "admin_ops_work_active", variant: "secondary" },
-  attention: { key: "admin_ops_work_attention", variant: "outline" },
-  completed: { key: "admin_ops_work_completed", variant: "default" },
+  active: { key: "admin_ops_work_active", variant: "default" },
+  attention: { key: "admin_ops_work_attention", variant: "secondary" },
+  completed: { key: "admin_ops_work_completed", variant: "outline" },
   failed: { key: "admin_ops_work_failed", variant: "destructive" },
 };
 
@@ -22,9 +22,9 @@ const TASK_STATES: Record<
   { key: string; variant: BadgeVariant }
 > = {
   queued: { key: "admin_ops_task_queued", variant: "outline" },
-  running: { key: "admin_ops_task_running", variant: "secondary" },
+  running: { key: "admin_ops_task_running", variant: "default" },
   waiting: { key: "admin_ops_task_waiting", variant: "secondary" },
-  completed: { key: "admin_ops_task_completed", variant: "default" },
+  completed: { key: "admin_ops_task_completed", variant: "outline" },
   failed: { key: "admin_ops_task_failed", variant: "destructive" },
   cancelled: { key: "admin_ops_task_cancelled", variant: "outline" },
 };

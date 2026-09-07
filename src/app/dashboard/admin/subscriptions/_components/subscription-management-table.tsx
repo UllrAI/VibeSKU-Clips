@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslation } from "@/lib/i18n/translation/client";
-import { useState, ReactNode, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -14,7 +14,10 @@ import {
 } from "@/components/ui/dialog";
 import { Calendar, X, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { AdminTableBase } from "@/components/admin/admin-table-base";
+import {
+  AdminTableBase,
+  type AdminTableColumn,
+} from "@/components/admin/admin-table-base";
 import { UserAvatarCell } from "@/components/admin/user-avatar-cell";
 import type { SubscriptionWithUser } from "@/types/billing";
 import { useAdminTable } from "@/hooks/use-admin-table";
@@ -123,11 +126,7 @@ export function SubscriptionManagementTable({
       day: "numeric",
     });
   };
-  const columns: Array<{
-    key: keyof SubscriptionWithUser | string;
-    label: ReactNode;
-    render?: (item: SubscriptionWithUser) => ReactNode;
-  }> = [
+  const columns: AdminTableColumn<SubscriptionWithUser>[] = [
     {
       key: "user",
       label: <>{t("admin_user")}</>,
@@ -159,8 +158,9 @@ export function SubscriptionManagementTable({
     {
       key: "period",
       label: <>{t("admin_current_period")}</>,
+      align: "right" as const,
       render: (sub) => (
-        <div className="flex items-center gap-1 text-sm">
+        <div className="flex items-center justify-end gap-1 text-sm tabular-nums">
           <Calendar className="h-3 w-3" />
           <span>
             {formatDate(sub.currentPeriodStart)} -{" "}
@@ -172,51 +172,55 @@ export function SubscriptionManagementTable({
     {
       key: "actions",
       label: <>{t("admin_actions")}</>,
+      align: "right" as const,
+      sticky: "right" as const,
       render: (sub) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleCancelClick(sub)}
-          disabled={!["active", "trialing"].includes(sub.status) || isPending}
-        >
-          <X className="mr-1 h-4 w-4" />
-          {t("subscription_action_cancel")}
-        </Button>
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleCancelClick(sub)}
+            disabled={!["active", "trialing"].includes(sub.status) || isPending}
+          >
+            <X className="mr-1 h-4 w-4" />
+            {t("subscription_action_cancel")}
+          </Button>
+        </div>
       ),
     },
   ];
   const statusFilterOptions = [
     {
       value: "all",
-      label: <>{t("admin_all_statuses")}</>,
+      label: t("admin_all_statuses"),
     },
     {
       value: "active",
-      label: <>{getSubscriptionStatusLabel("active", t)}</>,
+      label: getSubscriptionStatusLabel("active", t),
     },
     {
       value: "trialing",
-      label: <>{getSubscriptionStatusLabel("trialing", t)}</>,
+      label: getSubscriptionStatusLabel("trialing", t),
     },
     {
       value: "canceled",
-      label: <>{getSubscriptionStatusLabel("canceled", t)}</>,
+      label: getSubscriptionStatusLabel("canceled", t),
     },
     {
       value: "past_due",
-      label: <>{getSubscriptionStatusLabel("past_due", t)}</>,
+      label: getSubscriptionStatusLabel("past_due", t),
     },
     {
       value: "scheduled_cancel",
-      label: <>{getSubscriptionStatusLabel("scheduled_cancel", t)}</>,
+      label: getSubscriptionStatusLabel("scheduled_cancel", t),
     },
     {
       value: "paused",
-      label: <>{getSubscriptionStatusLabel("paused", t)}</>,
+      label: getSubscriptionStatusLabel("paused", t),
     },
     {
       value: "expired",
-      label: <>{getSubscriptionStatusLabel("expired", t)}</>,
+      label: getSubscriptionStatusLabel("expired", t),
     },
   ];
   return (
@@ -237,6 +241,7 @@ export function SubscriptionManagementTable({
         filterPlaceholder={<>{t("admin_filter_status")}</>}
         pagination={pagination}
         onPageChange={handlePageChange}
+        tableClassName="min-w-[940px]"
         emptyMessage={<>{t("admin_no_subscriptions_found")}</>}
       />
       <Dialog
