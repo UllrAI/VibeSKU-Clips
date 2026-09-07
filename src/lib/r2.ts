@@ -218,6 +218,7 @@ export async function deleteFiles(
 export async function getFileReadUrl(
   key: string,
   download = false,
+  expiresIn = 300,
 ): Promise<string> {
   const config = getUploadConfig();
   return getSignedUrl(
@@ -227,6 +228,6 @@ export async function getFileReadUrl(
       Key: key,
       ...(download ? { ResponseContentDisposition: "attachment" } : {}),
     }),
-    { expiresIn: 300 },
+    { expiresIn },
   );
 }

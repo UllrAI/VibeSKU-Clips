@@ -17,10 +17,12 @@ const mockGetSignedUrl = jest.fn<(...args: unknown[]) => Promise<string>>();
 const mockIsFileTypeAllowed = jest.fn<(contentType: string) => boolean>();
 const mockIsFileSizeAllowed = jest.fn<(size: number) => boolean>();
 const mockPutObjectCommand = jest.fn();
+const mockGetObjectCommand = jest.fn();
 
 jest.mock("@aws-sdk/client-s3", () => ({
   S3Client: jest.fn().mockImplementation(() => ({ send: mockSend })),
   HeadObjectCommand: jest.fn(),
+  GetObjectCommand: mockGetObjectCommand,
   PutObjectCommand: mockPutObjectCommand,
   DeleteObjectCommand: jest.fn(),
   DeleteObjectsCommand: jest.fn(),
@@ -34,6 +36,7 @@ jest.mock("./config/upload", () => ({
   UPLOAD_CONFIG: {
     MAX_FILE_SIZE: 50 * 1024 * 1024,
     PRESIGNED_URL_EXPIRATION: 15 * 60,
+    REMOTE_REFERENCE_URL_EXPIRATION: 24 * 60 * 60,
   },
   isFileTypeAllowed: mockIsFileTypeAllowed,
   isFileSizeAllowed: mockIsFileSizeAllowed,
@@ -169,6 +172,21 @@ describe("R2 storage", () => {
 
       await expect(getObjectMetadata("test-key")).rejects.toThrow("timeout");
       expect(consoleSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe("getFileReadUrl", () => {
+    it("uses the requested signed GET lifetime", async () => {
+      const { getFileReadUrl } = await import("./r2");
+
+      await expect(
+        getFileReadUrl("reference-key", false, 24 * 60 * 60),
+      ).resolves.toBe("https://mock-presigned-url.com");
+      expect(mockGetSignedUrl).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        { expiresIn: 24 * 60 * 60 },
+      );
     });
   });
 

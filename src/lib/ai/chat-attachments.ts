@@ -4,7 +4,11 @@ import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "@/database";
 import { getFileReadUrl } from "@/lib/r2";
 import { uploads } from "@/database/schema";
-import { isFileSizeAllowed, normalizeContentType } from "@/lib/config/upload";
+import {
+  isFileSizeAllowed,
+  normalizeContentType,
+  UPLOAD_CONFIG,
+} from "@/lib/config/upload";
 import type { AiMessage } from "./chat-history-types";
 import {
   AI_IMAGE_INPUT_MAX_FILES,
@@ -86,7 +90,15 @@ export async function resolveAiImageAttachments(
   const signed = new Map(
     await Promise.all(
       rows.map(
-        async (row) => [row.url, await getFileReadUrl(row.fileKey)] as const,
+        async (row) =>
+          [
+            row.url,
+            await getFileReadUrl(
+              row.fileKey,
+              false,
+              UPLOAD_CONFIG.REMOTE_REFERENCE_URL_EXPIRATION,
+            ),
+          ] as const,
       ),
     ),
   );

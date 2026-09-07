@@ -148,6 +148,11 @@ export const UPLOAD_CONFIG = {
   PRESIGNED_URL_EXPIRATION: 15 * 60,
 
   /**
+   * Signed GET lifetime for reference images sent to remote AI/media providers.
+   */
+  REMOTE_REFERENCE_URL_EXPIRATION: 24 * 60 * 60,
+
+  /**
    * Upload intent lifetime. This allows a signed PUT to finish without keeping
    * abandoned reservations for an entire day.
    */

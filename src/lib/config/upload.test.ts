@@ -19,6 +19,7 @@ describe("Upload Configuration", () => {
 
     it("should have correct presigned URL expiration", () => {
       expect(UPLOAD_CONFIG.PRESIGNED_URL_EXPIRATION).toBe(15 * 60); // 15 minutes
+      expect(UPLOAD_CONFIG.REMOTE_REFERENCE_URL_EXPIRATION).toBe(24 * 60 * 60);
       expect(UPLOAD_CONFIG.UPLOAD_INTENT_EXPIRATION).toBe(60 * 60);
       expect(UPLOAD_CONFIG.UPLOAD_TOMBSTONE_RECHECK_DELAY).toBe(24 * 60 * 60);
       expect(UPLOAD_CONFIG.UPLOAD_CLEANUP_RETRY_DELAY).toBe(5 * 60);

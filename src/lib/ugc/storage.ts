@@ -3,6 +3,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { storageEnvFields } from "@/lib/config/runtime-env.mjs";
+import { UPLOAD_CONFIG } from "@/lib/config/upload";
 import type { AppDatabase } from "@/database/client";
 import { uploads } from "@/database/schema";
 import { createFileStorage } from "@/lib/uploads/store";
@@ -131,7 +132,7 @@ export async function resolveReferenceUrls(
               Bucket: config.bucketName,
               Key: item.key,
             }),
-            { expiresIn: 10 * 60 },
+            { expiresIn: UPLOAD_CONFIG.REMOTE_REFERENCE_URL_EXPIRATION },
           )
         : item.reference,
     ),
