@@ -9,6 +9,8 @@ import {
   AdminStatsWithCharts,
 } from "@/lib/admin/stats";
 import { getRequestLocale } from "@/lib/i18n/server-locale";
+import { getAdminOperationsStats } from "@/lib/admin/operations";
+import { OperationsOverview } from "./_components/operations-overview";
 export async function generateMetadata() {
   const { locale, t } = await getServerTranslations();
   const metadata = createMetadataDefaults({ locale });
@@ -31,14 +33,16 @@ export async function generateMetadata() {
 export default async function AdminDashboardPage() {
   const { t } = await getServerTranslations();
   await requireAdmin();
-  const [locale, statsWithCharts] = await Promise.all([
+  const [locale, statsWithCharts, operationsStats] = await Promise.all([
     getRequestLocale(),
     getAdminStatsWithCharts(),
+    getAdminOperationsStats(),
   ]);
   const { charts, ...summaryStats } = statsWithCharts as AdminStatsWithCharts;
   return (
     <DashboardPageWrapper title={<>{t("admin_dashboard_page")}</>}>
       <AdminStatsCards stats={summaryStats} locale={locale} />
+      <OperationsOverview stats={operationsStats} locale={locale} />
       <AdminDashboardCharts charts={charts} />
     </DashboardPageWrapper>
   );

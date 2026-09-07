@@ -148,7 +148,7 @@ export async function getWork(workId: string): Promise<WorkDetail | null> {
  * product is being read, and the console needs to distinguish that from a
  * product that was read and came back short.
  */
-export function productStepState(
+function productStepState(
   product: Pick<ProductRow, "status" | "facts"> | null,
 ): "empty" | "reading" | "needs_input" | "ready" {
   if (!product) return "empty";

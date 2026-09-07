@@ -16,6 +16,7 @@ import {
   UserRound,
   Users,
   Wallet,
+  ListTodo,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { APP_NAME } from "@/lib/config/constants";
@@ -209,6 +210,20 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         label: <>{t("dashboard_user_management")}</>,
         url: "/dashboard/admin/users",
         icon: Users,
+        matchMode: "exact",
+      },
+      {
+        id: "works-management",
+        label: <>{t("admin_ops_works_title")}</>,
+        url: "/dashboard/admin/works",
+        icon: Film,
+        matchMode: "prefix",
+      },
+      {
+        id: "tasks-management",
+        label: <>{t("admin_ops_tasks_title")}</>,
+        url: "/dashboard/admin/tasks",
+        icon: ListTodo,
         matchMode: "exact",
       },
       {

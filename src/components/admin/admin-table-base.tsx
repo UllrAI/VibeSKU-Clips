@@ -47,6 +47,7 @@ interface AdminTableBaseProps<T> {
   filterValue?: string;
   onFilterChange?: (value: string) => void;
   filterOptions?: FilterOption[];
+  filterMode?: "select" | "tabs";
   filterPlaceholder?: string | ReactNode;
   pagination: PaginationData;
   onPageChange: (page: number) => void;
@@ -87,6 +88,7 @@ export function AdminTableBase<
   filterValue,
   onFilterChange,
   filterOptions,
+  filterMode = "select",
   filterPlaceholder,
   pagination,
   onPageChange,
@@ -125,7 +127,7 @@ export function AdminTableBase<
             className="pl-9"
           />
         </div>
-        {filterOptions && onFilterChange && (
+        {filterOptions && onFilterChange && filterMode === "select" && (
           <Select value={filterValue} onValueChange={onFilterChange}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder={resolvedFilterPlaceholder} />
@@ -141,8 +143,32 @@ export function AdminTableBase<
         )}
       </div>
 
+      {filterOptions && onFilterChange && filterMode === "tabs" && (
+        <div
+          role="tablist"
+          aria-label={resolvedFilterPlaceholder}
+          className="flex max-w-full gap-1 overflow-x-auto pb-1"
+        >
+          {filterOptions.map((option) => (
+            <Button
+              key={option.value}
+              type="button"
+              role="tab"
+              size="sm"
+              variant={filterValue === option.value ? "secondary" : "ghost"}
+              aria-selected={filterValue === option.value}
+              onClick={() => onFilterChange(option.value)}
+              disabled={loading}
+              className="shrink-0"
+            >
+              {option.label}
+            </Button>
+          ))}
+        </div>
+      )}
+
       {/* Table */}
-      <div className="rounded-md border">
+      <div className="overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>

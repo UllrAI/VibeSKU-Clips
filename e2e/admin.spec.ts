@@ -18,4 +18,17 @@ test("allows an admin session to open the admin dashboard", async ({
 
   await expect(page).toHaveURL(/\/dashboard\/admin$/);
   await expect(page.getByText("Total Users")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Production operations" }),
+  ).toBeVisible();
+
+  await page.goto("/dashboard/admin/works");
+  await expect(
+    page.getByRole("heading", { name: "Work management" }),
+  ).toBeVisible();
+
+  await page.goto("/dashboard/admin/tasks");
+  await expect(
+    page.getByRole("heading", { name: "Task monitor" }),
+  ).toBeVisible();
 });
