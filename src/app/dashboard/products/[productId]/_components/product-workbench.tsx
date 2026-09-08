@@ -36,7 +36,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { actionMessageKey } from "@/components/ugc/action-message";
+import {
+  actionMessageKey,
+  jobFailureKey,
+} from "@/components/ugc/action-message";
 import { ImageField } from "@/components/ugc/image-field";
 import { marketKey } from "@/components/ugc/labels";
 import { StatusBadge } from "@/components/ugc/status-badge";
@@ -77,21 +80,35 @@ export function ProductWorkbench({
   const readFailed = state.run.failed;
   const stalled = state.run.stalled;
 
+  const queueAnalysis = async (input: {
+    feedback?: string;
+    images: string[];
+  }) => {
+    const result = await reviseProductAnalysis(product.id, input);
+    if (!result.ok) {
+      toast.error(t(actionMessageKey(result.code)));
+      return false;
+    }
+    toast.success(t("ugc_product_analysis_queued"));
+    router.refresh();
+    return true;
+  };
+
   const reread = () =>
     startTransition(async () => {
-      const result = await reviseProductAnalysis(product.id, {
+      const queued = await queueAnalysis({
         feedback: analysisFeedback.trim() || undefined,
         images: additionalImages,
       });
-      if (!result.ok) {
-        toast.error(t(actionMessageKey(result.code)));
-        return;
-      }
-      toast.success(t("ugc_product_analysis_queued"));
+      if (!queued) return;
       setRevisingAnalysis(false);
       setAnalysisFeedback("");
       setAdditionalImages([]);
-      router.refresh();
+    });
+
+  const retryReading = () =>
+    startTransition(async () => {
+      await queueAnalysis({ images: [] });
     });
 
   const remove = () =>
@@ -157,9 +174,13 @@ export function ProductWorkbench({
                   href={product.sourceUrl}
                   target="_blank"
                   rel="noreferrer noopener"
-                  className="text-primary inline-flex items-center gap-1 break-all underline-offset-4 hover:underline"
+                  title={product.sourceUrl}
+                  aria-label={product.sourceUrl}
+                  className="text-primary inline-flex max-w-full min-w-0 items-center gap-1 underline-offset-4 hover:underline"
                 >
-                  {product.sourceUrl}
+                  <span className="min-w-0 truncate" dir="ltr" translate="no">
+                    {sourceUrlLabel(product.sourceUrl)}
+                  </span>
                   <ExternalLink className="size-3 shrink-0" aria-hidden />
                 </a>
               ) : (
@@ -214,7 +235,28 @@ export function ProductWorkbench({
               <TriangleAlert />
               <AlertTitle>{t("ugc_product_read_failed_title")}</AlertTitle>
               <AlertDescription>
-                {t("ugc_product_read_failed_hint")}
+                <p>
+                  {state.run.failureCode
+                    ? t(jobFailureKey(state.run.failureCode))
+                    : t("ugc_product_read_failed_hint")}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-foreground mt-2"
+                  disabled={pending}
+                  onClick={retryReading}
+                >
+                  {pending ? (
+                    <Loader2 className="animate-spin" aria-hidden />
+                  ) : (
+                    <RefreshCw aria-hidden />
+                  )}
+                  {product.sourceUrl
+                    ? t("ugc_product_retry_import")
+                    : t("ugc_product_reanalyze")}
+                </Button>
               </AlertDescription>
             </Alert>
           )}
@@ -366,6 +408,18 @@ function Detail({
       <dd className="min-w-0">{children}</dd>
     </div>
   );
+}
+
+function sourceUrlLabel(value: string): string {
+  try {
+    const url = new URL(value);
+    const hostname = url.hostname.replace(/^www\./, "");
+    const pathname =
+      url.pathname === "/" ? "" : url.pathname.replace(/\/$/, "");
+    return `${hostname}${pathname}`;
+  } catch {
+    return value;
+  }
 }
 
 /** What the reader is doing, in the shape of the answer it will replace. */

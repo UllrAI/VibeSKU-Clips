@@ -8,6 +8,7 @@ type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
 const PRODUCT_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
   draft: { key: "ugc_product_status_draft", variant: "outline" },
   analyzing: { key: "ugc_product_status_analyzing", variant: "secondary" },
+  review: { key: "ugc_product_status_review", variant: "secondary" },
   ready: { key: "ugc_product_status_ready", variant: "default" },
   needs_input: {
     key: "ugc_product_status_needs_input",

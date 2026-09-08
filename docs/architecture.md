@@ -52,8 +52,9 @@ immutable compliance ledger.
    in [the deployment runbook](deployment-zeabur.md#migration-network-access).
    Missing credentials or tunnel access block promotion.
 2. Deploy Web and Worker from the same release commit and Dockerfile. Give the
-   Worker the four R2 credentials plus `LLM_API_KEY` and the `PRISM_*` settings, so
-   it can render clips, finalize media, and remove deleted or abandoned objects.
+   Worker the four R2 credentials plus `LLM_API_KEY`, `FIRECRAWL_API_KEY`, and
+   the `PRISM_*` settings, so it can import product pages, render clips,
+   finalize media, and remove deleted or abandoned objects.
    A Worker without the media credentials accepts work and then fails its media
    steps.
 3. Disable public bucket access, custom public domains, and `r2.dev` for the

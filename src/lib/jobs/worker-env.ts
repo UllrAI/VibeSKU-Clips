@@ -4,6 +4,7 @@ import {
   databaseEnvFields,
   mediaEnvFields,
   modelEnvFields,
+  scrapingEnvFields,
   storageEnvFields,
 } from "@/lib/config/runtime-env.mjs";
 
@@ -12,6 +13,7 @@ const workerEnvSchema = z.object({
   ...storageEnvFields,
   LLM_API_KEY: z.string().trim().min(1).optional(),
   ...modelEnvFields,
+  ...scrapingEnvFields,
   ...mediaEnvFields,
 });
 

@@ -47,15 +47,15 @@ synthetic-content disclosure.
 
 | Stage      | Job                   | What it does                                                                                                       |
 | :--------- | :-------------------- | :----------------------------------------------------------------------------------------------------------------- |
-| Intake     | `ugc.product.ingest`  | Fetches the product page, reads facts from the material, and pauses when something is missing                      |
+| Intake     | `ugc.product.ingest`  | Imports the product page through Firecrawl, reads facts, and waits for review or missing material                  |
 | Script     | `ugc.work.script`     | Writes one script from the confirmed product, talent, language, and market                                         |
 | Storyboard | `ugc.work.storyboard` | Draws one key frame per beat and stops for confirmation                                                            |
 | Video      | `ugc.work.video`      | Generates one clip from the script and selected references, archives it, writes subtitles, and runs quality checks |
 
 Jobs run on pg-boss through the repository's task-run outbox, so each step
 survives a restart and can be retried on its own. Images go through Prism;
-video uses the provider selected by `VIDEO_GENERATION_PROVIDER`, and scripting
-uses any OpenAI-compatible endpoint. Prism video is fixed to H3; lk666 also
+video uses the provider selected by `VIDEO_GENERATION_PROVIDER`, product-page
+imports use Firecrawl, and scripting uses any OpenAI-compatible endpoint. Prism video is fixed to H3; lk666 also
 offers Seedance 2.0 and 2.5, with each model exposing only its supported output
 resolutions.
 
@@ -145,6 +145,8 @@ never be added to `SITE_CONFIG`.
 | `LLM_API_KEY`                  | Required when `ai` is enabled. Key for your LLM endpoint.       | `sk-...`                                            |
 | `LLM_BASE_URL`                 | Optional OpenAI-compatible endpoint; defaults to OpenRouter.    | `https://openrouter.ai/api/v1`                      |
 | `AI_DEFAULT_MODEL`             | Optional model id; defaults to `openai/gpt-5.6-luna`.           | `openai/gpt-5.6-luna`                               |
+| `FIRECRAWL_API_BASE_URL`       | Optional Firecrawl-compatible API root.                         | `https://api.firecrawl.dev/v2`                      |
+| `FIRECRAWL_API_KEY`            | **Required for product URL imports.** Worker-only API key.      | `fc-...`                                            |
 | `VIDEO_GENERATION_PROVIDER`    | Video backend: `prism` or `lk666`; defaults to Prism.           | `lk666`                                             |
 | `PRISM_API_BASE_URL`           | Prism root; staging outside production, production in prod.     | `https://staging-prism.ullrai.com/api/v1`           |
 | `PRISM_API_KEY`                | **Required for rendering.** Prism API key for the chosen host.  | `pk_...`                                            |

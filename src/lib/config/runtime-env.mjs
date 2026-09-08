@@ -37,6 +37,16 @@ export const modelEnvFields = {
   AI_DEFAULT_MODEL: z.string().trim().min(1).default("openai/gpt-5.6-luna"),
 };
 
+// Product-page imports run only in the Worker. Keeping these fields shared
+// here gives the standalone artifact and tests one validation contract.
+export const scrapingEnvFields = {
+  FIRECRAWL_API_BASE_URL: z.url().default("https://api.firecrawl.dev/v2"),
+  FIRECRAWL_API_KEY: z.preprocess(
+    (value) => value || undefined,
+    z.string().trim().min(1).optional(),
+  ),
+};
+
 // Media generation runs in both the Web process and the job worker, so the
 // connection settings are shared rather than duplicated in each environment
 // schema. Model choices remain product constants in `src/lib/ugc/constants.ts`.

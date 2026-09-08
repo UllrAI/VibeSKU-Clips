@@ -144,6 +144,7 @@ export async function analyzeProduct(
     system: [
       "You extract product facts for short-form commerce video production.",
       "Only record what the supplied material supports. Never infer a price, a certification, a health claim, or a comparison.",
+      "Do not record prices, discounts, availability, inventory, or storefront state; they are not part of this product record.",
       "When prior analysis is supplied, revise it rather than merely repeating it. Operator feedback is a requested correction or clarification; apply it wherever the supplied material supports it and call out unresolved conflicts under `missing`.",
       "List anything a 15-second product video would need but the material does not provide under `missing`.",
       "`sources` names where each group of facts came from, for example 'product page' or 'uploaded image 2'.",

@@ -179,7 +179,11 @@ export async function createWork(
   if (!parsed.success) return { ok: false, code: "invalid_input" };
 
   const [product] = await db
-    .select({ name: ugcProducts.name, facts: ugcProducts.facts })
+    .select({
+      name: ugcProducts.name,
+      facts: ugcProducts.facts,
+      status: ugcProducts.status,
+    })
     .from(ugcProducts)
     .where(
       and(
@@ -209,7 +213,9 @@ export async function createWork(
     })
     .returning();
 
-  if (product.facts) await enqueueScript(work.id, user.id);
+  if (product.facts && product.status === "ready") {
+    await enqueueScript(work.id, user.id);
+  }
 
   revalidatePath("/dashboard/works");
   return { ok: true, id: work.id };
@@ -286,10 +292,30 @@ export async function startWorkScript(workId: string): Promise<ActionResult> {
   if (!work.productId) return { ok: false, code: "work_needs_product" };
 
   const [product] = await db
-    .select({ facts: ugcProducts.facts })
+    .select({ facts: ugcProducts.facts, status: ugcProducts.status })
     .from(ugcProducts)
-    .where(eq(ugcProducts.id, work.productId));
-  if (!product?.facts) return { ok: false, code: "product_not_read" };
+    .where(
+      and(eq(ugcProducts.id, work.productId), eq(ugcProducts.userId, user.id)),
+    );
+  if (
+    !product?.facts ||
+    (product.status !== "review" && product.status !== "ready")
+  ) {
+    return { ok: false, code: "product_not_read" };
+  }
+
+  if (product.status === "review") {
+    await db
+      .update(ugcProducts)
+      .set({ status: "ready", issue: null, updatedAt: new Date() })
+      .where(
+        and(
+          eq(ugcProducts.id, work.productId),
+          eq(ugcProducts.userId, user.id),
+          eq(ugcProducts.status, "review"),
+        ),
+      );
+  }
 
   await enqueueScript(work.id, user.id);
 

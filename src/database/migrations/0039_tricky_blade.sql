@@ -1,0 +1,1 @@
+ALTER TYPE "public"."ugc_product_status" ADD VALUE 'review' BEFORE 'ready';

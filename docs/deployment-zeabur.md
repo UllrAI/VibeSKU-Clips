@@ -59,8 +59,9 @@ and HTTP readiness at `/api/ready`. Worker overrides the image arguments with
 application drain timeout. Check `worker_ready`, queue metrics, and shutdown
 logs to verify Worker health; Web readiness does not cover it.
 
-The Worker does the media work, so it needs more than Web does: the same four R2
-credentials and upload quotas, plus `LLM_API_KEY` and the `PRISM_*` credentials.
+The Worker does product import and media work, so it needs more than Web does:
+the same four R2 credentials and upload quotas, plus `LLM_API_KEY`,
+`FIRECRAWL_API_KEY`, and the `PRISM_*` credentials.
 A Worker without them accepts work and then fails its media steps.
 
 There is no additional always-on migration service: GitHub Actions uses the

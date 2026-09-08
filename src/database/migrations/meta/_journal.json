@@ -274,6 +274,13 @@
       "when": 1788744301217,
       "tag": "0038_gorgeous_sleeper",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1788831251362,
+      "tag": "0039_tricky_blade",
+      "breakpoints": true
     }
   ]
 }

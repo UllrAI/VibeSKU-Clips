@@ -64,7 +64,7 @@ export function ProductStep({
   detail: WorkDetail;
   products: ProductRow[];
   talents: TalentRow[];
-  productState: "empty" | "reading" | "needs_input" | "ready";
+  productState: "empty" | "reading" | "needs_input" | "review" | "ready";
   modelOptions: readonly VideoModelOption[];
   onRefresh: () => void;
 }) {
@@ -143,7 +143,9 @@ export function ProductStep({
       action={
         <Button
           onClick={confirm}
-          disabled={pending || !productId || productState !== "ready"}
+          disabled={
+            pending || !productId || !["review", "ready"].includes(productState)
+          }
         >
           {pending && (
             <Loader2

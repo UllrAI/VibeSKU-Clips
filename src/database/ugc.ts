@@ -22,6 +22,7 @@ import type {
 export const ugcProductStatusEnum = pgEnum("ugc_product_status", [
   "draft",
   "analyzing",
+  "review",
   "ready",
   "needs_input",
   "failed",

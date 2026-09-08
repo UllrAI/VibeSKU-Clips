@@ -49,6 +49,8 @@ serialises product reading per product and guided generation per work.
 
 The production jobs — `ugc.product.ingest`, `ugc.work.script`,
 `ugc.work.storyboard`, and `ugc.work.video` — live in `src/lib/jobs/ugc`.
+Product ingestion uses Firecrawl's product and markdown outputs, then stores
+the extracted facts in a review state until an operator confirms them.
 Storyboard and video jobs use `scheduleContinuation` to poll long provider work
 without holding a claim open, and archive every finished asset into R2 before
 the step is shown for review.

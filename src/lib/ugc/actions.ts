@@ -11,6 +11,7 @@ import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
 import { serverJobQueue } from "@/lib/jobs/server";
 import { fileKeyFromUrl } from "@/lib/uploads/url";
 import { createBackgroundTask } from "@/lib/tasks/service";
+import { productNameFromUrl } from "./product-name";
 import { productScopeKey, talentScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
@@ -52,14 +53,19 @@ function emptyToNull(value: string | undefined): string | null {
 
 async function enqueueProductAnalysis(
   product: typeof ugcProducts.$inferSelect,
-  feedback?: string,
+  options: { feedback?: string; importMaterial?: boolean } = {},
 ): Promise<void> {
   await createBackgroundTask({
     db,
     queue: serverJobQueue,
     definition: productIngestJob,
     scopeKey: productScopeKey(product.userId, product.id),
-    payload: { productId: product.id, userId: product.userId, feedback },
+    payload: {
+      productId: product.id,
+      userId: product.userId,
+      feedback: options.feedback,
+      importMaterial: options.importMaterial,
+    },
     idempotencyKey: `${product.id}:analysis:${crypto.randomUUID()}`,
   });
 
@@ -94,6 +100,42 @@ export async function createProduct(
     .returning();
 
   await enqueueProductAnalysis(product);
+  revalidatePath("/dashboard/products");
+  return { ok: true, id: product.id };
+}
+
+const productUrlImportSchema = z.object({
+  sourceUrl: z
+    .url()
+    .max(2000)
+    .refine((value) => new URL(value).protocol === "https:"),
+  market: z.string().trim().max(16).optional(),
+  brief: briefSchema.optional(),
+});
+
+/** Creates a provisional record immediately; the Worker replaces its URL slug
+ * with Firecrawl's product title and imports product-specific images. */
+export async function createProductFromUrl(
+  input: z.infer<typeof productUrlImportSchema>,
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const parsed = productUrlImportSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_input" };
+
+  const [product] = await db
+    .insert(ugcProducts)
+    .values({
+      userId: user.id,
+      name: productNameFromUrl(parsed.data.sourceUrl, "Imported product"),
+      sourceUrl: parsed.data.sourceUrl,
+      market: emptyToNull(parsed.data.market),
+      images: [],
+      brief: parsed.data.brief ?? null,
+      status: "draft",
+    })
+    .returning();
+
+  await enqueueProductAnalysis(product, { importMaterial: true });
   revalidatePath("/dashboard/products");
   return { ok: true, id: product.id };
 }
@@ -154,7 +196,10 @@ export async function reviseProductAnalysis(
     .set({ images, updatedAt: new Date() })
     .where(eq(ugcProducts.id, product.id))
     .returning();
-  await enqueueProductAnalysis(updated, parsed.data.feedback || undefined);
+  await enqueueProductAnalysis(updated, {
+    feedback: parsed.data.feedback || undefined,
+    importMaterial: Boolean(updated.sourceUrl),
+  });
 
   revalidatePath("/dashboard/products");
   revalidatePath(`/dashboard/products/${product.id}`);

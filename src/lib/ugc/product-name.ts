@@ -1,6 +1,6 @@
 /**
- * Names a product from the link an operator pasted, so the composer can accept
- * a URL alone. The result is a starting point, not a claim: ingestion
+ * Names a product from the link an operator pasted, so creation can accept a
+ * URL alone. The result is a starting point, not a claim: ingestion
  * overwrites it once the page has actually been read.
  */
 const NOISE_SEGMENTS = new Set([

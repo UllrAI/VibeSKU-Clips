@@ -85,6 +85,7 @@ pnpm stripe:sync-products
 - Billing: provider abstraction in `src/lib/billing/provider.ts`, current implementation uses Stripe
 - Storage: Cloudflare R2 with presigned uploads
 - AI: Vercel AI SDK v7 agent loop over any OpenAI-compatible endpoint (`LLM_API_KEY`/`LLM_BASE_URL`), tools and skills registered in `src/lib/ai`, feature-gated by `SITE_CONFIG.features.ai` (see `docs/ai-agent.md`)
+- Product import: Firecrawl `product` and `markdown` extraction, called only from the Worker (`FIRECRAWL_*`)
 - Media generation: Prism (`PRISM_*`) for images; video selected by `VIDEO_GENERATION_PROVIDER` (`prism` or `lk666`), with H3 on both providers and Seedance 2.0/2.5 on lk666, called only from the Worker
 - Durable jobs: pg-boss with a task-run outbox (`src/lib/jobs`, `src/lib/tasks`)
 - Content: Content Collections plus repository-managed Markdown
@@ -126,13 +127,13 @@ pnpm stripe:sync-products
 
 Five durable jobs are registered in `src/lib/jobs/catalog.ts`:
 
-| Job                   | Handler                               | What it does                                                                               |
-| --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Fetches the source link, extracts product facts, or marks the product `needs_input`        |
-| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief, draws one reference image, and archives it                         |
-| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it |
-| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands           |
-| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model         |
+| Job                   | Handler                               | What it does                                                                                |
+| --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
+| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Imports source links through Firecrawl, extracts facts, then waits for review or more input |
+| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief, draws one reference image, and archives it                          |
+| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it  |
+| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands            |
+| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model          |
 
 A **work** (`ugc_works`) runs one clip through `product -> script -> video` by
 default. Storyboard-guided works add a reviewed `storyboard` step before video.

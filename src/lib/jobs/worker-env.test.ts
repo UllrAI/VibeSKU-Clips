@@ -16,6 +16,7 @@ describe("worker environment", () => {
     );
     expect(env.VIDEO_GENERATION_PROVIDER).toBe("prism");
     expect(env.LK666_API_BASE_URL).toBe("https://api.lk888.ai");
+    expect(env.FIRECRAWL_API_BASE_URL).toBe("https://api.firecrawl.dev/v2");
   });
 
   it("accepts lk666 as the video provider", () => {
@@ -27,6 +28,17 @@ describe("worker environment", () => {
 
     expect(env.VIDEO_GENERATION_PROVIDER).toBe("lk666");
     expect(env.LK666_API_KEY).toBe("test-key");
+  });
+
+  it("accepts Firecrawl product import credentials", () => {
+    const env = loadWorkerEnv({
+      DATABASE_URL: "postgresql://worker:worker@localhost/app",
+      FIRECRAWL_API_BASE_URL: "https://firecrawl.example.com/v2",
+      FIRECRAWL_API_KEY: "fc-test-key",
+    });
+
+    expect(env.FIRECRAWL_API_BASE_URL).toBe("https://firecrawl.example.com/v2");
+    expect(env.FIRECRAWL_API_KEY).toBe("fc-test-key");
   });
 
   it("accepts a separate queue database and explicit pool budgets", () => {

@@ -150,12 +150,14 @@ export async function getWork(workId: string): Promise<WorkDetail | null> {
  */
 function productStepState(
   product: Pick<ProductRow, "status" | "facts"> | null,
-): "empty" | "reading" | "needs_input" | "ready" {
+): "empty" | "reading" | "needs_input" | "review" | "ready" {
   if (!product) return "empty";
   if (product.status === "needs_input" || product.status === "failed") {
     return "needs_input";
   }
-  return product.facts ? "ready" : "reading";
+  if (product.status === "review" && product.facts) return "review";
+  if (product.status === "ready" && product.facts) return "ready";
+  return "reading";
 }
 
 export interface WorkState {
