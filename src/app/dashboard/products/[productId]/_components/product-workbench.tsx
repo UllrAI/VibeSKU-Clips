@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  Download,
   ExternalLink,
   Film,
   Loader2,
@@ -38,17 +39,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import {
   actionMessageKey,
+  isProductImportFailure,
   jobFailureKey,
 } from "@/components/ugc/action-message";
-import { ImageField } from "@/components/ugc/image-field";
 import { marketKey } from "@/components/ugc/labels";
 import { StatusBadge } from "@/components/ugc/status-badge";
 import { useProductState } from "@/hooks/use-product-state";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   deleteProduct,
+  reimportProductMaterial,
   reviseProductAnalysis,
-  retryProductAnalysis,
   saveProductFacts,
 } from "@/lib/ugc/actions";
 import type { ProductRow, ProductState } from "@/lib/ugc/queries";
@@ -73,18 +74,17 @@ export function ProductWorkbench({
   const [editingMaterial, setEditingMaterial] = useState(false);
   const [revisingAnalysis, setRevisingAnalysis] = useState(false);
   const [analysisFeedback, setAnalysisFeedback] = useState("");
-  const [additionalImages, setAdditionalImages] = useState<string[]>([]);
+  const [confirmingReimport, setConfirmingReimport] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const reading = state.status === "analyzing" || state.status === "draft";
   const readFailed = state.run.failed;
   const stalled = state.run.stalled;
+  const activeReading = reading && !readFailed && !stalled;
+  const importFailed = isProductImportFailure(state.run.failureCode);
 
-  const queueAnalysis = async (input: {
-    feedback?: string;
-    images: string[];
-  }) => {
+  const queueAnalysis = async (input: { feedback?: string }) => {
     const result = await reviseProductAnalysis(product.id, input);
     if (!result.ok) {
       toast.error(t(actionMessageKey(result.code)));
@@ -99,22 +99,40 @@ export function ProductWorkbench({
     startTransition(async () => {
       const queued = await queueAnalysis({
         feedback: analysisFeedback.trim() || undefined,
-        images: additionalImages,
       });
       if (!queued) return;
       setRevisingAnalysis(false);
       setAnalysisFeedback("");
-      setAdditionalImages([]);
     });
 
   const retryReading = () =>
     startTransition(async () => {
-      const result = await retryProductAnalysis(product.id);
+      const result = importFailed
+        ? await reimportProductMaterial(product.id)
+        : await reviseProductAnalysis(product.id, {});
       if (!result.ok) {
         toast.error(t(actionMessageKey(result.code)));
         return;
       }
-      toast.success(t("ugc_product_analysis_queued"));
+      toast.success(
+        t(
+          importFailed
+            ? "ugc_product_reimport_started"
+            : "ugc_product_analysis_queued",
+        ),
+      );
+      router.refresh();
+    });
+
+  const reimport = () =>
+    startTransition(async () => {
+      const result = await reimportProductMaterial(product.id);
+      if (!result.ok) {
+        toast.error(t(actionMessageKey(result.code)));
+        return;
+      }
+      toast.success(t("ugc_product_reimport_started"));
+      setConfirmingReimport(false);
       router.refresh();
     });
 
@@ -206,6 +224,17 @@ export function ProductWorkbench({
             <SquarePen />
             {t("ugc_product_edit_material")}
           </Button>
+          {product.sourceUrl && (
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={pending || activeReading}
+              onClick={() => setConfirmingReimport(true)}
+            >
+              <Download />
+              {t("ugc_product_reimport")}
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -260,7 +289,7 @@ export function ProductWorkbench({
                   ) : (
                     <RefreshCw aria-hidden />
                   )}
-                  {product.sourceUrl
+                  {importFailed
                     ? t("ugc_product_retry_import")
                     : t("ugc_product_reanalyze")}
                 </Button>
@@ -275,7 +304,7 @@ export function ProductWorkbench({
             </Alert>
           )}
 
-          {reading && !readFailed && !stalled ? (
+          {activeReading ? (
             <ReadingPlaceholder />
           ) : product.facts ? (
             <FactsEditor
@@ -296,7 +325,7 @@ export function ProductWorkbench({
           <Button
             variant="outline"
             size="sm"
-            disabled={pending || (reading && !readFailed && !stalled)}
+            disabled={pending || activeReading}
             onClick={() => setRevisingAnalysis(true)}
           >
             <RefreshCw />
@@ -331,7 +360,7 @@ export function ProductWorkbench({
               })}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-5">
+          <div>
             <div className="space-y-2">
               <Label htmlFor="product-analysis-feedback">
                 {t("ugc_product_revision_feedback")}
@@ -347,17 +376,6 @@ export function ProductWorkbench({
                 {t("ugc_product_revision_feedback_hint")}
               </p>
             </div>
-            <ImageField
-              value={additionalImages}
-              onChange={setAdditionalImages}
-              maxFiles={Math.max(0, 8 - product.images.length)}
-              label={t("ugc_product_revision_images")}
-            />
-            {product.images.length >= 8 && (
-              <p className="text-muted-foreground text-xs">
-                {t("ugc_product_revision_images_full")}
-              </p>
-            )}
           </div>
           <DialogFooter>
             <Button
@@ -370,6 +388,30 @@ export function ProductWorkbench({
             <Button onClick={reread} disabled={pending}>
               {pending && <Loader2 className="animate-spin" aria-hidden />}
               {t("ugc_product_revision_submit")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={confirmingReimport} onOpenChange={setConfirmingReimport}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t("ugc_product_reimport_title")}</DialogTitle>
+            <DialogDescription>
+              {t("ugc_product_reimport_description")}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmingReimport(false)}
+              disabled={pending}
+            >
+              {t("ugc_common_cancel")}
+            </Button>
+            <Button onClick={reimport} disabled={pending}>
+              {pending && <Loader2 className="animate-spin" aria-hidden />}
+              {t("ugc_product_reimport")}
             </Button>
           </DialogFooter>
         </DialogContent>

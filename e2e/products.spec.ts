@@ -76,3 +76,86 @@ test("keeps extracted facts pending until the operator confirms them", async ({
     page.getByRole("link", { name: "Make a clip from this" }),
   ).toBeVisible();
 });
+
+test("keeps editing, reanalysis, and URL import as separate operations", async ({
+  page,
+}) => {
+  await loginAs(page, "user");
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+  let productId: string;
+  const removedImageUrl = "https://example.com/removed-product-image.jpg";
+  const keptImageUrl = "https://example.com/kept-product-image.jpg";
+  try {
+    const [product] = await sql`
+      insert into ugc_products (
+        "userId", name, "sourceUrl", images, facts, status
+      )
+      values (
+        'e2e-user',
+        'Operation boundaries product',
+        'https://example.com/products/operation-boundaries',
+        ${JSON.stringify([removedImageUrl, keptImageUrl])}::jsonb,
+        ${JSON.stringify({
+          summary: "A saved product.",
+          appearance: "A saved product image.",
+          specs: [],
+          sellingPoints: ["Saved material"],
+          scenarios: [],
+          sources: ["product page"],
+        })}::jsonb,
+        'ready'
+      )
+      returning id
+    `;
+    productId = product.id;
+
+    await page.goto(`/dashboard/products/${productId}`);
+
+    await page.getByRole("button", { name: "Edit material" }).click();
+    const editDialog = page.getByRole("dialog");
+    await editDialog
+      .getByRole("button", { name: "Remove image" })
+      .first()
+      .click();
+    await editDialog.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByText("Needs review", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "Import again" }).click();
+    const importDialog = page.getByRole("dialog");
+    await expect(
+      importDialog.getByText(/page images you removed may return/i),
+    ).toBeVisible();
+    await importDialog.getByRole("button", { name: "Cancel" }).click();
+
+    await page.getByRole("button", { name: "Read again" }).click();
+    const analysisDialog = page.getByRole("dialog");
+    await expect(
+      analysisDialog.getByText(/No images will be added or restored/i),
+    ).toBeVisible();
+    await expect(analysisDialog.getByText("Product images")).toBeHidden();
+    await analysisDialog
+      .getByLabel("Feedback or added context")
+      .fill("Keep the saved material unchanged.");
+    await analysisDialog.getByRole("button", { name: "Read again" }).click();
+
+    const [run] = await sql`
+      select input
+      from task_runs
+      where "scopeKey" = ${`user:e2e-user:product:${productId}`}
+        and kind = 'ugc.product.ingest'
+      order by "createdAt" desc
+      limit 1
+    `;
+    expect(run.input.importMaterial).toBeUndefined();
+    expect(run.input.feedback).toBe("Keep the saved material unchanged.");
+
+    const [saved] = await sql`
+      select images
+      from ugc_products
+      where id = ${productId}
+    `;
+    expect(saved.images).toEqual([keptImageUrl]);
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+});

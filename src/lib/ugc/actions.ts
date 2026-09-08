@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isDeepStrictEqual } from "node:util";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/database";
@@ -51,9 +52,27 @@ function emptyToNull(value: string | undefined): string | null {
   return value && value.length > 0 ? value : null;
 }
 
+function normalizeBrief(
+  brief: z.infer<typeof briefSchema> | undefined,
+): z.infer<typeof briefSchema> | null {
+  if (!brief) return null;
+  const normalized: z.infer<typeof briefSchema> = {};
+  if (brief.audience) normalized.audience = brief.audience;
+  if (brief.sellingPoints?.length) {
+    normalized.sellingPoints = brief.sellingPoints;
+  }
+  if (brief.tone) normalized.tone = brief.tone;
+  if (brief.scenes) normalized.scenes = brief.scenes;
+  if (brief.bannedPhrases?.length) {
+    normalized.bannedPhrases = brief.bannedPhrases;
+  }
+  if (brief.providedScript) normalized.providedScript = brief.providedScript;
+  return Object.keys(normalized).length > 0 ? normalized : null;
+}
+
 async function enqueueProductAnalysis(
   product: typeof ugcProducts.$inferSelect,
-  options: { feedback?: string; importMaterial?: boolean } = {},
+  options: { feedback?: string; mode?: "analyze" | "import" } = {},
 ): Promise<void> {
   await createBackgroundTask({
     db,
@@ -64,7 +83,7 @@ async function enqueueProductAnalysis(
       productId: product.id,
       userId: product.userId,
       feedback: options.feedback,
-      importMaterial: options.importMaterial,
+      importMaterial: options.mode === "import" || undefined,
     },
     idempotencyKey: `${product.id}:analysis:${crypto.randomUUID()}`,
   });
@@ -94,7 +113,7 @@ export async function createProduct(
       variant: emptyToNull(parsed.data.variant),
       market: emptyToNull(parsed.data.market),
       images: parsed.data.images,
-      brief: parsed.data.brief ?? null,
+      brief: normalizeBrief(parsed.data.brief),
       status: "draft",
     })
     .returning();
@@ -130,12 +149,12 @@ export async function createProductFromUrl(
       sourceUrl: parsed.data.sourceUrl,
       market: emptyToNull(parsed.data.market),
       images: [],
-      brief: parsed.data.brief ?? null,
+      brief: normalizeBrief(parsed.data.brief),
       status: "draft",
     })
     .returning();
 
-  await enqueueProductAnalysis(product, { importMaterial: true });
+  await enqueueProductAnalysis(product, { mode: "import" });
   revalidatePath("/dashboard/products");
   return { ok: true, id: product.id };
 }
@@ -147,16 +166,44 @@ export async function updateProduct(
   const user = await requireAuth();
   const parsed = productSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "invalid_input" };
+  if (!parsed.data.sourceUrl && parsed.data.images.length === 0) {
+    return { ok: false, code: "product_needs_link_or_image" };
+  }
+
+  const [product] = await db
+    .select()
+    .from(ugcProducts)
+    .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)));
+  if (!product) return { ok: false, code: "not_found" };
+
+  const nextMaterial = {
+    name: parsed.data.name,
+    sourceUrl: emptyToNull(parsed.data.sourceUrl),
+    variant: emptyToNull(parsed.data.variant),
+    market: emptyToNull(parsed.data.market),
+    images: parsed.data.images,
+    brief: normalizeBrief(parsed.data.brief),
+  };
+  const currentMaterial = {
+    name: product.name,
+    sourceUrl: product.sourceUrl,
+    variant: product.variant,
+    market: product.market,
+    images: product.images,
+    brief: normalizeBrief(product.brief ?? undefined),
+  };
+  const materialChanged = !isDeepStrictEqual(currentMaterial, nextMaterial);
+  const factsNeedReview =
+    materialChanged && Boolean(product.facts) && product.status !== "analyzing";
 
   const updated = await db
     .update(ugcProducts)
     .set({
-      name: parsed.data.name,
-      sourceUrl: emptyToNull(parsed.data.sourceUrl),
-      variant: emptyToNull(parsed.data.variant),
-      market: emptyToNull(parsed.data.market),
-      images: parsed.data.images,
-      brief: parsed.data.brief ?? null,
+      ...nextMaterial,
+      // Existing facts no longer count as approved once their source material
+      // changes. The operator can review them as-is or explicitly reanalyse.
+      status: factsNeedReview ? "review" : product.status,
+      issue: factsNeedReview ? null : product.issue,
       updatedAt: new Date(),
     })
     .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)))
@@ -170,10 +217,9 @@ export async function updateProduct(
 
 const productAnalysisRevisionSchema = z.object({
   feedback: z.string().trim().max(6000).optional(),
-  images: z.array(imageReferenceSchema).max(8),
 });
 
-/** Adds operator context and material, then revises the prior analysis in place. */
+/** Rebuilds facts from the material that is already saved on the product. */
 export async function reviseProductAnalysis(
   productId: string,
   input: z.infer<typeof productAnalysisRevisionSchema>,
@@ -187,18 +233,12 @@ export async function reviseProductAnalysis(
     .from(ugcProducts)
     .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)));
   if (!product) return { ok: false, code: "not_found" };
+  if (product.status === "analyzing") {
+    return { ok: false, code: "product_busy" };
+  }
 
-  const images = [...new Set([...product.images, ...parsed.data.images])];
-  if (images.length > 8) return { ok: false, code: "invalid_input" };
-
-  const [updated] = await db
-    .update(ugcProducts)
-    .set({ images, updatedAt: new Date() })
-    .where(eq(ugcProducts.id, product.id))
-    .returning();
-  await enqueueProductAnalysis(updated, {
+  await enqueueProductAnalysis(product, {
     feedback: parsed.data.feedback || undefined,
-    importMaterial: Boolean(updated.sourceUrl),
   });
 
   revalidatePath("/dashboard/products");
@@ -206,7 +246,8 @@ export async function reviseProductAnalysis(
   return { ok: true, id: product.id };
 }
 
-export async function retryProductAnalysis(
+/** Refreshes page-derived material, then rebuilds facts from the result. */
+export async function reimportProductMaterial(
   productId: string,
 ): Promise<ActionResult> {
   const user = await requireAuth();
@@ -215,10 +256,14 @@ export async function retryProductAnalysis(
     .from(ugcProducts)
     .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)));
   if (!product) return { ok: false, code: "not_found" };
+  if (!product.sourceUrl) {
+    return { ok: false, code: "product_needs_source_url" };
+  }
+  if (product.status === "analyzing") {
+    return { ok: false, code: "product_busy" };
+  }
 
-  await enqueueProductAnalysis(product, {
-    importMaterial: Boolean(product.sourceUrl),
-  });
+  await enqueueProductAnalysis(product, { mode: "import" });
   revalidatePath("/dashboard/products");
   revalidatePath(`/dashboard/products/${product.id}`);
   return { ok: true, id: product.id };

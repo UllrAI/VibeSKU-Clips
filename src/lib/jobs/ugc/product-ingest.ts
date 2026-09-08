@@ -168,6 +168,7 @@ export const productIngestJob = defineJob(
           }
         } catch (error) {
           if (
+            payload.importMaterial ||
             !(
               error instanceof UnreadableSourceError ||
               error instanceof FirecrawlError
@@ -236,6 +237,11 @@ export const productIngestJob = defineJob(
         return { status: "needs_input", reason: error.message };
       }
       if (error instanceof FirecrawlError) {
+        // Analysis may read the reference page for evidence, but it must stay
+        // a retry of analysis. Only an explicit import may refresh material.
+        const failureCode = payload.importMaterial
+          ? error.code
+          : "UGC_PRODUCT_SOURCE_READ_FAILED";
         if (!error.retryable) {
           await stopProduct(
             context,
@@ -243,7 +249,7 @@ export const productIngestJob = defineJob(
             "failed",
             "The product page import service could not read this link.",
           );
-          throw new PermanentJobError(error.code, error.message);
+          throw new PermanentJobError(failureCode, error.message);
         }
         if (context.attempt > RETRY_LIMIT) {
           await stopProduct(
@@ -253,7 +259,7 @@ export const productIngestJob = defineJob(
             "The product page import service was unavailable after retrying.",
           );
         }
-        throw new RetryableJobError(error.code, error.message);
+        throw new RetryableJobError(failureCode, error.message);
       }
       if (error instanceof ReferenceMediaUnavailableError) {
         await stopProduct(context, product.id, "needs_input", error.message);

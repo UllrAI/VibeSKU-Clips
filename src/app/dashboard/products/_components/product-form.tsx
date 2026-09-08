@@ -139,7 +139,9 @@ export function ProductForm({
         toast.error(t(actionMessageKey(result.code)));
         return;
       }
-      toast.success(t(product ? "ugc_product_updated" : "ugc_product_created"));
+      toast.success(
+        t(product ? "ugc_product_material_updated" : "ugc_product_created"),
+      );
       onOpenChange(false);
       // A new product goes straight to its own page: the read it just started
       // is the next thing the operator needs to see.

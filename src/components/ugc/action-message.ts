@@ -1,7 +1,9 @@
 const MESSAGE_KEYS: Record<string, string> = {
   invalid_input: "ugc_error_invalid_input",
   not_found: "ugc_error_not_found",
+  product_busy: "ugc_error_product_busy",
   product_needs_link_or_image: "ugc_error_product_needs_link_or_image",
+  product_needs_source_url: "ugc_error_product_needs_source_url",
   media_provider_unconfigured: "ugc_error_media_provider_unconfigured",
   work_needs_product: "ugc_error_work_needs_product",
   product_not_read: "ugc_error_product_not_read",
@@ -38,6 +40,7 @@ const JOB_FAILURE_KEYS: Record<string, string> = {
   FIRECRAWL_REQUEST_REJECTED: "ugc_product_failure_firecrawl_request",
   FIRECRAWL_INVALID_RESPONSE: "ugc_product_failure_firecrawl_response",
   FIRECRAWL_UNAVAILABLE: "ugc_product_failure_firecrawl_unavailable",
+  UGC_PRODUCT_SOURCE_READ_FAILED: "ugc_product_failure_source_read",
   UGC_STORYBOARD_TIMEOUT: "ugc_work_failure_timeout",
   UGC_RENDER_TIMEOUT: "ugc_work_failure_timeout",
   UGC_RENDER_FAILED: "ugc_work_failure_render",
@@ -60,4 +63,19 @@ const JOB_FAILURE_KEYS: Record<string, string> = {
 
 export function jobFailureKey(code: string | null): string {
   return (code && JOB_FAILURE_KEYS[code]) || "ugc_work_step_failed_unknown";
+}
+
+const PRODUCT_IMPORT_FAILURE_CODES = new Set([
+  "FIRECRAWL_NOT_CONFIGURED",
+  "FIRECRAWL_AUTH_FAILED",
+  "FIRECRAWL_QUOTA_EXHAUSTED",
+  "FIRECRAWL_SITE_UNSUPPORTED",
+  "FIRECRAWL_REQUEST_REJECTED",
+  "FIRECRAWL_INVALID_RESPONSE",
+  "FIRECRAWL_UNAVAILABLE",
+]);
+
+/** Whether retrying the failed operation should refresh page-derived material. */
+export function isProductImportFailure(code: string | null): boolean {
+  return code !== null && PRODUCT_IMPORT_FAILURE_CODES.has(code);
 }
