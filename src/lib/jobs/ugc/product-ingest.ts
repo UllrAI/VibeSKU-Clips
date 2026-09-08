@@ -37,6 +37,21 @@ function stillHasProvisionalMaterial(product: Product): boolean {
   );
 }
 
+function mergeImportedImages(existing: string[], imported: string[]): string[] {
+  const images = new Map<string, string>();
+  for (const image of [...existing, ...imported]) {
+    let key = image;
+    try {
+      const url = new URL(image);
+      key = `${url.origin}${url.pathname}`.toLowerCase();
+    } catch {
+      // Existing references can be private application URLs rather than HTTPS.
+    }
+    if (!images.has(key)) images.set(key, image);
+  }
+  return [...images.values()].slice(0, 8);
+}
+
 async function stopProduct(
   context: JobHandlerContext,
   productId: string,
@@ -60,12 +75,16 @@ async function applyImportedMaterial(
   product: Product,
   imported: ImportedProductSource,
 ): Promise<Product> {
+  const provisional = stillHasProvisionalMaterial(product);
+  const images = mergeImportedImages(product.images, imported.images);
   const [updated] = await context.db
     .update(ugcProducts)
     .set({
-      name: imported.name ?? product.name,
-      variant: imported.variant ?? product.variant,
-      images: imported.images,
+      name: provisional ? (imported.name ?? product.name) : product.name,
+      variant: provisional
+        ? (imported.variant ?? product.variant)
+        : product.variant,
+      images,
       updatedAt: new Date(),
     })
     .where(
@@ -140,10 +159,7 @@ export const productIngestJob = defineJob(
             { signal: context.signal },
           );
           sourceText = imported.text;
-          if (
-            payload.importMaterial &&
-            stillHasProvisionalMaterial(materialProduct)
-          ) {
+          if (payload.importMaterial) {
             materialProduct = await applyImportedMaterial(
               context,
               materialProduct,

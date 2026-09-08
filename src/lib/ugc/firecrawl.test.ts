@@ -20,6 +20,13 @@ describe("importProductSource", () => {
           success: true,
           data: {
             markdown: "# Headphones\nThirty-hour battery life.",
+            images: [
+              "https://93.184.216.34/images/other-product.jpg?width=1200",
+              "https://93.184.216.34/images/wireless-headphones-gallery.jpg?width=200",
+              "https://93.184.216.34/images/wireless-headphones-gallery.jpg?width=1600",
+              "https://93.184.216.34/images/swatch-black.jpg",
+              "https://93.184.216.34/images/wireless-headphones-detail.jpg?width=1200",
+            ],
             metadata: {
               title: "Fallback page title",
               ogImage: "/images/fallback.jpg",
@@ -58,6 +65,8 @@ describe("importProductSource", () => {
       variant: "Black",
       images: [
         "https://93.184.216.34/images/headphones.jpg",
+        "https://93.184.216.34/images/wireless-headphones-gallery.jpg?width=1600",
+        "https://93.184.216.34/images/wireless-headphones-detail.jpg?width=1200",
         "https://93.184.216.34/images/fallback.jpg",
       ],
     });
@@ -73,7 +82,7 @@ describe("importProductSource", () => {
     );
     expect(JSON.parse(String(request?.body))).toMatchObject({
       url: PRODUCT_URL,
-      formats: ["markdown", "product"],
+      formats: ["markdown", "product", "images"],
       onlyMainContent: true,
     });
   });

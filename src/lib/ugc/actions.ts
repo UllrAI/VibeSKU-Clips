@@ -206,6 +206,24 @@ export async function reviseProductAnalysis(
   return { ok: true, id: product.id };
 }
 
+export async function retryProductAnalysis(
+  productId: string,
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const [product] = await db
+    .select()
+    .from(ugcProducts)
+    .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)));
+  if (!product) return { ok: false, code: "not_found" };
+
+  await enqueueProductAnalysis(product, {
+    importMaterial: Boolean(product.sourceUrl),
+  });
+  revalidatePath("/dashboard/products");
+  revalidatePath(`/dashboard/products/${product.id}`);
+  return { ok: true, id: product.id };
+}
+
 const factsSchema = z.object({
   summary: z.string().trim().min(1).max(1000),
   appearance: z.string().trim().min(1).max(1000),

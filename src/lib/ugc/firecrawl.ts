@@ -48,12 +48,25 @@ const metadataSchema = z
   })
   .passthrough();
 
+const DECORATIVE_IMAGE_PATTERN =
+  /(?:^|[._/-])(avatar|badge|favicon|flag|icon|logo|payment|placeholder|sprite|swatch)(?:[._/-]|$)/i;
+const GENERIC_IMAGE_TOKENS = new Set([
+  "image",
+  "images",
+  "photo",
+  "photos",
+  "product",
+  "products",
+  "resized",
+]);
+
 const firecrawlResponseSchema = z
   .object({
     success: z.boolean().optional(),
     data: z
       .object({
         markdown: z.string().optional(),
+        images: z.array(z.string()).optional(),
         product: scrapedProductSchema.optional(),
         metadata: metadataSchema.optional(),
         warning: z.string().optional(),
@@ -136,6 +149,103 @@ function productImages(
   return (product?.variants ?? []).flatMap((variant) =>
     (variant.images ?? []).map((image) => image.url),
   );
+}
+
+function imageResolutionScore(url: URL): number {
+  const dimensions = [
+    url.searchParams.get("width"),
+    url.searchParams.get("height"),
+    url.searchParams.get("w"),
+    url.searchParams.get("h"),
+    ...[...url.search.matchAll(/(?:width|height|w|h)[:=](\d+)/gi)].map(
+      (match) => match[1],
+    ),
+  ];
+  return Math.max(
+    0,
+    ...dimensions.map((value) => Number.parseInt(value ?? "", 10) || 0),
+  );
+}
+
+function uniqueImageAssets(candidates: string[], baseUrl: URL): string[] {
+  const assets = new Map<string, { url: string; resolution: number }>();
+  for (const candidate of candidates) {
+    const normalized = normalizedHttpsUrl(candidate, baseUrl);
+    if (!normalized) continue;
+
+    const url = new URL(normalized);
+    const key = `${url.origin}${url.pathname}`.toLowerCase();
+    const resolution = imageResolutionScore(url);
+    const current = assets.get(key);
+    if (!current) {
+      assets.set(key, { url: normalized, resolution });
+    } else if (resolution > current.resolution) {
+      assets.set(key, { url: normalized, resolution });
+    }
+  }
+  return [...assets.values()].map((asset) => asset.url);
+}
+
+function imageTokens(value: string): string[] {
+  return (value.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter(
+    (token) => token.length >= 5 && !GENERIC_IMAGE_TOKENS.has(token),
+  );
+}
+
+function productImageTokens(
+  product: z.infer<typeof scrapedProductSchema> | undefined,
+): Set<string> {
+  const values = [
+    product?.title ?? "",
+    product?.brand ?? "",
+    ...productImages(product).map((image) => {
+      try {
+        return decodeURIComponent(
+          new URL(image, "https://local.invalid").pathname.split("/").at(-1) ??
+            "",
+        );
+      } catch {
+        return "";
+      }
+    }),
+  ];
+  return new Set(values.flatMap(imageTokens));
+}
+
+function pageImages(
+  images: string[] | undefined,
+  product: z.infer<typeof scrapedProductSchema> | undefined,
+): string[] {
+  const tokens = productImageTokens(product);
+  const candidates = (images ?? []).flatMap((image, index) => {
+    try {
+      const pathname = decodeURIComponent(
+        new URL(image, "https://local.invalid").pathname,
+      );
+      if (DECORATIVE_IMAGE_PATTERN.test(pathname)) return [];
+      const normalizedPath = pathname.toLowerCase().replace(/[^a-z0-9]+/g, "");
+      const relevance = [...tokens].filter((token) =>
+        normalizedPath.includes(token),
+      ).length;
+      return [{ image, index, relevance }];
+    } catch {
+      return [];
+    }
+  });
+  const relevant = candidates.filter((candidate) => candidate.relevance > 0);
+  const relevantAssetCount = new Set(
+    relevant.map((candidate) => {
+      const url = new URL(candidate.image, "https://local.invalid");
+      return `${url.origin}${url.pathname}`.toLowerCase();
+    }),
+  ).size;
+  const selected = relevantAssetCount >= 2 ? relevant : candidates;
+  return selected
+    .sort(
+      (left, right) =>
+        right.relevance - left.relevance || left.index - right.index,
+    )
+    .map((candidate) => candidate.image);
 }
 
 function variantLabel(
@@ -244,7 +354,7 @@ export async function importProductSource(
       },
       body: JSON.stringify({
         url: url.href,
-        formats: ["markdown", "product"],
+        formats: ["markdown", "product", "images"],
         onlyMainContent: true,
         removeBase64Images: true,
         timeout: 60_000,
@@ -293,7 +403,12 @@ export async function importProductSource(
     );
   }
 
-  const { markdown, metadata, product } = parsed.data.data;
+  const {
+    images: scrapedImages,
+    markdown,
+    metadata,
+    product,
+  } = parsed.data.data;
   const text = sourceText(product, metadata, markdown);
   if (!text.trim() || (!product && !markdown?.trim())) {
     throw new UnreadableSourceError(
@@ -301,25 +416,24 @@ export async function importProductSource(
     );
   }
 
-  const imageCandidates = [
-    ...productImages(product),
-    ...metadataImages(metadata),
-  ].flatMap((image) => {
-    const normalized = normalizedHttpsUrl(image, url);
-    return normalized ? [normalized] : [];
-  });
+  const imageCandidates = uniqueImageAssets(
+    [
+      ...productImages(product),
+      ...pageImages(scrapedImages, product),
+      ...metadataImages(metadata),
+    ],
+    url,
+  );
   const images = (
     await Promise.all(
-      [...new Set(imageCandidates)]
-        .slice(0, MAX_PRODUCT_IMAGES)
-        .map(async (image) => {
-          try {
-            await validatePublicProductUrl(image);
-            return image;
-          } catch {
-            return null;
-          }
-        }),
+      imageCandidates.slice(0, MAX_PRODUCT_IMAGES).map(async (image) => {
+        try {
+          await validatePublicProductUrl(image);
+          return image;
+        } catch {
+          return null;
+        }
+      }),
     )
   ).filter((image): image is string => Boolean(image));
 

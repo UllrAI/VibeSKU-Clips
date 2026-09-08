@@ -48,6 +48,7 @@ import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   deleteProduct,
   reviseProductAnalysis,
+  retryProductAnalysis,
   saveProductFacts,
 } from "@/lib/ugc/actions";
 import type { ProductRow, ProductState } from "@/lib/ugc/queries";
@@ -108,7 +109,13 @@ export function ProductWorkbench({
 
   const retryReading = () =>
     startTransition(async () => {
-      await queueAnalysis({ images: [] });
+      const result = await retryProductAnalysis(product.id);
+      if (!result.ok) {
+        toast.error(t(actionMessageKey(result.code)));
+        return;
+      }
+      toast.success(t("ugc_product_analysis_queued"));
+      router.refresh();
     });
 
   const remove = () =>
