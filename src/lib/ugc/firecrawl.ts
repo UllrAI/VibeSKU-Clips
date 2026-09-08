@@ -9,6 +9,15 @@ const REQUEST_TIMEOUT_MS = 70_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_SOURCE_TEXT_LENGTH = 80_000;
 const MAX_PRODUCT_IMAGES = 8;
+const MAX_IMAGE_CANDIDATES_TO_CHECK = 32;
+const IMAGE_CHECK_BATCH_SIZE = 8;
+const IMAGE_CHECK_TIMEOUT_MS = 10_000;
+const MAX_IMAGE_REDIRECTS = 3;
+const SUPPORTED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 const firecrawlEnvSchema = z.object(scrapingEnvFields);
 
@@ -248,6 +257,89 @@ function pageImages(
     .map((candidate) => candidate.image);
 }
 
+async function readableImageUrl(
+  candidate: string,
+  signal: AbortSignal | undefined,
+): Promise<string | null> {
+  let current: URL;
+  try {
+    current = await validatePublicProductUrl(candidate);
+  } catch {
+    return null;
+  }
+  const original = current.href;
+
+  for (let redirect = 0; redirect <= MAX_IMAGE_REDIRECTS; redirect += 1) {
+    const requestSignal = signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(IMAGE_CHECK_TIMEOUT_MS)])
+      : AbortSignal.timeout(IMAGE_CHECK_TIMEOUT_MS);
+    let response: Response;
+    try {
+      response = await fetch(current, {
+        headers: { accept: "image/*", range: "bytes=0-15" },
+        redirect: "manual",
+        signal: requestSignal,
+      });
+    } catch (error) {
+      if (signal?.aborted) throw error;
+      return null;
+    }
+
+    try {
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get("location");
+        if (!location || redirect === MAX_IMAGE_REDIRECTS) return null;
+        try {
+          current = await validatePublicProductUrl(
+            new URL(location, current).href,
+          );
+        } catch {
+          return null;
+        }
+        continue;
+      }
+
+      const contentType =
+        response.headers
+          .get("content-type")
+          ?.split(";", 1)[0]
+          ?.trim()
+          .toLowerCase() ?? "";
+      return response.ok && SUPPORTED_IMAGE_TYPES.has(contentType)
+        ? original
+        : null;
+    } finally {
+      if (response.body) {
+        await response.body.cancel().catch(() => undefined);
+      }
+    }
+  }
+  return null;
+}
+
+async function readableProductImages(
+  candidates: string[],
+  signal: AbortSignal | undefined,
+): Promise<string[]> {
+  const images: string[] = [];
+  const candidatesToCheck = candidates.slice(0, MAX_IMAGE_CANDIDATES_TO_CHECK);
+  for (
+    let offset = 0;
+    offset < candidatesToCheck.length && images.length < MAX_PRODUCT_IMAGES;
+    offset += IMAGE_CHECK_BATCH_SIZE
+  ) {
+    const batch = candidatesToCheck.slice(
+      offset,
+      offset + IMAGE_CHECK_BATCH_SIZE,
+    );
+    const checked = await Promise.all(
+      batch.map((candidate) => readableImageUrl(candidate, signal)),
+    );
+    images.push(...checked.filter((image): image is string => Boolean(image)));
+  }
+  return images.slice(0, MAX_PRODUCT_IMAGES);
+}
+
 function variantLabel(
   product: z.infer<typeof scrapedProductSchema> | undefined,
 ): string | null {
@@ -424,18 +516,7 @@ export async function importProductSource(
     ],
     url,
   );
-  const images = (
-    await Promise.all(
-      imageCandidates.slice(0, MAX_PRODUCT_IMAGES).map(async (image) => {
-        try {
-          await validatePublicProductUrl(image);
-          return image;
-        } catch {
-          return null;
-        }
-      }),
-    )
-  ).filter((image): image is string => Boolean(image));
+  const images = await readableProductImages(imageCandidates, options.signal);
 
   return {
     name:

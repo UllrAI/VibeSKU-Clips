@@ -14,49 +14,62 @@ afterEach(() => {
 
 describe("importProductSource", () => {
   it("imports product material without copying structured price or stock", async () => {
-    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          success: true,
-          data: {
-            markdown: "# Headphones\nThirty-hour battery life.",
-            images: [
-              "https://93.184.216.34/images/other-product.jpg?width=1200",
-              "https://93.184.216.34/images/wireless-headphones-gallery.jpg?width=200",
-              "https://93.184.216.34/images/wireless-headphones-gallery.jpg?width=1600",
-              "https://93.184.216.34/images/swatch-black.jpg",
-              "https://93.184.216.34/images/wireless-headphones-detail.jpg?width=1200",
-            ],
-            metadata: {
-              title: "Fallback page title",
-              ogImage: "/images/fallback.jpg",
-            },
-            product: {
-              title: "Wireless Headphones",
-              brand: "Acme",
-              category: "Audio",
-              description: "Noise-cancelling over-ear headphones.",
-              variants: [
-                {
-                  title: "Wireless Headphones — Black",
-                  sku: "ACME-BLK",
-                  values: { color: "Black" },
-                  price: { amount: 199, currency: "USD" },
-                  availability: { inStock: true },
-                  images: [
-                    {
-                      url: "https://93.184.216.34/images/headphones.jpg",
-                      alt: "Black headphones",
-                    },
-                  ],
-                },
+    const fetchMock = jest
+      .spyOn(global, "fetch")
+      .mockImplementation(async (input) => {
+        if (!String(input).endsWith("/scrape")) {
+          const contentType = String(input).includes("not-an-image")
+            ? "text/html"
+            : "image/jpeg";
+          return new Response("content", {
+            status: 200,
+            headers: { "content-type": contentType },
+          });
+        }
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: {
+              markdown: "# Headphones\nThirty-hour battery life.",
+              images: [
+                "https://93.184.216.34/images/other-product.jpg?width=1200",
+                "https://93.184.216.34/images/wireless-headphones-gallery.jpg?width=200",
+                "https://93.184.216.34/images/wireless-headphones-gallery.jpg?width=1600",
+                "https://93.184.216.34/images/swatch-black.jpg",
+                "https://93.184.216.34/images/wireless-headphones-not-an-image",
+                "https://93.184.216.34/images/wireless-headphones-detail.jpg?width=1200",
+                "https://93.184.216.34/images/wireless-headphones-side.jpg?width=1200",
               ],
+              metadata: {
+                title: "Fallback page title",
+                ogImage: "/images/fallback.jpg",
+              },
+              product: {
+                title: "Wireless Headphones",
+                brand: "Acme",
+                category: "Audio",
+                description: "Noise-cancelling over-ear headphones.",
+                variants: [
+                  {
+                    title: "Wireless Headphones — Black",
+                    sku: "ACME-BLK",
+                    values: { color: "Black" },
+                    price: { amount: 199, currency: "USD" },
+                    availability: { inStock: true },
+                    images: [
+                      {
+                        url: "https://93.184.216.34/images/headphones.jpg",
+                        alt: "Black headphones",
+                      },
+                    ],
+                  },
+                ],
+              },
             },
-          },
-        }),
-        { status: 200 },
-      ),
-    );
+          }),
+          { status: 200 },
+        );
+      });
 
     const result = await importProductSource(PRODUCT_URL, { env: TEST_ENV });
 
@@ -67,6 +80,7 @@ describe("importProductSource", () => {
         "https://93.184.216.34/images/headphones.jpg",
         "https://93.184.216.34/images/wireless-headphones-gallery.jpg?width=1600",
         "https://93.184.216.34/images/wireless-headphones-detail.jpg?width=1200",
+        "https://93.184.216.34/images/wireless-headphones-side.jpg?width=1200",
         "https://93.184.216.34/images/fallback.jpg",
       ],
     });
