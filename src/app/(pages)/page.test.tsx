@@ -18,14 +18,15 @@ jest.mock("@/components/homepage/how-it-works", () => ({
   HowItWorks: (props: React.ComponentProps<any>) => mockHowItWorks(props),
 }));
 
-const mockFeatures = createMockSection("Features");
-jest.mock("@/components/homepage/features", () => ({
-  Features: (props: React.ComponentProps<any>) => mockFeatures(props),
+const mockCreativeControl = createMockSection("CreativeControl");
+jest.mock("@/components/homepage/creative-control", () => ({
+  CreativeControl: (props: React.ComponentProps<any>) =>
+    mockCreativeControl(props),
 }));
 
-const mockOtherProducts = createMockSection("OtherProducts");
-jest.mock("@/components/homepage/other-products", () => ({
-  OtherProducts: (props: React.ComponentProps<any>) => mockOtherProducts(props),
+const mockHomeFaq = createMockSection("HomeFaq");
+jest.mock("@/components/homepage/faq", () => ({
+  HomeFaq: (props: React.ComponentProps<any>) => mockHomeFaq(props),
 }));
 
 const mockCallToAction = createMockSection("CallToAction");
@@ -91,15 +92,15 @@ describe("HomePage", () => {
     ).toEqual([
       "Hero",
       "HowItWorks",
-      "Features",
-      "OtherProducts",
+      "CreativeControl",
+      "HomeFaq",
       "CallToAction",
     ]);
 
     expect(mockHero).toHaveBeenCalledTimes(1);
     expect(mockHowItWorks).toHaveBeenCalledTimes(1);
-    expect(mockFeatures).toHaveBeenCalledTimes(1);
-    expect(mockOtherProducts).toHaveBeenCalledTimes(1);
+    expect(mockCreativeControl).toHaveBeenCalledTimes(1);
+    expect(mockHomeFaq).toHaveBeenCalledTimes(1);
     expect(mockCallToAction).toHaveBeenCalledTimes(1);
   });
 });

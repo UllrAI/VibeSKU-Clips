@@ -35,19 +35,9 @@ export function Header({
       title: t("home_pricing_title"),
     },
     {
-      id: "nav-about",
-      href: withLocalePrefix("/about", locale),
-      title: t("home_about"),
-    },
-    {
-      id: "nav-blog",
-      href: withLocalePrefix("/blog", locale),
-      title: t("home_blog"),
-    },
-    {
-      id: "nav-contact",
-      href: withLocalePrefix("/contact", locale),
-      title: t("home_contact"),
+      id: "nav-process",
+      href: `${homeHref}#how-it-works`,
+      title: t("home_nav_process"),
     },
   ].filter((item) => SITE_CONFIG.features.billing || item.id !== "nav-pricing");
 
@@ -55,9 +45,12 @@ export function Header({
     <header className="border-border bg-background sticky top-0 z-50 w-full border-b">
       <ShellContainer>
         <div className="flex h-16 items-center justify-between">
-          <Link href={homeHref} className="flex items-center gap-2">
-            <Logo className="text-primary h-6 w-6" variant="icon-only" />
-            <span className="text-foreground text-xl font-bold">
+          <Link href={homeHref} className="flex min-w-0 items-center gap-2">
+            <Logo
+              className="text-primary h-6 w-6 shrink-0"
+              variant="icon-only"
+            />
+            <span className="text-foreground truncate text-base font-bold sm:text-xl">
               {APP_NAME}
             </span>
           </Link>

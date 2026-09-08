@@ -1,58 +1,47 @@
+import { ArrowUpRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ShellContainer } from "@/components/layout/page-container";
+import { LocalizedLink as Link } from "@/components/localized-link";
 import { getStaticTranslations } from "@/lib/i18n/translation/static";
 import { SOURCE_LOCALE, type SupportedLocale } from "@/lib/config/i18n";
-import React from "react";
-import { ArrowRight, Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SectionContainer } from "@/components/layout/page-container";
-import { LocalizedLink as Link } from "@/components/localized-link";
 
 export function CallToAction({
   locale = SOURCE_LOCALE,
-}: {
-  locale?: SupportedLocale;
-} = {}) {
+}: { locale?: SupportedLocale } = {}) {
   const { t } = getStaticTranslations(locale);
-  const commitments = [
-    { id: "facts", label: <>{t("home_cta_point_facts")}</> },
-    { id: "counts", label: <>{t("home_cta_point_counts")}</> },
-    { id: "traceable", label: <>{t("home_cta_point_traceable")}</> },
-  ];
-
   return (
-    <section className="border-border border-t">
-      <SectionContainer className="py-24 sm:py-28">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-foreground text-3xl font-semibold tracking-tight sm:text-4xl">
-            {t("home_cta_title")}
-          </h2>
-          <p className="text-muted-foreground mt-5 text-lg leading-8">
-            {t("home_cta_description")}
+    <section>
+      <ShellContainer>
+        <div className="flex flex-col items-start gap-8 border-t py-16 sm:py-24">
+          <p className="text-muted-foreground flex items-center gap-4 text-sm">
+            <span className="font-mono" translate="no">
+              04 /
+            </span>
+            {t("home_cta_eyebrow")}
           </p>
-
-          <ul className="text-muted-foreground mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm">
-            {commitments.map(({ id, label }) => (
-              <li key={id} className="inline-flex items-center gap-2">
-                <Check className="text-primary size-4" aria-hidden />
-                {label}
-              </li>
-            ))}
-          </ul>
-
-          <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <Button size="lg" asChild>
-              <Link href="/signup" locale={locale}>
-                {t("home_cta_primary")}
-                <ArrowRight />
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <Link href="/features" locale={locale}>
-                {t("home_cta_secondary")}
-              </Link>
-            </Button>
+          <div className="grid w-full items-end gap-8 lg:grid-cols-[1.4fr_1fr] lg:gap-24">
+            <h2 className="text-4xl leading-[1.1] font-semibold tracking-tight text-balance whitespace-pre-line sm:text-6xl">
+              {t("home_cta_title")}
+            </h2>
+            <div className="space-y-6">
+              <p className="text-muted-foreground text-base leading-7">
+                {t("home_cta_description")}
+              </p>
+              <Button size="lg" className="min-h-12 w-full sm:w-auto" asChild>
+                <Link
+                  href="/signup"
+                  locale={locale}
+                  data-umami-event="signup_click"
+                  data-umami-event-source="homepage_footer"
+                >
+                  {t("home_cta_primary")}
+                  <ArrowUpRight aria-hidden />
+                </Link>
+              </Button>
+            </div>
           </div>
         </div>
-      </SectionContainer>
+      </ShellContainer>
     </section>
   );
 }

@@ -1,8 +1,8 @@
 import { getServerTranslations } from "@/lib/i18n/translation/server";
 import { Hero } from "@/components/homepage/hero";
 import { HowItWorks } from "@/components/homepage/how-it-works";
-import { Features } from "@/components/homepage/features";
-import { OtherProducts } from "@/components/homepage/other-products";
+import { CreativeControl } from "@/components/homepage/creative-control";
+import { HomeFaq } from "@/components/homepage/faq";
 import { CallToAction } from "@/components/homepage/call-to-action";
 import {
   createLocalizedAlternates,
@@ -44,8 +44,8 @@ export default function HomePage({
     <>
       <Hero locale={locale} />
       <HowItWorks locale={locale} />
-      <Features locale={locale} />
-      <OtherProducts locale={locale} />
+      <CreativeControl locale={locale} />
+      <HomeFaq locale={locale} />
       <CallToAction locale={locale} />
     </>
   );
