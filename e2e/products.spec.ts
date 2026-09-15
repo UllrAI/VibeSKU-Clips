@@ -138,6 +138,13 @@ test("keeps editing, reanalysis, and URL import as separate operations", async (
       .fill("Keep the saved material unchanged.");
     await analysisDialog.getByRole("button", { name: "Read again" }).click();
 
+    // The dialog closes only after reviseProductAnalysis has returned ok, and
+    // that action awaits createBackgroundTask before returning — so waiting for
+    // it to go is what guarantees the task_runs row below already exists.
+    // Querying straight after the click raced the server action and read an
+    // empty result (`run` undefined) every time.
+    await expect(analysisDialog).toBeHidden();
+
     const [run] = await sql`
       select input
       from task_runs

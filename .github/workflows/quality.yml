@@ -1,10 +1,22 @@
 name: Quality
 
+# `pull_request:` carried no branch filter, so a PR opened between two feature
+# branches ran the full 20-minute suite as well. Only PRs targeting main gate a
+# merge here, so only those need the run.
+#
+# paths-ignore skips a docs-only change. It fires only when EVERY changed file
+# matches, so a PR touching a doc *and* source still runs. Root-level *.md
+# only (README / CLAUDE / AGENTS / SECURITY / design) — never **/*.md, because
+# posts under content/ feed routes the e2e suite covers.
 on:
   pull_request:
+    branches:
+      - main
+    paths-ignore: ["docs/**", "*.md"]
   push:
     branches:
       - main
+    paths-ignore: ["docs/**", "*.md"]
 
 permissions:
   contents: read
@@ -14,7 +26,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The push-to-main run is a safety net, but the squash-merge commit GitHub
+  # creates was already validated by the PR's own run — same tree, same 20
+  # minutes, twice.
+  #
+  # Skipping requires BOTH signals: committer == noreply@github.com (the commit
+  # was produced by GitHub merging a PR, not pushed from a laptop) AND "(#" in
+  # the message (GitHub's default squash-merge subject). Either one missing and
+  # validation runs as usual. The committer check is what makes this safe —
+  # contains() cannot tell subject from body, and commit bodies routinely
+  # reference other PR numbers, so the message alone would misread a direct
+  # push to main as "already verified".
+  #
+  # Known limits, accepted on purpose (this is NOT branch protection):
+  #   · It proves the commit arrived through GitHub, not that the PR's CI was
+  #     green. Confirm the PR checks passed before merging.
+  #   · A commit made through the GitHub web editor directly on main also has
+  #     committer noreply@github.com; if its message contains "(#" it is
+  #     skipped too. Don't edit main in the web UI.
+  #   · The PR validated its merge ref; if main moved on afterwards without a
+  #     re-run, the merged result was never checked exactly as it landed.
   validate:
+    if: >-
+      github.event_name == 'pull_request'
+      || github.event.head_commit.committer.email != 'noreply@github.com'
+      || !contains(github.event.head_commit.message, '(#')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:
