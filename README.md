@@ -519,15 +519,15 @@ branch (`main` at present) before moving `prod` to that commit. Zeabur deploys
 only after the promotion succeeds. Fork maintainers can reuse the same setup;
 see [the Zeabur deployment guide](docs/deployment-zeabur.md#using-the-workflow-in-a-fork).
 
-1. Merge the reviewed commit into the default branch and wait for the Quality
-   workflow to pass.
+1. Merge the reviewed pull request into the default branch once its Quality
+   run is green.
 2. Configure every required variable from `.env.example`. Set
    `NEXT_PUBLIC_APP_URL` to the final HTTPS origin before building because
    canonical URLs and client configuration are compiled from it. Keep the user
    upload bucket private; see [architecture notes](docs/architecture.md#deployment-requirements).
 3. Set `PRODUCTION_DATABASE_URL` in the GitHub `production` environment, plus
    `PRODUCTION_JOB_DATABASE_URL` for a separate queue database. The release
-   workflow checks the exact SHA's Quality result and runs migrations before promotion.
+   workflow runs Quality on the tagged commit and applies migrations before promotion.
 4. Update the version in `package.json`, then tag that commit with an annotated
    `release/vX.Y.Z` tag using the same version and push it:
 

@@ -288,7 +288,8 @@ Rules that are easy to break:
   updates `prod`. Do not push or merge directly into `prod`.
 - Resolve the default branch dynamically in release automation. The current
   branch is `main`, but forks may use `master` or another name.
-- The release workflow verifies Quality for the exact default-branch SHA and runs production migrations as a dedicated step before updating `prod`. Configure the `production` environment database secrets before releasing.
+- CI runs only on pull requests into the default branch and on release tags. Ordinary pushes do not run Quality.
+- The release workflow runs Quality on the tagged commit, then production migrations as a dedicated step, before updating `prod`. Configure the `production` environment database secrets before releasing.
 
 ## 11. Testing and Verification
 
