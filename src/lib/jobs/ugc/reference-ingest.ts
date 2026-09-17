@@ -131,8 +131,12 @@ export const referenceIngestJob = defineJob(
           aspectRatio: referenceAspectRatio(facts),
           frames,
           // Empty means this reference carries no speech to recognise; null
-          // means it has speech that has not been transcribed yet.
+          // means it has speech that has not been transcribed yet. Reading
+          // again starts from here, so an earlier recognition task must not
+          // be left behind for the next analysis to poll.
           transcript: facts.audio ? null : "",
+          asrTaskId: null,
+          words: null,
           status: "analyzing",
           updatedAt: new Date(),
         })
