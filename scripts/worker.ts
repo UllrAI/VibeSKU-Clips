@@ -6,9 +6,10 @@ import { createUploadRepository } from "@/lib/uploads/repository";
 import { cleanupDeletedFiles } from "@/lib/uploads/deletion";
 import { buildFileUrl } from "@/lib/uploads/url";
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { JobQueue } from "@/lib/jobs/queue";
+import { JobQueue, migrateJobQueue } from "@/lib/jobs/queue";
 import { jobDefinitions } from "@/lib/jobs/catalog";
 import { loadWorkerEnv } from "@/lib/jobs/worker-env";
+import { migrateDatabase } from "@/database/migrate";
 import { probeMediaToolchain } from "@/lib/ugc/media/toolchain";
 
 async function main(): Promise<void> {
@@ -45,11 +46,29 @@ async function main(): Promise<void> {
     );
   }
 
+  // Artifact check only: it proves the bundle loads and, for the render role,
+  // that the image carries its media tools. It reaches no database, so it runs
+  // before migration rather than after it.
   if (process.env.WORKER_SMOKE_TEST === "1") {
     await database.close();
     console.log("Worker artifact smoke test passed.");
     return;
   }
+
+  // The schema moves here, before anything claims a queue, and never from the
+  // web process. A worker already sits inside the deployment network holding
+  // database credentials, so a release needs no CI secret and no publicly
+  // reachable database port. Failing here exits the container, which is the
+  // loud signal a broken release should give.
+  await migrateDatabase(workerEnv.DATABASE_URL, () =>
+    migrateJobQueue({
+      connectionString: workerEnv.JOB_DATABASE_URL,
+      poolSize: workerEnv.JOB_DB_POOL_SIZE,
+    }),
+  );
+  console.log(
+    JSON.stringify({ component: "job-worker", event: "migrations_applied" }),
+  );
 
   const queue = new JobQueue(
     {
