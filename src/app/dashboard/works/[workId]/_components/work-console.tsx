@@ -36,7 +36,7 @@ export function WorkConsole({
   const refresh = () => router.refresh();
   const liveState = useWorkState(detail.work.id, initialState);
 
-  const { work, script, clip, versions, frames } = detail;
+  const { work, script, clip, versions, frames, segments } = detail;
   // A step is finished with, one way or another: the work row says the
   // handler gave up, or its task run did.
   const failed = liveState.stepStatus === "failed" || liveState.run.failed;
@@ -62,6 +62,7 @@ export function WorkConsole({
         workId={work.id}
         clip={clip}
         versions={versions}
+        segments={segments}
         script={script}
         videoMode={work.videoMode}
         videoModel={work.videoModel}
@@ -122,6 +123,7 @@ export function WorkConsole({
         failureCode={liveState.run.failureCode}
         stalled={liveState.run.stalled}
         frames={work.step === "video" ? frames : []}
+        segments={work.step === "video" ? segments : []}
         videoMode={work.videoMode}
         aspectRatio={work.aspectRatio}
         onRefresh={refresh}

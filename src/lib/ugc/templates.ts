@@ -3,13 +3,13 @@ import type { ScriptTemplate } from "./constants";
 
 /**
  * The three formats delivered in the first phase. Each one is a production
- * recipe, not a visual theme: it fixes how the 15 seconds are spent and which
+ * recipe, not a visual theme: it fixes the order of ideas and which
  * openings the writer may rotate through.
  */
 export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
   spokesperson: {
     structure:
-      "0-3s the presenter speaks straight to camera with the product in hand, 3-7s one clear close-up of the product, 7-12s the single strongest selling point demonstrated, 12-15s a calm sign-off pointing to the in-app listing.",
+      "Open with the presenter and product, show a clear close-up, demonstrate the strongest supported benefit, then close calmly. Expand the middle with useful details when duration allows.",
     voice:
       "A real person recommending something they use, speaking in short spoken sentences with no advertising cadence.",
     angles: [
@@ -27,7 +27,7 @@ export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
   },
   scenario: {
     structure:
-      "0-3s the everyday problem shown, not narrated, 3-7s the product enters the scene, 7-12s the situation resolves with the product in use, 12-15s a short line closing the loop.",
+      "Open on an everyday problem, bring in the product, show it in use, and close the loop. Expand the demonstration when duration allows.",
     voice:
       "Observational and low-key, the way someone describes a small fix that worked.",
     angles: [
@@ -45,7 +45,7 @@ export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
   },
   tutorial: {
     structure:
-      "0-3s state what will be shown, 3-7s step one, 7-12s steps two and three at pace, 12-15s the finished result held to camera.",
+      "State the result, show each step in order, and end on the finished result. Give longer tasks enough time to be understood.",
     voice:
       "Instructional but unhurried, using the imperative and naming each step once.",
     angles: [

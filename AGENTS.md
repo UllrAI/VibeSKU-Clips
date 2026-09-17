@@ -14,10 +14,11 @@ from creation through completion, where a finished video can be downloaded.
 Two rules run through the whole codebase and are worth internalising before
 changing anything:
 
-- **Duration is fixed; frame settings are selected per work.** Every clip is 15
-  seconds. Aspect ratio is `9:16` or `16:9`; resolution is provider-dependent.
-  `CLIP_SPEC` in `src/lib/ugc/constants.ts` defines the fixed timing constraints,
-  while each `ugc_works` row stores its frame settings.
+- **Duration and frame settings are selected per work.** Clips can be 15, 30,
+  45, 60, 90, or 120 seconds. Each script beat is an independently generated
+  3–15 second shot. Aspect ratio is `9:16` or `16:9`; resolution is
+  provider-dependent. `CLIP_SPEC` defines shot constraints and `ugc_works`
+  stores duration, audio mode, and frame settings.
   Also: interface language and clip language are separate settings, and language
   is separate from market. Do not collapse them.
 
@@ -87,7 +88,7 @@ pnpm stripe:sync-products
 - AI: Vercel AI SDK v7 agent loop over any OpenAI-compatible endpoint (`LLM_API_KEY`/`LLM_BASE_URL`), tools and skills registered in `src/lib/ai`, feature-gated by `SITE_CONFIG.features.ai` (see `docs/ai-agent.md`)
 - Product import: Firecrawl `product`, `images`, and `markdown` extraction, called only from the Worker (`FIRECRAWL_*`)
 - Media generation: Prism (`PRISM_*`) for images; video selected by `VIDEO_GENERATION_PROVIDER` (`prism` or `lk666`), with H3 on both providers and Seedance 2.0/2.5 on lk666, called only from the Worker
-- Durable jobs: pg-boss with a task-run outbox (`src/lib/jobs`, `src/lib/tasks`)
+- Durable jobs: pg-boss with a task-run outbox (`src/lib/jobs`, `src/lib/tasks`); a separate render worker runs FFmpeg/ffprobe
 - Content: Content Collections plus repository-managed Markdown
 - Localization: `next-intl`
 
@@ -125,7 +126,7 @@ pnpm stripe:sync-products
 
 ## 5. UGC Production Pipeline
 
-Five durable jobs are registered in `src/lib/jobs/catalog.ts`:
+Seven durable UGC jobs are registered in `src/lib/jobs/catalog.ts`:
 
 | Job                   | Handler                               | What it does                                                                                |
 | --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
@@ -133,7 +134,9 @@ Five durable jobs are registered in `src/lib/jobs/catalog.ts`:
 | `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief, draws one reference image, and archives it                          |
 | `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it  |
 | `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands            |
-| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model          |
+| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Coordinates one task per shot and a versioned composition                                   |
+| `ugc.work.segment`    | `src/lib/jobs/ugc/work-segment.ts`    | Generates one shot, archives it, measures narration, and verifies the spoken line           |
+| `ugc.work.compose`    | `src/lib/jobs/ugc/work-compose.ts`    | FFmpeg normalisation, measured subtitles, concatenation, and final archive                  |
 
 A **work** (`ugc_works`) runs one clip through `product -> script -> video` by
 default. Storyboard-guided works add a reviewed `storyboard` step before video.
@@ -164,6 +167,20 @@ Rules that are easy to break:
 - **Failure is terminal and visible.** An unreadable product becomes
   `needs_input`; exhausted task retries surface as a failed step with a retry
   action. A work never remains visually "running" after its task has failed.
+- **Captions carry the approved script, never the transcript.** Recognition
+  supplies timing and nothing else (`src/lib/ugc/media/alignment.ts`). A
+  recognizer mangles brand and product names, and a burned-in subtitle cannot
+  be corrected later. Alignment is separate from the verdict on a take:
+  `speechMatchesScript` judges the whole text, because a recognizer that reports
+  Chinese in words rather than characters aligns perfectly with few exact pairs.
+- **Fail where it costs one shot.** Narration length is measured when it is
+  synthesised (`src/lib/ugc/media/audio.ts`), not at composition, and a beat's
+  line is estimated in seconds before the script is accepted
+  (`src/lib/ugc/speech-estimate.ts`). A check that only runs at the last step
+  discards every shot already paid for.
+- **The render worker proves its toolchain at start-up.** `probeMediaToolchain`
+  refuses to start a render role missing an encoder or filter composition uses,
+  rather than failing on the final burn-in after all generation is billed.
 
 ## 6. Engineering Rules
 

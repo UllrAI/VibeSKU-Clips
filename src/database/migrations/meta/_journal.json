@@ -281,6 +281,13 @@
       "when": 1788831251362,
       "tag": "0039_tricky_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1789632821072,
+      "tag": "0040_brown_the_renegades",
+      "breakpoints": true
     }
   ]
 }
