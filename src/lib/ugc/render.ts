@@ -1,4 +1,5 @@
 import { DEFAULT_VIDEO_SETTINGS, shotDurationSeconds } from "./constants";
+import { spokenText } from "./script-notation";
 import type { VideoAspectRatio } from "./constants";
 import type { ScriptBeat } from "./types";
 import type { ScriptTemplate } from "./constants";
@@ -75,7 +76,7 @@ export function buildSegmentVideoPrompt(
       : "",
     `Current shot: ${beat.shot}. Action: ${beat.action}. Camera: ${beat.camera ?? "natural handheld phone camera"}.`,
     audioMode === "native"
-      ? `Speak exactly this line in ${subject.locale}: ${beat.voiceover || "No speech in this shot."}`
+      ? `Speak exactly this line in ${subject.locale}: ${spokenText(beat.voiceover) || "No speech in this shot."}`
       : "Do not show speaking or lip movement. The final edit will add separate narration. Generate only natural scene ambience.",
     "Do not add captions, titles, buttons, fake shopping UI, or watermarks. Preserve authentic product branding.",
   ]

@@ -9,6 +9,7 @@ import {
 } from "./constants";
 import { voiceoverFitsBeats } from "./speech-estimate";
 import type {
+  CloneBlueprint,
   ProductBrief,
   ProductFacts,
   ScriptDraft,
@@ -216,6 +217,43 @@ export interface ComposeScriptInput {
   talentImageUrl?: string | null;
   talentNote?: string | null;
   durationSeconds?: number;
+  /** Set when this clip rebuilds a reference video rather than starting blank. */
+  blueprint?: CloneBlueprint | null;
+}
+
+/**
+ * The blueprint as instructions rather than as a record.
+ *
+ * Only the relationships travel. Source seconds are left behind on purpose:
+ * this clip has its own duration and its own performer, and copying the
+ * reference's clock is the one way a clone reliably goes wrong.
+ */
+function blueprintDirection(blueprint: CloneBlueprint): string {
+  return [
+    `Reference format: ${blueprint.format}.`,
+    `How its opening earns attention: ${blueprint.hook}`,
+    `Why the piece works: ${blueprint.whyItWorks}`,
+    "Rebuild these beats in order, in proportion to this clip's own duration:",
+    ...blueprint.beats.map((beat, index) => {
+      const events = beat.events
+        .map(
+          (event) =>
+            `${event.kind} answering "${event.respondsTo}" — ${event.purpose}`,
+        )
+        .join("; ");
+      return [
+        `${index + 1}. [${beat.role}] ${beat.purpose}`,
+        beat.spokenGist ? ` Said here, in gist: ${beat.spokenGist}.` : "",
+        events ? ` Visual events: ${events}.` : "",
+      ].join("");
+    }),
+    `Preserve: ${blueprint.preserve.join("; ")}`,
+    blueprint.redesign.length
+      ? `Belongs to the original and must be replaced with something of this product's own: ${blueprint.redesign.join("; ")}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 function templateBrief(template: ScriptTemplate): ScriptTemplateBrief {
@@ -277,6 +315,16 @@ export async function composeScript(
       "Captions must be short enough to sit clear of the platform buttons and the product card, and must never describe a tappable shopping element.",
       "`disclosure` is a single sentence stating that the clip is AI-generated content, written in the same language.",
       "Beat timings must cover the full duration without gaps or overlap.",
+      "Two optional annotations may appear inside `voiceover`, and nowhere else. Write `<GT-7000|gee tee seven thousand>` when the caption should read one way and the performer should say it another; use it for model numbers, units, abbreviations and invented product words, and keep the spoken side to a few short words. Write `||` where a caption must break, at the end of a complete thought. Use both sparingly; plain text is correct when neither is needed.",
+      input.blueprint
+        ? "A reference blueprint is supplied. Rebuild what it describes for this product: the same roles in the same order, the same reasons for each visual event, the same shape of argument. Nothing else carries over."
+        : "",
+      input.blueprint
+        ? "Write every line from this product's own facts. Do not reuse the reference's wording, its examples, its jokes, or its claims, and never mention the reference or its creator."
+        : "",
+      input.blueprint
+        ? "The reference's own timings do not apply. Fit the rebuilt structure to this clip's duration, dropping or merging beats when it is shorter."
+        : "",
       productImages.length || input.talentImageUrl
         ? "Reference images are attached and labelled. Use every attached image as evidence. Do not invent a colour, finish, label, facial feature, garment, or component that is not visible or recorded in the facts."
         : "",
@@ -288,6 +336,14 @@ export async function composeScript(
         role: "user",
         content: [
           { type: "text" as const, text: brief_ },
+          ...(input.blueprint
+            ? [
+                {
+                  type: "text" as const,
+                  text: `Reference blueprint to rebuild:\n${blueprintDirection(input.blueprint)}`,
+                },
+              ]
+            : []),
           ...(input.talentImageUrl
             ? [
                 { type: "text" as const, text: "Talent reference image" },

@@ -14,6 +14,8 @@ import {
 import { users } from "./schema";
 import type {
   ClipQualityReport,
+  CloneBlueprint,
+  ReferenceFrameRecord,
   ProductBrief,
   ProductFacts,
   ScriptBeat,
@@ -32,6 +34,20 @@ export const ugcTalentStatusEnum = pgEnum("ugc_talent_status", [
   "generating",
   "ready",
   "failed",
+]);
+
+export const ugcReferenceStatusEnum = pgEnum("ugc_reference_status", [
+  "pending",
+  "ingesting",
+  "analyzing",
+  "review",
+  "ready",
+  "failed",
+]);
+
+export const ugcReferenceSourceEnum = pgEnum("ugc_reference_source", [
+  "upload",
+  "url",
 ]);
 
 export const ugcScriptTemplateEnum = pgEnum("ugc_script_template", [
@@ -157,6 +173,65 @@ export const ugcProducts = pgTable(
   },
   (table) => ({
     userCreatedAtIdx: index("ugc_products_userId_createdAt_idx").on(
+      table.userId,
+      table.createdAt.desc(),
+    ),
+  }),
+);
+
+/**
+ * A reference video the operator wants their own version of.
+ *
+ * It holds the material a clone is read from — the archived video, its
+ * word-timed transcript, and the blueprint an analysis produced — and nothing
+ * about any particular work. One reference can seed many clips, the way one
+ * product can.
+ */
+export const ugcReferences = pgTable(
+  "ugc_references",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    source: ugcReferenceSourceEnum("source").notNull(),
+    /** Where a fetched reference came from; null for an upload. */
+    sourceUrl: text("sourceUrl"),
+    /**
+     * When the operator stated they hold the rights to use this material.
+     * Fetching someone's video is their call to make, and the record of that
+     * statement belongs with the material rather than in a log.
+     */
+    rightsAcknowledgedAt: timestamp("rightsAcknowledgedAt", {
+      withTimezone: true,
+    }).notNull(),
+    videoUrl: text("videoUrl"),
+    durationMs: integer("durationMs"),
+    aspectRatio: text("aspectRatio"),
+    locale: text("locale").notNull().default("en"),
+    /**
+     * Stills sampled across the reference, in time order. They are what the
+     * analysis actually looks at, and keeping them means a retried analysis
+     * does not re-download and re-decode the video.
+     */
+    frames: jsonb("frames").$type<ReferenceFrameRecord[]>(),
+    asrTaskId: text("asrTaskId"),
+    transcript: text("transcript"),
+    words: jsonb("words").$type<TranscriptWord[]>(),
+    blueprint: jsonb("blueprint").$type<CloneBlueprint | null>(),
+    status: ugcReferenceStatusEnum("status").notNull().default("pending"),
+    /** The run whose error code the console reads this reference's failure from. */
+    taskRunId: uuid("taskRunId"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userCreatedAtIdx: index("ugc_references_userId_createdAt_idx").on(
       table.userId,
       table.createdAt.desc(),
     ),
@@ -343,6 +418,10 @@ export const ugcWorks = pgTable(
       onDelete: "set null",
     }),
     talentId: uuid("talentId").references(() => ugcTalents.id, {
+      onDelete: "set null",
+    }),
+    /** Set when this work is a clone; its blueprint shapes the script. */
+    referenceId: uuid("referenceId").references(() => ugcReferences.id, {
       onDelete: "set null",
     }),
     locale: text("locale").notNull().default("en"),

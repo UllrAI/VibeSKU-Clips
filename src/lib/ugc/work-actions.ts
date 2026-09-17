@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/database";
 import {
   ugcProducts,
+  ugcReferences,
   ugcClips,
   ugcScripts,
   ugcTalents,
@@ -43,6 +44,7 @@ const setupSchema = z
   .object({
     productId: z.uuid(),
     talentId: z.uuid().optional(),
+    referenceId: z.uuid().optional(),
     randomTalent: z.boolean().default(false),
     locale: z.string().trim().min(2).max(16),
     market: z.string().trim().min(2).max(16),
@@ -127,6 +129,34 @@ async function resolveTalentSelection(
   return talent?.id;
 }
 
+/**
+ * A blueprint the operator has actually read. Picking one is also the moment
+ * it stops being something to look at and becomes something in use, which is
+ * the only honest difference between the two states in the library.
+ */
+async function resolveReferenceSelection(
+  userId: string,
+  referenceId: string | undefined,
+): Promise<string | null | undefined> {
+  if (!referenceId) return null;
+  const [reference] = await db
+    .select({ id: ugcReferences.id })
+    .from(ugcReferences)
+    .where(
+      and(
+        eq(ugcReferences.id, referenceId),
+        eq(ugcReferences.userId, userId),
+        isNotNull(ugcReferences.blueprint),
+      ),
+    );
+  if (!reference) return undefined;
+  await db
+    .update(ugcReferences)
+    .set({ status: "ready", updatedAt: new Date() })
+    .where(eq(ugcReferences.id, reference.id));
+  return reference.id;
+}
+
 async function loadOwnedWork(workId: string, userId: string) {
   const [work] = await db
     .select()
@@ -207,6 +237,12 @@ export async function createWork(
     );
   if (!product) return { ok: false, code: "not_found" };
 
+  const referenceId = await resolveReferenceSelection(
+    user.id,
+    parsed.data.referenceId,
+  );
+  if (referenceId === undefined) return { ok: false, code: "not_found" };
+
   const talentId = await resolveTalentSelection(user.id, parsed.data);
   if (talentId === undefined) return { ok: false, code: "not_found" };
 
@@ -217,6 +253,7 @@ export async function createWork(
       title: product.name,
       productId: parsed.data.productId,
       talentId,
+      referenceId,
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,

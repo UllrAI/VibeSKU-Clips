@@ -288,6 +288,13 @@
       "when": 1789632821072,
       "tag": "0040_brown_the_renegades",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1789660213453,
+      "tag": "0041_bright_greymalkin",
+      "breakpoints": true
     }
   ]
 }

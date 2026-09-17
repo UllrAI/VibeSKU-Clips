@@ -153,6 +153,7 @@ const GENERATED_TYPES = {
   video: { contentType: "video/mp4", extension: "mp4" },
   audio: { contentType: "audio/wav", extension: "wav" },
   subtitle: { contentType: "text/plain", extension: "srt" },
+  frame: { contentType: "image/jpeg", extension: "jpg" },
 } as const;
 
 /** Archive worker output without the 50 MB human-upload limit or whole-file buffering. */

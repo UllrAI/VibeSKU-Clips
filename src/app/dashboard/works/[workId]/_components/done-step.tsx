@@ -44,6 +44,7 @@ import {
 import { videoModelKey } from "@/components/ugc/labels";
 import { ScriptEditor } from "@/components/ugc/script-editor";
 import { useIntlLocale } from "@/hooks/use-intl-locale";
+import { displayText } from "@/lib/ugc/script-notation";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   regenerateWorkSegment,
@@ -428,7 +429,7 @@ export function DoneStep({
                     {beat.start}–{beat.end}s
                   </Badge>
                   <div className="min-w-0 space-y-1">
-                    <p>{beat.voiceover || beat.action}</p>
+                    <p>{displayText(beat.voiceover) || beat.action}</p>
                     <p className="text-muted-foreground">{beat.action}</p>
                   </div>
                 </li>

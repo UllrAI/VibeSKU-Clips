@@ -81,6 +81,22 @@
 
 **正确做法**:需要并行就把 key 拆成泳道。`renderScopeKey(userId, batchId, laneIndex)` 用 `index % RENDER_LANES` 分配,既保留了「同一用户不会无限并发」的约束,又拿到了固定的并行度。
 
+### 蓝图里记「第几秒」等于把参考片的节奏抄进新片
+
+**现象**:早期的爆款解读把每个视觉事件记成 `{ kind, atMs }`,让写稿模型照着秒数排。产出的片子在换了口播语言之后全面错位——中文 12 个字和英文同义句根本不占同样长的时间,切镜落在句子中间,特写出现在还没提到卖点的位置。
+
+**原因**:参考片的时间轴属于**那个人说那句话**。换了商品、换了语言、换了演员,同一个结构对应的秒数一定不同。把秒数当指令,等于要求新片复现旧片的语速。
+
+**正确做法**:事件只记录它**回应什么**(`respondsTo`),不记录它何时发生。`sourceStart` / `sourceEnd` 只保留给人回跳原片核对,任何生成路径都不读它们。见 `src/lib/ugc/blueprint.ts` 的 system prompt 与 `src/lib/ugc/authoring.ts` 的 `blueprintDirection()`。
+
+### 口播里的 `<显示|朗读>` 标注必须在分词层展开,不能在分词前替换
+
+**现象**:先把 `<GT-7000|gee tee seven thousand>` 替换成朗读文本再去做字幕对齐,字幕里出现的是 "gee tee seven thousand";先替换成显示文本,对齐又整段崩掉,因为 ASR 听到的根本不是 "GT-7000"。
+
+**原因**:这两侧服务于两个不同的消费者——朗读侧要和识别结果对齐(决定时间),显示侧要出现在字幕里(决定内容)。在分词之前做任何一侧的替换,都会丢掉另一侧。
+
+**正确做法**:在 `tokenizeScript()` 里展开:按朗读侧切 token 参与对齐,把显示文本挂在该跨度的**第一个** token 上,其余 token 的 `text` 置空。拼接字幕的 `cueText()` 因此必须跳过空文本 token,否则会多出空格。见 `src/lib/ugc/script-notation.ts` 与 `src/lib/ugc/media/alignment.ts`。
+
 ### job 定义内部引用自身会导致类型循环
 
 **现象**:在 `clipRenderJob` 的 handler 里写 `Parameters<typeof clipRenderJob.handler>[1]`,或者读 `clipRenderJob.queue.retryLimit`,`tsc` 报 "'clipRenderJob' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer"。

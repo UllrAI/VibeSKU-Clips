@@ -28,7 +28,13 @@ const REQUIRED_FILTERS = [
 ] as const;
 
 export type MediaToolchainState =
-  | { state: "ready"; ffmpegVersion: string; ffprobeVersion: string }
+  | {
+      state: "ready";
+      ffmpegVersion: string;
+      ffprobeVersion: string;
+      /** Null when linked references cannot be fetched on this image. */
+      downloaderVersion: string | null;
+    }
   | { state: "unavailable" | "incomplete"; detail: string };
 
 function run(
@@ -68,10 +74,14 @@ function missing(output: string, required: readonly string[]): string[] {
 export async function probeMediaToolchain(
   ffmpegPath = "ffmpeg",
   ffprobePath = "ffprobe",
+  downloaderPath = "yt-dlp",
 ): Promise<MediaToolchainState> {
-  const [ffmpeg, ffprobe] = await Promise.all([
+  const [ffmpeg, ffprobe, downloader] = await Promise.all([
     run(ffmpegPath, ["-version"]),
     run(ffprobePath, ["-version"]),
+    // Only linked references need it. Its absence is reported at boot rather
+    // than failing a job, but it does not hold composition back.
+    run(downloaderPath, ["--version"]),
   ]);
   if (!ffmpeg.ok || !ffprobe.ok) {
     return {
@@ -113,5 +123,6 @@ export async function probeMediaToolchain(
     state: "ready",
     ffmpegVersion: firstLine(ffmpeg.output),
     ffprobeVersion: firstLine(ffprobe.output),
+    downloaderVersion: downloader.ok ? firstLine(downloader.output) : null,
   };
 }
