@@ -44,6 +44,7 @@ import { VideoSettings } from "@/components/ugc/video-settings";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import type {
   ScriptTemplate,
+  AudioMode,
   VideoAspectRatio,
   VideoMode,
   VideoModel,
@@ -97,6 +98,8 @@ export function WorkComposer({
   const [videoModel, setVideoModel] = useState<VideoModel>("h3");
   const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio>("9:16");
   const [resolution, setResolution] = useState<VideoResolution>("720p");
+  const [durationSeconds, setDurationSeconds] = useState(15);
+  const [audioMode, setAudioMode] = useState<AudioMode>("native");
   const [locale, setLocale] = useState("en");
   const [market, setMarket] = useState("US");
 
@@ -156,6 +159,8 @@ export function WorkComposer({
         videoModel,
         aspectRatio,
         resolution,
+        durationSeconds,
+        audioMode,
       });
       if (!work.ok || !work.id) {
         toast.error(t(actionMessageKey(work.code)));
@@ -344,6 +349,10 @@ export function WorkComposer({
           resolution={resolution}
           onResolutionChange={setResolution}
           modelOptions={modelOptions}
+          durationSeconds={durationSeconds}
+          onDurationChange={setDurationSeconds}
+          audioMode={audioMode}
+          onAudioModeChange={setAudioMode}
         />
 
         <div className="space-y-2">

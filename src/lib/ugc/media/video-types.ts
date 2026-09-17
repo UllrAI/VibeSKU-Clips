@@ -22,4 +22,5 @@ export interface VideoRequest {
   aspectRatio: VideoAspectRatio;
   resolution: VideoResolution;
   requestId: string;
+  generateAudio?: boolean;
 }

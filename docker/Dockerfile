@@ -38,9 +38,11 @@ ENV NODE_ENV=production
 USER node
 CMD ["pnpm", "db:migrate"]
 
-# Production image
-FROM node:22-alpine AS runner
+# Shared production runtime
+FROM node:22-alpine AS runtime
 WORKDIR /app
+
+ARG RENDER_WORKER=0
 
 LABEL "language"="nodejs"
 LABEL "framework"="next.js"
@@ -49,6 +51,7 @@ ENV NODE_ENV=production
 
 # Create non-root user
 RUN apk add --no-cache su-exec \
+  && if [ "$RENDER_WORKER" = "1" ]; then apk add --no-cache ffmpeg fontconfig font-noto-cjk; fi \
   && addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
@@ -71,3 +74,6 @@ ENV HOSTNAME="0.0.0.0"
 # Start the application
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["node", "server.js"]
+
+# RENDER_WORKER=1 installs media tools only in the render service image.
+FROM runtime AS runner

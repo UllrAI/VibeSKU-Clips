@@ -48,6 +48,7 @@ the platform store rather than in this file:
 | Zeabur project    | Project and environment IDs                           |
 | Web               | Service ID, branch `prod`                             |
 | Worker            | Service ID, branch `prod`                             |
+| Render worker     | Service ID, branch `prod`                             |
 | Public origin     | The HTTPS origin compiled into `NEXT_PUBLIC_APP_URL`  |
 | Database          | Zeabur `postgresql` service ID and major version      |
 | User storage      | Private R2 bucket holding uploads and generated clips |
@@ -59,9 +60,14 @@ and HTTP readiness at `/api/ready`. Worker overrides the image arguments with
 application drain timeout. Check `worker_ready`, queue metrics, and shutdown
 logs to verify Worker health; Web readiness does not cover it.
 
-The Worker does product import and media work, so it needs more than Web does:
+The general Worker does product import and cloud provider jobs, so it needs more than Web does:
 the same four R2 credentials and upload quotas, plus `LLM_API_KEY`,
-`FIRECRAWL_API_KEY`, and the `PRISM_*` credentials.
+`FIRECRAWL_API_KEY`, the selected video provider credentials, and
+`DASHSCOPE_API_KEY`. AI narration uses Qwen3-TTS-Flash with the same API key;
+`DASHSCOPE_TTS_BASE_URL` can override its endpoint. The render worker needs PostgreSQL and R2 credentials
+and a Docker build with `RENDER_WORKER=1`; `WORKER_ROLE=render` makes it claim
+only composition tasks. It requires enough ephemeral disk for the source shots
+and final MP4, and CPU for FFmpeg.
 A Worker without them accepts work and then fails its media steps.
 
 There is no additional always-on migration service: GitHub Actions uses the
@@ -268,12 +274,20 @@ node dist/worker/worker.mjs
 
 Do not wrap the command in `pnpm`; Node must receive SIGTERM directly. Configure
 the Worker with `DATABASE_URL`, optional `JOB_DATABASE_URL`,
-`JOB_DB_POOL_SIZE`, and the credentials required by its handlers. Set the
+`JOB_DB_POOL_SIZE`, `WORKER_ROLE=general`, and the credentials required by its handlers. Set the
 platform stop window above `WORKER_GRACEFUL_TIMEOUT_MS` (30 seconds by default).
 The Worker is a required always-on service whenever durable tasks are enabled,
 but its health is intentionally independent from Web readiness.
 
-Run `pnpm db:migrate` before starting either service. It applies committed
+Create a third Zeabur service for composition from the same repository and
+`docker/Dockerfile`. Set both `RENDER_WORKER=1` (build argument) and
+`WORKER_ROLE=render` (runtime environment), then use the same Node start command.
+Zeabur passes declared Dockerfile `ARG` values from service environment
+variables. The regular Web and general Worker images leave `RENDER_WORKER`
+unset, so only this image installs FFmpeg and fonts. Provide database and R2
+credentials, and do not expose an HTTP port or domain for this service.
+
+Run `pnpm db:migrate` before starting the runtime services. It applies committed
 Drizzle migrations, installs/upgrades the separate `pgboss` schema, and creates
 the declared workload queues. Web and Worker runtime connections disable schema
 migration, so their database roles do not need DDL permission. Drizzle is
