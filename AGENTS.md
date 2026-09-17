@@ -275,7 +275,24 @@ Rules that are easy to break:
 - Use `pnpm db:generate` to create migration files that will be committed and shared across staging and production.
 - Use `pnpm db:migrate` to apply committed migrations to whichever database is selected by `DATABASE_URL`.
 - Do not split migration history by environment. Environment differences belong in deployment configuration, not in separate SQL trees.
-- In CI/CD, run migrations as a dedicated one-shot release step, not on every app process startup.
+- **The Worker migrates at boot; the Web process never does.** `scripts/worker.ts`
+  calls `migrateDatabase` (`src/database/migrate.ts`) before it claims a queue,
+  so a release moves the schema from inside the deployment network with the
+  credentials that process already holds — no CI secret and no publicly
+  reachable database port. A failure exits the container, which is the signal a
+  broken release should give. This replaced a rule requiring a CI-only one-shot
+  step: that rule left staging with no lawful way to migrate at all, because its
+  only alternative was opening the database to the internet.
+- Migration is safe to attempt from more than one process. Drizzle records each
+  file and applies a batch in one transaction, and `migrateDatabase` holds a
+  PostgreSQL advisory lock, so the general and render workers may boot in any
+  order and a repeat boot is a no-op.
+- `pnpm db:migrate` runs that same function, so a migration applied by hand, by
+  CI, or by a deploying container is the identical operation. The release
+  workflow keeps its explicit step for production, where moving the schema
+  before any worker rolls is still worth doing deliberately.
+- The runtime image ships `src/database/migrations`; a worker that cannot read
+  its SQL cannot migrate.
 - Keep schema, queries, and types aligned when data models change.
 
 ## 10. Production Promotion
