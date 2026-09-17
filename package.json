@@ -37,6 +37,7 @@
     "worker:dev": "node --watch --watch-preserve-output --env-file-if-exists=.env --import tsx scripts/worker.ts",
     "worker:start": "node dist/worker/worker.mjs",
     "worker:smoke": "node scripts/worker-smoke.mjs",
+    "test:compose:smoke": "node --import tsx scripts/smoke-composition.ts",
     "worker:shutdown-smoke": "node scripts/worker-shutdown-smoke.mjs",
     "test:jobs:integration": "node --env-file-if-exists=.env --import tsx scripts/run-jobs-integration.ts"
   },

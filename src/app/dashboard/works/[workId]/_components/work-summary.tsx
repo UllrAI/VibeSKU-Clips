@@ -95,6 +95,8 @@ export function WorkSummary({ detail }: { detail: WorkDetail }) {
           {" · "}
           {work.aspectRatio} ·{" "}
           {work.resolution === "2k" ? "2K" : work.resolution}
+          {" · "}
+          {work.durationSeconds}s
         </Fact>
         <Fact label={t("ugc_plan_locale")}>
           {t(contentLocaleKey(work.locale))} · {t(marketKey(work.market))}

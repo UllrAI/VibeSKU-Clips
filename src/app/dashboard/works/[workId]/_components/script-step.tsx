@@ -13,7 +13,11 @@ import {
   startWorkFromScript,
 } from "@/lib/ugc/work-actions";
 import type { ScriptRow } from "@/lib/ugc/queries";
-import type { VideoMode } from "@/lib/ugc/constants";
+import {
+  CREDIT_COST,
+  shotDurationSeconds,
+  type VideoMode,
+} from "@/lib/ugc/constants";
 import type { EditableScript } from "@/lib/ugc/types";
 import { StepCard } from "./step-card";
 
@@ -50,6 +54,15 @@ export function ScriptStep({
   const currentSnapshot = JSON.stringify(value);
   const [savedSnapshot, setSavedSnapshot] = useState(currentSnapshot);
   const dirty = currentSnapshot !== savedSnapshot;
+  const estimatedCredits = value.beats.reduce(
+    (total, beat) =>
+      total +
+      Math.max(
+        1,
+        Math.ceil((CREDIT_COST.render * shotDurationSeconds(beat)) / 15),
+      ),
+    0,
+  );
 
   const persist = async () =>
     saveWorkScript(workId, {
@@ -160,6 +173,9 @@ export function ScriptStep({
         onChange={setValue}
         videoMode={videoMode}
       />
+      <p className="text-muted-foreground text-xs">
+        {t("ugc_work_render_cost_hint", { credits: estimatedCredits })}
+      </p>
     </StepCard>
   );
 }

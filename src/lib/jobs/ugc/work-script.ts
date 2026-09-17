@@ -89,6 +89,7 @@ export const workScriptJob = defineJob(
       talentNote: talent
         ? (talent.prompt ?? talent.description ?? talent.name)
         : null,
+      durationSeconds: work.durationSeconds,
     });
 
     const [script] = await db

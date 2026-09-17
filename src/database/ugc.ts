@@ -70,6 +70,23 @@ export const ugcVideoModeEnum = pgEnum("ugc_video_mode", [
   "storyboard",
 ]);
 
+export const ugcAudioModeEnum = pgEnum("ugc_audio_mode", ["native", "tts"]);
+
+export const ugcSegmentStatusEnum = pgEnum("ugc_segment_status", [
+  "pending",
+  "generating",
+  "transcribing",
+  "ready",
+  "failed",
+]);
+
+export const ugcCompositionStatusEnum = pgEnum("ugc_composition_status", [
+  "pending",
+  "running",
+  "ready",
+  "failed",
+]);
+
 export const ugcVideoAspectRatioEnum = pgEnum("ugc_video_aspect_ratio", [
   "9:16",
   "16:9",
@@ -251,6 +268,8 @@ export const ugcClips = pgTable(
       .notNull()
       .default("9:16"),
     resolution: ugcVideoResolutionEnum("resolution").notNull().default("720p"),
+    durationSeconds: integer("durationSeconds").notNull().default(15),
+    audioMode: ugcAudioModeEnum("audioMode").notNull().default("native"),
     status: ugcClipStatusEnum("status").notNull().default("pending"),
     videoUrl: text("videoUrl"),
     coverUrl: text("coverUrl"),
@@ -289,6 +308,7 @@ export const ugcUsageEvents = pgTable(
     kind: ugcUsageKindEnum("kind").notNull(),
     credits: integer("credits").notNull(),
     note: text("note"),
+    sourceKey: text("sourceKey"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -297,6 +317,9 @@ export const ugcUsageEvents = pgTable(
     userCreatedAtIdx: index("ugc_usage_events_userId_createdAt_idx").on(
       table.userId,
       table.createdAt.desc(),
+    ),
+    sourceKeyIdx: uniqueIndex("ugc_usage_events_sourceKey_idx").on(
+      table.sourceKey,
     ),
   }),
 );
@@ -333,6 +356,8 @@ export const ugcWorks = pgTable(
       .notNull()
       .default("9:16"),
     resolution: ugcVideoResolutionEnum("resolution").notNull().default("720p"),
+    durationSeconds: integer("durationSeconds").notNull().default(15),
+    audioMode: ugcAudioModeEnum("audioMode").notNull().default("native"),
     scriptId: uuid("scriptId").references(() => ugcScripts.id, {
       onDelete: "set null",
     }),
@@ -386,6 +411,105 @@ export const ugcWorkFrames = pgTable(
     workPositionIdx: index("ugc_work_frames_workId_position_idx").on(
       table.workId,
       table.position,
+    ),
+  }),
+);
+
+/** Stable shot positions. Each replacement creates a new take. */
+export const ugcWorkSegments = pgTable(
+  "ugc_work_segments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workId: uuid("workId")
+      .notNull()
+      .references(() => ugcWorks.id, { onDelete: "cascade" }),
+    scriptId: uuid("scriptId")
+      .notNull()
+      .references(() => ugcScripts.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    startMs: integer("startMs").notNull(),
+    endMs: integer("endMs").notNull(),
+    activeTakeId: uuid("activeTakeId"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    workScriptPositionIdx: uniqueIndex(
+      "ugc_segments_work_script_position_idx",
+    ).on(table.workId, table.scriptId, table.position),
+  }),
+);
+
+export interface TranscriptWord {
+  text: string;
+  startMs: number;
+  endMs: number;
+}
+
+/** Provider task state and archived media for one shot attempt. */
+export const ugcWorkTakes = pgTable(
+  "ugc_work_takes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    segmentId: uuid("segmentId")
+      .notNull()
+      .references(() => ugcWorkSegments.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    status: ugcSegmentStatusEnum("status").notNull().default("pending"),
+    videoTaskId: text("videoTaskId"),
+    taskRunId: uuid("taskRunId"),
+    asrTaskId: text("asrTaskId"),
+    videoUrl: text("videoUrl"),
+    audioUrl: text("audioUrl"),
+    words: jsonb("words").$type<TranscriptWord[]>(),
+    transcript: text("transcript"),
+    failureReason: text("failureReason"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    segmentVersionIdx: uniqueIndex("ugc_takes_segment_version_idx").on(
+      table.segmentId,
+      table.version,
+    ),
+  }),
+);
+
+/** An immutable selection of takes used to produce one final clip version. */
+export const ugcCompositions = pgTable(
+  "ugc_compositions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    workId: uuid("workId")
+      .notNull()
+      .references(() => ugcWorks.id, { onDelete: "cascade" }),
+    scriptId: uuid("scriptId")
+      .notNull()
+      .references(() => ugcScripts.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    takeIds: jsonb("takeIds").$type<string[]>().notNull(),
+    status: ugcCompositionStatusEnum("status").notNull().default("pending"),
+    taskRunId: uuid("taskRunId"),
+    clipId: uuid("clipId").references(() => ugcClips.id, {
+      onDelete: "set null",
+    }),
+    failureReason: text("failureReason"),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    workVersionIdx: uniqueIndex("ugc_compositions_work_version_idx").on(
+      table.workId,
+      table.version,
     ),
   }),
 );

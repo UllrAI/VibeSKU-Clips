@@ -93,6 +93,14 @@
 
 ## 测试
 
+### 本机有 FFmpeg 不代表有字幕滤镜
+
+**现象**:分段合成的本机冒烟测试能输出视频，但加入字幕后报 `No such filter: subtitles`。
+
+**原因**:本机安装的 FFmpeg 未编译 libass，`ffmpeg -version` 正常并不证明 `subtitles` 滤镜可用。
+
+**正确做法**:在渲染 Worker 镜像安装带 libass 的 FFmpeg，并在 CI 中用真实的字幕样例运行合成冒烟测试；本机先用 `ffmpeg -filters` 核对字幕滤镜。
+
 ### 从 `@jest/globals` 导入 `jest` 会让 `jest.mock` 失效
 
 **现象**:测试顶部写了 `jest.mock("sonner", () => ({ toast: { warning: jest.fn() } }))`,断言时却报 `Matcher error: received value must be a mock or spy function`,拿到的是 sonner 的真实实现。

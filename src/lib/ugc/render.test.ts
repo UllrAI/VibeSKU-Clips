@@ -1,9 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import {
-  buildCoverPrompt,
-  buildSubtitleTrack,
-  buildVideoPrompt,
-} from "./render";
+import { buildFramePrompt, buildSegmentVideoPrompt } from "./render";
 import type { ScriptBeat } from "./types";
 
 const beats: ScriptBeat[] = [
@@ -35,8 +31,8 @@ const subject = {
 };
 
 describe("render prompts", () => {
-  it("anchors the opening frame on the talent reference", () => {
-    const prompt = buildCoverPrompt(subject, beats[0]);
+  it("anchors a storyboard frame on the talent reference", () => {
+    const prompt = buildFramePrompt(subject, beats[0]!, 0);
 
     expect(prompt).toContain("Match the supplied reference image");
     expect(prompt).toContain("Cordless hand vacuum");
@@ -44,49 +40,43 @@ describe("render prompts", () => {
   });
 
   it("falls back to a product-led frame when no talent is chosen", () => {
-    const prompt = buildCoverPrompt(
+    const prompt = buildFramePrompt(
       { ...subject, talentPrompt: null },
-      beats[0],
+      beats[0]!,
+      0,
     );
 
     expect(prompt).toContain("no recognisable face");
   });
 
-  it("passes every beat to the video model with its timing", () => {
-    const prompt = buildVideoPrompt(
+  it("keeps each provider request focused on one shot", () => {
+    const prompt = buildSegmentVideoPrompt(
       subject,
       beats,
+      0,
       "LOCATION: lived-in sitting room\nLIGHTING: window light",
+      "native",
+      "9:16",
     );
 
-    expect(prompt).toContain("0.0-3.5s");
-    expect(prompt).toContain("3.5-15.0s");
+    expect(prompt).toContain("lasting exactly 4 seconds");
     expect(prompt).toContain("small autofocus correction");
     expect(prompt).toContain("LOCATION: lived-in sitting room");
-    expect(prompt).toContain("No burned-in captions");
+    expect(prompt).toContain("Speak exactly this line");
+    expect(prompt).toContain("Next shot context: runs it over the cushion");
   });
 
-  it("directs one-take video to avoid cuts and scene changes", () => {
-    const prompt = buildVideoPrompt(subject, beats, null, {
-      videoMode: "one_take",
-      aspectRatio: "16:9",
-    });
-
-    expect(prompt).toContain("one continuous take");
-    expect(prompt).toContain("no cuts, transitions, or scene changes");
-    expect(prompt).toContain("landscape 16:9");
-  });
-});
-
-describe("subtitle track", () => {
-  it("writes SRT cues only for beats that are spoken", () => {
-    expect(buildSubtitleTrack(beats)).toBe(
-      [
-        "1",
-        "00:00:00,000 --> 00:00:03,500",
-        "This lives by the sofa now.",
-        "",
-      ].join("\n"),
+  it("keeps AI narration out of provider-generated audio", () => {
+    const prompt = buildSegmentVideoPrompt(
+      subject,
+      beats,
+      0,
+      null,
+      "tts",
+      "16:9",
     );
+
+    expect(prompt).toContain("Do not show speaking or lip movement");
+    expect(prompt).toContain("Landscape 16:9");
   });
 });

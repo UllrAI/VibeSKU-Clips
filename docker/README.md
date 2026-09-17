@@ -39,7 +39,7 @@ This directory contains the Docker configuration for running VibeSKU Clips in co
    ```
 
    Compose waits for PostgreSQL, applies every committed migration with the
-   one-shot `migrate` service, and starts the Web and Worker services only after
+   one-shot `migrate` service, and starts the Web, Worker, and render-worker services only after
    both the application and pg-boss migrations succeed.
 
 3. **Access the application**
@@ -59,6 +59,12 @@ This directory contains the Docker configuration for running VibeSKU Clips in co
 - **Purpose**: Claims and executes durable pg-boss jobs outside the Web process
 - **Entrypoint**: `node dist/worker/worker.mjs` (Node is PID 1)
 - **Shutdown**: Stops claiming, drains active handlers for 30 seconds, then closes both pools
+
+### render-worker
+
+- **Purpose**: Runs FFmpeg/FFprobe composition jobs on CPU, separate from Web and cloud provider jobs
+- **Image**: Same Dockerfile with build argument `RENDER_WORKER=1`, adding FFmpeg and Noto CJK fonts
+- **Entrypoint**: `WORKER_ROLE=render node dist/worker/worker.mjs`
 
 ### migrate
 

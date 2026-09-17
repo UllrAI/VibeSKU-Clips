@@ -4,6 +4,7 @@ import type { ClipQualityReport, QualityCheck, ScriptDraft } from "./types";
 export interface QualityInput {
   locale: string;
   durationMs: number | null;
+  targetDurationSeconds?: number;
   script: Pick<ScriptDraft, "voiceover" | "captions">;
   /** Reported by the renderer for each check it can verify itself. */
   rendererFindings?: Partial<
@@ -22,8 +23,10 @@ function spokenLength(locale: string, voiceover: string): number {
  * found so a failure can be acted on without opening the raw provider logs.
  */
 export function evaluateClipQuality(input: QualityInput): ClipQualityReport {
-  const targetMs = CLIP_SPEC.durationSeconds * 1000;
-  const budget = voiceoverBudgetFor(input.locale);
+  const targetDurationSeconds =
+    input.targetDurationSeconds ?? CLIP_SPEC.durationSeconds;
+  const targetMs = targetDurationSeconds * 1000;
+  const budget = voiceoverBudgetFor(input.locale, targetDurationSeconds);
   const spoken = spokenLength(input.locale, input.script.voiceover);
 
   const checks: QualityCheck[] = [
@@ -35,7 +38,7 @@ export function evaluateClipQuality(input: QualityInput): ClipQualityReport {
       detail:
         input.durationMs === null
           ? "The renderer did not report a duration."
-          : `${(input.durationMs / 1000).toFixed(2)}s against a ${CLIP_SPEC.durationSeconds}s target.`,
+          : `${(input.durationMs / 1000).toFixed(2)}s against a ${targetDurationSeconds}s target.`,
     },
     {
       id: "voiceoverLength",
@@ -48,29 +51,13 @@ export function evaluateClipQuality(input: QualityInput): ClipQualityReport {
       detail:
         "Caption lines stay clear of the platform buttons and the product card.",
     },
-    {
-      id: "productAccuracy",
-      passed: !input.rendererFindings?.productAccuracy,
-      detail:
-        input.rendererFindings?.productAccuracy ??
-        "The clip matches the recorded product facts.",
-    },
-    {
-      id: "talentConsistency",
-      passed: !input.rendererFindings?.talentConsistency,
-      detail:
-        input.rendererFindings?.talentConsistency ??
-        (input.hasTalentReference
-          ? "The performer matches the selected reference image."
-          : "No talent reference was requested for this clip."),
-    },
-    {
-      id: "localeExpression",
-      passed: !input.rendererFindings?.localeExpression,
-      detail:
-        input.rendererFindings?.localeExpression ??
-        "Wording and delivery read naturally for the target market.",
-    },
+    ...(["productAccuracy", "talentConsistency", "localeExpression"] as const)
+      .filter((id) => input.rendererFindings?.[id])
+      .map((id) => ({
+        id,
+        passed: false,
+        detail: input.rendererFindings![id]!,
+      })),
   ];
 
   return { checks, passed: checks.every((check) => check.passed) };

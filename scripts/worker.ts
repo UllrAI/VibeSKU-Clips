@@ -7,6 +7,7 @@ import { cleanupDeletedFiles } from "@/lib/uploads/deletion";
 import { buildFileUrl } from "@/lib/uploads/url";
 import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { JobQueue } from "@/lib/jobs/queue";
+import { jobDefinitions } from "@/lib/jobs/catalog";
 import { loadWorkerEnv } from "@/lib/jobs/worker-env";
 
 async function main(): Promise<void> {
@@ -16,11 +17,13 @@ async function main(): Promise<void> {
     max: workerEnv.DB_POOL_SIZE,
   });
 
-  createAiModels({
-    apiKey: workerEnv.LLM_API_KEY,
-    baseUrl: workerEnv.LLM_BASE_URL,
-    defaultModel: workerEnv.AI_DEFAULT_MODEL,
-  });
+  if (workerEnv.WORKER_ROLE === "general") {
+    createAiModels({
+      apiKey: workerEnv.LLM_API_KEY,
+      baseUrl: workerEnv.LLM_BASE_URL,
+      defaultModel: workerEnv.AI_DEFAULT_MODEL,
+    });
+  }
 
   if (process.env.WORKER_SMOKE_TEST === "1") {
     await database.close();
@@ -37,7 +40,14 @@ async function main(): Promise<void> {
   );
 
   try {
-    await queue.registerWorkers(database.db);
+    await queue.registerWorkers(
+      database.db,
+      jobDefinitions.filter((definition) =>
+        workerEnv.WORKER_ROLE === "render"
+          ? definition.name === "ugc.work.compose"
+          : definition.name !== "ugc.work.compose",
+      ),
+    );
   } catch (error) {
     await Promise.allSettled([
       queue.stop(workerEnv.WORKER_GRACEFUL_TIMEOUT_MS),
@@ -101,6 +111,7 @@ async function main(): Promise<void> {
     }
   };
   const maintenanceTimer = setInterval(() => {
+    if (workerEnv.WORKER_ROLE === "render") return;
     if (maintenance) return;
     maintenance = maintain()
       .catch((error: unknown) => console.error("Maintenance failed:", error))
