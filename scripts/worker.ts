@@ -9,6 +9,7 @@ import { DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { JobQueue } from "@/lib/jobs/queue";
 import { jobDefinitions } from "@/lib/jobs/catalog";
 import { loadWorkerEnv } from "@/lib/jobs/worker-env";
+import { probeMediaToolchain } from "@/lib/ugc/media/toolchain";
 
 async function main(): Promise<void> {
   const workerEnv = loadWorkerEnv();
@@ -23,6 +24,25 @@ async function main(): Promise<void> {
       baseUrl: workerEnv.LLM_BASE_URL,
       defaultModel: workerEnv.AI_DEFAULT_MODEL,
     });
+  }
+
+  // A render worker without the filters composition uses would accept work and
+  // fail on the last step, after every shot has been generated and paid for.
+  if (workerEnv.WORKER_ROLE === "render") {
+    const toolchain = await probeMediaToolchain();
+    if (toolchain.state !== "ready") {
+      throw new Error(
+        `Render worker media toolchain is unusable: ${toolchain.detail}`,
+      );
+    }
+    console.log(
+      JSON.stringify({
+        component: "job-worker",
+        event: "media_toolchain_ready",
+        ffmpeg: toolchain.ffmpegVersion,
+        ffprobe: toolchain.ffprobeVersion,
+      }),
+    );
   }
 
   if (process.env.WORKER_SMOKE_TEST === "1") {

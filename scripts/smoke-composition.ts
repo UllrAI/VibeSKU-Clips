@@ -5,10 +5,7 @@ import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import {
-  buildWordSubtitleTrack,
-  composeMedia,
-} from "../src/lib/ugc/composition";
+import { buildSubtitleTrack, composeMedia } from "../src/lib/ugc/composition";
 
 const run = promisify(execFile);
 async function main() {
@@ -78,8 +75,8 @@ async function main() {
             videoUrl: `${base}/one.mp4`,
             audioUrl: null,
             durationMs: 3000,
-            hasSpeech: requireSubtitles,
-            preserveVideoAudio: true,
+            voiceover: requireSubtitles ? "Hello." : "",
+            spanAuthority: "video" as const,
             words: requireSubtitles
               ? [{ text: "Hello", startMs: 300, endMs: 1100 }]
               : [],
@@ -88,8 +85,8 @@ async function main() {
             videoUrl: `${base}/two.mp4`,
             audioUrl: null,
             durationMs: 3000,
-            hasSpeech: requireSubtitles,
-            preserveVideoAudio: requireSubtitles,
+            voiceover: requireSubtitles ? "There." : "",
+            spanAuthority: "video" as const,
             words: requireSubtitles
               ? [{ text: "there", startMs: 200, endMs: 1000 }]
               : [],
@@ -102,13 +99,15 @@ async function main() {
       throw new Error(`Unexpected composition duration: ${result.durationMs}`);
     if (requireSubtitles && !(await stat(result.subtitlePath)).size)
       throw new Error("Subtitle file is empty.");
-    const captions = buildWordSubtitleTrack([
+    const captions = buildSubtitleTrack([
       {
         durationMs: 3000,
+        voiceover: "Hello.",
         words: [{ text: "Hello", startMs: 300, endMs: 1100 }],
       },
       {
         durationMs: 3000,
+        voiceover: "There.",
         words: [{ text: "there", startMs: 200, endMs: 1000 }],
       },
     ]);

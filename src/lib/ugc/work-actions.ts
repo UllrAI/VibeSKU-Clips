@@ -29,7 +29,6 @@ import {
   AUDIO_MODES,
   CLIP_SPEC,
   beatsCoverDuration,
-  voiceoverFitsBeats,
   VIDEO_ASPECT_RATIOS,
   VIDEO_MODELS,
   VIDEO_MODES,
@@ -37,6 +36,7 @@ import {
 } from "./constants";
 import { isActiveVideoConfiguration } from "./media/video-provider";
 import { talentScopeKey, workScopeKey } from "./scope";
+import { voiceoverFitsBeats } from "./speech-estimate";
 import type { ActionResult } from "./types";
 
 const setupSchema = z

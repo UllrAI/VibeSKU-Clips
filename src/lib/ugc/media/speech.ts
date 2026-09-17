@@ -190,32 +190,3 @@ export async function synthesizeSpeech(
   );
   return ttsSchema.parse(raw).output.audio.url;
 }
-
-/** Reject an invented or missing spoken line before publishing its captions. */
-export function speechMatchesScript(expected: string, actual: string): boolean {
-  const normalized = (value: string) =>
-    value
-      .toLocaleLowerCase()
-      .normalize("NFKC")
-      .replace(/[^\p{L}\p{N}]/gu, "");
-  const a = normalized(expected);
-  const b = normalized(actual);
-  if (!a) return !b;
-  if (!b) return false;
-  // Recognition may omit small particles or punctuation; a large disagreement is unsafe.
-  const lengthGap = Math.abs(a.length - b.length) / a.length;
-  if (lengthGap > 0.3) return false;
-  let previous = Array.from({ length: b.length + 1 }, (_, index) => index);
-  for (let i = 1; i <= a.length; i++) {
-    const next = [i];
-    for (let j = 1; j <= b.length; j++) {
-      next[j] = Math.min(
-        next[j - 1]! + 1,
-        previous[j]! + 1,
-        previous[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
-    }
-    previous = next;
-  }
-  return previous[b.length]! / Math.max(a.length, b.length) <= 0.25;
-}

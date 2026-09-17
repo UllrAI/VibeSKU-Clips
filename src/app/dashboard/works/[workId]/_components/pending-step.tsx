@@ -198,6 +198,11 @@ export function PendingStep({
               {t("ugc_work_segment_label", { position: segment.position + 1 })}{" "}
               · {segment.startMs / 1000}–{segment.endMs / 1000}s ·{" "}
               {t(`ugc_work_segment_status_${take?.status ?? "pending"}`)}
+              {take?.status === "failed" && take.failureReason && (
+                <span className="text-destructive mt-1 block text-xs">
+                  {take.failureReason}
+                </span>
+              )}
             </li>
           ))}
         </ol>

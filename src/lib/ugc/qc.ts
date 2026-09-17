@@ -1,4 +1,5 @@
-import { CLIP_SPEC, voiceoverBudgetFor } from "./constants";
+import { CLIP_SPEC } from "./constants";
+import { estimateSpeechSeconds } from "./speech-estimate";
 import type { ClipQualityReport, QualityCheck, ScriptDraft } from "./types";
 
 export interface QualityInput {
@@ -13,11 +14,6 @@ export interface QualityInput {
   hasTalentReference: boolean;
 }
 
-function spokenLength(locale: string, voiceover: string): number {
-  const compact = voiceover.replace(/\s+/g, locale.startsWith("zh") ? "" : " ");
-  return compact.trim().length;
-}
-
 /**
  * The gate runs before an operator ever sees a clip. Every check states what it
  * found so a failure can be acted on without opening the raw provider logs.
@@ -26,8 +22,10 @@ export function evaluateClipQuality(input: QualityInput): ClipQualityReport {
   const targetDurationSeconds =
     input.targetDurationSeconds ?? CLIP_SPEC.durationSeconds;
   const targetMs = targetDurationSeconds * 1000;
-  const budget = voiceoverBudgetFor(input.locale, targetDurationSeconds);
-  const spoken = spokenLength(input.locale, input.script.voiceover);
+  const spokenSeconds = estimateSpeechSeconds(
+    input.script.voiceover,
+    input.locale,
+  );
 
   const checks: QualityCheck[] = [
     {
@@ -42,8 +40,8 @@ export function evaluateClipQuality(input: QualityInput): ClipQualityReport {
     },
     {
       id: "voiceoverLength",
-      passed: spoken <= budget,
-      detail: `${spoken} of ${budget} units of speech fit the target duration.`,
+      passed: spokenSeconds <= targetDurationSeconds,
+      detail: `The script reads in about ${spokenSeconds.toFixed(1)}s against a ${targetDurationSeconds}s target.`,
     },
     {
       id: "captionSafeArea",

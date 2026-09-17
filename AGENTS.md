@@ -135,7 +135,7 @@ Seven durable UGC jobs are registered in `src/lib/jobs/catalog.ts`:
 | `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it  |
 | `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands            |
 | `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Coordinates one task per shot and a versioned composition                                   |
-| `ugc.work.segment`    | `src/lib/jobs/ugc/work-segment.ts`    | Generates one shot, archives it, uses cloud ASR/TTS, checks speech                          |
+| `ugc.work.segment`    | `src/lib/jobs/ugc/work-segment.ts`    | Generates one shot, archives it, measures narration, and verifies the spoken line           |
 | `ugc.work.compose`    | `src/lib/jobs/ugc/work-compose.ts`    | FFmpeg normalisation, measured subtitles, concatenation, and final archive                  |
 
 A **work** (`ugc_works`) runs one clip through `product -> script -> video` by
@@ -167,6 +167,20 @@ Rules that are easy to break:
 - **Failure is terminal and visible.** An unreadable product becomes
   `needs_input`; exhausted task retries surface as a failed step with a retry
   action. A work never remains visually "running" after its task has failed.
+- **Captions carry the approved script, never the transcript.** Recognition
+  supplies timing and nothing else (`src/lib/ugc/media/alignment.ts`). A
+  recognizer mangles brand and product names, and a burned-in subtitle cannot
+  be corrected later. Alignment is separate from the verdict on a take:
+  `speechMatchesScript` judges the whole text, because a recognizer that reports
+  Chinese in words rather than characters aligns perfectly with few exact pairs.
+- **Fail where it costs one shot.** Narration length is measured when it is
+  synthesised (`src/lib/ugc/media/audio.ts`), not at composition, and a beat's
+  line is estimated in seconds before the script is accepted
+  (`src/lib/ugc/speech-estimate.ts`). A check that only runs at the last step
+  discards every shot already paid for.
+- **The render worker proves its toolchain at start-up.** `probeMediaToolchain`
+  refuses to start a render role missing an encoder or filter composition uses,
+  rather than failing on the final burn-in after all generation is billed.
 
 ## 6. Engineering Rules
 

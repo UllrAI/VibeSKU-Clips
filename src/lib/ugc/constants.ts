@@ -6,8 +6,8 @@ export const CLIP_SPEC = {
   maxSegmentSeconds: 15,
   /** Tolerance either side of the target duration before a clip is rejected. */
   durationToleranceMs: 700,
-  /** Roughly the number of spoken characters that fit in the target duration. */
-  voiceoverBudget: { latin: 210, cjk: 90 },
+  /** How far synthesised narration may overrun the shot that has to hold it. */
+  narrationToleranceMs: 150,
 } as const;
 
 export const SUPPORTED_LOCALES = [
@@ -19,45 +19,6 @@ export const SUPPORTED_LOCALES = [
   "zh-Hans",
 ] as const;
 export type ContentLocale = (typeof SUPPORTED_LOCALES)[number];
-
-/** Locales whose voiceover budget is counted in characters rather than words. */
-const CJK_LOCALES = new Set<string>(["zh-Hans", "ja", "ko"]);
-
-export function voiceoverBudgetFor(
-  locale: string,
-  durationSeconds: number = CLIP_SPEC.durationSeconds,
-): number {
-  return Math.floor(
-    ((CJK_LOCALES.has(locale)
-      ? CLIP_SPEC.voiceoverBudget.cjk
-      : CLIP_SPEC.voiceoverBudget.latin) *
-      durationSeconds) /
-      CLIP_SPEC.durationSeconds,
-  );
-}
-
-export function voiceoverFitsBeats(
-  beats: readonly { start: number; end: number; voiceover: string }[],
-  locale: string,
-): boolean {
-  const total = beats
-    .map((beat) => beat.voiceover.trim())
-    .filter(Boolean)
-    .join(" ")
-    .replace(/\s+/g, locale.startsWith("zh") ? "" : " ").length;
-  return (
-    total <= voiceoverBudgetFor(locale, beats.at(-1)?.end ?? 0) &&
-    beats.every((beat) => {
-      const spoken = beat.voiceover
-        .trim()
-        .replace(/\s+/g, locale.startsWith("zh") ? "" : " ");
-      return (
-        spoken.length <=
-        Math.min(600, voiceoverBudgetFor(locale, shotDurationSeconds(beat)))
-      );
-    })
-  );
-}
 
 export const AUDIO_MODES = ["native", "tts"] as const;
 export type AudioMode = (typeof AUDIO_MODES)[number];

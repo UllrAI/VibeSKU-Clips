@@ -65,6 +65,8 @@ This directory contains the Docker configuration for running VibeSKU Clips in co
 - **Purpose**: Runs FFmpeg/FFprobe composition jobs on CPU, separate from Web and cloud provider jobs
 - **Image**: Same Dockerfile with build argument `RENDER_WORKER=1`, adding FFmpeg and Noto CJK fonts
 - **Entrypoint**: `WORKER_ROLE=render node dist/worker/worker.mjs`
+- **Start-up check**: The render role probes FFmpeg for the encoders and filters composition uses
+  (including `subtitles`, which needs a libass-enabled build) and refuses to start without them
 
 ### migrate
 

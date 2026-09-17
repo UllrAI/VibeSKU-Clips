@@ -9,11 +9,16 @@ import {
   ugcWorkTakes,
   ugcWorks,
 } from "@/database/ugc";
-import { CREDIT_COST, shotDurationSeconds } from "@/lib/ugc/constants";
+import {
+  CLIP_SPEC,
+  CREDIT_COST,
+  shotDurationSeconds,
+} from "@/lib/ugc/constants";
 import { getVideoTask, submitVideo } from "@/lib/ugc/media/video-provider";
+import { speechMatchesScript } from "@/lib/ugc/media/alignment";
+import { measureWavDurationMs } from "@/lib/ugc/media/audio";
 import {
   getTranscription,
-  speechMatchesScript,
   submitTranscription,
   synthesizeSpeech,
 } from "@/lib/ugc/media/speech";
@@ -194,20 +199,46 @@ export const workSegmentJob = defineJob(
         .where(eq(ugcWorkTakes.id, take.id));
     }
 
+    const shotDurationMs = shotDurationSeconds(beat) * 1000;
     let audioUrl = take.audioUrl;
     if (work.audioMode === "tts" && hasSpeech && !audioUrl) {
       const sourceUrl = await synthesizeSpeech(beat.voiceover, work.locale);
+      let narrationMs: number | null = null;
       audioUrl = await archiveGeneratedRemote({
         db,
         userId: work.userId,
         identity: `${take.id}:audio`,
         kind: "audio",
         sourceUrl,
+        inspect: async (path) => {
+          narrationMs = await measureWavDurationMs(path);
+        },
       });
       await db
         .update(ugcWorkTakes)
         .set({ audioUrl, updatedAt: new Date() })
         .where(eq(ugcWorkTakes.id, take.id));
+      // Narration that cannot fit is a writing problem, and it is fatal to the
+      // whole work once composition reaches it. Fail here, where the cost is
+      // this one shot and the operator can still edit the line.
+      //
+      // The annotation is load-bearing: control-flow analysis cannot see that
+      // the callback above ran, and narrows the value back to its initial null.
+      const measured: number | null = narrationMs;
+      if (measured === null) {
+        context.log("narration_duration_unknown", { takeId: take.id });
+      } else if (measured > shotDurationMs + CLIP_SPEC.narrationToleranceMs) {
+        const reason = `Narration runs ${(measured / 1000).toFixed(1)}s and the shot holds ${shotDurationSeconds(beat)}s. Shorten this beat's spoken line.`;
+        await db
+          .update(ugcWorkTakes)
+          .set({
+            status: "failed",
+            failureReason: reason,
+            updatedAt: new Date(),
+          })
+          .where(eq(ugcWorkTakes.id, take.id));
+        throw new PermanentJobError("SEGMENT_NARRATION_TOO_LONG", reason);
+      }
     }
 
     const mustTranscribe = work.audioMode === "native" || hasSpeech;
@@ -243,16 +274,22 @@ export const workSegmentJob = defineJob(
       if (result.status === "failed")
         throw new PermanentJobError("SEGMENT_ASR_FAILED", result.reason);
       transcript = result.text;
-      words = result.words;
-      const shotDurationMs = shotDurationSeconds(beat) * 1000;
+      const spoken = result.words;
+      words = spoken;
+      // Recognition is trusted to say *when* the script was spoken. Whether it
+      // was spoken at all is a separate question, asked of the whole text.
       if (
         !speechMatchesScript(beat.voiceover, transcript) ||
-        (hasSpeech && !words.length) ||
-        words.some(
-          (word) =>
+        (hasSpeech && !spoken.length) ||
+        spoken.some(
+          (word, index) =>
             word.startMs < 0 ||
             word.endMs <= word.startMs ||
-            word.endMs > shotDurationMs + 200,
+            word.endMs > shotDurationMs + 200 ||
+            // Cue windows are read off these in order, so out-of-order
+            // recognition has to be caught here, not at composition, where
+            // every other shot has already been generated and billed.
+            (index > 0 && word.startMs < spoken[index - 1]!.startMs),
         )
       ) {
         await db

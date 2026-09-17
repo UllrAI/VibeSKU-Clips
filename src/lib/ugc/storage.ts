@@ -220,6 +220,12 @@ export async function archiveGeneratedRemote(input: {
   identity: string;
   kind: "video" | "audio";
   sourceUrl: string;
+  /**
+   * Runs on the downloaded file before it is uploaded. It lets a caller reject
+   * unusable media at the point it arrives, without a second download and
+   * without holding the whole file in memory.
+   */
+  inspect?: (path: string) => Promise<void>;
 }): Promise<string> {
   const url = new URL(input.sourceUrl);
   if (url.protocol !== "https:" && url.protocol !== "http:")
@@ -252,6 +258,7 @@ export async function archiveGeneratedRemote(input: {
       }),
       createWriteStream(path),
     );
+    await input.inspect?.(path);
     return await archiveGeneratedFile({ ...input, path });
   } finally {
     await unlink(path).catch(() => undefined);

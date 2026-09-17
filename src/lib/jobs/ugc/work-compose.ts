@@ -125,10 +125,8 @@ export const workComposeJob = defineJob(
             : null,
           durationMs: row.segment.endMs - row.segment.startMs,
           words: row.take.words ?? [],
-          hasSpeech: Boolean(
-            script.beats[row.segment.position]?.voiceover.trim(),
-          ),
-          preserveVideoAudio: work.audioMode === "native",
+          voiceover: script.beats[row.segment.position]?.voiceover ?? "",
+          spanAuthority: work.audioMode === "native" ? "video" : "audio",
         })),
       );
       const result = await composeMedia(

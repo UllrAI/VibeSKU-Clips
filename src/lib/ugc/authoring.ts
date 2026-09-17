@@ -4,11 +4,10 @@ import { getAuthoringModel } from "./model";
 import {
   CLIP_SPEC,
   beatsCoverDuration,
-  voiceoverBudgetFor,
-  voiceoverFitsBeats,
   type ScriptTemplate,
   type VideoAspectRatio,
 } from "./constants";
+import { voiceoverFitsBeats } from "./speech-estimate";
 import type {
   ProductBrief,
   ProductFacts,
@@ -231,7 +230,6 @@ export async function composeScript(
 ): Promise<ScriptDraft> {
   const brief = templateBrief(input.template);
   const durationSeconds = input.durationSeconds ?? CLIP_SPEC.durationSeconds;
-  const budget = voiceoverBudgetFor(input.locale, durationSeconds);
 
   const productImages = input.productImageUrls ?? [];
   const brief_ = [
@@ -269,7 +267,7 @@ export async function composeScript(
       `Structure: ${brief.structure}`,
       `Voice: ${brief.voice}`,
       `Write every field in ${input.locale} for the ${input.market} market, using local wording, units, and everyday scenes.`,
-      `The spoken track must fit ${budget} units of speech; do not pad it.`,
+      `The whole spoken track must be sayable in ${durationSeconds} seconds at an unhurried, natural pace; do not pad it.`,
       "Each beat's spoken line must also fit its own duration. Keep narration concise and leave natural pauses.",
       "Use only the supplied product facts. Never state a price, a discount, a medical or safety claim, or a consumer testimonial.",
       "The result must feel like a real person filming themselves, not a polished advert. Use concrete micro-behaviour, natural pauses, imperfect phone-camera movement, focus changes, material physics, and ambient sound appropriate to the scene.",

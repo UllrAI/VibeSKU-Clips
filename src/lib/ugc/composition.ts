@@ -6,6 +6,8 @@ import { Readable, Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import { promisify } from "node:util";
 import type { TranscriptWord } from "@/database/ugc";
+import { alignScriptToEvidence, type TimedToken } from "./media/alignment";
+import { CLIP_SPEC } from "./constants";
 import type { VideoAspectRatio, VideoResolution } from "./constants";
 
 const runFile = promisify(execFile);
@@ -15,9 +17,16 @@ export interface CompositionSegment {
   videoUrl: string;
   audioUrl: string | null;
   durationMs: number;
+  /** Measured recognition, used for timing only. */
   words: TranscriptWord[];
-  hasSpeech: boolean;
-  preserveVideoAudio: boolean;
+  /** The approved script line. Captions are rendered from this wording. */
+  voiceover: string;
+  /**
+   * Which stream carries this shot's speech. `video` keeps the generated
+   * performance's own audio; `audio` means separate narration was added and
+   * has to fit the shot. Naming it keeps the decision out of inference.
+   */
+  spanAuthority: "video" | "audio";
 }
 
 export interface CompositionPlan {
@@ -122,56 +131,142 @@ function srtTime(ms: number): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")},${String(millis).padStart(3, "0")}`;
 }
 
-/** Actual ASR timings determine subtitle cues; no estimated beat timing is used. */
-export function buildWordSubtitleTrack(
-  segments: readonly Pick<CompositionSegment, "durationMs" | "words">[],
+const CUE_MAX_MS = 2400;
+const CUE_MIN_MS = 300;
+const CUE_MAX_CHARACTERS = { latin: 42, cjk: 20 } as const;
+const CJK_TOKEN =
+  /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+
+/** Joins two rendered fragments the way their scripts are written. */
+function joinText(left: string, right: string): string {
+  if (!left) return right;
+  if (!right) return left;
+  const seam = CJK_TOKEN.test(left.at(-1)!) || CJK_TOKEN.test(right[0]!);
+  return seam ? left + right : `${left} ${right}`;
+}
+
+function cueText(tokens: readonly TimedToken[]): string {
+  return tokens.reduce((line, token, index) => {
+    if (!index) return token.text;
+    const joined =
+      CJK_TOKEN.test(token.text) || CJK_TOKEN.test(tokens[index - 1]!.text);
+    return joined ? line + token.text : `${line} ${token.text}`;
+  }, "");
+}
+
+/**
+ * Captions carry the approved wording, positioned by measured recognition.
+ * Lines break where the script punctuates, because that is where the writer
+ * meant a thought to end; length and duration are only the fallback.
+ */
+export function buildSubtitleTrack(
+  segments: readonly Pick<
+    CompositionSegment,
+    "durationMs" | "words" | "voiceover"
+  >[],
 ): string {
   const cues: { start: number; end: number; text: string }[] = [];
   let offset = 0;
   for (const segment of segments) {
-    let group: TranscriptWord[] = [];
-    const flush = () => {
-      if (!group.length) return;
-      const cjk = group.some((word) =>
-        /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(
-          word.text,
-        ),
-      );
-      cues.push({
-        start: offset + group[0]!.startMs,
-        end: offset + group.at(-1)!.endMs,
-        text: group.map((word) => word.text).join(cjk ? "" : " "),
-      });
-      group = [];
-    };
-    for (const word of segment.words) {
+    for (const [index, word] of segment.words.entries()) {
       if (
         word.startMs < 0 ||
         word.endMs <= word.startMs ||
         word.endMs > segment.durationMs + 200
       )
         throw new Error("ASR word timing is outside its shot.");
-      const cjk =
-        /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u.test(
-          word.text,
-        );
-      const currentLength =
-        group.reduce((sum, item) => sum + item.text.length, 0) +
-        group.length +
-        word.text.length;
+      // Cue windows are read off these in order, so out-of-order recognition
+      // is a data fault to report, not something to silently caption around.
+      if (index && word.startMs < segment.words[index - 1]!.startMs)
+        throw new Error("ASR words are not in spoken order.");
+    }
+    const tokens = alignScriptToEvidence(segment.voiceover, segment.words);
+    // One limit per shot, from the script's own language. Deriving it from
+    // whichever token is in hand makes a mixed line's limit jump mid-cue.
+    const limit = CJK_TOKEN.test(segment.voiceover)
+      ? CUE_MAX_CHARACTERS.cjk
+      : CUE_MAX_CHARACTERS.latin;
+    const first = cues.length;
+    let group: TimedToken[] = [];
+    /** Local end of this shot's last cue, the floor for anything after it. */
+    let spokenEnd = 0;
+    /**
+     * Words nobody heard carry no window of their own, so they are held back
+     * and shown with the next words that do. Dropping them would quietly edit
+     * the approved script, which is the one thing captions must never do.
+     */
+    let held: TimedToken[] = [];
+    const flush = () => {
+      const timed = group.filter((token) => token.window);
+      if (!timed.length) {
+        held = [...held, ...group];
+      } else {
+        // Held words were spoken somewhere between the previous cue and this
+        // one, so the cue opens where that gap does. The line can run long,
+        // which is the right trade: unreadable beats absent.
+        const end = timed.at(-1)!.window!.endMs;
+        cues.push({
+          start: offset + (held.length ? spokenEnd : timed[0]!.window!.startMs),
+          end: offset + end,
+          text: joinText(cueText(held), cueText(group)),
+        });
+        spokenEnd = end;
+        held = [];
+      }
+      group = [];
+    };
+    for (const token of tokens) {
+      const started = group.find((item) => item.window);
       if (
         group.length &&
-        (group.length >= 7 ||
-          word.endMs - group[0]!.startMs > 2400 ||
-          currentLength > (cjk ? 20 : 42))
+        (cueText([...group, token]).length > limit ||
+          (started &&
+            token.window &&
+            token.window.endMs - started.window!.startMs > CUE_MAX_MS))
       )
         flush();
-      group.push(word);
+      group.push(token);
+      if (token.breakAfter === "hard") flush();
+      else if (
+        token.breakAfter === "soft" &&
+        cueText(group).length >= Math.round(limit * 0.6)
+      )
+        flush();
     }
     flush();
+    const last = cues.at(-1);
+    // A trailing run that was never heard still belongs on screen, and the
+    // last cue of this shot is the only place left to say it.
+    if (held.length && last && cues.length > first) {
+      last.text = joinText(last.text, cueText(held));
+    }
     offset += segment.durationMs;
   }
-  return cues
+  // Two cues that start at the same measured instant cannot be told apart on
+  // screen, and a cue carrying one leftover word flashes rather than reads.
+  // Both are absorbed by the line before them instead of being shown alone.
+  const merged = cues.reduce<typeof cues>((kept, cue) => {
+    const previous = kept.at(-1);
+    if (
+      previous &&
+      (cue.start <= previous.start ||
+        (cue.end - cue.start < CUE_MIN_MS &&
+          previous.text.length + cue.text.length <= CUE_MAX_CHARACTERS.latin))
+    ) {
+      previous.text = joinText(previous.text, cue.text);
+      previous.end = Math.max(previous.end, cue.end);
+      return kept;
+    }
+    kept.push(cue);
+    return kept;
+  }, []);
+  // A cue that outlives its successor would sit on screen twice.
+  for (const [index, cue] of merged.entries()) {
+    cue.end = Math.max(cue.end, cue.start + CUE_MIN_MS);
+    const next = merged[index + 1];
+    if (next && cue.end > next.start) cue.end = next.start;
+  }
+  return merged
     .map(
       (cue, index) =>
         `${index + 1}\n${srtTime(cue.start)} --> ${srtTime(cue.end)}\n${cue.text}\n`,
@@ -203,9 +298,9 @@ export async function composeMedia(
         `Shot ${index + 1} differs too much from its approved duration.`,
       );
     if (
-      segment.hasSpeech &&
+      segment.voiceover.trim() !== "" &&
       !segment.audioUrl &&
-      (!segment.preserveVideoAudio || !video.audio)
+      (segment.spanAuthority === "audio" || !video.audio)
     )
       throw new Error(`Shot ${index + 1} has no speech audio.`);
 
@@ -215,11 +310,16 @@ export async function composeMedia(
       const audioPath = join(directory, `narration-${index}.wav`);
       await download(segment.audioUrl, audioPath);
       const audio = await probeMedia(audioPath);
-      if (!audio.audio || audio.durationMs > segment.durationMs + 150)
+      // The shot job measures narration when it is synthesised, so reaching
+      // here means that check was bypassed rather than that copy slipped.
+      if (
+        !audio.audio ||
+        audio.durationMs > segment.durationMs + CLIP_SPEC.narrationToleranceMs
+      )
         throw new Error(`Narration does not fit shot ${index + 1}.`);
       args.push("-i", audioPath);
       audioInput = "1:a:0";
-    } else if (!segment.preserveVideoAudio || !video.audio) {
+    } else if (segment.spanAuthority === "audio" || !video.audio) {
       args.push("-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo");
       audioInput = "1:a:0";
     }
@@ -278,7 +378,7 @@ export async function composeMedia(
   ]);
 
   const subtitlePath = join(directory, "captions.srt");
-  const subtitle = buildWordSubtitleTrack(plan.segments);
+  const subtitle = buildSubtitleTrack(plan.segments);
   await writeFile(subtitlePath, subtitle, "utf8");
   const videoPath = join(directory, "final.mp4");
   const margin =

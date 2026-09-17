@@ -115,6 +115,9 @@ jobs:
       - run: pnpm worker:smoke
       - run: pnpm worker:shutdown-smoke
       - run: sudo apt-get update && sudo apt-get install -y ffmpeg fonts-noto-cjk
+      # Proves the render role's start-up capability probe passes on a host
+      # that actually has the toolchain, not only that it rejects one without.
+      - run: WORKER_ROLE=render pnpm worker:smoke
       - run: COMPOSITION_SMOKE_REQUIRE_SUBTITLES=1 pnpm test:compose:smoke
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm test:e2e
