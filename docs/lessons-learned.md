@@ -306,3 +306,11 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 **现象**：本地 ffmpeg 缺 libass，合成走到烧字幕才失败；镜像若少装一个 filter，线上行为完全相同——正常接单，花完所有生成费用，最后一步炸掉。
 
 **正确做法**：`probeMediaToolchain` 在 render 角色启动时核对实际用到的 encoder 与 filter 清单（检查能力而非版本号），缺失就拒绝上线。CI 在装完 ffmpeg 后跑一次 `WORKER_ROLE=render pnpm worker:smoke`，确保探测在具备工具链的机器上确实通过。
+
+### 迁移路径必须存在于部署网络内部
+
+**现象**：staging 的 render worker 起不来，报 `Queue ugc.work.compose does not exist`。查下去发现 staging 数据库连 `pgboss` schema 都没有——它从来没跑过这个仓库的迁移。
+
+**原因**：当时的规矩是"迁移只能是 CI 里经 SSH 隧道的一次性发布步骤"。生产配了那套 secret，能用；staging 没配，于是它**没有任何合法的迁移路径**，而唯一不改代码的替代是给数据库开公网端口，那是同一份文档明令禁止的。一条规则同时禁掉了所有可行做法，数据库就停在了远古状态。
+
+**正确做法**：Worker 启动时迁移，Web 永不迁移（`src/database/migrate.ts`）。Worker 本来就在部署网络里、本来就持有数据库凭证，所以发布既不需要 CI secret 也不需要公网数据库端口，失败直接退出容器。多个 worker 角色并发启动用 PostgreSQL advisory lock 串行化；drizzle 本身按文件记账、整批一个事务，重复启动是 no-op。`pnpm db:migrate` 走同一个函数，手动、CI、容器三条路是同一个操作。运行时镜像要 COPY `src/database/migrations`，否则 worker 读不到自己要回放的 SQL。
