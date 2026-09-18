@@ -1,4 +1,5 @@
 import type { TranscriptWord } from "@/database/ugc";
+import { parseScriptNotation } from "../script-notation";
 
 /**
  * Aligning the approved script with what the recognizer actually heard.
@@ -70,6 +71,10 @@ function editDistance(
 /**
  * One token per Latin word and per CJK character, which is the granularity
  * recognizers report and the granularity a caption line breaks at.
+ *
+ * Script notation is resolved here rather than before here: a dual-text span
+ * aligns on what was spoken and captions on what was written, so the two sides
+ * have to stay attached to the same tokens.
  */
 function tokenizeScript(text: string): ScriptToken[] {
   const tokens: ScriptToken[] = [];
@@ -87,34 +92,57 @@ function tokenizeScript(text: string): ScriptToken[] {
       last.breakAfter = strength;
     }
   };
-
-  for (const character of text) {
-    if (CJK_CHARACTER.test(character)) {
-      flush();
-      tokens.push({
-        text: character,
-        normalized: normalizeForAlignment(character),
-        breakAfter: "none",
-      });
-      continue;
+  const consume = (value: string) => {
+    for (const character of value) {
+      if (CJK_CHARACTER.test(character)) {
+        flush();
+        tokens.push({
+          text: character,
+          normalized: normalizeForAlignment(character),
+          breakAfter: "none",
+        });
+        continue;
+      }
+      if (SENTENCE_END.test(character)) {
+        flush();
+        mark("hard");
+        continue;
+      }
+      if (CLAUSE_END.test(character)) {
+        flush();
+        mark("soft");
+        continue;
+      }
+      if (/\s/u.test(character)) {
+        flush();
+        continue;
+      }
+      latin += character;
     }
-    if (SENTENCE_END.test(character)) {
-      flush();
+    flush();
+  };
+
+  for (const chunk of parseScriptNotation(text)) {
+    if (chunk.kind === "break") {
       mark("hard");
       continue;
     }
-    if (CLAUSE_END.test(character)) {
-      flush();
-      mark("soft");
+    if (chunk.kind === "text") {
+      consume(chunk.text);
       continue;
     }
-    if (/\s/u.test(character)) {
-      flush();
-      continue;
+    // The span is spoken as several words and captioned as one. Alignment runs
+    // on the spoken side; the written side rides on the first of its tokens so
+    // the caption appears exactly once, at the moment the span begins.
+    const start = tokens.length;
+    consume(chunk.spoken);
+    for (let index = start; index < tokens.length; index += 1) {
+      tokens[index] = {
+        ...tokens[index]!,
+        text: index === start ? chunk.display : "",
+      };
     }
-    latin += character;
   }
-  flush();
   return tokens;
 }
 

@@ -3,7 +3,7 @@
 import { useState, useTransition, type KeyboardEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Loader2, Sparkles } from "lucide-react";
+import { ChevronDown, Clapperboard, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,15 +65,25 @@ const RANDOM_TALENT = "random";
  * confirmed the script is written straight away, because the answers above
  * are exactly what the model is given.
  */
+export interface ComposerReference {
+  id: string;
+  title: string;
+  hook: string;
+  aspectRatio: string | null;
+}
+
 export function WorkComposer({
   products,
   talents,
   initialProductId,
+  reference,
   modelOptions,
 }: {
   products: ProductRow[];
   talents: TalentRow[];
   initialProductId?: string;
+  /** Set when this clip rebuilds a blueprint the operator already reviewed. */
+  reference?: ComposerReference | null;
   modelOptions: readonly VideoModelOption[];
 }) {
   const { t } = useTranslation();
@@ -96,7 +106,11 @@ export function WorkComposer({
   const [template, setTemplate] = useState<ScriptTemplate>("spokesperson");
   const [videoMode, setVideoMode] = useState<VideoMode>("one_take");
   const [videoModel, setVideoModel] = useState<VideoModel>("h3");
-  const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio>("9:16");
+  // A clone that changes shape stops being a clone, so the reference's own
+  // frame is the starting point whenever it maps onto one we can produce.
+  const [aspectRatio, setAspectRatio] = useState<VideoAspectRatio>(
+    reference?.aspectRatio === "16:9" ? "16:9" : "9:16",
+  );
   const [resolution, setResolution] = useState<VideoResolution>("720p");
   const [durationSeconds, setDurationSeconds] = useState(15);
   const [audioMode, setAudioMode] = useState<AudioMode>("native");
@@ -147,6 +161,7 @@ export function WorkComposer({
 
       const work = await createWork({
         productId: id,
+        referenceId: reference?.id,
         talentId:
           talentId === NO_TALENT || talentId === RANDOM_TALENT
             ? undefined
@@ -184,6 +199,17 @@ export function WorkComposer({
       </CardHeader>
 
       <CardContent className="space-y-5" onKeyDown={submitOnMeta}>
+        {reference && (
+          <div className="border-border bg-muted/40 space-y-1 rounded-md border p-3">
+            <p className="flex items-center gap-2 text-sm font-medium">
+              <Clapperboard className="size-4 shrink-0" aria-hidden />
+              {t("ugc_work_from_blueprint", { title: reference.title })}
+            </p>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              {reference.hook}
+            </p>
+          </div>
+        )}
         <Tabs
           value={source}
           onValueChange={(value) => setSource(value as "library" | "new")}

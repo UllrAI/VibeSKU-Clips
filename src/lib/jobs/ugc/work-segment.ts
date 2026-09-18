@@ -16,6 +16,7 @@ import {
 } from "@/lib/ugc/constants";
 import { getVideoTask, submitVideo } from "@/lib/ugc/media/video-provider";
 import { speechMatchesScript } from "@/lib/ugc/media/alignment";
+import { spokenText } from "@/lib/ugc/script-notation";
 import { measureWavDurationMs } from "@/lib/ugc/media/audio";
 import {
   getTranscription,
@@ -93,7 +94,8 @@ export const workSegmentJob = defineJob(
         "SEGMENT_INCOMPLETE",
         "The shot has no matching script beat.",
       );
-    const hasSpeech = Boolean(beat.voiceover.trim());
+    const spokenLine = spokenText(beat.voiceover);
+    const hasSpeech = Boolean(spokenLine.trim());
     if (payload.polls >= MAX_POLLS)
       throw new PermanentJobError(
         "SEGMENT_TIMEOUT",
@@ -202,7 +204,7 @@ export const workSegmentJob = defineJob(
     const shotDurationMs = shotDurationSeconds(beat) * 1000;
     let audioUrl = take.audioUrl;
     if (work.audioMode === "tts" && hasSpeech && !audioUrl) {
-      const sourceUrl = await synthesizeSpeech(beat.voiceover, work.locale);
+      const sourceUrl = await synthesizeSpeech(spokenLine, work.locale);
       let narrationMs: number | null = null;
       audioUrl = await archiveGeneratedRemote({
         db,
@@ -279,7 +281,7 @@ export const workSegmentJob = defineJob(
       // Recognition is trusted to say *when* the script was spoken. Whether it
       // was spoken at all is a separate question, asked of the whole text.
       if (
-        !speechMatchesScript(beat.voiceover, transcript) ||
+        !speechMatchesScript(spokenLine, transcript) ||
         (hasSpeech && !spoken.length) ||
         spoken.some(
           (word, index) =>

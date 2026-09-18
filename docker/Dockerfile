@@ -51,7 +51,7 @@ ENV NODE_ENV=production
 
 # Create non-root user
 RUN apk add --no-cache su-exec \
-  && if [ "$RENDER_WORKER" = "1" ]; then apk add --no-cache ffmpeg fontconfig font-noto-cjk; fi \
+  && if [ "$RENDER_WORKER" = "1" ]; then apk add --no-cache ffmpeg fontconfig font-noto-cjk yt-dlp; fi \
   && addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
