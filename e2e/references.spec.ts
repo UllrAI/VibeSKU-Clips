@@ -110,4 +110,28 @@ test("reviews a blueprint and carries it into the work composer", async ({
   await expect(
     page.getByText("Rebuilding “Everyday carry street interview”"),
   ).toBeVisible();
+  // What the reading says belongs to the original, and where the operator
+  // says what this clip puts there instead.
+  await expect(page.getByText(BLUEPRINT.redesign[0]!)).toBeVisible();
+  await expect(page.getByLabel("What this clip uses instead")).toBeVisible();
+});
+
+test("corrects a reading in place rather than re-reading the whole piece", async ({
+  page,
+}) => {
+  await loginAs(page, "user");
+  const referenceId = await seedReference(BLUEPRINT);
+
+  await page.goto(`/dashboard/references/${referenceId}`);
+  await page.getByRole("button", { name: "Correct this reading" }).click();
+
+  const purpose = page.getByLabel("What this beat accomplishes").first();
+  await purpose.fill("Ask the question the viewer is already asking.");
+  await page.getByRole("button", { name: "Save the reading" }).click();
+
+  await expect(
+    page.getByText("Ask the question the viewer is already asking."),
+  ).toBeVisible();
+  // A corrected beat is still anchored to the moment it was read from.
+  await expect(page.getByRole("button", { name: "0.0s" })).toBeVisible();
 });

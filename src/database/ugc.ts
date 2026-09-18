@@ -424,6 +424,13 @@ export const ugcWorks = pgTable(
     referenceId: uuid("referenceId").references(() => ugcReferences.id, {
       onDelete: "set null",
     }),
+    /**
+     * What this clip puts in place of the parts the blueprint flagged as the
+     * original's own. It belongs to the work rather than to the reference,
+     * because one reference can seed a clip for each of several products and
+     * each of them replaces that material differently.
+     */
+    cloneNotes: text("cloneNotes"),
     locale: text("locale").notNull().default("en"),
     market: text("market").notNull().default("US"),
     template: ugcScriptTemplateEnum("template")

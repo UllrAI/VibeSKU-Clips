@@ -1,13 +1,7 @@
 import { generateObject } from "ai";
-import { z } from "zod";
+import { cloneBlueprintSchema } from "./blueprint-schema";
 import { getAuthoringModel } from "./model";
-import {
-  BLUEPRINT_BEAT_ROLES,
-  BLUEPRINT_EVENT_KINDS,
-  BLUEPRINT_FORMATS,
-  type CloneBlueprint,
-  type ReferenceFrameRecord,
-} from "./types";
+import type { CloneBlueprint, ReferenceFrameRecord } from "./types";
 import type { TranscriptWord } from "@/database/ugc";
 
 /**
@@ -20,34 +14,6 @@ import type { TranscriptWord } from "@/database/ugc";
  * claim — and the original seconds are kept only so an operator can jump back
  * and check the reading.
  */
-const blueprintSchema = z.object({
-  format: z.enum(BLUEPRINT_FORMATS),
-  hook: z.string().min(1).max(600),
-  whyItWorks: z.string().min(1).max(1200),
-  beats: z
-    .array(
-      z.object({
-        role: z.enum(BLUEPRINT_BEAT_ROLES),
-        purpose: z.string().min(1).max(400),
-        sourceStart: z.number().min(0),
-        sourceEnd: z.number().min(0),
-        spokenGist: z.string().max(400),
-        events: z
-          .array(
-            z.object({
-              kind: z.enum(BLUEPRINT_EVENT_KINDS),
-              respondsTo: z.string().min(1).max(300),
-              purpose: z.string().min(1).max(300),
-            }),
-          )
-          .max(6),
-      }),
-    )
-    .min(2)
-    .max(12),
-  preserve: z.array(z.string().min(1).max(300)).min(1).max(8),
-  redesign: z.array(z.string().min(1).max(300)).max(8),
-});
 
 export interface AnalyzeReferenceInput {
   /** Signed, short-lived URLs for the sampled stills, in time order. */
@@ -78,7 +44,7 @@ export async function analyzeReference(
 ): Promise<CloneBlueprint> {
   const { object } = await generateObject({
     model: getAuthoringModel(),
-    schema: blueprintSchema,
+    schema: cloneBlueprintSchema,
     system: [
       "You read a short social video and explain how it works, so a different creator can make their own version of it for a different product.",
       "Watch the whole piece first: its hook, its argument or story, where attention shifts, and what it wants the viewer to feel or do. Then account for the concrete choices that make that work.",

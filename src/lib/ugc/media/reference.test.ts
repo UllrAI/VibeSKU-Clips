@@ -1,5 +1,9 @@
-import { describe, expect, it } from "@jest/globals";
-import { frameTimes, referenceAspectRatio } from "./reference";
+import { describe, expect, it, jest } from "@jest/globals";
+import {
+  fetchLinkedVideo,
+  frameTimes,
+  referenceAspectRatio,
+} from "./reference";
 
 describe("reference sampling", () => {
   it("samples inside each slice rather than on its edges", () => {
@@ -23,5 +27,17 @@ describe("reference sampling", () => {
     // Neither shape, and portrait is where shoppable feeds live.
     expect(referenceAspectRatio({ width: 1000, height: 1000 })).toBe("9:16");
     expect(referenceAspectRatio({ width: null, height: null })).toBeNull();
+  });
+});
+
+describe("linked reference fetching", () => {
+  it("treats a file link as a file without asking a platform for permission", async () => {
+    const fetchSpy = jest.spyOn(globalThis, "fetch");
+    await expect(
+      fetchLinkedVideo("ftp://example.com/clip.mp4", "/tmp/unused.mp4"),
+    ).rejects.toMatchObject({ failure: "unreadable" });
+    // A rejected protocol never reaches the network at all.
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 });

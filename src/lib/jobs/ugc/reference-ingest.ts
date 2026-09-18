@@ -177,9 +177,18 @@ export const referenceIngestJob = defineJob(
             updatedAt: new Date(),
           })
           .where(eq(ugcReferences.id, reference.id));
-        throw error instanceof PermanentJobError
-          ? error
-          : new PermanentJobError("REFERENCE_UNREADABLE", error.message);
+        if (error instanceof PermanentJobError) throw error;
+        // The site's own reason decides what the operator should do next, so
+        // it travels as its own code rather than one catch-all.
+        context.log("reference_fetch_failed", {
+          referenceId: reference.id,
+          failure: error.failure,
+          detail: error.message,
+        });
+        throw new PermanentJobError(
+          `REFERENCE_FETCH_${error.failure.toUpperCase()}`,
+          error.message,
+        );
       }
       if (context.attempt > 1) {
         await db

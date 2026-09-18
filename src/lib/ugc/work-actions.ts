@@ -45,6 +45,7 @@ const setupSchema = z
     productId: z.uuid(),
     talentId: z.uuid().optional(),
     referenceId: z.uuid().optional(),
+    cloneNotes: z.string().trim().max(2000).optional(),
     randomTalent: z.boolean().default(false),
     locale: z.string().trim().min(2).max(16),
     market: z.string().trim().min(2).max(16),
@@ -254,6 +255,7 @@ export async function createWork(
       productId: parsed.data.productId,
       talentId,
       referenceId,
+      cloneNotes: parsed.data.cloneNotes || null,
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,
@@ -316,6 +318,7 @@ export async function setWorkSetup(
     .set({
       productId: parsed.data.productId,
       talentId,
+      cloneNotes: parsed.data.cloneNotes || null,
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,

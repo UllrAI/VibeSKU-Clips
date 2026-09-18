@@ -219,6 +219,8 @@ export interface ComposeScriptInput {
   durationSeconds?: number;
   /** Set when this clip rebuilds a reference video rather than starting blank. */
   blueprint?: CloneBlueprint | null;
+  /** What this clip puts in place of the original's own material. */
+  cloneNotes?: string | null;
 }
 
 /**
@@ -325,6 +327,9 @@ export async function composeScript(
       input.blueprint
         ? "The reference's own timings do not apply. Fit the rebuilt structure to this clip's duration, dropping or merging beats when it is shorter."
         : "",
+      input.blueprint && input.cloneNotes
+        ? "The operator has said what this clip puts in place of the original's own material. Their instruction outranks the blueprint's description wherever the two disagree."
+        : "",
       productImages.length || input.talentImageUrl
         ? "Reference images are attached and labelled. Use every attached image as evidence. Do not invent a colour, finish, label, facial feature, garment, or component that is not visible or recorded in the facts."
         : "",
@@ -341,6 +346,14 @@ export async function composeScript(
                 {
                   type: "text" as const,
                   text: `Reference blueprint to rebuild:\n${blueprintDirection(input.blueprint)}`,
+                },
+              ]
+            : []),
+          ...(input.blueprint && input.cloneNotes
+            ? [
+                {
+                  type: "text" as const,
+                  text: `What this clip puts in place of the original's own material:\n${input.cloneNotes}`,
                 },
               ]
             : []),
