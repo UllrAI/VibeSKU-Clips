@@ -39,7 +39,7 @@ export interface ReferenceFrame {
  * the downloader's own sentence.
  */
 export type ReferenceFetchFailure =
-  | "sign_in_required"
+  | "platform_refused"
   | "unavailable"
   | "region_blocked"
   | "too_large"
@@ -64,32 +64,41 @@ export class ReferenceFetchError extends Error {
  * handful of well-known signatures is worth it because the generic answer
  * — "upload the file instead" — is wrong for half of them.
  */
-function classifyDownloaderError(message: string): ReferenceFetchFailure {
+/**
+ * What the site actually said, in terms an operator can act on.
+ *
+ * The generic answer — "upload the file instead" — is wrong for half of these,
+ * so the well-known signatures are matched. They are real strings captured
+ * from the downloader, not guesses; see this module's test.
+ */
+export function classifyDownloaderError(
+  message: string,
+): ReferenceFetchFailure {
   const text = message.toLowerCase();
+  // A platform that wants a session, that decides we are a robot, or that just
+  // returns 403 is one situation to the operator: it will not hand the file to
+  // this service, so they have to bring the file themselves.
   if (
     text.includes("sign in to confirm") ||
-    text.includes("confirm you") ||
-    text.includes("login required") ||
     text.includes("use --cookies") ||
+    text.includes("login required") ||
     text.includes("private video") ||
-    text.includes("members-only")
+    text.includes("members-only") ||
+    text.includes("http error 403") ||
+    text.includes("unable to download video data")
   )
-    return "sign_in_required";
+    return "platform_refused";
   if (
+    text.includes("is unavailable") ||
     text.includes("video unavailable") ||
     text.includes("has been removed") ||
     text.includes("no longer available") ||
     text.includes("account has been terminated")
   )
     return "unavailable";
-  if (
-    text.includes("not available in your country") ||
-    text.includes("geo restricted") ||
-    text.includes("geo-restricted") ||
-    text.includes("blocked it in your country")
-  )
+  if (text.includes("in your country") || text.includes("geo restrict"))
     return "region_blocked";
-  if (text.includes("file is larger than max-filesize")) return "too_large";
+  if (text.includes("larger than max-filesize")) return "too_large";
   if (
     text.includes("unsupported url") ||
     text.includes("no video formats found")
