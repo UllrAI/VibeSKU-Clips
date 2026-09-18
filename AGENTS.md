@@ -184,8 +184,10 @@ Rules that are easy to break:
 - **A link to the video file is the reliable path.** `fetchLinkedVideo` fetches
   a direct media URL with an ordinary request and falls back to the downloader
   for platform pages, which routinely refuse a datacenter address. The site's
-  reason travels as a `ReferenceFetchFailure`, because "sign in first" and
-  "this video was removed" call for different actions.
+  reason travels as a `ReferenceFetchFailure`, because "the platform refused"
+  and "this video was removed" call for different actions. Those signatures are
+  real downloader output; match only strings that have been captured, and pin
+  them in the test.
 - **A reading can be corrected but not invented.** An operator may reword or
   remove anything in a blueprint, because the video is its evidence; nothing
   may be added that the reading did not find. What a clip uses _instead_ of the
@@ -310,7 +312,9 @@ Rules that are easy to break:
   so a release moves the schema from inside the deployment network with the
   credentials that process already holds — no CI secret and no publicly
   reachable database port. A failure exits the container, which is the signal a
-  broken release should give. This replaced a rule requiring a CI-only one-shot
+  broken release should give — except a database that is merely not reachable
+  yet, which is retried for a bounded 20 seconds because a pod can start ahead
+  of its own DNS entry. This replaced a rule requiring a CI-only one-shot
   step: that rule left staging with no lawful way to migrate at all, because its
   only alternative was opening the database to the internet.
 - Migration is safe to attempt from more than one process. Drizzle records each

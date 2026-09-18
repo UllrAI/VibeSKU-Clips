@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from "@jest/globals";
 import {
+  classifyDownloaderError,
   fetchLinkedVideo,
   frameTimes,
   referenceAspectRatio,
@@ -39,5 +40,38 @@ describe("linked reference fetching", () => {
     // A rejected protocol never reaches the network at all.
     expect(fetchSpy).not.toHaveBeenCalled();
     fetchSpy.mockRestore();
+  });
+});
+
+describe("downloader failure classification", () => {
+  // Captured from yt-dlp against real sites. The wording is the contract:
+  // "This video is unavailable" is not "video unavailable", and a platform
+  // that simply returns 403 never mentions signing in at all.
+  it.each([
+    [
+      "ERROR: [youtube] dXrCIsUidLo: Sign in to confirm you’re not a bot. Use --cookies-from-browser",
+      "platform_refused",
+    ],
+    [
+      "ERROR: unable to download video data: HTTP Error 403: Forbidden",
+      "platform_refused",
+    ],
+    ["ERROR: [youtube] aaaaaaaaaaa: This video is unavailable", "unavailable"],
+    [
+      "ERROR: [youtube] x: Video unavailable. This video has been removed by the uploader",
+      "unavailable",
+    ],
+    [
+      "ERROR: [youtube] x: The uploader has not made this video available in your country",
+      "region_blocked",
+    ],
+    [
+      "ERROR: File is larger than max-filesize (900000000 bytes > 524288000 bytes). Aborting.",
+      "too_large",
+    ],
+    ["ERROR: Unsupported URL: https://example.com/", "unsupported_site"],
+    ["ERROR: something nobody has seen before", "unreadable"],
+  ])("reads %s", (message, expected) => {
+    expect(classifyDownloaderError(message)).toBe(expected);
   });
 });

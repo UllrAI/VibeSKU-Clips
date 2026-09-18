@@ -17,6 +17,30 @@ const MIGRATIONS_FOLDER = "src/database/migrations";
  */
 const MIGRATION_LOCK = { classifier: 842_133, key: 704_261 } as const;
 
+/** Long enough to outlast a container starting ahead of its network. */
+const CONNECT_ATTEMPTS = 10;
+const CONNECT_RETRY_MS = 2_000;
+
+/**
+ * Whether the database was merely not reachable yet.
+ *
+ * A pod can start before its DNS entry resolves, and exiting on that turns a
+ * two-second blip into a restart-backoff cycle on the one process without
+ * which nothing finishes. Everything else — a wrong password, a failing
+ * migration — is a broken release and must still exit.
+ */
+export function isDatabaseUnreachable(error: unknown): boolean {
+  const seen: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; current instanceof Error && depth < 5; depth += 1) {
+    seen.push(current.message, String((current as { code?: string }).code));
+    current = current.cause;
+  }
+  return /ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ETIMEDOUT|ECONNRESET/.test(
+    seen.join(" "),
+  );
+}
+
 /**
  * Apply every pending migration, then the queue schema.
  *
@@ -34,6 +58,29 @@ const MIGRATION_LOCK = { classifier: 842_133, key: 704_261 } as const;
  * pooled query could release it from a connection that never took it.
  */
 export async function migrateDatabase(
+  databaseUrl: string,
+  applyQueueSchema: () => Promise<void>,
+): Promise<void> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await runMigration(databaseUrl, applyQueueSchema);
+      return;
+    } catch (error) {
+      if (attempt >= CONNECT_ATTEMPTS || !isDatabaseUnreachable(error))
+        throw error;
+      console.log(
+        JSON.stringify({
+          component: "job-worker",
+          event: "database_unreachable",
+          attempt,
+        }),
+      );
+      await new Promise((resolve) => setTimeout(resolve, CONNECT_RETRY_MS));
+    }
+  }
+}
+
+async function runMigration(
   databaseUrl: string,
   applyQueueSchema: () => Promise<void>,
 ): Promise<void> {
