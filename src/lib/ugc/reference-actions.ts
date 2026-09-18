@@ -10,6 +10,7 @@ import { serverJobQueue } from "@/lib/jobs/server";
 import { referenceIngestJob } from "@/lib/jobs/ugc/reference-ingest";
 import { createBackgroundTask } from "@/lib/tasks/service";
 import { fileKeyFromUrl } from "@/lib/uploads/url";
+import { cloneBlueprintSchema } from "./blueprint-schema";
 import { referenceScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
@@ -113,5 +114,42 @@ export async function deleteReference(
       and(eq(ugcReferences.id, referenceId), eq(ugcReferences.userId, user.id)),
     );
   revalidatePath("/dashboard/references");
+  return { ok: true };
+}
+
+/**
+ * Saves an operator's corrections to a reading.
+ *
+ * A blueprint is what a model understood, and a wrong understanding poisons
+ * every clip made from it. Correcting it is therefore allowed; inventing it is
+ * not. Beats and events can be reworded or removed because the video is the
+ * evidence for them, and nothing can be added that the reading did not find.
+ */
+export async function saveReferenceBlueprint(
+  referenceId: string,
+  input: z.infer<typeof cloneBlueprintSchema>,
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const parsed = cloneBlueprintSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_input" };
+
+  const [reference] = await db
+    .select({
+      status: ugcReferences.status,
+      blueprint: ugcReferences.blueprint,
+    })
+    .from(ugcReferences)
+    .where(
+      and(eq(ugcReferences.id, referenceId), eq(ugcReferences.userId, user.id)),
+    );
+  if (!reference?.blueprint) return { ok: false, code: "not_found" };
+  if (reference.status === "ingesting" || reference.status === "analyzing")
+    return { ok: false, code: "reference_busy" };
+
+  await db
+    .update(ugcReferences)
+    .set({ blueprint: parsed.data, updatedAt: new Date() })
+    .where(eq(ugcReferences.id, referenceId));
+  revalidatePath(`/dashboard/references/${referenceId}`);
   return { ok: true };
 }

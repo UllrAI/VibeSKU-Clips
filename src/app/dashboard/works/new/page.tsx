@@ -43,6 +43,7 @@ export default async function NewWorkPage({
                 title: reference.title,
                 hook: reference.blueprint.hook,
                 aspectRatio: reference.aspectRatio,
+                redesign: reference.blueprint.redesign,
               }
             : null
         }

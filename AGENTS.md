@@ -181,6 +181,16 @@ Rules that are easy to break:
 - **`yt-dlp` lives in the render image only.** Linked references are fetched by
   the render worker; uploaded ones need no downloader. Its absence is reported
   at boot and does not stop composition.
+- **A link to the video file is the reliable path.** `fetchLinkedVideo` fetches
+  a direct media URL with an ordinary request and falls back to the downloader
+  for platform pages, which routinely refuse a datacenter address. The site's
+  reason travels as a `ReferenceFetchFailure`, because "sign in first" and
+  "this video was removed" call for different actions.
+- **A reading can be corrected but not invented.** An operator may reword or
+  remove anything in a blueprint, because the video is its evidence; nothing
+  may be added that the reading did not find. What a clip uses _instead_ of the
+  original's material is `ugc_works.cloneNotes`, per clip, so one reference can
+  seed a different rebuild for each product.
 - **Captions carry the approved script, never the transcript.** Recognition
   supplies timing and nothing else (`src/lib/ugc/media/alignment.ts`). A
   recognizer mangles brand and product names, and a burned-in subtitle cannot
