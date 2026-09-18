@@ -7,6 +7,7 @@ import {
   type VideoAspectRatio,
 } from "../constants";
 import { loadMediaEnv } from "./config";
+import { rejectionDetail } from "./provider-response";
 import type { MediaTask, MediaTaskStatus, VideoRequest } from "./video-types";
 
 const submissionSchema = z.object({
@@ -64,7 +65,10 @@ async function call<T>(
   });
 
   if (!response.ok) {
-    const message = `The media generation provider returned HTTP ${response.status}.`;
+    const detail = await rejectionDetail(response);
+    const message = detail
+      ? `The media generation provider returned HTTP ${response.status}: ${detail}`
+      : `The media generation provider returned HTTP ${response.status}.`;
     if (response.status === 401 || response.status === 403) {
       throw new PermanentJobError("PRISM_AUTH_FAILED", message);
     }

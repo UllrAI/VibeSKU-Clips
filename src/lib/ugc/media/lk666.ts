@@ -2,6 +2,7 @@ import { z } from "zod";
 import { PermanentJobError, RetryableJobError } from "@/lib/jobs/definition";
 import { MEDIA_REQUEST_TIMEOUT_MS, type VideoResolution } from "../constants";
 import { loadMediaEnv } from "./config";
+import { rejectionDetail } from "./provider-response";
 import type { MediaTask, VideoRequest } from "./video-types";
 
 const MODEL = "hailuo-h3-quannengcankao";
@@ -74,7 +75,10 @@ async function call(path: string, init: RequestInit): Promise<unknown> {
   });
 
   if (!response.ok) {
-    const message = `The lk666 video provider returned HTTP ${response.status}.`;
+    const detail = await rejectionDetail(response);
+    const message = detail
+      ? `The lk666 video provider returned HTTP ${response.status}: ${detail}`
+      : `The lk666 video provider returned HTTP ${response.status}.`;
     if (response.status === 401 || response.status === 403) {
       throw new PermanentJobError("LK666_AUTH_FAILED", message);
     }
