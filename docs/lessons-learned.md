@@ -420,3 +420,13 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 一个只剩状态码的错误，等于把"provider 已经告诉你答案"变成了一次逆向工程。
 
 **正确做法**：refused 的响应体要读进错误消息（`rejectionDetail`，两个适配器共用，长度封顶）。顺带记下两件试探出来的事实：Prism 的 `request_id` 必须是合法 UUID（`/tasks/{id}` 路径同理，非 UUID 直接 422）；Prism 校验器接受的分辨率是 `480p/720p/1080p`，而我们的 `PRISM_VIDEO_MODEL_OPTIONS` 只列了 480p/720p——是否放开 1080p 需要确认 minimax-h3 真能出，不能只凭校验器放行就改。
+
+### 提示词有上限时，让出位置的必须是上下文而不是指令
+
+**现象**：Prism 侧镜头提交全部 422，`模型 minimax-h3 的 prompt 不能超过 10000 个字符`。
+
+**原因**：`buildSegmentVideoPrompt` 里全局制作指导写死 `slice(0, 8000)`，加上其余行轻易越过 10000；而 Prism 适配器不做任何长度控制（lk666 有 `fitPrompt` 截到 4096）。**照抄 lk666 的做法是错的**——截尾砍掉的正好是末尾的口播指令和"不要加字幕/水印"，等于静默丢掉最重要的指令，比 422 更糟。
+
+**正确做法**：按预算组装。镜头自己的指令先占满，全局制作指导拿剩下的空间（`buildSegmentVideoPrompt` 的 `maxCharacters`），上限由 `videoPromptLimit()` 从当前 provider 取。provider 按字符数（code point）计，不是 UTF-16 单元，所以要用 `Array.from().length` 而不是 `.length`。
+
+**顺带一个探测陷阱**：为省钱用"故意非法的 `request_id`"触发 422、借 FastAPI 一次列出全部字段错误来试探参数空间——这招对**字段级**校验有效，但 Pydantic 的**模型级**校验器（`@model_validator`）在字段级失败时根本不执行。当时 30KB 提示词因此显示"无错误"，把真正的根因盖住了。`loc` 是 `["body"]` 而不是 `["body","<字段>"]` 就是模型级校验的标志。

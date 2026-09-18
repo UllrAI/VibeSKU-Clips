@@ -14,7 +14,11 @@ import {
   CREDIT_COST,
   shotDurationSeconds,
 } from "@/lib/ugc/constants";
-import { getVideoTask, submitVideo } from "@/lib/ugc/media/video-provider";
+import {
+  getVideoTask,
+  submitVideo,
+  videoPromptLimit,
+} from "@/lib/ugc/media/video-provider";
 import { speechMatchesScript } from "@/lib/ugc/media/alignment";
 import { spokenText } from "@/lib/ugc/script-notation";
 import { measureWavDurationMs } from "@/lib/ugc/media/audio";
@@ -152,6 +156,7 @@ export const workSegmentJob = defineJob(
               script.productionPrompt,
               work.audioMode,
               work.aspectRatio,
+              videoPromptLimit(),
             ),
             referenceUrls: references,
             durationSeconds: shotDurationSeconds(beat),
