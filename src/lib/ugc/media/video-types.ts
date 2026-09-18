@@ -22,11 +22,4 @@ export interface VideoRequest {
   aspectRatio: VideoAspectRatio;
   resolution: VideoResolution;
   requestId: string;
-  /**
-   * Whether the provider should produce its own audio, where that is a request
-   * the API takes. What is said is always carried by the prompt, and an adapter
-   * with no such field ignores this; composition never maps a provider's own
-   * track once a narration track exists, so ignoring it changes nothing there.
-   */
-  generateAudio?: boolean;
 }

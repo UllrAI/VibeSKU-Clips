@@ -22,26 +22,10 @@ const children = [
       "scripts/worker.ts",
     ],
   },
-  {
-    name: "render",
-    command: process.execPath,
-    args: [
-      "--watch",
-      "--watch-preserve-output",
-      "--env-file-if-exists=.env",
-      "--import",
-      "tsx",
-      "scripts/worker.ts",
-    ],
-  },
 ].map(({ name, command, args }) => {
   const child = spawn(command, args, {
     stdio: "inherit",
-    env: {
-      ...process.env,
-      WORKER_LABEL: name,
-      WORKER_ROLE: name === "render" ? "render" : "general",
-    },
+    env: { ...process.env, WORKER_LABEL: name },
   });
   child.once("exit", (code, signal) => {
     if (stopping) return;

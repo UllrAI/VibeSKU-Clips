@@ -47,7 +47,7 @@ export function isActiveVideoConfiguration(
 /**
  * How long a prompt the active provider will take. A prompt built past this is
  * rejected outright, so the builder sizes itself rather than letting an adapter
- * cut the shot's own direction off the end.
+ * cut the beat list off the end.
  */
 export function videoPromptLimit(
   source: NodeJS.ProcessEnv = process.env,

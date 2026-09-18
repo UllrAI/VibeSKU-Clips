@@ -33,7 +33,6 @@ import { VideoSettings } from "@/components/ugc/video-settings";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import type {
   ScriptTemplate,
-  AudioMode,
   VideoAspectRatio,
   VideoMode,
   VideoModel,
@@ -92,8 +91,6 @@ export function ProductStep({
       ? work.resolution
       : "720p",
   );
-  const [durationSeconds, setDurationSeconds] = useState(work.durationSeconds);
-  const [audioMode, setAudioMode] = useState<AudioMode>(work.audioMode);
 
   const save = () =>
     setWorkSetup(work.id, {
@@ -110,8 +107,6 @@ export function ProductStep({
       videoModel,
       aspectRatio,
       resolution,
-      durationSeconds,
-      audioMode,
     });
 
   const apply = () =>
@@ -286,10 +281,6 @@ export function ProductStep({
             resolution={resolution}
             onResolutionChange={setResolution}
             modelOptions={modelOptions}
-            durationSeconds={durationSeconds}
-            onDurationChange={setDurationSeconds}
-            audioMode={audioMode}
-            onAudioModeChange={setAudioMode}
           />
 
           <div className="grid gap-4 sm:grid-cols-2">

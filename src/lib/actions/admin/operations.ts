@@ -245,7 +245,6 @@ export const retryAdminTaskAction = adminAction
             ...payload,
             clipId: undefined,
             providerTaskId: undefined,
-            version: undefined,
             polls: 0,
           },
           idempotencyKey,

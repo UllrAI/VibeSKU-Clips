@@ -19,18 +19,13 @@ export async function recordUsage(
     credits: number;
     clipId?: string | null;
     note?: string | null;
-    sourceKey?: string | null;
   },
 ): Promise<void> {
-  await db
-    .insert(ugcUsageEvents)
-    .values({
-      userId: input.userId,
-      kind: input.kind,
-      credits: input.credits,
-      clipId: input.clipId ?? null,
-      note: input.note ?? null,
-      sourceKey: input.sourceKey ?? null,
-    })
-    .onConflictDoNothing();
+  await db.insert(ugcUsageEvents).values({
+    userId: input.userId,
+    kind: input.kind,
+    credits: input.credits,
+    clipId: input.clipId ?? null,
+    note: input.note ?? null,
+  });
 }

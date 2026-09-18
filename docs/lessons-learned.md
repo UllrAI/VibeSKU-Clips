@@ -81,46 +81,6 @@
 
 **正确做法**:需要并行就把 key 拆成泳道。`renderScopeKey(userId, batchId, laneIndex)` 用 `index % RENDER_LANES` 分配,既保留了「同一用户不会无限并发」的约束,又拿到了固定的并行度。
 
-### 蓝图里记「第几秒」等于把参考片的节奏抄进新片
-
-**现象**:早期的爆款解读把每个视觉事件记成 `{ kind, atMs }`,让写稿模型照着秒数排。产出的片子在换了口播语言之后全面错位——中文 12 个字和英文同义句根本不占同样长的时间,切镜落在句子中间,特写出现在还没提到卖点的位置。
-
-**原因**:参考片的时间轴属于**那个人说那句话**。换了商品、换了语言、换了演员,同一个结构对应的秒数一定不同。把秒数当指令,等于要求新片复现旧片的语速。
-
-**正确做法**:事件只记录它**回应什么**(`respondsTo`),不记录它何时发生。`sourceStart` / `sourceEnd` 只保留给人回跳原片核对,任何生成路径都不读它们。见 `src/lib/ugc/blueprint.ts` 的 system prompt 与 `src/lib/ugc/authoring.ts` 的 `blueprintDirection()`。
-
-### 口播里的 `<显示|朗读>` 标注必须在分词层展开,不能在分词前替换
-
-**现象**:先把 `<GT-7000|gee tee seven thousand>` 替换成朗读文本再去做字幕对齐,字幕里出现的是 "gee tee seven thousand";先替换成显示文本,对齐又整段崩掉,因为 ASR 听到的根本不是 "GT-7000"。
-
-**原因**:这两侧服务于两个不同的消费者——朗读侧要和识别结果对齐(决定时间),显示侧要出现在字幕里(决定内容)。在分词之前做任何一侧的替换,都会丢掉另一侧。
-
-**正确做法**:在 `tokenizeScript()` 里展开:按朗读侧切 token 参与对齐,把显示文本挂在该跨度的**第一个** token 上,其余 token 的 `text` 置空。拼接字幕的 `cueText()` 因此必须跳过空文本 token,否则会多出空格。见 `src/lib/ugc/script-notation.ts` 与 `src/lib/ugc/media/alignment.ts`。
-
-### yt-dlp 的错误文案不能凭印象匹配
-
-**现象**:失败分类写完、单测通过、评审也看不出问题,真正拿真实站点跑一遍才发现两条全落进兜底:「已下架」匹配的是 `video unavailable`,而 yt-dlp 实际说的是 `This video **is** unavailable`;另外从某些 IP 访问时 YouTube 根本不提登录,直接 `unable to download video data: HTTP Error 403`。
-
-**原因**:这类字符串是外部程序的输出,不是我们的契约。凭对「它大概会怎么说」的印象写匹配,单测里又用同样的印象造样本,于是测试和实现一起错,互相背书。
-
-**正确做法**:匹配串必须来自**真实捕获的输出**,并把捕获到的原句固化进测试(见 `src/lib/ugc/media/reference.test.ts`)。另外「平台不肯给」的几种说法——要登录、判定是机器人、直接 403——对运营是同一件事,合成一个 `platform_refused` 即可,不要按对方的措辞拆成几类。
-
-### Worker 产出给人看的文字时,语言必须提前记在行上
-
-**现象**:参考片解读上线后,中文界面下拿到的蓝图整篇是英文。`analyzeReference` 收了一个 `locale`,看着像是管语言的,实际只作为「这条片说什么语言」的上下文传进 prompt,**输出语言从头到尾没有被指令过**——于是跟着英文 system prompt 走。
-
-**原因**:两个坑叠在一起。一是「传了 locale」不等于「指定了输出语言」,模型默认跟随 prompt 本身的语言;二是解读跑在 worker 里,`getRequestLocale()` 在那儿没有请求可读,所以即使想按界面语言输出也拿不到。
-
-**正确做法**:凡是 worker 产出、最终给人读的文字,创建任务时就把界面语言写进领域行(这里是 `ugc_references.readingLocale`),handler 从行上取,并在 system prompt 里显式写「用 X 语言写每一个字段」。同时要单独交代引用:原片说过的话按原语言逐字引用,不翻译、也不把翻译当引用——否则运营没法拿着蓝图回去核对视频。
-
-### 容器启动快过网络,不该按「发布坏了」处理
-
-**现象**:worker 每次部署都先崩一次——`worker_start_failed: getaddrinfo ENOTFOUND <db-host>`——平台 2 秒后重启,随即迁移成功并就绪。
-
-**原因**:pod 起来的瞬间 DNS 条目还没生效。`migrateDatabase` 是第一个开连接的地方,抛错就退出容器,这本是「发布坏了要大声失败」的正确设计,但它把一次两秒的抖动也当成了发布事故。
-
-**正确做法**:只对「还没连上」这一类错误(`ENOTFOUND`/`EAI_AGAIN`/`ECONNREFUSED`/`ETIMEDOUT`/`ECONNRESET`,含 `cause` 链)做有界重试,10 次 × 2 秒。密码错、迁移 SQL 失败照旧立刻退出。不要改成无限重试:那会让真正配错的部署安静地转圈,而不是在部署页面上红掉。
-
 ### job 定义内部引用自身会导致类型循环
 
 **现象**:在 `clipRenderJob` 的 handler 里写 `Parameters<typeof clipRenderJob.handler>[1]`,或者读 `clipRenderJob.queue.retryLimit`,`tsc` 报 "'clipRenderJob' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer"。
@@ -132,14 +92,6 @@
 ---
 
 ## 测试
-
-### 本机有 FFmpeg 不代表有字幕滤镜
-
-**现象**:分段合成的本机冒烟测试能输出视频，但加入字幕后报 `No such filter: subtitles`。
-
-**原因**:本机安装的 FFmpeg 未编译 libass，`ffmpeg -version` 正常并不证明 `subtitles` 滤镜可用。
-
-**正确做法**:在渲染 Worker 镜像安装带 libass 的 FFmpeg，并在 CI 中用真实的字幕样例运行合成冒烟测试；本机先用 `ffmpeg -filters` 核对字幕滤镜。
 
 ### 从 `@jest/globals` 导入 `jest` 会让 `jest.mock` 失效
 
@@ -309,79 +261,17 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 
 **正确做法**：悬浮滚动按钮使用明确的层级（当前为 `z-10`），并用真实点击验证，而不是在测试里强制点击。测试只断言流式状态在确定的早期窗口出现，不在后段重复断言瞬时的 Stop 按钮。
 
-### 媒体供应商的提示词上限要在适配层收口
+### 提示词有上限时，让出位置的必须是上下文而不是指令
 
-**现象**：完整制作提示在脚本和 Prism 链路都能正常使用，但 lk666 已接受视频任务后才以“最多 4096 字符”失败。
+**现象**：先是 lk666 在接受视频任务后才以“最多 4096 字符”失败；后来 Prism 侧整片提交全部 422，`模型 minimax-h3 的 prompt 不能超过 10000 个字符`。
 
-**原因**：领域提示允许更长的导演级说明，不同供应商的接口上限并不一致；把同一段提示原样透传会让限制泄漏到业务流程。
+**原因**：`buildVideoPrompt` 把全局制作指导按 `slice(0, 24_000)` 原样塞进提示，而 Prism 适配器不做任何长度控制。**最初的结论“在适配层裁剪”是错的**——提示词末尾是分镜表和“不要加字幕/水印”的规则，截尾砍掉的正好是最该保留的指令，而且是静默发生的，比 422 更糟。
 
-**正确做法**：在具体供应商适配层按 Unicode 字符安全裁剪，并以单元测试锁定上限。领域层保留完整提示，避免为了一个可能废弃的供应商降低所有模型的表达能力。
-
-### 商品重新解析不能暗中重新导入素材
-
-**现象**：用户在“编辑素材”中移除页面图片后，点击“重新解析”，被移除的图片又出现在商品里。
-
-**原因**：同一个任务同时承担页面素材导入和事实解析，操作入口又直接把 `importMaterial` 设为真，导致“更新理解”产生了“改回素材”的隐藏副作用。
-
-**正确做法**：把用户操作语义固定为三条：编辑只保存素材；重新解析只读取当前已保存素材并更新事实；重新导入才从参考链接补充页面素材，并明确提示被移除的页面图片可能回来。后台任务可以复用，但入口必须显式传递操作模式，失败重试也要保持原操作语义。
-
-### 字幕文本只能来自剧本，识别结果只提供时间
-
-**现象**：ASR 识别质量闸门（整体编辑距离 ≤ 0.25）放行后，字幕直接使用识别文本。品牌名"VibeSKU"被识别成"vibe sku"这类局部错误恰好在阈值之内，错误拼写被烧进 MP4，无法撤回。
-
-**原因**：把"什么时候说的"和"说了什么"当成同一个问题。识别器最容易念错的恰好是品牌名、型号、自造词，而这正是电商视频最不能错的部分。
-
-**正确做法**：字幕文本取已审核的剧本，时间由识别结果对齐得到（`src/lib/ugc/media/alignment.ts`）。还有一层容易踩空：对齐算法会做合并与拆分才能解释证据，所以它的"精确配对比例"不能当作镜头质量判据——中文识别器按词输出、剧本按字切分时，对齐完美但几乎没有一对一配对，用配对率判定会误杀全部中文镜头。判定用整段文本距离（`speechMatchesScript`），与对齐分开。
-
-### 校验要放在只损失一个镜头的位置
-
-**现象**：TTS 旁白比镜头长 200ms，整条作品在最后的合成步骤失败——此时所有镜头的生成费用已经全部花完。
-
-**原因**：旁白时长只在 FFmpeg 合成时检查。而通用 Worker 没有 ffmpeg（只有 render worker 有），所以"等 ffmpeg 来量"就等于"等到全部生成完"。
-
-**正确做法**：两道闸门都前移。文案在脚本被接受前按音节速率估算秒数（`src/lib/ugc/speech-estimate.ts`，字符数与朗读时长相关性很弱）；旁白在合成出来的当下用 WAV 头直接量（`src/lib/ugc/media/audio.ts`，不依赖 ffmpeg），失败只作废这一个镜头，并明确告诉运营是哪句台词太长。
-
-### render worker 要在启动时证明自己的 FFmpeg 能力
-
-**现象**：本地 ffmpeg 缺 libass，合成走到烧字幕才失败；镜像若少装一个 filter，线上行为完全相同——正常接单，花完所有生成费用，最后一步炸掉。
-
-**正确做法**：`probeMediaToolchain` 在 render 角色启动时核对实际用到的 encoder 与 filter 清单（检查能力而非版本号），缺失就拒绝上线。CI 在装完 ffmpeg 后跑一次 `WORKER_ROLE=render pnpm worker:smoke`，确保探测在具备工具链的机器上确实通过。
-
-### 迁移路径必须存在于部署网络内部
-
-**现象**：staging 的 render worker 起不来，报 `Queue ugc.work.compose does not exist`。查下去发现 staging 数据库连 `pgboss` schema 都没有——它从来没跑过这个仓库的迁移。
-
-**原因**：当时的规矩是"迁移只能是 CI 里经 SSH 隧道的一次性发布步骤"。生产配了那套 secret，能用；staging 没配，于是它**没有任何合法的迁移路径**，而唯一不改代码的替代是给数据库开公网端口，那是同一份文档明令禁止的。一条规则同时禁掉了所有可行做法，数据库就停在了远古状态。
-
-**正确做法**：Worker 启动时迁移，Web 永不迁移（`src/database/migrate.ts`）。Worker 本来就在部署网络里、本来就持有数据库凭证，所以发布既不需要 CI secret 也不需要公网数据库端口，失败直接退出容器。多个 worker 角色并发启动用 PostgreSQL advisory lock 串行化；drizzle 本身按文件记账、整批一个事务，重复启动是 no-op。`pnpm db:migrate` 走同一个函数，手动、CI、容器三条路是同一个操作。运行时镜像要 COPY `src/database/migrations`，否则 worker 读不到自己要回放的 SQL。
-
-### "识别成功但没有语音"不是识别失败
-
-**现象**：staging 上镜头持续失败，两种报错交替出现——`SEGMENT_ASR_FAILED: SUCCESS_WITH_NO_VALID_FRAGMENT` 和 `SEGMENT_SPEECH_MISMATCH`。
-
-**原因**：两处。一是 `SUCCESS_WITH_NO_VALID_FRAGMENT` 是 DashScope 的一个**成功**状态，字面意思是"跑完了，里面没有有效语音片段"，我们把它归进 `task_status !== "SUCCEEDED"` 的失败分支，于是"这段没人说话"被读成"识别服务挂了"。二是 native 口播模式下无论这一拍有没有台词都要求转写（`audioMode === "native" || hasSpeech`），所以一个**本来就该静默**的镜头必然触发上面那条，正确的沉默被判成错误。
-
-**正确做法**：`getTranscription` 把这个标记回成 `{status:"ready", text:""}`，让调用方自己判断沉默在它那里意味着什么；转写只在这一拍确实有台词时才发起。
-
-### 已经付过钱的镜头不能因为判定不过就消失
-
-**现象**：口播和台词对不上，整条 work 失败。而那一拍的视频其实已经生成、已经计费、已经归档进 R2，界面上只留一行红字——运营看不到片子，也没有重拍入口（`ugc_work_takes.version` 和 `activeTakeId` 早就为重拍准备好，却没有任何 action 用它）。
-
-**原因**：把"质量判定不通过"和"这一步做不下去"混为一谈了。判定的真正目的是别让错的时间轴烧进字幕，不是销毁素材。
-
-**正确做法**：判定不过的 take 进 `review` 而非 `failed`，视频step停在待定夺而不是失败；卡片里能播、能看到"批准的台词 vs 实际听到的"，可以留用也可以重拍。留用时清空识别到的词，`alignScriptToEvidence` 拿不到证据就整拍不出字幕——宁可没有字幕，也不能让批准过的台词配上没人说过的时间轴。
-
-### 兜底文案会变成指令
-
-**现象**：native 口播模式下，没有台词的镜头生成出来是有人在说话的，接着因为"说的和台词对不上"被判失败。
-
-**原因**：提示词是 `Speak exactly this line in ${locale}: ${spokenText(beat.voiceover) || "No speech in this shot."}`。`||` 的兜底值本意是占位，实际发给模型的整句话是"请一字不差地说出：这一拍没有台词"——模型照做了。同一行还把 `zh-Hans` 这样的 locale 代码当语言名传了出去。
-
-**正确做法**：有台词和没台词是两种指令，不是同一句话填不同的值（`speechDirection`）。给模型的语言要用语言名，locale→语言名只有一份（`LANGUAGE_NAMES`），TTS 和视频提示词共用。写提示词时，任何 `||` / `??` 兜底都要通读一遍拼出来的完整句子——占位符在字符串模板里会变成命令。
+**正确做法**：按预算组装。分镜表与收尾规则先占满，全局制作指导拿剩下的空间（`buildVideoPrompt` 的 `maxCharacters`），上限由 `videoPromptLimit()` 从当前 provider 取——Prism 的 minimax-h3 是 10000，lk666 是 4096。provider 按字符数（code point）计，不是 UTF-16 单元，所以要用 `Array.from().length` 而不是 `.length`。适配层的 `fitPrompt` 只作为最后一道兜底，不承担业务判断。
 
 ### 丢掉 provider 的原话，就只能靠猜
 
-**现象**：镜头持续失败，日志里只有 `PRISM_REQUEST_REJECTED: The media generation provider returned HTTP 422.`。为了定位是哪个字段，只能拿 staging 凭证对着真实接口逐项试探——duration 3/8/15/0/-1、两种画幅、480p/720p/1080p、9 张参考图、presigned 形状的 URL、30KB 提示词，全部被接受，依然复现不出来。
+**现象**：镜头持续失败，日志里只有 `PRISM_REQUEST_REJECTED: The media generation provider returned HTTP 422.`。为了定位是哪个字段，只能拿 staging 凭证对着真实接口逐项试探——duration、两种画幅、各档分辨率、九张参考图、presigned 形状的 URL，全部被接受，依然复现不出来。
 
 **原因**：`call()` 在 `!response.ok` 时直接丢掉响应体。而 Prism 每次都精确说明了是哪个字段：
 
@@ -396,16 +286,14 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 }
 ```
 
-一个只剩状态码的错误，等于把"provider 已经告诉你答案"变成了一次逆向工程。
+一个只剩状态码的错误，等于把“provider 已经告诉你答案”变成了一次逆向工程。
 
-**正确做法**：refused 的响应体要读进错误消息（`rejectionDetail`，两个适配器共用，长度封顶）。顺带记下两件试探出来的事实：Prism 的 `request_id` 必须是合法 UUID（`/tasks/{id}` 路径同理，非 UUID 直接 422）；Prism 校验器接受的分辨率是 `480p/720p/1080p`，而我们的 `PRISM_VIDEO_MODEL_OPTIONS` 只列了 480p/720p——是否放开 1080p 需要确认 minimax-h3 真能出，不能只凭校验器放行就改。
+**正确做法**：refused 的响应体要读进错误消息（`rejectionDetail`，两个适配器共用，长度封顶）。顺带记下一个探测陷阱：拿“故意非法的 `request_id`”触发 422、借 FastAPI 一次列出全部字段错误来试探参数空间，这招对**字段级**校验有效，但 Pydantic 的**模型级**校验器在字段级失败时根本不执行——提示词超长当时因此显示“无错误”，把真正的根因盖住了。`loc` 是 `["body"]` 而不是 `["body","<字段>"]` 就是模型级校验的标志。
 
-### 提示词有上限时，让出位置的必须是上下文而不是指令
+### 商品重新解析不能暗中重新导入素材
 
-**现象**：Prism 侧镜头提交全部 422，`模型 minimax-h3 的 prompt 不能超过 10000 个字符`。
+**现象**：用户在“编辑素材”中移除页面图片后，点击“重新解析”，被移除的图片又出现在商品里。
 
-**原因**：`buildSegmentVideoPrompt` 里全局制作指导写死 `slice(0, 8000)`，加上其余行轻易越过 10000；而 Prism 适配器不做任何长度控制（lk666 有 `fitPrompt` 截到 4096）。**照抄 lk666 的做法是错的**——截尾砍掉的正好是末尾的口播指令和"不要加字幕/水印"，等于静默丢掉最重要的指令，比 422 更糟。
+**原因**：同一个任务同时承担页面素材导入和事实解析，操作入口又直接把 `importMaterial` 设为真，导致“更新理解”产生了“改回素材”的隐藏副作用。
 
-**正确做法**：按预算组装。镜头自己的指令先占满，全局制作指导拿剩下的空间（`buildSegmentVideoPrompt` 的 `maxCharacters`），上限由 `videoPromptLimit()` 从当前 provider 取。provider 按字符数（code point）计，不是 UTF-16 单元，所以要用 `Array.from().length` 而不是 `.length`。
-
-**顺带一个探测陷阱**：为省钱用"故意非法的 `request_id`"触发 422、借 FastAPI 一次列出全部字段错误来试探参数空间——这招对**字段级**校验有效，但 Pydantic 的**模型级**校验器（`@model_validator`）在字段级失败时根本不执行。当时 30KB 提示词因此显示"无错误"，把真正的根因盖住了。`loc` 是 `["body"]` 而不是 `["body","<字段>"]` 就是模型级校验的标志。
+**正确做法**：把用户操作语义固定为三条：编辑只保存素材；重新解析只读取当前已保存素材并更新事实；重新导入才从参考链接补充页面素材，并明确提示被移除的页面图片可能回来。后台任务可以复用，但入口必须显式传递操作模式，失败重试也要保持原操作语义。

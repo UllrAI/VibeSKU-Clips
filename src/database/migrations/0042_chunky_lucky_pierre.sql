@@ -1,1 +1,0 @@
-ALTER TABLE "ugc_works" ADD COLUMN "cloneNotes" text;

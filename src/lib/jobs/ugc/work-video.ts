@@ -1,45 +1,80 @@
 import { and, asc, eq, max } from "drizzle-orm";
 import { z } from "zod";
+import type { AppDatabase } from "@/database/client";
 import {
   ugcClips,
-  ugcCompositions,
+  ugcProducts,
   ugcScripts,
-  ugcWorkSegments,
-  ugcWorkTakes,
+  ugcTalents,
+  ugcWorkFrames,
   ugcWorks,
 } from "@/database/ugc";
-import { taskRuns } from "@/database/schema";
 import {
+  CLIP_SPEC,
+  CREDIT_COST,
   VIDEO_MODELS,
   VIDEO_RESOLUTIONS,
-  beatsCoverDuration,
-  shotDurationSeconds,
 } from "@/lib/ugc/constants";
-import { workScopeKey } from "@/lib/ugc/scope";
+import {
+  getVideoTask,
+  submitVideo,
+  videoPromptLimit,
+} from "@/lib/ugc/media/video-provider";
+import { evaluateClipQuality } from "@/lib/ugc/qc";
+import {
+  archiveRemoteAsset,
+  archiveSubtitleTrack,
+  buildSubtitleTrack,
+  buildVideoPrompt,
+} from "@/lib/ugc/render";
+import {
+  createClipStorage,
+  resolveReferenceUrls,
+  StorageUnavailableError,
+  type ClipStorage,
+} from "@/lib/ugc/storage";
+import { recordUsage } from "@/lib/ugc/usage";
+import type { ScriptBeat } from "@/lib/ugc/types";
 import { VIDEO_PROGRESS_STEP } from "@/lib/ugc/video-progress";
-import { createBackgroundTask } from "@/lib/tasks/service";
 import { defineJob, PermanentJobError } from "../definition";
-import { workComposeJob } from "./work-compose";
-import { workSegmentJob } from "./work-segment";
 
 const POLL_SECONDS = 15;
-const MAX_POLLS = 480;
+const MAX_POLLS = 80;
 
 const payloadSchema = z
   .object({
     workId: z.uuid(),
     userId: z.string().min(1),
-    scriptId: z.uuid().optional(),
     clipId: z.uuid().optional(),
-    providerTaskId: z.string().optional(),
+    scriptId: z.uuid().optional(),
     version: z.number().int().positive().optional(),
     videoModel: z.enum(VIDEO_MODELS).optional(),
     resolution: z.enum(VIDEO_RESOLUTIONS).optional(),
+    providerTaskId: z.string().optional(),
     polls: z.number().int().nonnegative().default(0),
   })
   .strict();
 
-/** Coordinates independent shot tasks and an immutable FFmpeg composition. */
+function storage(db: AppDatabase): ClipStorage {
+  try {
+    return createClipStorage(db);
+  } catch (error) {
+    if (error instanceof StorageUnavailableError) {
+      throw new PermanentJobError("UGC_STORAGE_UNAVAILABLE", error.message);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Renders the selected workflow into the finished clip.
+ *
+ * The frames go to the video model as a reference set alongside the product
+ * and talent shots — H3 reads them together rather than treating one as a
+ * strict first frame, which is what holds the face and the object steady for
+ * the full fifteen seconds. The result lands in `ugc_clips`, where the work
+ * list can preview and download it directly.
+ */
 export const workVideoJob = defineJob(
   "ugc.work.video",
   payloadSchema,
@@ -55,279 +90,231 @@ export const workVideoJob = defineJob(
         ),
       );
     const scriptId = payload.scriptId ?? work?.scriptId;
-    if (!work || !scriptId || !work.productId)
+    if (!work || !scriptId || !work.productId) {
       throw new PermanentJobError(
         "UGC_WORK_INCOMPLETE",
         "The work is missing its script or product.",
       );
+    }
+
     const [script] = await db
       .select()
       .from(ugcScripts)
-      .where(
-        and(eq(ugcScripts.id, scriptId), eq(ugcScripts.userId, work.userId)),
-      );
-    if (!script || !beatsCoverDuration(script.beats, work.durationSeconds))
+      .where(eq(ugcScripts.id, scriptId));
+    const [product] = await db
+      .select()
+      .from(ugcProducts)
+      .where(eq(ugcProducts.id, work.productId));
+    const [talent] = work.talentId
+      ? await db
+          .select()
+          .from(ugcTalents)
+          .where(eq(ugcTalents.id, work.talentId))
+      : [];
+    if (!script || !product) {
       throw new PermanentJobError(
-        "UGC_SCRIPT_TIMING_INVALID",
-        "Script beats do not cover the work duration with supported shot lengths.",
+        "UGC_WORK_INCOMPLETE",
+        "The work is missing its script or product.",
       );
-    if (payload.polls >= MAX_POLLS)
-      throw new PermanentJobError(
-        "UGC_RENDER_TIMEOUT",
-        "The shot or composition tasks did not finish in time.",
-      );
+    }
 
-    const [latestClip] = await db
+    const frames = await db
+      .select()
+      .from(ugcWorkFrames)
+      .where(
+        and(
+          eq(ugcWorkFrames.workId, work.id),
+          eq(ugcWorkFrames.status, "ready"),
+        ),
+      )
+      .orderBy(asc(ugcWorkFrames.position));
+    if (work.videoMode === "storyboard" && frames.length === 0) {
+      throw new PermanentJobError(
+        "UGC_WORK_NO_FRAMES",
+        "Draw and accept a storyboard before rendering.",
+      );
+    }
+
+    const beats = script.beats as ScriptBeat[];
+    const [latestVersion] = await db
       .select({ value: max(ugcClips.version) })
       .from(ugcClips)
       .where(eq(ugcClips.workId, work.id));
-    const [latestComposition] = await db
-      .select({ value: max(ugcCompositions.version) })
-      .from(ugcCompositions)
-      .where(eq(ugcCompositions.workId, work.id));
-    const version =
-      payload.version ??
-      Math.max(latestClip?.value ?? 0, latestComposition?.value ?? 0) + 1;
-
-    for (const [position, beat] of script.beats.entries()) {
-      const [found] = await db
-        .select()
-        .from(ugcWorkSegments)
-        .where(
-          and(
-            eq(ugcWorkSegments.workId, work.id),
-            eq(ugcWorkSegments.scriptId, script.id),
-            eq(ugcWorkSegments.position, position),
-          ),
-        );
-      const segment =
-        found ??
-        (
-          await db
-            .insert(ugcWorkSegments)
-            .values({
-              workId: work.id,
-              scriptId: script.id,
-              position,
-              startMs: Math.round(beat.start) * 1000,
-              endMs:
-                (Math.round(beat.start) + shotDurationSeconds(beat)) * 1000,
-            })
-            .onConflictDoNothing()
-            .returning()
-        )[0];
-      if (!segment) continue;
-      if (!segment.activeTakeId) {
-        const [take] = await db
-          .insert(ugcWorkTakes)
-          .values({ segmentId: segment.id, version: 1 })
-          .onConflictDoNothing()
-          .returning();
-        const [existing] = take
-          ? [take]
-          : await db
-              .select()
-              .from(ugcWorkTakes)
-              .where(
-                and(
-                  eq(ugcWorkTakes.segmentId, segment.id),
-                  eq(ugcWorkTakes.version, 1),
-                ),
-              );
-        if (!existing) throw new Error("Shot take could not be initialized.");
-        await db
-          .update(ugcWorkSegments)
-          .set({ activeTakeId: existing.id })
-          .where(eq(ugcWorkSegments.id, segment.id));
-      }
-    }
-
-    const segments = await db
-      .select()
-      .from(ugcWorkSegments)
-      .where(
-        and(
-          eq(ugcWorkSegments.workId, work.id),
-          eq(ugcWorkSegments.scriptId, script.id),
-        ),
-      )
-      .orderBy(asc(ugcWorkSegments.position));
-    if (
-      segments.length !== script.beats.length ||
-      segments.some((segment) => !segment.activeTakeId)
-    ) {
-      await context.scheduleContinuation(
-        { ...payload, version, polls: payload.polls + 1 },
-        POLL_SECONDS,
-      );
-      return { initializing: true };
-    }
-    const takes = await Promise.all(
-      segments.map(async (segment) => {
-        const [take] = await db
-          .select()
-          .from(ugcWorkTakes)
-          .where(eq(ugcWorkTakes.id, segment.activeTakeId!));
-        if (!take)
-          throw new PermanentJobError(
-            "SEGMENT_MISSING",
-            "A selected shot take is missing.",
-          );
-        return take;
-      }),
-    );
-
-    for (const take of takes) {
-      // A shot waiting on a person is finished as far as this job is concerned.
-      if (take.status === "ready" || take.status === "review") continue;
-      if (take.taskRunId) {
-        const [run] = await db
-          .select({ status: taskRuns.status, error: taskRuns.error })
-          .from(taskRuns)
-          .where(eq(taskRuns.id, take.taskRunId));
-        if (run?.status === "failed" || run?.status === "cancelled") {
-          await db
-            .update(ugcWorkTakes)
-            .set({
-              status: "failed",
-              failureReason: run.error?.message ?? "Shot task failed.",
-              updatedAt: new Date(),
-            })
-            .where(eq(ugcWorkTakes.id, take.id));
-          throw new PermanentJobError(
-            "SEGMENT_FAILED",
-            `Shot ${segments.findIndex((segment) => segment.id === take.segmentId) + 1} failed: ${run.error?.message ?? "unknown error"}`,
-          );
-        }
-        if (run?.status === "completed") {
-          throw new PermanentJobError(
-            "SEGMENT_INCOMPLETE",
-            "A shot task completed without an archived take.",
-          );
-        }
-        continue;
-      }
-      const { taskRun } = await createBackgroundTask({
-        db,
-        definition: workSegmentJob,
-        scopeKey: `${workScopeKey(work.userId, work.id)}:segment:${take.segmentId}`,
-        payload: { takeId: take.id, userId: work.userId, polls: 0 },
-        idempotencyKey: `${take.id}:generate`,
-      });
-      await db
-        .update(ugcWorkTakes)
-        .set({ taskRunId: taskRun.id, updatedAt: new Date() })
-        .where(eq(ugcWorkTakes.id, take.id));
-    }
-
-    const ready = takes.filter((take) => take.status === "ready").length;
-    const reviewing = takes.filter((take) => take.status === "review").length;
+    const version = payload.version ?? (latestVersion?.value ?? 0) + 1;
+    const videoModel = payload.videoModel ?? work.videoModel;
+    const resolution = payload.resolution ?? work.resolution;
     await context.updateProgress({
-      step: VIDEO_PROGRESS_STEP.rendering,
+      step: VIDEO_PROGRESS_STEP.preparing,
       version,
-      ready,
-      total: takes.length,
     });
-    if (ready + reviewing < takes.length) {
+    const subject = {
+      productName: product.name,
+      appearance: product.facts?.appearance ?? "",
+      market: work.market,
+      locale: work.locale,
+      template: work.template,
+      talentPrompt: talent
+        ? (talent.prompt ?? talent.description ?? talent.name)
+        : null,
+    };
+
+    if (!payload.providerTaskId) {
+      const references = await resolveReferenceUrls(
+        db,
+        work.userId,
+        [
+          ...frames.map((frame) => frame.imageUrl),
+          talent?.imageUrl,
+          ...product.images.slice(0, work.videoMode === "one_take" ? 8 : 2),
+        ].filter((url): url is string => Boolean(url)),
+      );
+      const providerTaskId = await submitVideo({
+        model: videoModel,
+        prompt: buildVideoPrompt(
+          subject,
+          beats,
+          script.productionPrompt,
+          { videoMode: work.videoMode, aspectRatio: work.aspectRatio },
+          videoPromptLimit(),
+        ),
+        referenceUrls: references,
+        durationSeconds: CLIP_SPEC.durationSeconds,
+        aspectRatio: work.aspectRatio,
+        resolution,
+        requestId: context.taskRunId,
+      });
+      await context.updateProgress({
+        step: VIDEO_PROGRESS_STEP.rendering,
+        version,
+      });
+      await context.scheduleContinuation(
+        { ...payload, providerTaskId, version, polls: 0 },
+        POLL_SECONDS,
+      );
+      context.log("work_video_submitted", {
+        workId: work.id,
+        providerTaskId,
+        references: references.length,
+      });
+      return { providerTaskId, submitted: true };
+    }
+
+    const task = await getVideoTask(payload.providerTaskId);
+    if (task.status === "pending") {
+      if (payload.polls >= MAX_POLLS) {
+        throw new PermanentJobError(
+          "UGC_RENDER_TIMEOUT",
+          "The provider did not finish the video in time.",
+        );
+      }
+      await context.updateProgress({
+        step: VIDEO_PROGRESS_STEP.rendering,
+        version,
+      });
       await context.scheduleContinuation(
         { ...payload, version, polls: payload.polls + 1 },
         POLL_SECONDS,
       );
-      return { ready, total: takes.length };
+      return { waiting: true, polls: payload.polls + 1 };
     }
-    // Every shot that could finish on its own has. The rest were generated and
-    // billed but do not say the approved line, so the step stops here and the
-    // operator decides per shot rather than losing the whole work to one of
-    // them. Waiting for the others first means they see it all at once.
-    if (reviewing) {
-      await db
-        .update(ugcWorks)
-        .set({ stepStatus: "review", updatedAt: new Date() })
-        .where(eq(ugcWorks.id, work.id));
-      context.log("work_video_needs_review", {
-        workId: work.id,
-        reviewing,
-        total: takes.length,
-      });
-      return { reviewing, total: takes.length };
+    if (task.status === "failed" || !task.outputUrl) {
+      throw new PermanentJobError(
+        "UGC_RENDER_FAILED",
+        task.errorMessage ?? "The provider could not produce the video.",
+      );
     }
 
-    let [composition] = await db
-      .select()
-      .from(ugcCompositions)
-      .where(
-        and(
-          eq(ugcCompositions.workId, work.id),
-          eq(ugcCompositions.version, version),
-        ),
-      );
-    if (!composition) {
-      [composition] = await db
-        .insert(ugcCompositions)
-        .values({
-          workId: work.id,
-          scriptId: script.id,
-          version,
-          takeIds: takes.map((take) => take.id),
-        })
-        .onConflictDoNothing()
-        .returning();
-      if (!composition)
-        [composition] = await db
-          .select()
-          .from(ugcCompositions)
-          .where(
-            and(
-              eq(ugcCompositions.workId, work.id),
-              eq(ugcCompositions.version, version),
-            ),
-          );
-    }
-    if (!composition) throw new Error("Composition could not be initialized.");
-    if (composition.clipId) return { clipId: composition.clipId, version };
-    if (composition.taskRunId) {
-      const [run] = await db
-        .select({ status: taskRuns.status, error: taskRuns.error })
-        .from(taskRuns)
-        .where(eq(taskRuns.id, composition.taskRunId));
-      if (run?.status === "failed" || run?.status === "cancelled") {
-        throw new PermanentJobError(
-          "UGC_COMPOSITION_FAILED",
-          run.error?.message ??
-            composition.failureReason ??
-            "Composition failed.",
-        );
-      }
-      if (run?.status === "completed") {
-        throw new PermanentJobError(
-          "UGC_COMPOSITION_INCOMPLETE",
-          "Composition completed without a finished clip.",
-        );
-      }
-    } else {
-      const { taskRun } = await createBackgroundTask({
-        db,
-        definition: workComposeJob,
-        scopeKey: `${workScopeKey(work.userId, work.id)}:composition:${composition.id}`,
-        payload: { compositionId: composition.id, userId: work.userId },
-        idempotencyKey: `${composition.id}:compose`,
-      });
-      await db
-        .update(ugcCompositions)
-        .set({ taskRunId: taskRun.id, updatedAt: new Date() })
-        .where(eq(ugcCompositions.id, composition.id));
-    }
     await context.updateProgress({
       step: VIDEO_PROGRESS_STEP.archiving,
       version,
-      ready,
-      total: takes.length,
     });
-    await context.scheduleContinuation(
-      { ...payload, version, polls: payload.polls + 1 },
-      POLL_SECONDS,
-    );
-    return { composing: true, version };
+
+    const storeFile = storage(db);
+    const reference = `VW-${work.id.slice(0, 8)}-V${version}`;
+    const videoUrl = await archiveRemoteAsset({
+      storeFile,
+      userId: work.userId,
+      reference,
+      kind: "video",
+      sourceUrl: task.outputUrl,
+    });
+    const subtitleUrl = await archiveSubtitleTrack({
+      storeFile,
+      userId: work.userId,
+      reference,
+      content: buildSubtitleTrack(beats),
+    });
+
+    const durationMs = CLIP_SPEC.durationSeconds * 1000;
+    const quality = evaluateClipQuality({
+      locale: work.locale,
+      durationMs,
+      script: { voiceover: script.voiceover, captions: script.captions },
+      hasTalentReference: Boolean(talent?.imageUrl),
+    });
+
+    const [clip] = await db
+      .insert(ugcClips)
+      .values({
+        userId: work.userId,
+        productId: product.id,
+        scriptId: script.id,
+        talentId: talent?.id ?? null,
+        workId: work.id,
+        version,
+        reference,
+        locale: work.locale,
+        market: work.market,
+        template: work.template,
+        videoModel,
+        aspectRatio: work.aspectRatio,
+        resolution,
+        status: quality.passed ? "ready" : "failed",
+        failureReason: quality.passed
+          ? null
+          : quality.checks
+              .filter((check) => !check.passed)
+              .map((check) => check.detail)
+              .join(" "),
+        videoUrl,
+        coverUrl: frames[0]?.imageUrl ?? product.images[0] ?? null,
+        subtitleUrl,
+        publishCaption: script.publishCaption,
+        durationMs,
+        quality,
+      })
+      .returning();
+
+    await recordUsage(db, {
+      userId: work.userId,
+      kind: "render",
+      credits: CREDIT_COST.render,
+      clipId: clip.id,
+      note: reference,
+    });
+
+    await db
+      .update(ugcWorks)
+      .set({
+        clipId: clip.id,
+        scriptId: script.id,
+        videoModel,
+        resolution,
+        step: "done",
+        // A clip that trips a check is still a clip: the findings belong on
+        // the finished step, not in a failure state with nothing to look at.
+        stepStatus: "review",
+        updatedAt: new Date(),
+      })
+      .where(eq(ugcWorks.id, work.id));
+
+    context.log("work_video_finished", {
+      workId: work.id,
+      clipId: clip.id,
+      version,
+      passed: quality.passed,
+    });
+    return { clipId: clip.id, version, passed: quality.passed };
   },
   {
     queue: {

@@ -6,7 +6,6 @@ import { LocalizedLink as Link } from "@/components/localized-link";
 import {
   BarChart3,
   CreditCard,
-  Clapperboard,
   Film,
   KeyRound,
   LucideIcon,
@@ -161,13 +160,6 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         label: <>{t("ugc_nav_products")}</>,
         url: "/dashboard/products",
         icon: Package,
-        matchMode: "prefix",
-      },
-      {
-        id: "references",
-        label: <>{t("ugc_nav_references")}</>,
-        url: "/dashboard/references",
-        icon: Clapperboard,
         matchMode: "prefix",
       },
       {

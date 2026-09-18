@@ -250,17 +250,14 @@ export class JobQueue {
     await boss.cancel(name, taskRunId);
   }
 
-  async registerWorkers(
-    db: AppDatabase,
-    definitions: readonly (typeof jobDefinitions)[number][] = jobDefinitions,
-  ): Promise<void> {
+  async registerWorkers(db: AppDatabase): Promise<void> {
     const boss = await this.start();
 
-    for (const definition of definitions) {
+    for (const definition of jobDefinitions) {
       await this.registerWorker(db, definition);
     }
     const report = async () => {
-      for (const definition of definitions) {
+      for (const definition of jobDefinitions) {
         const [stats] = await boss.getQueueStats(definition.name, {
           force: true,
         });

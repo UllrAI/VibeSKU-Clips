@@ -7,8 +7,6 @@ import {
   ugcScripts,
   ugcTalents,
   ugcWorkFrames,
-  ugcWorkSegments,
-  ugcWorkTakes,
   ugcWorks,
 } from "@/database/ugc";
 import { taskRuns } from "@/database/schema";
@@ -22,8 +20,6 @@ import {
 
 type WorkRow = typeof ugcWorks.$inferSelect;
 export type WorkFrameRow = typeof ugcWorkFrames.$inferSelect;
-type WorkSegmentRow = typeof ugcWorkSegments.$inferSelect;
-type WorkTakeRow = typeof ugcWorkTakes.$inferSelect;
 export type ClipRow = typeof ugcClips.$inferSelect;
 
 export interface WorkVersion {
@@ -39,7 +35,6 @@ export interface WorkDetail {
   clip: ClipRow | null;
   versions: WorkVersion[];
   frames: WorkFrameRow[];
-  segments: { segment: WorkSegmentRow; take: WorkTakeRow | null }[];
   run: RunState;
 }
 
@@ -133,23 +128,6 @@ export async function getWork(workId: string): Promise<WorkDetail | null> {
     .where(eq(ugcWorkFrames.workId, work.id))
     .orderBy(asc(ugcWorkFrames.position));
 
-  const segments = work.scriptId
-    ? await db
-        .select({ segment: ugcWorkSegments, take: ugcWorkTakes })
-        .from(ugcWorkSegments)
-        .leftJoin(
-          ugcWorkTakes,
-          eq(ugcWorkTakes.id, ugcWorkSegments.activeTakeId),
-        )
-        .where(
-          and(
-            eq(ugcWorkSegments.workId, work.id),
-            eq(ugcWorkSegments.scriptId, work.scriptId),
-          ),
-        )
-        .orderBy(asc(ugcWorkSegments.position))
-    : [];
-
   return {
     work,
     run: await runStateFor(work.taskRunId),
@@ -162,7 +140,6 @@ export async function getWork(workId: string): Promise<WorkDetail | null> {
         ? [{ clip, script: script ?? null }, ...versions]
         : versions,
     frames,
-    segments,
   };
 }
 
@@ -207,7 +184,6 @@ export async function getWorkState(workId: string): Promise<WorkState | null> {
       updatedAt: ugcWorks.updatedAt,
       productStatus: ugcProducts.status,
       productFacts: ugcProducts.facts,
-      scriptId: ugcWorks.scriptId,
     })
     .from(ugcWorks)
     .leftJoin(ugcProducts, eq(ugcProducts.id, ugcWorks.productId))
@@ -219,26 +195,6 @@ export async function getWorkState(workId: string): Promise<WorkState | null> {
     .from(ugcWorkFrames)
     .where(eq(ugcWorkFrames.workId, workId))
     .orderBy(asc(ugcWorkFrames.position));
-
-  const segments = row.scriptId
-    ? await db
-        .select({
-          activeTakeId: ugcWorkSegments.activeTakeId,
-          status: ugcWorkTakes.status,
-        })
-        .from(ugcWorkSegments)
-        .leftJoin(
-          ugcWorkTakes,
-          eq(ugcWorkTakes.id, ugcWorkSegments.activeTakeId),
-        )
-        .where(
-          and(
-            eq(ugcWorkSegments.workId, workId),
-            eq(ugcWorkSegments.scriptId, row.scriptId),
-          ),
-        )
-        .orderBy(asc(ugcWorkSegments.position))
-    : [];
 
   const productState = row.productStatus
     ? productStepState({
@@ -263,9 +219,6 @@ export async function getWorkState(workId: string): Promise<WorkState | null> {
       JSON.stringify(run.progress),
       row.updatedAt.toISOString(),
       frames.map((frame) => frame.status).join(""),
-      segments
-        .map((segment) => `${segment.activeTakeId}:${segment.status}`)
-        .join(""),
     ].join("|"),
   };
 }

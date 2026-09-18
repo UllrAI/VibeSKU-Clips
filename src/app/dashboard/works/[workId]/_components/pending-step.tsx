@@ -17,7 +17,7 @@ import {
   startWorkStoryboard,
   startWorkVideo,
 } from "@/lib/ugc/work-actions";
-import type { WorkDetail, WorkFrameRow } from "@/lib/ugc/works";
+import type { WorkFrameRow } from "@/lib/ugc/works";
 import type { VideoAspectRatio, VideoMode } from "@/lib/ugc/constants";
 import { cn } from "@/lib/utils";
 import { StepCard } from "./step-card";
@@ -71,7 +71,6 @@ export function PendingStep({
   failureCode,
   stalled,
   frames,
-  segments,
   videoMode,
   aspectRatio,
   onRefresh,
@@ -82,7 +81,6 @@ export function PendingStep({
   failureCode: string | null;
   stalled: boolean;
   frames: WorkFrameRow[];
-  segments: WorkDetail["segments"];
   videoMode: VideoMode;
   aspectRatio: VideoAspectRatio;
   onRefresh: () => void;
@@ -187,25 +185,6 @@ export function PendingStep({
             </li>
           ))}
         </ul>
-      )}
-      {step === "video" && segments.length > 0 && (
-        <ol className="grid gap-2 sm:grid-cols-2">
-          {segments.map(({ segment, take }) => (
-            <li
-              key={segment.id}
-              className="border-border rounded-md border p-2 text-sm"
-            >
-              {t("ugc_work_segment_label", { position: segment.position + 1 })}{" "}
-              · {segment.startMs / 1000}–{segment.endMs / 1000}s ·{" "}
-              {t(`ugc_work_segment_status_${take?.status ?? "pending"}`)}
-              {take?.status === "failed" && take.failureReason && (
-                <span className="text-destructive mt-1 block text-xs">
-                  {take.failureReason}
-                </span>
-              )}
-            </li>
-          ))}
-        </ol>
       )}
     </StepCard>
   );

@@ -14,8 +14,6 @@ import {
 import { users } from "./schema";
 import type {
   ClipQualityReport,
-  CloneBlueprint,
-  ReferenceFrameRecord,
   ProductBrief,
   ProductFacts,
   ScriptBeat,
@@ -34,20 +32,6 @@ export const ugcTalentStatusEnum = pgEnum("ugc_talent_status", [
   "generating",
   "ready",
   "failed",
-]);
-
-export const ugcReferenceStatusEnum = pgEnum("ugc_reference_status", [
-  "pending",
-  "ingesting",
-  "analyzing",
-  "review",
-  "ready",
-  "failed",
-]);
-
-export const ugcReferenceSourceEnum = pgEnum("ugc_reference_source", [
-  "upload",
-  "url",
 ]);
 
 export const ugcScriptTemplateEnum = pgEnum("ugc_script_template", [
@@ -84,29 +68,6 @@ export const ugcWorkStepStatusEnum = pgEnum("ugc_work_step_status", [
 export const ugcVideoModeEnum = pgEnum("ugc_video_mode", [
   "one_take",
   "storyboard",
-]);
-
-export const ugcAudioModeEnum = pgEnum("ugc_audio_mode", ["native", "tts"]);
-
-/**
- * `review` is a shot that was generated and paid for but whose audio does not
- * carry the approved line. It is not `failed`: the footage exists, and only a
- * person can say whether it is usable.
- */
-export const ugcSegmentStatusEnum = pgEnum("ugc_segment_status", [
-  "pending",
-  "generating",
-  "transcribing",
-  "ready",
-  "review",
-  "failed",
-]);
-
-export const ugcCompositionStatusEnum = pgEnum("ugc_composition_status", [
-  "pending",
-  "running",
-  "ready",
-  "failed",
 ]);
 
 export const ugcVideoAspectRatioEnum = pgEnum("ugc_video_aspect_ratio", [
@@ -179,74 +140,6 @@ export const ugcProducts = pgTable(
   },
   (table) => ({
     userCreatedAtIdx: index("ugc_products_userId_createdAt_idx").on(
-      table.userId,
-      table.createdAt.desc(),
-    ),
-  }),
-);
-
-/**
- * A reference video the operator wants their own version of.
- *
- * It holds the material a clone is read from — the archived video, its
- * word-timed transcript, and the blueprint an analysis produced — and nothing
- * about any particular work. One reference can seed many clips, the way one
- * product can.
- */
-export const ugcReferences = pgTable(
-  "ugc_references",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("userId")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    title: text("title").notNull(),
-    source: ugcReferenceSourceEnum("source").notNull(),
-    /** Where a fetched reference came from; null for an upload. */
-    sourceUrl: text("sourceUrl"),
-    /**
-     * When the operator stated they hold the rights to use this material.
-     * Fetching someone's video is their call to make, and the record of that
-     * statement belongs with the material rather than in a log.
-     */
-    rightsAcknowledgedAt: timestamp("rightsAcknowledgedAt", {
-      withTimezone: true,
-    }).notNull(),
-    videoUrl: text("videoUrl"),
-    durationMs: integer("durationMs"),
-    aspectRatio: text("aspectRatio"),
-    /**
-     * The language the reading is written in.
-     *
-     * A blueprint is an explanation addressed to the operator, so it follows
-     * their interface language rather than whatever the reference happens to
-     * speak. The worker has no request to read that from, so the choice is
-     * recorded here when the reference is created and again whenever it is
-     * read anew.
-     */
-    readingLocale: text("readingLocale").notNull().default("en"),
-    /**
-     * Stills sampled across the reference, in time order. They are what the
-     * analysis actually looks at, and keeping them means a retried analysis
-     * does not re-download and re-decode the video.
-     */
-    frames: jsonb("frames").$type<ReferenceFrameRecord[]>(),
-    asrTaskId: text("asrTaskId"),
-    transcript: text("transcript"),
-    words: jsonb("words").$type<TranscriptWord[]>(),
-    blueprint: jsonb("blueprint").$type<CloneBlueprint | null>(),
-    status: ugcReferenceStatusEnum("status").notNull().default("pending"),
-    /** The run whose error code the console reads this reference's failure from. */
-    taskRunId: uuid("taskRunId"),
-    createdAt: timestamp("createdAt", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => ({
-    userCreatedAtIdx: index("ugc_references_userId_createdAt_idx").on(
       table.userId,
       table.createdAt.desc(),
     ),
@@ -358,8 +251,6 @@ export const ugcClips = pgTable(
       .notNull()
       .default("9:16"),
     resolution: ugcVideoResolutionEnum("resolution").notNull().default("720p"),
-    durationSeconds: integer("durationSeconds").notNull().default(15),
-    audioMode: ugcAudioModeEnum("audioMode").notNull().default("native"),
     status: ugcClipStatusEnum("status").notNull().default("pending"),
     videoUrl: text("videoUrl"),
     coverUrl: text("coverUrl"),
@@ -398,7 +289,6 @@ export const ugcUsageEvents = pgTable(
     kind: ugcUsageKindEnum("kind").notNull(),
     credits: integer("credits").notNull(),
     note: text("note"),
-    sourceKey: text("sourceKey"),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -407,9 +297,6 @@ export const ugcUsageEvents = pgTable(
     userCreatedAtIdx: index("ugc_usage_events_userId_createdAt_idx").on(
       table.userId,
       table.createdAt.desc(),
-    ),
-    sourceKeyIdx: uniqueIndex("ugc_usage_events_sourceKey_idx").on(
-      table.sourceKey,
     ),
   }),
 );
@@ -435,17 +322,6 @@ export const ugcWorks = pgTable(
     talentId: uuid("talentId").references(() => ugcTalents.id, {
       onDelete: "set null",
     }),
-    /** Set when this work is a clone; its blueprint shapes the script. */
-    referenceId: uuid("referenceId").references(() => ugcReferences.id, {
-      onDelete: "set null",
-    }),
-    /**
-     * What this clip puts in place of the parts the blueprint flagged as the
-     * original's own. It belongs to the work rather than to the reference,
-     * because one reference can seed a clip for each of several products and
-     * each of them replaces that material differently.
-     */
-    cloneNotes: text("cloneNotes"),
     locale: text("locale").notNull().default("en"),
     market: text("market").notNull().default("US"),
     template: ugcScriptTemplateEnum("template")
@@ -457,8 +333,6 @@ export const ugcWorks = pgTable(
       .notNull()
       .default("9:16"),
     resolution: ugcVideoResolutionEnum("resolution").notNull().default("720p"),
-    durationSeconds: integer("durationSeconds").notNull().default(15),
-    audioMode: ugcAudioModeEnum("audioMode").notNull().default("native"),
     scriptId: uuid("scriptId").references(() => ugcScripts.id, {
       onDelete: "set null",
     }),
@@ -512,105 +386,6 @@ export const ugcWorkFrames = pgTable(
     workPositionIdx: index("ugc_work_frames_workId_position_idx").on(
       table.workId,
       table.position,
-    ),
-  }),
-);
-
-/** Stable shot positions. Each replacement creates a new take. */
-export const ugcWorkSegments = pgTable(
-  "ugc_work_segments",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    workId: uuid("workId")
-      .notNull()
-      .references(() => ugcWorks.id, { onDelete: "cascade" }),
-    scriptId: uuid("scriptId")
-      .notNull()
-      .references(() => ugcScripts.id, { onDelete: "cascade" }),
-    position: integer("position").notNull(),
-    startMs: integer("startMs").notNull(),
-    endMs: integer("endMs").notNull(),
-    activeTakeId: uuid("activeTakeId"),
-    createdAt: timestamp("createdAt", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => ({
-    workScriptPositionIdx: uniqueIndex(
-      "ugc_segments_work_script_position_idx",
-    ).on(table.workId, table.scriptId, table.position),
-  }),
-);
-
-export interface TranscriptWord {
-  text: string;
-  startMs: number;
-  endMs: number;
-}
-
-/** Provider task state and archived media for one shot attempt. */
-export const ugcWorkTakes = pgTable(
-  "ugc_work_takes",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    segmentId: uuid("segmentId")
-      .notNull()
-      .references(() => ugcWorkSegments.id, { onDelete: "cascade" }),
-    version: integer("version").notNull(),
-    status: ugcSegmentStatusEnum("status").notNull().default("pending"),
-    videoTaskId: text("videoTaskId"),
-    taskRunId: uuid("taskRunId"),
-    asrTaskId: text("asrTaskId"),
-    videoUrl: text("videoUrl"),
-    audioUrl: text("audioUrl"),
-    words: jsonb("words").$type<TranscriptWord[]>(),
-    transcript: text("transcript"),
-    failureReason: text("failureReason"),
-    createdAt: timestamp("createdAt", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => ({
-    segmentVersionIdx: uniqueIndex("ugc_takes_segment_version_idx").on(
-      table.segmentId,
-      table.version,
-    ),
-  }),
-);
-
-/** An immutable selection of takes used to produce one final clip version. */
-export const ugcCompositions = pgTable(
-  "ugc_compositions",
-  {
-    id: uuid("id").primaryKey().defaultRandom(),
-    workId: uuid("workId")
-      .notNull()
-      .references(() => ugcWorks.id, { onDelete: "cascade" }),
-    scriptId: uuid("scriptId")
-      .notNull()
-      .references(() => ugcScripts.id, { onDelete: "cascade" }),
-    version: integer("version").notNull(),
-    takeIds: jsonb("takeIds").$type<string[]>().notNull(),
-    status: ugcCompositionStatusEnum("status").notNull().default("pending"),
-    taskRunId: uuid("taskRunId"),
-    clipId: uuid("clipId").references(() => ugcClips.id, {
-      onDelete: "set null",
-    }),
-    failureReason: text("failureReason"),
-    createdAt: timestamp("createdAt", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updatedAt", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => ({
-    workVersionIdx: uniqueIndex("ugc_compositions_work_version_idx").on(
-      table.workId,
-      table.version,
     ),
   }),
 );
