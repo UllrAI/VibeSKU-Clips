@@ -15,6 +15,7 @@ const taskSchema = z.object({
       "UNKNOWN",
     ]),
     result: z.object({ transcription_url: z.url() }).optional(),
+    code: z.string().optional(),
     message: z.string().optional(),
   }),
 });
@@ -34,6 +35,15 @@ const resultSchema = z.object({
 const ttsSchema = z.object({
   output: z.object({ audio: z.object({ url: z.url() }) }),
 });
+
+/** The provider's own marker for "succeeded, but there was no speech in it". */
+const NO_VALID_FRAGMENT = "SUCCESS_WITH_NO_VALID_FRAGMENT";
+
+function foundNoSpeech(task: z.infer<typeof taskSchema>["output"]): boolean {
+  return [task.code, task.message].some((value) =>
+    value?.includes(NO_VALID_FRAGMENT),
+  );
+}
 
 function credentials() {
   const apiKey = process.env.DASHSCOPE_API_KEY;
@@ -119,6 +129,10 @@ export async function getTranscription(
   const task = taskSchema.parse(raw).output;
   if (task.task_status === "PENDING" || task.task_status === "RUNNING")
     return { status: "pending" };
+  // The recogniser ran and found nothing worth transcribing. That is an answer
+  // about the media, not a failure of the service: a shot can be legitimately
+  // silent, and only the caller knows whether silence is wrong there.
+  if (foundNoSpeech(task)) return { status: "ready", text: "", words: [] };
   if (task.task_status !== "SUCCEEDED")
     return {
       status: "failed",

@@ -12,6 +12,7 @@ import { DoneStep } from "./done-step";
 import { PendingStep } from "./pending-step";
 import { ProductStep } from "./product-step";
 import { ScriptStep } from "./script-step";
+import { ShotReviewStep } from "./shot-review-step";
 import { StoryboardStep } from "./storyboard-step";
 import { WorkSummary } from "./work-summary";
 
@@ -96,6 +97,20 @@ export function WorkConsole({
         workId={work.id}
         script={script}
         videoMode={work.videoMode}
+        onRefresh={refresh}
+      />
+    );
+  } else if (
+    work.step === "video" &&
+    work.stepStatus === "review" &&
+    segments.some(({ take }) => take?.status === "review")
+  ) {
+    body = (
+      <ShotReviewStep
+        workId={work.id}
+        segments={segments}
+        beats={script?.beats ?? []}
+        aspectRatio={work.aspectRatio}
         onRefresh={refresh}
       />
     );
