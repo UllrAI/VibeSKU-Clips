@@ -75,6 +75,21 @@ function speechDirection(
   return `The performer says this in ${language}, word for word and nothing else: ${line}`;
 }
 
+const CONTINUITY_PREFIX =
+  "Global production direction for continuity only; its total duration and other beats do not apply to this shot: ";
+
+/** Providers count characters, not UTF-16 units, so cut on code points. */
+function fitCharacters(text: string, limit: number): string {
+  const characters = Array.from(text);
+  return characters.length <= limit
+    ? text
+    : characters.slice(0, Math.max(0, limit)).join("");
+}
+
+function characterCount(lines: string[]): number {
+  return Array.from(lines.join("\n")).length;
+}
+
 /** One self-contained provider request, with continuity cues but only one timed action. */
 export function buildSegmentVideoPrompt(
   subject: RenderSubject,
@@ -83,17 +98,19 @@ export function buildSegmentVideoPrompt(
   productionPrompt: string | null,
   audioMode: "native" | "tts",
   aspectRatio: VideoAspectRatio,
+  maxCharacters: number,
 ): string {
   const beat = beats[position]!;
   const duration = shotDurationSeconds(beat);
-  return [
+  const opening = [
     `Generate shot ${position + 1} of ${beats.length}, lasting exactly ${duration} seconds, for a ${frameDescription(aspectRatio)} product video.`,
     "This is one shot only. Keep the same adult performer, product, clothing, room, lighting, and camera character as the other shots.",
     `Product: ${subject.productName}. ${subject.appearance}`,
     subject.talentPrompt
       ? `Performer: ${subject.talentPrompt}`
       : "Product-led shot with no recognisable face.",
-    `Global production direction for continuity only; its total duration and other beats do not apply to this shot: ${(productionPrompt ?? "").slice(0, 8000)}`,
+  ];
+  const instructions = [
     position > 0 ? `Previous shot context: ${beats[position - 1]!.action}` : "",
     position + 1 < beats.length
       ? `Next shot context: ${beats[position + 1]!.action}`
@@ -101,6 +118,22 @@ export function buildSegmentVideoPrompt(
     `Current shot: ${beat.shot}. Action: ${beat.action}. Camera: ${beat.camera ?? "natural handheld phone camera"}.`,
     speechDirection(audioMode, beat, subject.locale),
     "Do not add captions, titles, buttons, fake shopping UI, or watermarks. Preserve authentic product branding.",
+  ].filter(Boolean);
+
+  // Providers cap the prompt, and truncating the assembled text would cut the
+  // shot's own direction off the end. The global direction is the only part
+  // that is context rather than instruction, so it is what gives way.
+  const room =
+    maxCharacters -
+    characterCount([...opening, ...instructions]) -
+    Array.from(CONTINUITY_PREFIX).length -
+    2;
+  const continuity = fitCharacters(productionPrompt ?? "", room);
+
+  return [
+    ...opening,
+    continuity ? `${CONTINUITY_PREFIX}${continuity}` : "",
+    ...instructions,
   ]
     .filter(Boolean)
     .join("\n");

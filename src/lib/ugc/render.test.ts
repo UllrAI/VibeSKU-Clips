@@ -57,6 +57,7 @@ describe("render prompts", () => {
       "LOCATION: lived-in sitting room\nLIGHTING: window light",
       "native",
       "9:16",
+      10_000,
     );
 
     expect(prompt).toContain("lasting exactly 4 seconds");
@@ -76,6 +77,7 @@ describe("render prompts", () => {
       null,
       "native",
       "9:16",
+      10_000,
     );
 
     expect(prompt).toContain("says this in Chinese");
@@ -95,6 +97,7 @@ describe("render prompts", () => {
       null,
       "native",
       "9:16",
+      10_000,
     );
 
     expect(prompt).toContain("Nobody speaks in this shot");
@@ -109,9 +112,64 @@ describe("render prompts", () => {
       null,
       "tts",
       "16:9",
+      10_000,
     );
 
     expect(prompt).toContain("Do not show speaking or lip movement");
     expect(prompt).toContain("Landscape 16:9");
+  });
+
+  /**
+   * minimax-h3 rejects a prompt over 10000 characters outright, and cutting
+   * the assembled text would take the shot's own direction off the end.
+   */
+  it("gives the continuity direction up to a provider's prompt limit", () => {
+    const productionPrompt = "LOCATION: sitting room. ".repeat(2000);
+    const prompt = buildSegmentVideoPrompt(
+      subject,
+      beats,
+      0,
+      productionPrompt,
+      "native",
+      "9:16",
+      10_000,
+    );
+
+    expect(Array.from(prompt).length).toBeLessThanOrEqual(10_000);
+    expect(prompt).toContain("Global production direction");
+    // Everything the shot itself needs survives the cut.
+    expect(prompt).toContain("lasting exactly 4 seconds");
+    expect(prompt).toContain("Current shot: handheld medium shot");
+    expect(prompt).toContain("says this in English");
+    expect(prompt).toContain("Do not add captions");
+  });
+
+  it("drops the continuity line entirely rather than send an empty one", () => {
+    const prompt = buildSegmentVideoPrompt(
+      subject,
+      beats,
+      0,
+      null,
+      "native",
+      "9:16",
+      10_000,
+    );
+
+    expect(prompt).not.toContain("Global production direction");
+  });
+
+  it("honours a tighter limit without losing the shot's direction", () => {
+    const prompt = buildSegmentVideoPrompt(
+      subject,
+      beats,
+      0,
+      "LOCATION: sitting room. ".repeat(2000),
+      "native",
+      "9:16",
+      4096,
+    );
+
+    expect(Array.from(prompt).length).toBeLessThanOrEqual(4096);
+    expect(prompt).toContain("Do not add captions");
   });
 });

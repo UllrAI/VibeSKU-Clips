@@ -1,4 +1,5 @@
 import {
+  PRISM_MEDIA,
   videoModelsForProvider,
   videoResolutionsForProvider,
   type VideoGenerationProvider,
@@ -8,7 +9,11 @@ import {
 } from "../constants";
 import { PermanentJobError } from "@/lib/jobs/definition";
 import { loadMediaEnv } from "./config";
-import { getLk666Task, submitLk666Video } from "./lk666";
+import {
+  getLk666Task,
+  LK666_MAX_PROMPT_CHARACTERS,
+  submitLk666Video,
+} from "./lk666";
 import {
   getTask as getPrismTask,
   submitVideo as submitPrismVideo,
@@ -37,6 +42,19 @@ export function isActiveVideoConfiguration(
   return videoResolutionsForProvider(activeVideoProvider(source), model).some(
     (candidate) => candidate === resolution,
   );
+}
+
+/**
+ * How long a prompt the active provider will take. A prompt built past this is
+ * rejected outright, so the builder sizes itself rather than letting an adapter
+ * cut the shot's own direction off the end.
+ */
+export function videoPromptLimit(
+  source: NodeJS.ProcessEnv = process.env,
+): number {
+  return activeVideoProvider(source) === "lk666"
+    ? LK666_MAX_PROMPT_CHARACTERS
+    : PRISM_MEDIA.maxVideoPromptCharacters;
 }
 
 export async function submitVideo(request: VideoRequest): Promise<string> {

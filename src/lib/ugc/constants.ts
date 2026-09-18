@@ -167,4 +167,6 @@ export const PRISM_MEDIA = {
   /** H3 takes up to nine reference images and a 1-15 second duration. */
   videoModel: "minimax-h3",
   maxVideoReferences: 9,
+  /** minimax-h3 refuses a longer prompt outright, with an HTTP 422. */
+  maxVideoPromptCharacters: 10_000,
 } as const;
