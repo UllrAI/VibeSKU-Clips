@@ -153,7 +153,7 @@ async function analyze(
     transcript,
     words,
     durationMs: reference.durationMs,
-    locale: reference.locale,
+    readingLocale: reference.readingLocale,
   });
 
   await db

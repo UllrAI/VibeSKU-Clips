@@ -6,7 +6,9 @@ import { z } from "zod";
 import { db } from "@/database";
 import { ugcReferences } from "@/database/ugc";
 import { requireAuth } from "@/lib/auth/permissions";
+import { getRequestLocale } from "@/lib/i18n/server-locale";
 import { serverJobQueue } from "@/lib/jobs/server";
+import { referenceAnalyzeJob } from "@/lib/jobs/ugc/reference-analyze";
 import { referenceIngestJob } from "@/lib/jobs/ugc/reference-ingest";
 import { createBackgroundTask } from "@/lib/tasks/service";
 import { fileKeyFromUrl } from "@/lib/uploads/url";
@@ -17,7 +19,6 @@ import type { ActionResult } from "./types";
 const referenceSchema = z
   .object({
     title: z.string().trim().min(1).max(200),
-    locale: z.string().trim().min(2).max(16),
     /** An uploaded file is held as an application URL; a link is fetched. */
     videoUrl: z.string().trim().max(2000).optional(),
     sourceUrl: z.url().max(2000).optional(),
@@ -69,7 +70,7 @@ export async function createReference(
       source: parsed.data.sourceUrl ? "url" : "upload",
       sourceUrl: parsed.data.sourceUrl ?? null,
       videoUrl: parsed.data.videoUrl ?? null,
-      locale: parsed.data.locale,
+      readingLocale: await getRequestLocale(),
       rightsAcknowledgedAt: new Date(),
       status: "pending",
     })
@@ -81,15 +82,24 @@ export async function createReference(
 }
 
 /**
- * Reads the reference again from the beginning. Ingestion is idempotent on the
- * archive key, so a retry after an analysis failure costs one model call.
+ * Reads the reference again.
+ *
+ * Fetching and sampling are the expensive half and their results are already
+ * archived, so a reference that has been ingested is only re-analysed. That is
+ * what makes "read this in my language" a single model call rather than a
+ * second download of the same video.
  */
 export async function retryReference(
   referenceId: string,
 ): Promise<ActionResult> {
   const user = await requireAuth();
   const [reference] = await db
-    .select({ id: ugcReferences.id, status: ugcReferences.status })
+    .select({
+      id: ugcReferences.id,
+      status: ugcReferences.status,
+      frames: ugcReferences.frames,
+      videoUrl: ugcReferences.videoUrl,
+    })
     .from(ugcReferences)
     .where(
       and(eq(ugcReferences.id, referenceId), eq(ugcReferences.userId, user.id)),
@@ -98,7 +108,35 @@ export async function retryReference(
   if (reference.status === "ingesting" || reference.status === "analyzing")
     return { ok: false, code: "reference_busy" };
 
-  await enqueueIngest(reference.id, user.id);
+  const readingLocale = await getRequestLocale();
+  const ingested = Boolean(reference.frames?.length && reference.videoUrl);
+  const { taskRun } = ingested
+    ? await createBackgroundTask({
+        db,
+        queue: serverJobQueue,
+        definition: referenceAnalyzeJob,
+        scopeKey: referenceScopeKey(user.id, reference.id),
+        payload: { referenceId: reference.id, userId: user.id, polls: 0 },
+        idempotencyKey: `${reference.id}:analyze:${Date.now()}`,
+      })
+    : await createBackgroundTask({
+        db,
+        queue: serverJobQueue,
+        definition: referenceIngestJob,
+        scopeKey: referenceScopeKey(user.id, reference.id),
+        payload: { referenceId: reference.id, userId: user.id },
+        idempotencyKey: `${reference.id}:ingest:${Date.now()}`,
+      });
+  await db
+    .update(ugcReferences)
+    .set({
+      readingLocale,
+      status: ingested ? "analyzing" : "pending",
+      taskRunId: taskRun.id,
+      updatedAt: new Date(),
+    })
+    .where(eq(ugcReferences.id, reference.id));
+
   revalidatePath("/dashboard/references");
   revalidatePath(`/dashboard/references/${reference.id}`);
   return { ok: true };

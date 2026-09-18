@@ -209,7 +209,16 @@ export const ugcReferences = pgTable(
     videoUrl: text("videoUrl"),
     durationMs: integer("durationMs"),
     aspectRatio: text("aspectRatio"),
-    locale: text("locale").notNull().default("en"),
+    /**
+     * The language the reading is written in.
+     *
+     * A blueprint is an explanation addressed to the operator, so it follows
+     * their interface language rather than whatever the reference happens to
+     * speak. The worker has no request to read that from, so the choice is
+     * recorded here when the reference is created and again whenever it is
+     * read anew.
+     */
+    readingLocale: text("readingLocale").notNull().default("en"),
     /**
      * Stills sampled across the reference, in time order. They are what the
      * analysis actually looks at, and keeping them means a retried analysis

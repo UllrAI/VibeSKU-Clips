@@ -21,7 +21,8 @@ export interface AnalyzeReferenceInput {
   transcript: string;
   words: TranscriptWord[];
   durationMs: number;
-  locale: string;
+  /** The operator's interface language. A reading is addressed to them. */
+  readingLocale: string;
 }
 
 function spokenAround(words: readonly TranscriptWord[], atMs: number): string {
@@ -55,6 +56,8 @@ export async function analyzeReference(
       "`redesign` names what belongs to this original specifically and has to be rethought: a joke about the presenter's own life, a claim only that product can make, a demonstration that needs a screen.",
       "Beats divide the piece by what each stretch accomplishes, not by camera cuts. A beat can contain several cuts; one long take can be two beats.",
       "Be concrete and specific. 'Good pacing' explains nothing; 'each example holds shorter than the last, so the list feels like it is accelerating' can be rebuilt.",
+      `Write every field in ${input.readingLocale}. You are explaining this piece to an operator who reads that language, whatever language the reference itself speaks.`,
+      "The one exception is words actually spoken in the reference: quote those in their original language, so they can be checked against the video. Never translate a quoted line and never present a translation as a quote.",
     ].join("\n"),
     messages: [
       {
@@ -63,7 +66,7 @@ export async function analyzeReference(
           {
             type: "text" as const,
             text: [
-              `Reference video: ${(input.durationMs / 1000).toFixed(1)} seconds, spoken language ${input.locale}.`,
+              `Reference video: ${(input.durationMs / 1000).toFixed(1)} seconds. Its spoken language is whatever the transcript below shows.`,
               "",
               "Full transcript as recognized:",
               input.transcript || "(no speech recognized)",
