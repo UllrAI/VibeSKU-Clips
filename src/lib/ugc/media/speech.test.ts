@@ -118,4 +118,58 @@ describe("hosted speech API contracts", () => {
       else process.env.DASHSCOPE_ASR_BASE_URL = originalBase;
     }
   });
+
+  /**
+   * The exact shape DashScope returns for media it recognised fine but found
+   * no speech in. It is an answer about the file, not a broken service, and
+   * reading it as a failure used to kill a legitimately silent shot.
+   */
+  it.each([
+    { task_status: "FAILED", message: "SUCCESS_WITH_NO_VALID_FRAGMENT" },
+    { task_status: "SUCCEEDED", code: "SUCCESS_WITH_NO_VALID_FRAGMENT" },
+  ])("reads $task_status with no valid fragment as silence", async (output) => {
+    const originalFetch = globalThis.fetch;
+    const originalKey = process.env.DASHSCOPE_API_KEY;
+    const originalBase = process.env.DASHSCOPE_ASR_BASE_URL;
+    process.env.DASHSCOPE_API_KEY = "test-key";
+    process.env.DASHSCOPE_ASR_BASE_URL = "https://speech.example/api/v1";
+    globalThis.fetch = async () => Response.json({ output });
+    try {
+      expect(await getTranscription("task-1")).toEqual({
+        status: "ready",
+        text: "",
+        words: [],
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalKey === undefined) delete process.env.DASHSCOPE_API_KEY;
+      else process.env.DASHSCOPE_API_KEY = originalKey;
+      if (originalBase === undefined) delete process.env.DASHSCOPE_ASR_BASE_URL;
+      else process.env.DASHSCOPE_ASR_BASE_URL = originalBase;
+    }
+  });
+
+  it("still reports a genuine recognition failure", async () => {
+    const originalFetch = globalThis.fetch;
+    const originalKey = process.env.DASHSCOPE_API_KEY;
+    const originalBase = process.env.DASHSCOPE_ASR_BASE_URL;
+    process.env.DASHSCOPE_API_KEY = "test-key";
+    process.env.DASHSCOPE_ASR_BASE_URL = "https://speech.example/api/v1";
+    globalThis.fetch = async () =>
+      Response.json({
+        output: { task_status: "FAILED", message: "FILE_DOWNLOAD_FAILED" },
+      });
+    try {
+      expect(await getTranscription("task-1")).toEqual({
+        status: "failed",
+        reason: "FILE_DOWNLOAD_FAILED",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+      if (originalKey === undefined) delete process.env.DASHSCOPE_API_KEY;
+      else process.env.DASHSCOPE_API_KEY = originalKey;
+      if (originalBase === undefined) delete process.env.DASHSCOPE_ASR_BASE_URL;
+      else process.env.DASHSCOPE_ASR_BASE_URL = originalBase;
+    }
+  });
 });

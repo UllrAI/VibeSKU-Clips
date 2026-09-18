@@ -354,3 +354,19 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 **原因**：当时的规矩是"迁移只能是 CI 里经 SSH 隧道的一次性发布步骤"。生产配了那套 secret，能用；staging 没配，于是它**没有任何合法的迁移路径**，而唯一不改代码的替代是给数据库开公网端口，那是同一份文档明令禁止的。一条规则同时禁掉了所有可行做法，数据库就停在了远古状态。
 
 **正确做法**：Worker 启动时迁移，Web 永不迁移（`src/database/migrate.ts`）。Worker 本来就在部署网络里、本来就持有数据库凭证，所以发布既不需要 CI secret 也不需要公网数据库端口，失败直接退出容器。多个 worker 角色并发启动用 PostgreSQL advisory lock 串行化；drizzle 本身按文件记账、整批一个事务，重复启动是 no-op。`pnpm db:migrate` 走同一个函数，手动、CI、容器三条路是同一个操作。运行时镜像要 COPY `src/database/migrations`，否则 worker 读不到自己要回放的 SQL。
+
+### "识别成功但没有语音"不是识别失败
+
+**现象**：staging 上镜头持续失败，两种报错交替出现——`SEGMENT_ASR_FAILED: SUCCESS_WITH_NO_VALID_FRAGMENT` 和 `SEGMENT_SPEECH_MISMATCH`。
+
+**原因**：两处。一是 `SUCCESS_WITH_NO_VALID_FRAGMENT` 是 DashScope 的一个**成功**状态，字面意思是"跑完了，里面没有有效语音片段"，我们把它归进 `task_status !== "SUCCEEDED"` 的失败分支，于是"这段没人说话"被读成"识别服务挂了"。二是 native 口播模式下无论这一拍有没有台词都要求转写（`audioMode === "native" || hasSpeech`），所以一个**本来就该静默**的镜头必然触发上面那条，正确的沉默被判成错误。
+
+**正确做法**：`getTranscription` 把这个标记回成 `{status:"ready", text:""}`，让调用方自己判断沉默在它那里意味着什么；转写只在这一拍确实有台词时才发起。
+
+### 已经付过钱的镜头不能因为判定不过就消失
+
+**现象**：口播和台词对不上，整条 work 失败。而那一拍的视频其实已经生成、已经计费、已经归档进 R2，界面上只留一行红字——运营看不到片子，也没有重拍入口（`ugc_work_takes.version` 和 `activeTakeId` 早就为重拍准备好，却没有任何 action 用它）。
+
+**原因**：把"质量判定不通过"和"这一步做不下去"混为一谈了。判定的真正目的是别让错的时间轴烧进字幕，不是销毁素材。
+
+**正确做法**：判定不过的 take 进 `review` 而非 `failed`，视频step停在待定夺而不是失败；卡片里能播、能看到"批准的台词 vs 实际听到的"，可以留用也可以重拍。留用时清空识别到的词，`alignScriptToEvidence` 拿不到证据就整拍不出字幕——宁可没有字幕，也不能让批准过的台词配上没人说过的时间轴。

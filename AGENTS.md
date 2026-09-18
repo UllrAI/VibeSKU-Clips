@@ -174,6 +174,13 @@ Rules that are easy to break:
 - **Failure is terminal and visible.** An unreadable product becomes
   `needs_input`; exhausted task retries surface as a failed step with a retry
   action. A work never remains visually "running" after its task has failed.
+- **Never discard a shot that was already paid for.** A take whose audio does
+  not carry the approved line becomes `review`, not `failed`: it keeps its
+  archived video and the operator watches it and chooses to keep or reshoot
+  (`ShotReviewStep`, `acceptWorkTake`). Only a shot with no footage at all is a
+  failure. A kept take has its recognised words cleared, so composition leaves
+  it uncaptioned rather than timing the approved line against words nobody
+  said.
 - **A blueprint records what an event responds to, never when it happened.**
   A clone has different words, a different performer and different timing, so
   the reference's seconds are kept only for jumping back to check the reading.

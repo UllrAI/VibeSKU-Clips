@@ -88,11 +88,17 @@ export const ugcVideoModeEnum = pgEnum("ugc_video_mode", [
 
 export const ugcAudioModeEnum = pgEnum("ugc_audio_mode", ["native", "tts"]);
 
+/**
+ * `review` is a shot that was generated and paid for but whose audio does not
+ * carry the approved line. It is not `failed`: the footage exists, and only a
+ * person can say whether it is usable.
+ */
 export const ugcSegmentStatusEnum = pgEnum("ugc_segment_status", [
   "pending",
   "generating",
   "transcribing",
   "ready",
+  "review",
   "failed",
 ]);
 
