@@ -302,6 +302,20 @@
       "when": 1789693682009,
       "tag": "0042_chunky_lucky_pierre",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1789699432574,
+      "tag": "0043_boring_kingpin",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1789699438651,
+      "tag": "0044_premium_pixie",
+      "breakpoints": true
     }
   ]
 }
