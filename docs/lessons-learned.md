@@ -297,3 +297,19 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 **原因**：同一个任务同时承担页面素材导入和事实解析，操作入口又直接把 `importMaterial` 设为真，导致“更新理解”产生了“改回素材”的隐藏副作用。
 
 **正确做法**：把用户操作语义固定为三条：编辑只保存素材；重新解析只读取当前已保存素材并更新事实；重新导入才从参考链接补充页面素材，并明确提示被移除的页面图片可能回来。后台任务可以复用，但入口必须显式传递操作模式，失败重试也要保持原操作语义。
+
+### 迁移路径必须存在于部署网络内部
+
+**现象**：staging 的 worker 起不来，报队列 schema 不存在。查下去发现 staging 数据库连 `pgboss` schema 都没有——它从来没跑过这个仓库的迁移。
+
+**原因**：当时的规矩是"迁移只能是 CI 里经 SSH 隧道的一次性发布步骤"。生产配了那套 secret，能用；staging 没配，于是它**没有任何合法的迁移路径**，而唯一不改代码的替代是给数据库开公网端口，那是同一份文档明令禁止的。一条规则同时禁掉了所有可行做法，数据库就停在了远古状态。
+
+**正确做法**：Worker 启动时迁移，Web 永不迁移（`src/database/migrate.ts`）。Worker 本来就在部署网络里、本来就持有数据库凭证，所以发布既不需要 CI secret 也不需要公网数据库端口，失败直接退出容器。多个 worker 并发启动用 PostgreSQL advisory lock 串行化；drizzle 本身按文件记账、整批一个事务，重复启动是 no-op。`pnpm db:migrate` 走同一个函数，手动、CI、容器三条路是同一个操作。运行时镜像要 COPY `src/database/migrations`，否则 worker 读不到自己要回放的 SQL。
+
+### "还没解析出来"不是"连不上"
+
+**现象**：每次发布 worker 都会崩一次再起来。
+
+**原因**：pod 启动早于它自己的 DNS 记录生效，而 `migrateDatabase` 是第一个开连接的东西，一崩就退出——把两秒的空档变成了重启退避循环，而且偏偏发生在"没有它什么都完不成"的那个进程上。
+
+**正确做法**：只对"暂时不可达"重试，上限 20 秒（`isDatabaseUnreachable`：ENOTFOUND / EAI_AGAIN / ECONNREFUSED / ETIMEDOUT / ECONNRESET，并且要顺着 `error.cause` 往下找，postgres-js 会把 socket 错误包在 cause 里）。密码错误、迁移本身失败仍然立即退出——那是坏的发布，就该响。
