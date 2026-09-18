@@ -132,6 +132,46 @@ describe("segmented production invariants", () => {
     expect(result.split("-->")).toHaveLength(3);
   });
 
+  it("captions a dual-text span as written and times it as spoken", () => {
+    const result = buildSubtitleTrack([
+      {
+        durationMs: 3000,
+        voiceover: "The <GT-7000|gee tee seven thousand> ships.",
+        words: [
+          { text: "the", startMs: 0, endMs: 200 },
+          { text: "gee", startMs: 200, endMs: 500 },
+          { text: "tee", startMs: 500, endMs: 800 },
+          { text: "seven", startMs: 800, endMs: 1200 },
+          { text: "thousand", startMs: 1200, endMs: 1700 },
+          { text: "ships", startMs: 1700, endMs: 2100 },
+        ],
+      },
+    ]);
+    expect(result).toContain("The GT-7000 ships");
+    expect(result).not.toContain("gee tee");
+    // The span occupies the seconds it was actually spoken over.
+    expect(result).toContain("00:00:00,000 --> 00:00:02,100");
+  });
+
+  it("breaks a caption where the writer asked, not only where it punctuates", () => {
+    const words = [
+      { text: "one", startMs: 0, endMs: 400 },
+      { text: "pass", startMs: 400, endMs: 900 },
+      { text: "then", startMs: 900, endMs: 1300 },
+      { text: "done", startMs: 1300, endMs: 1800 },
+    ];
+    const plain = buildSubtitleTrack([
+      { durationMs: 3000, voiceover: "one pass then done", words },
+    ]);
+    const marked = buildSubtitleTrack([
+      { durationMs: 3000, voiceover: "one pass||then done", words },
+    ]);
+    expect(plain.split("-->")).toHaveLength(2);
+    expect(marked.split("-->")).toHaveLength(3);
+    expect(marked).toContain("one pass");
+    expect(marked).toContain("then done");
+  });
+
   it("never drops approved wording the recognizer missed", () => {
     // Recognition heard only the last two words. The rest is long enough to be
     // split off by the line-length limit, which is where it used to vanish.

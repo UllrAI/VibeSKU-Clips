@@ -26,12 +26,20 @@ export interface JobHandlerContext<Payload = unknown> {
   ): Promise<string>;
 }
 
+/**
+ * Which worker may claim a job. `render` means the handler needs the media
+ * toolchain, which only the render image installs; everything else runs on the
+ * general worker beside the provider credentials.
+ */
+type JobRole = "general" | "render";
+
 export interface JobDefinition<
   Name extends string,
   Schema extends z.ZodType,
   Result = unknown,
 > {
   name: Name;
+  role: JobRole;
   schema: Schema;
   handler: (
     payload: z.infer<Schema>,
@@ -58,12 +66,13 @@ export function defineJob<
   options?: Partial<
     Pick<
       JobDefinition<Name, Schema, Result>,
-      "queue" | "localConcurrency" | "groupConcurrency"
+      "queue" | "localConcurrency" | "groupConcurrency" | "role"
     >
   >,
 ): JobDefinition<Name, Schema, Result> {
   return {
     name,
+    role: options?.role ?? "general",
     schema,
     handler,
     queue: options?.queue ?? {

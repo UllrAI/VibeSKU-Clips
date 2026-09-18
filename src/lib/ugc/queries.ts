@@ -1,14 +1,24 @@
 import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/database";
-import { ugcProducts, ugcScripts, ugcTalents } from "@/database/ugc";
+import {
+  ugcProducts,
+  ugcReferences,
+  ugcScripts,
+  ugcTalents,
+} from "@/database/ugc";
 import { requireAuth } from "@/lib/auth/permissions";
-import { latestRunStateForScope, type RunState } from "./run-state";
+import {
+  latestRunStateForScope,
+  runStateFor,
+  type RunState,
+} from "./run-state";
 import { productScopeKey } from "./scope";
 
 export type ProductRow = typeof ugcProducts.$inferSelect;
 export type TalentRow = typeof ugcTalents.$inferSelect;
 export type ScriptRow = typeof ugcScripts.$inferSelect;
+export type ReferenceRow = typeof ugcReferences.$inferSelect;
 
 export async function listProducts(): Promise<ProductRow[]> {
   const user = await requireAuth();
@@ -87,4 +97,68 @@ export async function listTalents(): Promise<TalentRow[]> {
     .from(ugcTalents)
     .where(and(eq(ugcTalents.userId, user.id), eq(ugcTalents.archived, false)))
     .orderBy(desc(ugcTalents.createdAt));
+}
+
+export async function listReferences(): Promise<ReferenceRow[]> {
+  const user = await requireAuth();
+  return db
+    .select()
+    .from(ugcReferences)
+    .where(eq(ugcReferences.userId, user.id))
+    .orderBy(desc(ugcReferences.createdAt));
+}
+
+export async function getReference(
+  referenceId: string,
+): Promise<ReferenceRow | null> {
+  const user = await requireAuth();
+  const [reference] = await db
+    .select()
+    .from(ugcReferences)
+    .where(
+      and(eq(ugcReferences.id, referenceId), eq(ugcReferences.userId, user.id)),
+    );
+  return reference ?? null;
+}
+
+export interface ReferenceState {
+  status: ReferenceRow["status"];
+  /** What became of the reading task, so a dead read never spins forever. */
+  run: RunState;
+  /** Changes whenever the page would render differently. */
+  revision: string;
+}
+
+/**
+ * The cheap half of `getReference`, polled while the worker is reading. Reading
+ * a reference downloads a video, samples it and calls a model, so the operator
+ * watches it land rather than reloading to find out whether it did.
+ */
+export async function getReferenceState(
+  referenceId: string,
+): Promise<ReferenceState | null> {
+  const user = await requireAuth();
+  const [row] = await db
+    .select({
+      status: ugcReferences.status,
+      taskRunId: ugcReferences.taskRunId,
+      updatedAt: ugcReferences.updatedAt,
+    })
+    .from(ugcReferences)
+    .where(
+      and(eq(ugcReferences.id, referenceId), eq(ugcReferences.userId, user.id)),
+    );
+  if (!row) return null;
+
+  const run = await runStateFor(row.taskRunId);
+  return {
+    status: row.status,
+    run,
+    revision: [
+      row.status,
+      String(run.failed),
+      String(run.stalled),
+      row.updatedAt.toISOString(),
+    ].join("|"),
+  };
 }

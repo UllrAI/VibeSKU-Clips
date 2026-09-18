@@ -42,6 +42,9 @@ async function main(): Promise<void> {
         event: "media_toolchain_ready",
         ffmpeg: toolchain.ffmpegVersion,
         ffprobe: toolchain.ffprobeVersion,
+        // Null means linked references cannot be fetched on this image;
+        // uploaded ones still work, so this is a note, not a failure.
+        downloader: toolchain.downloaderVersion,
       }),
     );
   }
@@ -81,10 +84,8 @@ async function main(): Promise<void> {
   try {
     await queue.registerWorkers(
       database.db,
-      jobDefinitions.filter((definition) =>
-        workerEnv.WORKER_ROLE === "render"
-          ? definition.name === "ugc.work.compose"
-          : definition.name !== "ugc.work.compose",
+      jobDefinitions.filter(
+        (definition) => definition.role === workerEnv.WORKER_ROLE,
       ),
     );
   } catch (error) {

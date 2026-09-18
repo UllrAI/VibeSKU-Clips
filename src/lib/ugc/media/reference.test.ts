@@ -1,0 +1,27 @@
+import { describe, expect, it } from "@jest/globals";
+import { frameTimes, referenceAspectRatio } from "./reference";
+
+describe("reference sampling", () => {
+  it("samples inside each slice rather than on its edges", () => {
+    const times = frameTimes(8_000);
+    expect(times[0]).toBeGreaterThan(0);
+    expect(times.at(-1)).toBeLessThan(8_000);
+    // Evenly spaced, which is what makes a hold legible as a hold.
+    const gaps = times.slice(1).map((time, index) => time - times[index]!);
+    expect(Math.max(...gaps) - Math.min(...gaps)).toBeLessThanOrEqual(1);
+  });
+
+  it("keeps the grid inside its bounds whatever the clip's length", () => {
+    expect(frameTimes(1_000)).toHaveLength(2);
+    expect(frameTimes(600_000)).toHaveLength(16);
+    expect(frameTimes(15_000).length).toBeLessThanOrEqual(16);
+  });
+
+  it("reports only a frame a clip can actually be produced in", () => {
+    expect(referenceAspectRatio({ width: 1080, height: 1920 })).toBe("9:16");
+    expect(referenceAspectRatio({ width: 1440, height: 1080 })).toBe("16:9");
+    // Neither shape, and portrait is where shoppable feeds live.
+    expect(referenceAspectRatio({ width: 1000, height: 1000 })).toBe("9:16");
+    expect(referenceAspectRatio({ width: null, height: null })).toBeNull();
+  });
+});

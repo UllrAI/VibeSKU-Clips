@@ -245,6 +245,7 @@ export const workComposeJob = defineJob(
     }
   },
   {
+    role: "render",
     queue: {
       retryLimit: 2,
       retryDelay: 30,

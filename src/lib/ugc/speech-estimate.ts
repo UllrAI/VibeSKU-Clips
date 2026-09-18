@@ -1,4 +1,5 @@
 import { shotDurationSeconds } from "./constants";
+import { spokenText } from "./script-notation";
 
 /**
  * How long a written line takes to say, measured before anything is generated.
@@ -102,16 +103,12 @@ export function voiceoverFitsBeats(
   beats: readonly { start: number; end: number; voiceover: string }[],
   locale: string,
 ): boolean {
-  const total = beats.reduce(
-    (sum, beat) => sum + estimateSpeechSeconds(beat.voiceover, locale),
-    0,
+  const seconds = beats.map((beat) =>
+    estimateSpeechSeconds(spokenText(beat.voiceover), locale),
   );
   return (
-    total <= (beats.at(-1)?.end ?? 0) &&
-    beats.every(
-      (beat) =>
-        estimateSpeechSeconds(beat.voiceover, locale) <=
-        shotDurationSeconds(beat),
-    )
+    seconds.reduce((sum, value) => sum + value, 0) <=
+      (beats.at(-1)?.end ?? 0) &&
+    beats.every((beat, index) => seconds[index]! <= shotDurationSeconds(beat))
   );
 }

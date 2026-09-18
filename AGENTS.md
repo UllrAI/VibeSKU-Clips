@@ -8,7 +8,10 @@ This file is the single source of truth for repository-specific agent instructio
 VibeSKU Clips produces one short product video at a time for shoppable
 feeds. An operator chooses a product, the system reads its material into
 verifiable facts, and a guided work moves through script and video, with an
-optional reviewed storyboard, while a person confirms each expensive step. Every work appears in one list
+optional reviewed storyboard, while a person confirms each expensive step. A
+work may also start from a reference video the operator supplies: the system
+reads that piece into a blueprint of what it does, and the script is written to
+rebuild that structure for this product. Every work appears in one list
 from creation through completion, where a finished video can be downloaded.
 
 Two rules run through the whole codebase and are worth internalising before
@@ -106,6 +109,8 @@ pnpm stripe:sync-products
 - UGC domain logic (QC and render prompts): `src/lib/ugc`
 - UGC server actions and queries: `src/lib/ugc/actions.ts`, `src/lib/ugc/queries.ts`
 - Stepped single-clip flow: `src/lib/ugc/works.ts`, `src/lib/ugc/work-actions.ts`, `src/app/dashboard/works`
+- Reference reading and clone blueprints: `src/lib/ugc/blueprint.ts`, `src/lib/ugc/media/reference.ts`, `src/lib/ugc/reference-actions.ts`, `src/app/dashboard/references`
+- Script notation shared by captions, speech and the video prompt: `src/lib/ugc/script-notation.ts`
 - Background-run state shared by the product and work consoles: `src/lib/ugc/run-state.ts`
 - UGC job handlers: `src/lib/jobs/ugc`
 - Job queue, definitions, and worker environment: `src/lib/jobs`
@@ -126,17 +131,19 @@ pnpm stripe:sync-products
 
 ## 5. UGC Production Pipeline
 
-Seven durable UGC jobs are registered in `src/lib/jobs/catalog.ts`:
+Nine durable UGC jobs are registered in `src/lib/jobs/catalog.ts`:
 
-| Job                   | Handler                               | What it does                                                                                |
-| --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Imports source links through Firecrawl, extracts facts, then waits for review or more input |
-| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief, draws one reference image, and archives it                          |
-| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it  |
-| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands            |
-| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Coordinates one task per shot and a versioned composition                                   |
-| `ugc.work.segment`    | `src/lib/jobs/ugc/work-segment.ts`    | Generates one shot, archives it, measures narration, and verifies the spoken line           |
-| `ugc.work.compose`    | `src/lib/jobs/ugc/work-compose.ts`    | FFmpeg normalisation, measured subtitles, concatenation, and final archive                  |
+| Job                     | Handler                                 | What it does                                                                                         |
+| ----------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `ugc.product.ingest`    | `src/lib/jobs/ugc/product-ingest.ts`    | Imports source links through Firecrawl, extracts facts, then waits for review or more input          |
+| `ugc.talent.generate`   | `src/lib/jobs/ugc/talent-generate.ts`   | Expands a talent brief, draws one reference image, and archives it                                   |
+| `ugc.reference.ingest`  | `src/lib/jobs/ugc/reference-ingest.ts`  | Render role: fetches or downloads a reference video, archives it, and samples it into stills         |
+| `ugc.reference.analyze` | `src/lib/jobs/ugc/reference-analyze.ts` | Transcribes the reference, reads stills and speech into a blueprint, then waits for review           |
+| `ugc.work.script`       | `src/lib/jobs/ugc/work-script.ts`       | Writes one script from the product, talent images and any clone blueprint, then waits for acceptance |
+| `ugc.work.storyboard`   | `src/lib/jobs/ugc/work-storyboard.ts`   | Draws one key frame per script beat, together, and archives each one as it lands                     |
+| `ugc.work.video`        | `src/lib/jobs/ugc/work-video.ts`        | Coordinates one task per shot and a versioned composition                                            |
+| `ugc.work.segment`      | `src/lib/jobs/ugc/work-segment.ts`      | Generates one shot, archives it, measures narration, and verifies the spoken line                    |
+| `ugc.work.compose`      | `src/lib/jobs/ugc/work-compose.ts`      | FFmpeg normalisation, measured subtitles, concatenation, and final archive                           |
 
 A **work** (`ugc_works`) runs one clip through `product -> script -> video` by
 default. Storyboard-guided works add a reviewed `storyboard` step before video.
@@ -167,6 +174,13 @@ Rules that are easy to break:
 - **Failure is terminal and visible.** An unreadable product becomes
   `needs_input`; exhausted task retries surface as a failed step with a retry
   action. A work never remains visually "running" after its task has failed.
+- **A blueprint records what an event responds to, never when it happened.**
+  A clone has different words, a different performer and different timing, so
+  the reference's seconds are kept only for jumping back to check the reading.
+  Nothing on the generation path may read them.
+- **`yt-dlp` lives in the render image only.** Linked references are fetched by
+  the render worker; uploaded ones need no downloader. Its absence is reported
+  at boot and does not stop composition.
 - **Captions carry the approved script, never the transcript.** Recognition
   supplies timing and nothing else (`src/lib/ugc/media/alignment.ts`). A
   recognizer mangles brand and product names, and a burned-in subtitle cannot
@@ -248,6 +262,12 @@ Rules that are easy to break:
 - Use next-intl rich-text tags for mixed text and React elements. Catalog tag names and call-site values must match exactly.
 - Use standard ICU `{name}` placeholders for primitive values and rich-text tags for React nodes. The compatibility adapter supports both forms.
 - Mark technical content that browsers should not translate with the standard `translate="no"` attribute.
+- A beat's `voiceover` may carry two optional annotations and nothing else:
+  `<display|spoken>` for wording that is read and said differently, and `||`
+  for a caption break the writer asked for. Resolve them with
+  `spokenText()` / `displayText()` at every boundary — speech synthesis, the
+  video prompt, duration estimates and recognition take the spoken side;
+  captions and anything shown to a person take the written side.
 - Do not branch copy with locale conditionals or pass raw external error text to the UI.
 - Prefer full-sentence messages over concatenated fragments.
 - Prefer controlled UI message codes over raw strings in state for transient feedback such as payment status errors and checkout results; render the final localized message in JSX at the boundary.

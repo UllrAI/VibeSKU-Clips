@@ -1,4 +1,5 @@
 import { CLIP_SPEC } from "./constants";
+import { displayText, spokenText } from "./script-notation";
 import { estimateSpeechSeconds } from "./speech-estimate";
 import type { ClipQualityReport, QualityCheck, ScriptDraft } from "./types";
 
@@ -23,7 +24,7 @@ export function evaluateClipQuality(input: QualityInput): ClipQualityReport {
     input.targetDurationSeconds ?? CLIP_SPEC.durationSeconds;
   const targetMs = targetDurationSeconds * 1000;
   const spokenSeconds = estimateSpeechSeconds(
-    input.script.voiceover,
+    spokenText(input.script.voiceover),
     input.locale,
   );
 
@@ -45,7 +46,9 @@ export function evaluateClipQuality(input: QualityInput): ClipQualityReport {
     },
     {
       id: "captionSafeArea",
-      passed: input.script.captions.every((line) => line.length <= 42),
+      passed: input.script.captions.every(
+        (line) => displayText(line).length <= 42,
+      ),
       detail:
         "Caption lines stay clear of the platform buttons and the product card.",
     },

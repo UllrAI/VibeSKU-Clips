@@ -1,17 +1,19 @@
-import { execFile } from "node:child_process";
-import { createWriteStream } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { Readable, Transform } from "node:stream";
-import { pipeline } from "node:stream/promises";
-import { promisify } from "node:util";
 import type { TranscriptWord } from "@/database/ugc";
 import { alignScriptToEvidence, type TimedToken } from "./media/alignment";
+import {
+  downloadToFile,
+  probeMedia,
+  runMediaTool as run,
+} from "./media/ffmpeg";
 import { CLIP_SPEC } from "./constants";
+import {
+  displayText,
+  joinSpokenText as joinText,
+  spokenText,
+} from "./script-notation";
 import type { VideoAspectRatio, VideoResolution } from "./constants";
-
-const runFile = promisify(execFile);
-const MAX_DOWNLOAD_BYTES = 2_000_000_000;
 
 export interface CompositionSegment {
   videoUrl: string;
@@ -33,82 +35,6 @@ export interface CompositionPlan {
   segments: CompositionSegment[];
   aspectRatio: VideoAspectRatio;
   resolution: VideoResolution;
-}
-
-interface ProbeResult {
-  format?: { duration?: string };
-  streams?: { codec_type?: string; duration?: string }[];
-}
-
-async function run(
-  program: string,
-  args: string[],
-  timeout = 900_000,
-): Promise<string> {
-  try {
-    const { stdout } = await runFile(program, args, {
-      timeout,
-      maxBuffer: 1024 * 1024,
-    });
-    return stdout;
-  } catch (error) {
-    const detail =
-      error instanceof Error ? error.message.slice(0, 1200) : String(error);
-    throw new Error(`${program} failed: ${detail}`);
-  }
-}
-
-async function probeMedia(
-  path: string,
-): Promise<{ durationMs: number; video: boolean; audio: boolean }> {
-  const raw = await run(
-    "ffprobe",
-    ["-v", "error", "-show_format", "-show_streams", "-of", "json", path],
-    30_000,
-  );
-  const data = JSON.parse(raw) as ProbeResult;
-  const duration = Number(
-    data.format?.duration ??
-      data.streams?.find((stream) => stream.duration)?.duration,
-  );
-  if (!Number.isFinite(duration) || duration <= 0)
-    throw new Error("Media probe did not report a valid duration.");
-  return {
-    durationMs: Math.round(duration * 1000),
-    video: Boolean(
-      data.streams?.some((stream) => stream.codec_type === "video"),
-    ),
-    audio: Boolean(
-      data.streams?.some((stream) => stream.codec_type === "audio"),
-    ),
-  };
-}
-
-async function download(url: string, path: string): Promise<void> {
-  const parsed = new URL(url);
-  if (parsed.protocol !== "https:" && parsed.protocol !== "http:")
-    throw new Error("Invalid media URL.");
-  const response = await fetch(parsed, {
-    signal: AbortSignal.timeout(180_000),
-  });
-  if (!response.ok || !response.body)
-    throw new Error(`Media download failed (${response.status}).`);
-  if (Number(response.headers.get("content-length") ?? 0) > MAX_DOWNLOAD_BYTES)
-    throw new Error("Media is too large.");
-  let bytes = 0;
-  await pipeline(
-    Readable.fromWeb(response.body as import("node:stream/web").ReadableStream),
-    new Transform({
-      transform(chunk: Buffer, _encoding, callback) {
-        bytes += chunk.length;
-        callback(
-          bytes > MAX_DOWNLOAD_BYTES ? new Error("Media is too large.") : null,
-          chunk,
-        );
-      },
-    }),
-    createWriteStream(path),
-  );
 }
 
 function dimensions(
@@ -137,21 +63,10 @@ const CUE_MAX_CHARACTERS = { latin: 42, cjk: 20 } as const;
 const CJK_TOKEN =
   /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 
-/** Joins two rendered fragments the way their scripts are written. */
-function joinText(left: string, right: string): string {
-  if (!left) return right;
-  if (!right) return left;
-  const seam = CJK_TOKEN.test(left.at(-1)!) || CJK_TOKEN.test(right[0]!);
-  return seam ? left + right : `${left} ${right}`;
-}
-
 function cueText(tokens: readonly TimedToken[]): string {
-  return tokens.reduce((line, token, index) => {
-    if (!index) return token.text;
-    const joined =
-      CJK_TOKEN.test(token.text) || CJK_TOKEN.test(tokens[index - 1]!.text);
-    return joined ? line + token.text : `${line} ${token.text}`;
-  }, "");
+  // A dual-text span captions once and is spoken over several tokens, so the
+  // tokens after the first carry no text and must not open a gap.
+  return tokens.reduce((line, token) => joinText(line, token.text), "");
 }
 
 /**
@@ -183,7 +98,7 @@ export function buildSubtitleTrack(
     const tokens = alignScriptToEvidence(segment.voiceover, segment.words);
     // One limit per shot, from the script's own language. Deriving it from
     // whichever token is in hand makes a mixed line's limit jump mid-cue.
-    const limit = CJK_TOKEN.test(segment.voiceover)
+    const limit = CJK_TOKEN.test(displayText(segment.voiceover))
       ? CUE_MAX_CHARACTERS.cjk
       : CUE_MAX_CHARACTERS.latin;
     const first = cues.length;
@@ -290,7 +205,7 @@ export async function composeMedia(
     if (segment.durationMs < 3000 || segment.durationMs > 15000)
       throw new Error("Shot duration is unsupported.");
     const videoPath = join(directory, `source-${index}.mp4`);
-    await download(segment.videoUrl, videoPath);
+    await downloadToFile(segment.videoUrl, videoPath);
     const video = await probeMedia(videoPath);
     if (!video.video) throw new Error(`Shot ${index + 1} has no video stream.`);
     if (Math.abs(video.durationMs - segment.durationMs) > 2000)
@@ -298,7 +213,7 @@ export async function composeMedia(
         `Shot ${index + 1} differs too much from its approved duration.`,
       );
     if (
-      segment.voiceover.trim() !== "" &&
+      spokenText(segment.voiceover).trim() !== "" &&
       !segment.audioUrl &&
       (segment.spanAuthority === "audio" || !video.audio)
     )
@@ -308,7 +223,7 @@ export async function composeMedia(
     let audioInput = "0:a:0";
     if (segment.audioUrl) {
       const audioPath = join(directory, `narration-${index}.wav`);
-      await download(segment.audioUrl, audioPath);
+      await downloadToFile(segment.audioUrl, audioPath);
       const audio = await probeMedia(audioPath);
       // The shot job measures narration when it is synthesised, so reaching
       // here means that check was bypassed rather than that copy slipped.
