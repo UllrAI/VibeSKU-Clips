@@ -34,16 +34,8 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { actionMessageKey } from "@/components/ugc/action-message";
-import { contentLocaleKey, LOCALE_OPTIONS } from "@/components/ugc/labels";
 import { ReferenceStatusBadge } from "@/components/ugc/reference-status-badge";
 import { VideoField } from "@/components/ugc/video-field";
 import { useTranslation } from "@/lib/i18n/translation/client";
@@ -66,7 +58,6 @@ export function ReferenceLibrary({
   const [open, setOpen] = useState(false);
   const [intake, setIntake] = useState<Intake>("upload");
   const [title, setTitle] = useState("");
-  const [locale, setLocale] = useState<string>("en");
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [sourceUrl, setSourceUrl] = useState("");
   const [rights, setRights] = useState(false);
@@ -91,7 +82,6 @@ export function ReferenceLibrary({
     startTransition(async () => {
       const result = await createReference({
         title: title.trim(),
-        locale,
         rightsAcknowledged: true,
         ...(intake === "upload"
           ? { videoUrl: videoUrl ?? undefined }
@@ -264,35 +254,16 @@ export function ReferenceLibrary({
               </div>
             )}
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="reference-title">
-                  {t("ugc_reference_title_label")}
-                </Label>
-                <Input
-                  id="reference-title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  placeholder={t("ugc_reference_title_placeholder")}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="reference-locale">
-                  {t("ugc_reference_locale_label")}
-                </Label>
-                <Select value={locale} onValueChange={setLocale}>
-                  <SelectTrigger id="reference-locale" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {LOCALE_OPTIONS.map((option) => (
-                      <SelectItem key={option} value={option}>
-                        {t(contentLocaleKey(option))}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="reference-title">
+                {t("ugc_reference_title_label")}
+              </Label>
+              <Input
+                id="reference-title"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                placeholder={t("ugc_reference_title_placeholder")}
+              />
             </div>
 
             <label className="flex items-start gap-3 text-sm">

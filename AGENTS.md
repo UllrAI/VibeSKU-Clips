@@ -280,6 +280,14 @@ Rules that are easy to break:
   `spokenText()` / `displayText()` at every boundary — speech synthesis, the
   video prompt, duration estimates and recognition take the spoken side;
   captions and anything shown to a person take the written side.
+- Three languages run through a clone and none substitutes for another: the
+  operator's interface language, the language the reference happens to speak,
+  and the clip's own spoken language. A blueprint is an explanation addressed
+  to the operator, so it is written in their interface language, with words
+  actually spoken in the reference quoted verbatim in the original. The clip's
+  script follows `ugc_works.locale`. A worker has no request to read a locale
+  from, so anything it generates in the operator's language must have that
+  language recorded on the row first (`ugc_references.readingLocale`).
 - Do not branch copy with locale conditionals or pass raw external error text to the UI.
 - Prefer full-sentence messages over concatenated fragments.
 - Prefer controlled UI message codes over raw strings in state for transient feedback such as payment status errors and checkout results; render the final localized message in JSX at the boundary.

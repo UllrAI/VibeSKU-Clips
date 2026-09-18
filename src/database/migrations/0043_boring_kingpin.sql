@@ -1,0 +1,1 @@
+ALTER TABLE "ugc_references" DROP COLUMN "locale";

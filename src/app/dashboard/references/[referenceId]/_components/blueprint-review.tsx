@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useLocale } from "next-intl";
 import {
   Film,
   Loader2,
@@ -23,6 +24,7 @@ import {
 import { ReferenceStatusBadge } from "@/components/ugc/reference-status-badge";
 import { useReferenceState } from "@/hooks/use-reference-state";
 import { BlueprintEditor } from "./blueprint-editor";
+import { contentLocaleKey } from "@/components/ugc/labels";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import { retryReference } from "@/lib/ugc/reference-actions";
 import type { ReferenceRow, ReferenceState } from "@/lib/ugc/queries";
@@ -54,6 +56,7 @@ export function BlueprintReview({
   initialState: ReferenceState;
 }) {
   const { t } = useTranslation();
+  const locale = useLocale();
   const router = useRouter();
   const state = useReferenceState(reference.id, initialState);
   const player = useRef<HTMLVideoElement>(null);
@@ -118,6 +121,16 @@ export function BlueprintReview({
                 </span>
               )}
             </div>
+            {blueprint && !editing && reference.readingLocale !== locale && (
+              // Switching interface language does not rewrite a stored
+              // reading, and an unexplained wall of another language reads as
+              // a bug. Reading it again is one model call.
+              <p className="text-muted-foreground text-xs leading-relaxed">
+                {t("ugc_blueprint_written_in", {
+                  language: t(contentLocaleKey(reference.readingLocale)),
+                })}
+              </p>
+            )}
             {blueprint && !editing && (
               <div className="space-y-2">
                 <Button asChild className="w-full">
