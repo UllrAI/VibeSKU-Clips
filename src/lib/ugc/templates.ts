@@ -2,9 +2,14 @@ import type { ScriptTemplateBrief } from "./types";
 import type { ScriptTemplate } from "./constants";
 
 /**
- * The three formats delivered in the first phase. Each one is a production
- * recipe, not a visual theme: it fixes how the 15 seconds are spent and which
- * openings the writer may rotate through.
+ * The delivered formats. Each one is a production recipe, not a visual theme:
+ * it fixes how the 15 seconds are spent, which openings the writer may rotate
+ * through, and the shot vocabulary the beats are composed from.
+ *
+ * `shots` is what carries the difference between a thing held in the hand and
+ * a thing worn on the body. A handheld demo is framed on the object and the
+ * hands; a garment has to be seen at full length and in motion, or its fit —
+ * the only thing the buyer is deciding about — never appears on screen.
  */
 export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
   spokesperson: {
@@ -59,6 +64,60 @@ export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
       "hands operating the product, close",
       "angled shot showing the mechanism",
       "finished result held to camera",
+    ],
+  },
+  apparel: {
+    structure:
+      "0-3s the whole look lands on camera at full length, 3-7s the wearer moves so the fabric moves with them, 7-12s two close details that decide the purchase, 12-15s the look held still, facing camera.",
+    voice:
+      "Someone describing how a thing actually fits them, the way they would to a friend who asked, with no runway commentary.",
+    angles: [
+      "open on how it moves rather than how it looks standing still",
+      "open on the detail the listing photos never show",
+      "open on what it was worn with",
+      "open on the fit question everyone asks first",
+    ],
+    shots: [
+      "full-length shot, head to feet, natural stance, whole garment in frame",
+      "a turn or a few steps, showing drape, movement, and the back",
+      "close-up of fabric, seam, or hardware at conversational distance",
+      "waist-up with the wearer's own hands adjusting the fit",
+    ],
+  },
+  accessory: {
+    structure:
+      "0-3s the piece by itself, close enough to read the material, 3-7s it goes on, 7-12s worn and moving at the scale it is actually seen, 12-15s a last look with the rest of the outfit in frame.",
+    voice:
+      "Low-key and specific, the way someone talks about a small thing they keep reaching for.",
+    angles: [
+      "open on the material catching the light",
+      "open on how small or how large it really is",
+      "open on the moment of putting it on",
+      "open on what it replaced",
+    ],
+    shots: [
+      "macro of the piece alone, shallow depth of field",
+      "hands fastening or putting it on, close",
+      "worn shot at true scale against the body",
+      "half-body with the piece in an everyday outfit",
+    ],
+  },
+  unboxing: {
+    structure:
+      "0-3s the sealed package in hand, 3-7s it opens and the product comes out, 7-12s first contact and the one thing that is better or smaller than expected, 12-15s the product set down ready to use.",
+    voice:
+      "Reacting in the moment, plainly, without performing surprise the product has not earned.",
+    angles: [
+      "open on the size of the box against a hand",
+      "open on the one thing checked first",
+      "open on what was expected before opening",
+      "open on everything that came in the box",
+    ],
+    shots: [
+      "package held to camera, label legible",
+      "top-down of the box opening on a plain surface",
+      "product lifted out, hands only",
+      "product held at conversational distance, turned once",
     ],
   },
 };

@@ -41,6 +41,9 @@ export const SCRIPT_TEMPLATES = [
   "spokesperson",
   "scenario",
   "tutorial",
+  "apparel",
+  "accessory",
+  "unboxing",
 ] as const;
 export type ScriptTemplate = (typeof SCRIPT_TEMPLATES)[number];
 

@@ -38,6 +38,9 @@ export const ugcScriptTemplateEnum = pgEnum("ugc_script_template", [
   "spokesperson",
   "scenario",
   "tutorial",
+  "apparel",
+  "accessory",
+  "unboxing",
 ]);
 
 export const ugcScriptStatusEnum = pgEnum("ugc_script_status", [
@@ -160,6 +163,13 @@ export const ugcTalents = pgTable(
       .notNull()
       .default([]),
     imageUrl: text("imageUrl"),
+    /**
+     * The same person at full length. A portrait settles who the performer is
+     * but not how a garment falls on them, which is the only thing an apparel
+     * clip is about. Null when the second draw did not land; the talent is
+     * still usable, just not for a format that needs the whole figure.
+     */
+    fullBodyUrl: text("fullBodyUrl"),
     // Expanded photography prompt used to create the final reference image.
     prompt: text("prompt"),
     status: ugcTalentStatusEnum("status").notNull().default("ready"),

@@ -203,6 +203,18 @@ export function TalentLibrary({ talents }: { talents: TalentRow[] }) {
                         </span>
                       </div>
                     )}
+                    {talent.fullBodyUrl && (
+                      <div className="border-background absolute right-1.5 bottom-1.5 aspect-[10/16] w-10 overflow-hidden rounded border-2 shadow-sm">
+                        <Image
+                          src={talent.fullBodyUrl}
+                          alt={t("ugc_talent_full_body")}
+                          fill
+                          sizes="40px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 space-y-1.5">

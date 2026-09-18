@@ -14,6 +14,14 @@ export interface RenderSubject {
   talentPrompt: string | null;
 }
 
+/**
+ * What the attached photographs are for. A listing photo is a studio backdrop
+ * with props and printed marketing text, and a model handed it without this
+ * line rebuilds that scene instead of the one the script asked for.
+ */
+const EVIDENCE_ONLY =
+  "Any attached product photo is evidence of the product's true colour, finish, proportions, and label text only. Do not reproduce its background, surface, props, packaging shots, or any text printed into the photo.";
+
 function frameDescription(aspectRatio: VideoAspectRatio): string {
   return `${aspectRatio === "9:16" ? "Portrait" : "Landscape"} ${aspectRatio}`;
 }
@@ -42,6 +50,7 @@ export function buildCoverPrompt(
       ? `Performer: ${subject.talentPrompt}. Match the supplied reference image.`
       : "Product-led frame with hands only, no recognisable face.",
     `Setting: an ordinary home or street scene that reads as ${subject.market}.`,
+    EVIDENCE_ONLY,
     "No added on-screen text, subtitles, interface overlays, or watermarks. Preserve authentic branding and label text on the product itself.",
   ]
     .filter(Boolean)
@@ -75,6 +84,7 @@ export function buildFramePrompt(
     productionPrompt
       ? ""
       : `Setting: an ordinary home or street scene that reads as ${subject.market}.`,
+    EVIDENCE_ONLY,
     "No added on-screen text, subtitles, interface overlays, or watermarks. Preserve authentic branding and label text on the product itself.",
   ]
     .filter(Boolean)
@@ -128,6 +138,8 @@ export function buildVideoPrompt(
     subject.talentPrompt
       ? `Keep the performer identical to the first frame: ${subject.talentPrompt}`
       : "Keep the product identical to the first frame.",
+    "The reference images begin with the approved key frames for this clip: match their performer, product, wardrobe, location, and lighting exactly.",
+    EVIDENCE_ONLY,
     "Beats:",
     "The approved beat list below overrides any conflicting timing, action, camera, or dialogue wording inside the production direction.",
     ...beats.map(
@@ -237,4 +249,25 @@ export async function archiveSubtitleTrack(input: {
     body: Buffer.from(input.content, "utf8"),
   });
   return record.url;
+}
+
+/**
+ * The same person at full length.
+ *
+ * A portrait reference settles who the performer is; it cannot settle how a
+ * garment falls on them, which is the only thing an apparel clip is about. The
+ * identity prompt is reused verbatim so the face and wardrobe stay put, and
+ * the framing is restated after it because framing is the one thing being
+ * overridden — the identity prompt describes a crop of its own.
+ */
+export function buildTalentFullBodyPrompt(identityPrompt: string): string {
+  return [
+    "Full-length standing photograph of the person described below, matching the attached reference image.",
+    `Identity, wardrobe, and setting to reproduce:\n${identityPrompt}`,
+    "This framing overrides every crop, camera height, and viewpoint named above: photograph the whole figure from head to feet, both shoes fully visible, with clear space above the head and below the feet. Place the camera at chest height and far enough back that the entire body fits without distortion.",
+    "Natural relaxed standing pose, weight on one leg, arms at the sides, face to camera.",
+    "Facial identity, facial proportions, complexion, eyes, hair, and the colour, cut, and length of every garment must match the reference image.",
+    "Both hands empty. No products, props, packages, devices, bags, logos, or branded objects anywhere in the frame.",
+    "Plain uncluttered setting, even light, the whole body sharp and unobstructed. No text overlay, no watermark, no beauty filter, no anatomical errors.",
+  ].join("\n");
 }

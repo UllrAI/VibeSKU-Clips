@@ -692,6 +692,13 @@ export async function startNewWorkVideoVersion(
     })
     .returning({ id: ugcScripts.id });
 
+  // A new version rewrites the script, so the opening frame drawn for the last
+  // one no longer describes it and the video job redraws it. Storyboard frames
+  // are the operator's own approved work and are left alone.
+  if (work.videoMode === "one_take") {
+    await db.delete(ugcWorkFrames).where(eq(ugcWorkFrames.workId, work.id));
+  }
+
   await enqueueVideo(work, user.id, {
     idempotencyKey: `${work.id}:video-version:${work.clipId}:${work.taskRunId ?? "initial"}`,
     scriptId: nextScript.id,

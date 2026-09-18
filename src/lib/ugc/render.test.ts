@@ -1,8 +1,10 @@
 import { describe, expect, it } from "@jest/globals";
-import { PRISM_MEDIA } from "./constants";
+import { PRISM_MEDIA, SCRIPT_TEMPLATES } from "./constants";
+import { TEMPLATE_BRIEFS } from "./templates";
 import {
   buildCoverPrompt,
   buildSubtitleTrack,
+  buildTalentFullBodyPrompt,
   buildVideoPrompt,
 } from "./render";
 import type { ScriptBeat } from "./types";
@@ -122,6 +124,73 @@ describe("render prompts", () => {
 
     expect(prompt).not.toContain("Follow this approved production direction");
     expect(prompt).toContain("No burned-in captions");
+  });
+});
+
+describe("reference images", () => {
+  const prompt = buildVideoPrompt(
+    subject,
+    beats,
+    null,
+    { videoMode: "one_take", aspectRatio: "9:16" },
+    PRISM_MEDIA.maxVideoPromptCharacters,
+  );
+
+  it("names the key frames as the thing to match", () => {
+    expect(prompt).toContain("approved key frames");
+  });
+
+  it("says a listing photo is evidence, not a scene to rebuild", () => {
+    // Without this the model reproduces studio backdrops, props, and the
+    // marketing text printed into a product photo.
+    expect(prompt).toContain("evidence of the product's true colour");
+    expect(prompt).toContain("Do not reproduce its background");
+  });
+
+  it("carries the same rule into the frames drawn before the video", () => {
+    expect(buildCoverPrompt(subject, beats[0])).toContain(
+      "Do not reproduce its background",
+    );
+  });
+});
+
+describe("talent full-length reference", () => {
+  const identity = "A woman in her thirties, waist-up crop, bright kitchen.";
+  const prompt = buildTalentFullBodyPrompt(identity);
+
+  it("keeps the identity prompt so the face and wardrobe cannot drift", () => {
+    expect(prompt).toContain(identity);
+  });
+
+  it("states that framing overrides the crop the identity prompt named", () => {
+    expect(prompt).toContain("overrides every crop");
+    expect(prompt).toContain("head to feet");
+  });
+
+  it("keeps the talent free of products, as the portrait is", () => {
+    expect(prompt).toContain("Both hands empty");
+  });
+});
+
+describe("format briefs", () => {
+  it("gives every format a shot vocabulary to compose beats from", () => {
+    // `shots` is what separates a thing held in the hand from a thing worn on
+    // the body, so a format without it frames like every other one.
+    for (const template of SCRIPT_TEMPLATES) {
+      const brief = TEMPLATE_BRIEFS[template];
+      expect(brief.shots.length).toBeGreaterThanOrEqual(3);
+      expect(brief.angles.length).toBeGreaterThanOrEqual(3);
+      expect(brief.structure.length).toBeGreaterThan(0);
+      expect(brief.voice.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("frames apparel on the whole figure rather than on the hands", () => {
+    const apparel = TEMPLATE_BRIEFS.apparel.shots.join(" ");
+    expect(apparel).toContain("full-length");
+    expect(TEMPLATE_BRIEFS.spokesperson.shots.join(" ")).not.toContain(
+      "full-length",
+    );
   });
 });
 
