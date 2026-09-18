@@ -62,8 +62,43 @@ describe("render prompts", () => {
     expect(prompt).toContain("lasting exactly 4 seconds");
     expect(prompt).toContain("small autofocus correction");
     expect(prompt).toContain("LOCATION: lived-in sitting room");
-    expect(prompt).toContain("Speak exactly this line");
+    expect(prompt).toContain(
+      "The performer says this in English, word for word and nothing else: This lives by the sofa now.",
+    );
     expect(prompt).toContain("Next shot context: runs it over the cushion");
+  });
+
+  it("names the language rather than passing its locale code", () => {
+    const prompt = buildSegmentVideoPrompt(
+      { ...subject, locale: "zh-Hans" },
+      beats,
+      0,
+      null,
+      "native",
+      "9:16",
+    );
+
+    expect(prompt).toContain("says this in Chinese");
+    expect(prompt).not.toContain("zh-Hans");
+  });
+
+  /**
+   * The direction used to read "Speak exactly this line in en: No speech in
+   * this shot." — an instruction to say that sentence out loud, which is how
+   * a silent beat came back talking and then failed its own speech check.
+   */
+  it("tells the provider to stay silent when a beat has no line", () => {
+    const prompt = buildSegmentVideoPrompt(
+      subject,
+      beats,
+      1,
+      null,
+      "native",
+      "9:16",
+    );
+
+    expect(prompt).toContain("Nobody speaks in this shot");
+    expect(prompt).not.toContain("says this in");
   });
 
   it("keeps AI narration out of provider-generated audio", () => {

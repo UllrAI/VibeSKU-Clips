@@ -1,4 +1,9 @@
-import { DEFAULT_VIDEO_SETTINGS, shotDurationSeconds } from "./constants";
+import {
+  type ContentLocale,
+  DEFAULT_VIDEO_SETTINGS,
+  LANGUAGE_NAMES,
+  shotDurationSeconds,
+} from "./constants";
 import { spokenText } from "./script-notation";
 import type { VideoAspectRatio } from "./constants";
 import type { ScriptBeat } from "./types";
@@ -51,6 +56,25 @@ export function buildFramePrompt(
     .join("\n");
 }
 
+/**
+ * What the provider is told about sound. A beat carries a line or it does not,
+ * and saying "speak this: no speech in this shot" is an instruction to read
+ * that sentence aloud, which is how silent beats came back talking.
+ */
+function speechDirection(
+  audioMode: "native" | "tts",
+  beat: ScriptBeat,
+  locale: string,
+): string {
+  if (audioMode === "tts")
+    return "Do not show speaking or lip movement. The final edit will add separate narration. Generate only natural scene ambience.";
+  const line = spokenText(beat.voiceover).trim();
+  if (!line)
+    return "Nobody speaks in this shot. No voice and no lip movement, natural scene ambience only.";
+  const language = LANGUAGE_NAMES[locale as ContentLocale] ?? locale;
+  return `The performer says this in ${language}, word for word and nothing else: ${line}`;
+}
+
 /** One self-contained provider request, with continuity cues but only one timed action. */
 export function buildSegmentVideoPrompt(
   subject: RenderSubject,
@@ -75,9 +99,7 @@ export function buildSegmentVideoPrompt(
       ? `Next shot context: ${beats[position + 1]!.action}`
       : "",
     `Current shot: ${beat.shot}. Action: ${beat.action}. Camera: ${beat.camera ?? "natural handheld phone camera"}.`,
-    audioMode === "native"
-      ? `Speak exactly this line in ${subject.locale}: ${spokenText(beat.voiceover) || "No speech in this shot."}`
-      : "Do not show speaking or lip movement. The final edit will add separate narration. Generate only natural scene ambience.",
+    speechDirection(audioMode, beat, subject.locale),
     "Do not add captions, titles, buttons, fake shopping UI, or watermarks. Preserve authentic product branding.",
   ]
     .filter(Boolean)

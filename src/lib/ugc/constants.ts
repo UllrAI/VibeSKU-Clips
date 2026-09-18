@@ -20,6 +20,20 @@ export const SUPPORTED_LOCALES = [
 ] as const;
 export type ContentLocale = (typeof SUPPORTED_LOCALES)[number];
 
+/**
+ * What to call each language when instructing a model. A locale code is an
+ * identifier, not a word a model reliably understands, so speech synthesis and
+ * the video prompt both ask by name.
+ */
+export const LANGUAGE_NAMES: Record<ContentLocale, string> = {
+  en: "English",
+  es: "Spanish",
+  pt: "Portuguese",
+  ja: "Japanese",
+  ko: "Korean",
+  "zh-Hans": "Chinese",
+};
+
 export const AUDIO_MODES = ["native", "tts"] as const;
 export type AudioMode = (typeof AUDIO_MODES)[number];
 

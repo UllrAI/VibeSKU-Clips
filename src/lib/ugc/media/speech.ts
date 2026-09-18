@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { TranscriptWord } from "@/database/ugc";
 import { PermanentJobError, RetryableJobError } from "@/lib/jobs/definition";
+import { type ContentLocale, LANGUAGE_NAMES } from "../constants";
 
 const submitSchema = z.object({
   output: z.object({ task_id: z.string().min(1) }),
@@ -174,14 +175,7 @@ export async function synthesizeSpeech(
   locale: string,
 ): Promise<string> {
   const { apiKey, ttsBase } = credentials();
-  const language = {
-    "zh-Hans": "Chinese",
-    en: "English",
-    es: "Spanish",
-    pt: "Portuguese",
-    ja: "Japanese",
-    ko: "Korean",
-  }[locale];
+  const language = LANGUAGE_NAMES[locale as ContentLocale];
   if (!language)
     throw new PermanentJobError(
       "TTS_UNSUPPORTED_LANGUAGE",
