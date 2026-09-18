@@ -97,6 +97,22 @@
 
 **正确做法**:在 `tokenizeScript()` 里展开:按朗读侧切 token 参与对齐,把显示文本挂在该跨度的**第一个** token 上,其余 token 的 `text` 置空。拼接字幕的 `cueText()` 因此必须跳过空文本 token,否则会多出空格。见 `src/lib/ugc/script-notation.ts` 与 `src/lib/ugc/media/alignment.ts`。
 
+### yt-dlp 的错误文案不能凭印象匹配
+
+**现象**:失败分类写完、单测通过、评审也看不出问题,真正拿真实站点跑一遍才发现两条全落进兜底:「已下架」匹配的是 `video unavailable`,而 yt-dlp 实际说的是 `This video **is** unavailable`;另外从某些 IP 访问时 YouTube 根本不提登录,直接 `unable to download video data: HTTP Error 403`。
+
+**原因**:这类字符串是外部程序的输出,不是我们的契约。凭对「它大概会怎么说」的印象写匹配,单测里又用同样的印象造样本,于是测试和实现一起错,互相背书。
+
+**正确做法**:匹配串必须来自**真实捕获的输出**,并把捕获到的原句固化进测试(见 `src/lib/ugc/media/reference.test.ts`)。另外「平台不肯给」的几种说法——要登录、判定是机器人、直接 403——对运营是同一件事,合成一个 `platform_refused` 即可,不要按对方的措辞拆成几类。
+
+### 容器启动快过网络,不该按「发布坏了」处理
+
+**现象**:worker 每次部署都先崩一次——`worker_start_failed: getaddrinfo ENOTFOUND <db-host>`——平台 2 秒后重启,随即迁移成功并就绪。
+
+**原因**:pod 起来的瞬间 DNS 条目还没生效。`migrateDatabase` 是第一个开连接的地方,抛错就退出容器,这本是「发布坏了要大声失败」的正确设计,但它把一次两秒的抖动也当成了发布事故。
+
+**正确做法**:只对「还没连上」这一类错误(`ENOTFOUND`/`EAI_AGAIN`/`ECONNREFUSED`/`ETIMEDOUT`/`ECONNRESET`,含 `cause` 链)做有界重试,10 次 × 2 秒。密码错、迁移 SQL 失败照旧立刻退出。不要改成无限重试:那会让真正配错的部署安静地转圈,而不是在部署页面上红掉。
+
 ### job 定义内部引用自身会导致类型循环
 
 **现象**:在 `clipRenderJob` 的 handler 里写 `Parameters<typeof clipRenderJob.handler>[1]`,或者读 `clipRenderJob.queue.retryLimit`,`tsc` 报 "'clipRenderJob' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer"。

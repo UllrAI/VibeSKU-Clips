@@ -62,7 +62,7 @@ const JOB_FAILURE_KEYS: Record<string, string> = {
   QUEUE_JOB_TERMINATED: "ugc_work_failure_terminated",
   REFERENCE_MISSING: "ugc_error_not_found",
   REFERENCE_NO_SOURCE: "ugc_error_not_found",
-  REFERENCE_FETCH_SIGN_IN_REQUIRED: "ugc_reference_failure_sign_in",
+  REFERENCE_FETCH_PLATFORM_REFUSED: "ugc_reference_failure_refused",
   REFERENCE_FETCH_UNAVAILABLE: "ugc_reference_failure_gone",
   REFERENCE_FETCH_REGION_BLOCKED: "ugc_reference_failure_region",
   REFERENCE_FETCH_TOO_LARGE: "ugc_reference_failure_too_large",
