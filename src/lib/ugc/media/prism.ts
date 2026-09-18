@@ -135,7 +135,7 @@ export async function submitVideo(request: VideoRequest): Promise<string> {
         duration: request.durationSeconds,
         aspect_ratio: request.aspectRatio,
         resolution: request.resolution,
-        generate_audio: true,
+        generate_audio: request.generateAudio ?? true,
         request_id: request.requestId,
         ...(request.referenceUrls.length
           ? {

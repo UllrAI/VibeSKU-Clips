@@ -12,6 +12,7 @@ import { DoneStep } from "./done-step";
 import { PendingStep } from "./pending-step";
 import { ProductStep } from "./product-step";
 import { ScriptStep } from "./script-step";
+import { ShotReviewStep } from "./shot-review-step";
 import { StoryboardStep } from "./storyboard-step";
 import { WorkSummary } from "./work-summary";
 
@@ -36,7 +37,7 @@ export function WorkConsole({
   const refresh = () => router.refresh();
   const liveState = useWorkState(detail.work.id, initialState);
 
-  const { work, script, clip, versions, frames } = detail;
+  const { work, script, clip, versions, frames, segments } = detail;
   // A step is finished with, one way or another: the work row says the
   // handler gave up, or its task run did.
   const failed = liveState.stepStatus === "failed" || liveState.run.failed;
@@ -62,6 +63,7 @@ export function WorkConsole({
         workId={work.id}
         clip={clip}
         versions={versions}
+        segments={segments}
         script={script}
         videoMode={work.videoMode}
         videoModel={work.videoModel}
@@ -98,6 +100,20 @@ export function WorkConsole({
         onRefresh={refresh}
       />
     );
+  } else if (
+    work.step === "video" &&
+    work.stepStatus === "review" &&
+    segments.some(({ take }) => take?.status === "review")
+  ) {
+    body = (
+      <ShotReviewStep
+        workId={work.id}
+        segments={segments}
+        beats={script?.beats ?? []}
+        aspectRatio={work.aspectRatio}
+        onRefresh={refresh}
+      />
+    );
   } else if (work.step === "storyboard" && !failed && frames.length > 0) {
     body = (
       <StoryboardStep
@@ -122,6 +138,7 @@ export function WorkConsole({
         failureCode={liveState.run.failureCode}
         stalled={liveState.run.stalled}
         frames={work.step === "video" ? frames : []}
+        segments={work.step === "video" ? segments : []}
         videoMode={work.videoMode}
         aspectRatio={work.aspectRatio}
         onRefresh={refresh}

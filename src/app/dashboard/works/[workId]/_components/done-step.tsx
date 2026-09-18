@@ -44,18 +44,23 @@ import {
 import { videoModelKey } from "@/components/ugc/labels";
 import { ScriptEditor } from "@/components/ugc/script-editor";
 import { useIntlLocale } from "@/hooks/use-intl-locale";
+import { displayText } from "@/lib/ugc/script-notation";
 import { useTranslation } from "@/lib/i18n/translation/client";
-import { startNewWorkVideoVersion } from "@/lib/ugc/work-actions";
+import {
+  regenerateWorkSegment,
+  startNewWorkVideoVersion,
+} from "@/lib/ugc/work-actions";
 import type { VideoGenerationPhase } from "@/lib/ugc/video-progress";
-import type {
-  VideoMode,
+import {
+  CREDIT_COST,
+  type VideoMode,
   VideoModel,
   VideoModelOption,
   VideoResolution,
 } from "@/lib/ugc/constants";
 import type { ScriptRow } from "@/lib/ugc/queries";
 import type { EditableScript } from "@/lib/ugc/types";
-import type { ClipRow, WorkVersion } from "@/lib/ugc/works";
+import type { ClipRow, WorkDetail, WorkVersion } from "@/lib/ugc/works";
 import { cn } from "@/lib/utils";
 import { StepCard } from "./step-card";
 
@@ -68,6 +73,7 @@ export function DoneStep({
   workId,
   clip,
   versions,
+  segments,
   script,
   videoMode,
   videoModel,
@@ -83,6 +89,7 @@ export function DoneStep({
   workId: string;
   clip: ClipRow;
   versions: WorkVersion[];
+  segments: WorkDetail["segments"];
   script: ScriptRow | null;
   videoMode: VideoMode;
   videoModel: VideoModel;
@@ -195,6 +202,17 @@ export function DoneStep({
       }
     });
   };
+
+  const regenerateSegment = (segmentId: string) =>
+    startTransition(async () => {
+      const result = await regenerateWorkSegment(segmentId);
+      if (!result.ok) {
+        toast.error(t(actionMessageKey(result.code)));
+        return;
+      }
+      toast.success(t("ugc_work_segment_started"));
+      onRefresh();
+    });
 
   const inFlight = pending || rendering;
   const phaseKey =
@@ -411,7 +429,7 @@ export function DoneStep({
                     {beat.start}–{beat.end}s
                   </Badge>
                   <div className="min-w-0 space-y-1">
-                    <p>{beat.voiceover || beat.action}</p>
+                    <p>{displayText(beat.voiceover) || beat.action}</p>
                     <p className="text-muted-foreground">{beat.action}</p>
                   </div>
                 </li>
@@ -435,6 +453,65 @@ export function DoneStep({
             )}
           </CollapsibleContent>
         </Collapsible>
+      )}
+
+      {selectedClip.id === clip.id && segments.length > 0 && (
+        <section className="space-y-3">
+          <div>
+            <h3 className="text-sm font-medium">
+              {t("ugc_work_segments_title")}
+            </h3>
+            <p className="text-muted-foreground text-xs">
+              {t("ugc_work_segments_hint")}
+            </p>
+          </div>
+          <ol className="grid gap-3 sm:grid-cols-2">
+            {segments.map(({ segment, take }) => (
+              <li
+                key={segment.id}
+                className="border-border space-y-2 rounded-lg border p-3"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">
+                    {t("ugc_work_segment_label", {
+                      position: segment.position + 1,
+                    })}{" "}
+                    · {segment.startMs / 1000}–{segment.endMs / 1000}s
+                  </span>
+                  <Badge variant="outline">
+                    {t(`ugc_work_segment_status_${take?.status ?? "pending"}`)}
+                  </Badge>
+                </div>
+                {take?.videoUrl && (
+                  <video
+                    src={take.videoUrl}
+                    controls
+                    preload="none"
+                    className="max-h-48 w-full rounded-md bg-black"
+                  />
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={inFlight || !take || take.status !== "ready"}
+                  onClick={() => regenerateSegment(segment.id)}
+                >
+                  <RefreshCw />
+                  {t("ugc_work_regenerate_segment", {
+                    credits: Math.max(
+                      1,
+                      Math.ceil(
+                        (CREDIT_COST.render *
+                          (segment.endMs - segment.startMs)) /
+                          15000,
+                      ),
+                    ),
+                  })}
+                </Button>
+              </li>
+            ))}
+          </ol>
+        </section>
       )}
 
       <Sheet

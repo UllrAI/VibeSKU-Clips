@@ -2,7 +2,7 @@
 
 [中文版](README.zh-CN.md) | English
 
-VibeSKU Clips turns product material into a localised 15-second UGC video. An
+VibeSKU Clips turns product material into a localised UGC video. An
 operator submits a product link or images with a brief; the platform reads the
 product, writes a market-specific script, optionally draws a storyboard,
 generates the clip, checks it against a quality gate, and hands back the asset
@@ -24,40 +24,43 @@ operations team.
   each with its own voiceover, subtitles, and publish caption.
 - **Three delivery formats.** Presenter, everyday scene, and how-to-use, each a
   production recipe with its own beat structure and rotating opening angles.
-- **Talent consistency.** Upload a licensed photo or describe a fictional adult
-  performer. The generated opening frame anchors the look for the whole clip.
+- **Talent references.** Upload a licensed photo or describe a fictional adult
+  performer. Approved images guide each generated shot.
 - **One clip at a time.** Product, talent, script, optional storyboard, and video
   form one guided path, with a human confirmation before each expensive step.
-- **A quality gate before review.** Duration, voiceover length, caption safe
-  area, product accuracy, performer consistency, and local expression are
-  checked on every clip.
-- **Review and regeneration.** Each finished clip can be selected, rejected, or
-  regenerated while preserving its product, script, and talent lineage.
+- **Measured quality checks.** FFprobe verifies media duration and streams;
+  hosted ASR checks spoken words and supplies subtitle times. Operators review
+  visual accuracy and performer consistency.
+- **Review and regeneration.** Replace one shot or regenerate a full version
+  while preserving the other shots and the existing final clip.
 - **Exports with a manifest.** Every asset includes its reference number,
   product, language, market, talent, licence note, and disclosure line.
 - **Asset and consumption records.** Products, talent, scripts, and approved
   clips keep their source, licence, and version lineage; analysis, scripting,
   rendering, retries, and regenerations are metered separately.
 
-Delivery specification: 15 seconds, selectable 9:16 or 16:9 framing, and a
+Delivery specification: selectable 15–120 seconds, 9:16 or 16:9 framing, and a
 provider-compatible resolution, with cover, subtitles, publish caption, and a
 synthetic-content disclosure.
 
 ## 🧱 How production runs
 
-| Stage      | Job                   | What it does                                                                                                       |
-| :--------- | :-------------------- | :----------------------------------------------------------------------------------------------------------------- |
-| Intake     | `ugc.product.ingest`  | Imports the product page through Firecrawl, reads facts, and waits for review or missing material                  |
-| Script     | `ugc.work.script`     | Writes one script from the confirmed product, talent, language, and market                                         |
-| Storyboard | `ugc.work.storyboard` | Draws one key frame per beat and stops for confirmation                                                            |
-| Video      | `ugc.work.video`      | Generates one clip from the script and selected references, archives it, writes subtitles, and runs quality checks |
+| Stage      | Job                   | What it does                                                                                      |
+| :--------- | :-------------------- | :------------------------------------------------------------------------------------------------ |
+| Intake     | `ugc.product.ingest`  | Imports the product page through Firecrawl, reads facts, and waits for review or missing material |
+| Script     | `ugc.work.script`     | Writes one script from the confirmed product, talent, language, and market                        |
+| Storyboard | `ugc.work.storyboard` | Draws one key frame per beat and stops for confirmation                                           |
+| Video      | `ugc.work.video`      | Creates durable shot tasks and an immutable composition snapshot                                  |
+| Shot       | `ugc.work.segment`    | Generates and archives one shot; cloud ASR/TTS checks its spoken track                            |
+| Compose    | `ugc.work.compose`    | FFmpeg probes, normalizes, captions, and concatenates the final clip                              |
 
 Jobs run on pg-boss through the repository's task-run outbox, so each step
 survives a restart and can be retried on its own. Images go through Prism;
 video uses the provider selected by `VIDEO_GENERATION_PROVIDER`, product-page
 imports use Firecrawl, and scripting uses any OpenAI-compatible endpoint. Prism video is fixed to H3; lk666 also
 offers Seedance 2.0 and 2.5, with each model exposing only its supported output
-resolutions.
+resolutions. The general worker runs provider jobs; a dedicated render worker
+runs FFmpeg and FFprobe. Generated files stream into private R2 storage.
 
 Business logic lives in `src/lib/ugc`, the job handlers in `src/lib/jobs/ugc`,
 and the operator surfaces under `src/app/dashboard`.
@@ -73,7 +76,7 @@ and the operator surfaces under `src/app/dashboard`.
 | **Database**        | [PostgreSQL](https://www.postgresql.org/)                                                                                                              |
 | **ORM**             | [Drizzle ORM](https://orm.drizzle.team/)                                                                                                               |
 | **Payments**        | [Stripe](https://stripe.com/)                                                                                                                          |
-| **Media**           | Prism for images; selectable Prism or lk666 video generation                                                                                           |
+| **Media**           | Prism images, selectable Prism or lk666 video, Alibaba Cloud ASR/TTS, FFmpeg composition                                                               |
 | **AI**              | [Vercel AI SDK](https://ai-sdk.dev/) v7, any OpenAI-compatible LLM endpoint                                                                            |
 | **Email**           | [Resend](https://resend.com/), [React Email](https://react.email/)                                                                                     |
 | **Forms**           | [React Hook Form](https://react-hook-form.com/), [Zod](https://zod.dev/)                                                                               |
@@ -153,6 +156,10 @@ never be added to `SITE_CONFIG`.
 | `PRISM_API_SECRET`             | **Required for rendering.** Prism secret for the chosen host.   | `sk_...`                                            |
 | `LK666_API_BASE_URL`           | Optional lk666-compatible API root.                             | `https://api.lk888.ai`                              |
 | `LK666_API_KEY`                | Required when the selected video backend is `lk666`.            | `sk-...`                                            |
+| `DASHSCOPE_API_KEY`            | Required for hosted ASR on every video and optional TTS.        | `sk-...`                                            |
+| `DASHSCOPE_ASR_BASE_URL`       | Optional ASR API root; defaults to Beijing DashScope.           | `https://dashscope.aliyuncs.com/api/v1`             |
+| `DASHSCOPE_TTS_BASE_URL`       | Optional Qwen3-TTS API root; defaults to the ASR API root.      | `https://dashscope.aliyuncs.com/api/v1`             |
+| `DASHSCOPE_TTS_VOICE`          | Optional multilingual Qwen3-TTS voice; defaults to `Cherry`.    | Supported Qwen3-TTS voice ID                        |
 | `STRIPE_SECRET_KEY`            | Required for billing. Prefer a least-privilege restricted key.  | `rk_test_...` or `rk_live_...`                      |
 | `STRIPE_ENVIRONMENT`           | Stripe mode; defaults to `test_mode`.                           | `test_mode` or `live_mode`                          |
 | `STRIPE_WEBHOOK_SECRET`        | Required when `billing` is enabled. Endpoint signing secret.    | `whsec_your_webhook_secret`                         |
@@ -512,15 +519,15 @@ branch (`main` at present) before moving `prod` to that commit. Zeabur deploys
 only after the promotion succeeds. Fork maintainers can reuse the same setup;
 see [the Zeabur deployment guide](docs/deployment-zeabur.md#using-the-workflow-in-a-fork).
 
-1. Merge the reviewed commit into the default branch and wait for the Quality
-   workflow to pass.
+1. Merge the reviewed pull request into the default branch once its Quality
+   run is green.
 2. Configure every required variable from `.env.example`. Set
    `NEXT_PUBLIC_APP_URL` to the final HTTPS origin before building because
    canonical URLs and client configuration are compiled from it. Keep the user
    upload bucket private; see [architecture notes](docs/architecture.md#deployment-requirements).
 3. Set `PRODUCTION_DATABASE_URL` in the GitHub `production` environment, plus
    `PRODUCTION_JOB_DATABASE_URL` for a separate queue database. The release
-   workflow checks the exact SHA's Quality result and runs migrations before promotion.
+   workflow runs Quality on the tagged commit and applies migrations before promotion.
 4. Update the version in `package.json`, then tag that commit with an annotated
    `release/vX.Y.Z` tag using the same version and push it:
 

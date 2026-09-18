@@ -1,10 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { PRISM_MEDIA } from "./constants";
-import {
-  buildCoverPrompt,
-  buildSubtitleTrack,
-  buildVideoPrompt,
-} from "./render";
+import { buildFramePrompt, buildSegmentVideoPrompt } from "./render";
 import type { ScriptBeat } from "./types";
 
 const beats: ScriptBeat[] = [
@@ -36,8 +31,8 @@ const subject = {
 };
 
 describe("render prompts", () => {
-  it("anchors the opening frame on the talent reference", () => {
-    const prompt = buildCoverPrompt(subject, beats[0]);
+  it("anchors a storyboard frame on the talent reference", () => {
+    const prompt = buildFramePrompt(subject, beats[0]!, 0);
 
     expect(prompt).toContain("Match the supplied reference image");
     expect(prompt).toContain("Cordless hand vacuum");
@@ -45,95 +40,136 @@ describe("render prompts", () => {
   });
 
   it("falls back to a product-led frame when no talent is chosen", () => {
-    const prompt = buildCoverPrompt(
+    const prompt = buildFramePrompt(
       { ...subject, talentPrompt: null },
-      beats[0],
+      beats[0]!,
+      0,
     );
 
     expect(prompt).toContain("no recognisable face");
   });
 
-  it("passes every beat to the video model with its timing", () => {
-    const prompt = buildVideoPrompt(
+  it("keeps each provider request focused on one shot", () => {
+    const prompt = buildSegmentVideoPrompt(
       subject,
       beats,
+      0,
       "LOCATION: lived-in sitting room\nLIGHTING: window light",
-      { videoMode: "storyboard", aspectRatio: "9:16" },
-      PRISM_MEDIA.maxVideoPromptCharacters,
+      "native",
+      "9:16",
+      10_000,
     );
 
-    expect(prompt).toContain("0.0-3.5s");
-    expect(prompt).toContain("3.5-15.0s");
+    expect(prompt).toContain("lasting exactly 4 seconds");
     expect(prompt).toContain("small autofocus correction");
     expect(prompt).toContain("LOCATION: lived-in sitting room");
-    expect(prompt).toContain("No burned-in captions");
-  });
-
-  it("directs one-take video to avoid cuts and scene changes", () => {
-    const prompt = buildVideoPrompt(
-      subject,
-      beats,
-      null,
-      { videoMode: "one_take", aspectRatio: "16:9" },
-      PRISM_MEDIA.maxVideoPromptCharacters,
+    expect(prompt).toContain(
+      "The performer says this in English, word for word and nothing else: This lives by the sofa now.",
     );
-
-    expect(prompt).toContain("one continuous take");
-    expect(prompt).toContain("no cuts, transitions, or scene changes");
-    expect(prompt).toContain("landscape 16:9");
+    expect(prompt).toContain("Next shot context: runs it over the cushion");
   });
 
-  it("keeps the prompt inside the provider's cap by shortening the direction", () => {
-    const settings = {
-      videoMode: "one_take" as const,
-      aspectRatio: "9:16" as const,
-    };
-    // The beats and the closing rules are the contract and never give way, so
-    // the budget is measured from what they already occupy.
-    const floor = Array.from(
-      buildVideoPrompt(subject, beats, null, settings, 0),
-    ).length;
-    const limit = floor + 200;
-    const prompt = buildVideoPrompt(
-      subject,
+  it("names the language rather than passing its locale code", () => {
+    const prompt = buildSegmentVideoPrompt(
+      { ...subject, locale: "zh-Hans" },
       beats,
-      "LOCATION: lived-in sitting room. ".repeat(400),
-      settings,
-      limit,
-    );
-
-    // The cap is counted in code points, which is what the provider counts.
-    expect(Array.from(prompt).length).toBeLessThanOrEqual(limit);
-    expect(Array.from(prompt).length).toBeGreaterThan(floor);
-    expect(prompt).toContain("LOCATION: lived-in sitting room");
-    // The instructions that matter survive; the direction is what gives way.
-    expect(prompt).toContain("0.0-3.5s");
-    expect(prompt).toContain("No burned-in captions");
-  });
-
-  it("omits the direction entirely when the beats alone fill the budget", () => {
-    const prompt = buildVideoPrompt(
-      subject,
-      beats,
-      "LOCATION: lived-in sitting room",
-      { videoMode: "one_take", aspectRatio: "9:16" },
       0,
+      null,
+      "native",
+      "9:16",
+      10_000,
     );
 
-    expect(prompt).not.toContain("Follow this approved production direction");
-    expect(prompt).toContain("No burned-in captions");
+    expect(prompt).toContain("says this in Chinese");
+    expect(prompt).not.toContain("zh-Hans");
   });
-});
 
-describe("subtitle track", () => {
-  it("writes SRT cues only for beats that are spoken", () => {
-    expect(buildSubtitleTrack(beats)).toBe(
-      [
-        "1",
-        "00:00:00,000 --> 00:00:03,500",
-        "This lives by the sofa now.",
-        "",
-      ].join("\n"),
+  /**
+   * The direction used to read "Speak exactly this line in en: No speech in
+   * this shot." — an instruction to say that sentence out loud, which is how
+   * a silent beat came back talking and then failed its own speech check.
+   */
+  it("tells the provider to stay silent when a beat has no line", () => {
+    const prompt = buildSegmentVideoPrompt(
+      subject,
+      beats,
+      1,
+      null,
+      "native",
+      "9:16",
+      10_000,
     );
+
+    expect(prompt).toContain("Nobody speaks in this shot");
+    expect(prompt).not.toContain("says this in");
+  });
+
+  it("keeps AI narration out of provider-generated audio", () => {
+    const prompt = buildSegmentVideoPrompt(
+      subject,
+      beats,
+      0,
+      null,
+      "tts",
+      "16:9",
+      10_000,
+    );
+
+    expect(prompt).toContain("Do not show speaking or lip movement");
+    expect(prompt).toContain("Landscape 16:9");
+  });
+
+  /**
+   * minimax-h3 rejects a prompt over 10000 characters outright, and cutting
+   * the assembled text would take the shot's own direction off the end.
+   */
+  it("gives the continuity direction up to a provider's prompt limit", () => {
+    const productionPrompt = "LOCATION: sitting room. ".repeat(2000);
+    const prompt = buildSegmentVideoPrompt(
+      subject,
+      beats,
+      0,
+      productionPrompt,
+      "native",
+      "9:16",
+      10_000,
+    );
+
+    expect(Array.from(prompt).length).toBeLessThanOrEqual(10_000);
+    expect(prompt).toContain("Global production direction");
+    // Everything the shot itself needs survives the cut.
+    expect(prompt).toContain("lasting exactly 4 seconds");
+    expect(prompt).toContain("Current shot: handheld medium shot");
+    expect(prompt).toContain("says this in English");
+    expect(prompt).toContain("Do not add captions");
+  });
+
+  it("drops the continuity line entirely rather than send an empty one", () => {
+    const prompt = buildSegmentVideoPrompt(
+      subject,
+      beats,
+      0,
+      null,
+      "native",
+      "9:16",
+      10_000,
+    );
+
+    expect(prompt).not.toContain("Global production direction");
+  });
+
+  it("honours a tighter limit without losing the shot's direction", () => {
+    const prompt = buildSegmentVideoPrompt(
+      subject,
+      beats,
+      0,
+      "LOCATION: sitting room. ".repeat(2000),
+      "native",
+      "9:16",
+      4096,
+    );
+
+    expect(Array.from(prompt).length).toBeLessThanOrEqual(4096);
+    expect(prompt).toContain("Do not add captions");
   });
 });

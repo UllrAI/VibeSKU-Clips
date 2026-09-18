@@ -1,0 +1,1 @@
+ALTER TYPE "public"."ugc_segment_status" ADD VALUE 'review' BEFORE 'failed';

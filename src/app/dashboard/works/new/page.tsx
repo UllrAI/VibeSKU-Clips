@@ -1,7 +1,7 @@
 import { DashboardPageWrapper } from "../../_components/dashboard-page-wrapper";
 import { getServerTranslations } from "@/lib/i18n/translation/server";
 import { createMetadataDefaults } from "@/lib/metadata";
-import { listProducts, listTalents } from "@/lib/ugc/queries";
+import { getReference, listProducts, listTalents } from "@/lib/ugc/queries";
 import { activeVideoModelOptions } from "@/lib/ugc/media/video-provider";
 import { WorkComposer } from "../_components/work-composer";
 
@@ -17,13 +17,14 @@ export async function generateMetadata() {
 export default async function NewWorkPage({
   searchParams,
 }: {
-  searchParams: Promise<{ product?: string }>;
+  searchParams: Promise<{ product?: string; referenceId?: string }>;
 }) {
   const { t } = await getServerTranslations();
-  const { product } = await searchParams;
-  const [products, talents] = await Promise.all([
+  const { product, referenceId } = await searchParams;
+  const [products, talents, reference] = await Promise.all([
     listProducts(),
     listTalents(),
+    referenceId ? getReference(referenceId) : null,
   ]);
 
   return (
@@ -35,6 +36,17 @@ export default async function NewWorkPage({
         products={products}
         talents={talents}
         initialProductId={product}
+        reference={
+          reference?.blueprint
+            ? {
+                id: reference.id,
+                title: reference.title,
+                hook: reference.blueprint.hook,
+                aspectRatio: reference.aspectRatio,
+                redesign: reference.blueprint.redesign,
+              }
+            : null
+        }
         modelOptions={activeVideoModelOptions()}
       />
     </DashboardPageWrapper>

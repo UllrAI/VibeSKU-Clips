@@ -25,12 +25,25 @@ test("starts a work from a new product and lands on the first step", async ({
   await page
     .getByLabel("Reference link")
     .fill("https://example.com/playwright-product");
+  await page.getByRole("combobox", { name: "Video length" }).click();
+  await page.getByRole("option", { name: "30s" }).click();
+  await page.getByRole("combobox", { name: "Speech" }).click();
+  await page.getByRole("option", { name: "AI narration" }).click();
   await page
     .getByRole("button", { name: "Start and write the script" })
     .click();
 
   await expect(page).toHaveURL(/\/dashboard\/works\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name })).toBeVisible();
+  const workId = page.url().split("/").at(-1)!;
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+  try {
+    const [settings] =
+      await sql`select "durationSeconds", "audioMode" from ugc_works where id = ${workId}`;
+    expect(settings).toMatchObject({ durationSeconds: 30, audioMode: "tts" });
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
 
   // The default one-take flow has three named steps, with the first one
   // current until the product has been read.
@@ -199,11 +212,19 @@ test("keeps a finished work complete while its script and video version are revi
         ${JSON.stringify([
           {
             start: 0,
-            end: 15,
+            end: 7,
             shot: "Close product shot",
             action: "Show the bottle",
             camera: "Handheld phone camera",
             voiceover: "This wording made V1.",
+          },
+          {
+            start: 7,
+            end: 15,
+            shot: "Product detail",
+            action: "Turn the bottle to show its shape",
+            camera: "Slow handheld push-in",
+            voiceover: "",
           },
         ])}::jsonb,
         'This wording made V1.',
@@ -239,6 +260,20 @@ test("keeps a finished work complete while its script and video version are revi
     await sql`
       update ugc_works set "clipId" = ${clip.id} where id = ${work.id}
     `;
+    for (const [position, startMs, endMs] of [
+      [0, 0, 7000],
+      [1, 7000, 15000],
+    ]) {
+      const [segment] = await sql`
+        insert into ugc_work_segments ("workId", "scriptId", position, "startMs", "endMs")
+        values (${work.id}, ${script.id}, ${position}, ${startMs}, ${endMs}) returning id
+      `;
+      const [take] = await sql`
+        insert into ugc_work_takes ("segmentId", version, status, "videoUrl")
+        values (${segment.id}, 1, 'ready', '/api/files/content?key=missing-e2e-shot.mp4') returning id
+      `;
+      await sql`update ugc_work_segments set "activeTakeId" = ${take.id} where id = ${segment.id}`;
+    }
   } finally {
     await sql.end({ timeout: 5 });
   }
@@ -269,4 +304,158 @@ test("keeps a finished work complete while its script and video version are revi
   await expect(
     card.getByText("Current version: V1", { exact: false }),
   ).toBeVisible();
+
+  await page.goto(`/dashboard/works/${workId}`);
+  await expect(
+    page.getByRole("button", { name: /Regenerate shot/ }),
+  ).toHaveCount(2);
+  await page
+    .getByRole("button", { name: /Regenerate shot/ })
+    .first()
+    .click();
+  await expect(
+    page.getByText("A new take is generating for this shot."),
+  ).toBeVisible();
+  const verify = postgres(process.env.DATABASE_URL!, { max: 1 });
+  try {
+    const takes = await verify`
+      select s.position, t.version, t.status from ugc_work_segments s
+      join ugc_work_takes t on t.id = s."activeTakeId"
+      where s."workId" = ${workId} order by s.position
+    `;
+    expect(takes).toMatchObject([
+      { position: 0, version: 2, status: "pending" },
+      { position: 1, version: 1, status: "ready" },
+    ]);
+  } finally {
+    await verify.end({ timeout: 5 });
+  }
+});
+
+test("shows a shot whose audio missed the line instead of losing the work to it", async ({
+  page,
+}) => {
+  await loginAs(page, "user");
+
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+  let workId: string;
+  try {
+    const [product] = await sql`
+      insert into ugc_products ("userId", name, images, facts, status)
+      values (
+        'e2e-user',
+        'Reviewed shot serum',
+        '[]'::jsonb,
+        ${JSON.stringify({
+          summary: "A fixture whose shot came back off-script.",
+          appearance: "Amber bottle.",
+          specs: [],
+          sellingPoints: ["Lightweight"],
+          scenarios: ["Morning routine"],
+          sources: ["fixture"],
+        })}::jsonb,
+        'ready'
+      )
+      returning id
+    `;
+    const [script] = await sql`
+      insert into ugc_scripts (
+        "userId", "productId", template, locale, market,
+        title, hook, beats, voiceover, captions, status
+      )
+      values (
+        'e2e-user', ${product.id}, 'spokesperson', 'en', 'US',
+        'Off-script take', 'One pass and it is done.',
+        ${JSON.stringify([
+          {
+            start: 0,
+            end: 8,
+            shot: "Close product shot",
+            action: "Show the bottle",
+            camera: "Handheld phone camera",
+            voiceover: "One pass and it is done.",
+          },
+          {
+            start: 8,
+            end: 15,
+            shot: "Product detail",
+            action: "Turn the bottle",
+            camera: "Slow push-in",
+            voiceover: "",
+          },
+        ])}::jsonb,
+        'One pass and it is done.',
+        ${JSON.stringify(["One pass and it is done."])}::jsonb,
+        'ready'
+      )
+      returning id
+    `;
+    const [work] = await sql`
+      insert into ugc_works (
+        "userId", title, step, "stepStatus", "productId", "scriptId",
+        locale, market, template
+      )
+      values (
+        'e2e-user', 'Off-script work', 'video', 'review',
+        ${product.id}, ${script.id}, 'en', 'US', 'spokesperson'
+      )
+      returning id
+    `;
+    workId = work.id;
+    for (const [position, startMs, endMs, status, transcript] of [
+      [0, 0, 8000, "review", "Something else entirely."],
+      [1, 8000, 15000, "ready", null],
+    ] as const) {
+      const [segment] = await sql`
+        insert into ugc_work_segments ("workId", "scriptId", position, "startMs", "endMs")
+        values (${work.id}, ${script.id}, ${position}, ${startMs}, ${endMs}) returning id
+      `;
+      const [take] = await sql`
+        insert into ugc_work_takes ("segmentId", version, status, "videoUrl", transcript)
+        values (
+          ${segment.id}, 1, ${status},
+          '/api/files/content?key=missing-e2e-shot.mp4', ${transcript}
+        )
+        returning id
+      `;
+      await sql`update ugc_work_segments set "activeTakeId" = ${take.id} where id = ${segment.id}`;
+    }
+  } finally {
+    await sql.end({ timeout: 5 });
+  }
+
+  await page.goto(`/dashboard/works/${workId}`);
+  await expect(
+    page.getByRole("heading", { name: "Shots that need a call" }),
+  ).toBeVisible();
+  // The footage is on the page, not replaced by an error. Its neighbours are
+  // shown too, because that is the context for judging whether to keep it.
+  await expect(page.locator("video")).toHaveCount(2);
+  await expect(page.getByText("Something else entirely.")).toBeVisible();
+  await expect(page.getByText("One pass and it is done.")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Regenerate shot/ }),
+  ).toHaveCount(1);
+
+  await page.getByRole("button", { name: "Keep this take" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Shots that need a call" }),
+  ).toBeHidden();
+
+  const verify = postgres(process.env.DATABASE_URL!, { max: 1 });
+  try {
+    const takes = await verify`
+      select s.position, t.status, t.words from ugc_work_segments s
+      join ugc_work_takes t on t.id = s."activeTakeId"
+      where s."workId" = ${workId} order by s.position
+    `;
+    // A kept take keeps its footage but drops the evidence, so composition
+    // cannot time the approved line against words nobody said.
+    expect(takes).toMatchObject([
+      { position: 0, status: "ready", words: [] },
+      { position: 1, status: "ready" },
+    ]);
+  } finally {
+    await verify.end({ timeout: 5 });
+  }
 });

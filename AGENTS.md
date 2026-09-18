@@ -8,16 +8,20 @@ This file is the single source of truth for repository-specific agent instructio
 VibeSKU Clips produces one short product video at a time for shoppable
 feeds. An operator chooses a product, the system reads its material into
 verifiable facts, and a guided work moves through script and video, with an
-optional reviewed storyboard, while a person confirms each expensive step. Every work appears in one list
+optional reviewed storyboard, while a person confirms each expensive step. A
+work may also start from a reference video the operator supplies: the system
+reads that piece into a blueprint of what it does, and the script is written to
+rebuild that structure for this product. Every work appears in one list
 from creation through completion, where a finished video can be downloaded.
 
 Two rules run through the whole codebase and are worth internalising before
 changing anything:
 
-- **Duration is fixed; frame settings are selected per work.** Every clip is 15
-  seconds. Aspect ratio is `9:16` or `16:9`; resolution is provider-dependent.
-  `CLIP_SPEC` in `src/lib/ugc/constants.ts` defines the fixed timing constraints,
-  while each `ugc_works` row stores its frame settings.
+- **Duration and frame settings are selected per work.** Clips can be 15, 30,
+  45, 60, 90, or 120 seconds. Each script beat is an independently generated
+  3–15 second shot. Aspect ratio is `9:16` or `16:9`; resolution is
+  provider-dependent. `CLIP_SPEC` defines shot constraints and `ugc_works`
+  stores duration, audio mode, and frame settings.
   Also: interface language and clip language are separate settings, and language
   is separate from market. Do not collapse them.
 
@@ -87,7 +91,7 @@ pnpm stripe:sync-products
 - AI: Vercel AI SDK v7 agent loop over any OpenAI-compatible endpoint (`LLM_API_KEY`/`LLM_BASE_URL`), tools and skills registered in `src/lib/ai`, feature-gated by `SITE_CONFIG.features.ai` (see `docs/ai-agent.md`)
 - Product import: Firecrawl `product`, `images`, and `markdown` extraction, called only from the Worker (`FIRECRAWL_*`)
 - Media generation: Prism (`PRISM_*`) for images; video selected by `VIDEO_GENERATION_PROVIDER` (`prism` or `lk666`), with H3 on both providers and Seedance 2.0/2.5 on lk666, called only from the Worker
-- Durable jobs: pg-boss with a task-run outbox (`src/lib/jobs`, `src/lib/tasks`)
+- Durable jobs: pg-boss with a task-run outbox (`src/lib/jobs`, `src/lib/tasks`); a separate render worker runs FFmpeg/ffprobe
 - Content: Content Collections plus repository-managed Markdown
 - Localization: `next-intl`
 
@@ -105,6 +109,8 @@ pnpm stripe:sync-products
 - UGC domain logic (QC and render prompts): `src/lib/ugc`
 - UGC server actions and queries: `src/lib/ugc/actions.ts`, `src/lib/ugc/queries.ts`
 - Stepped single-clip flow: `src/lib/ugc/works.ts`, `src/lib/ugc/work-actions.ts`, `src/app/dashboard/works`
+- Reference reading and clone blueprints: `src/lib/ugc/blueprint.ts`, `src/lib/ugc/media/reference.ts`, `src/lib/ugc/reference-actions.ts`, `src/app/dashboard/references`
+- Script notation shared by captions, speech and the video prompt: `src/lib/ugc/script-notation.ts`
 - Background-run state shared by the product and work consoles: `src/lib/ugc/run-state.ts`
 - UGC job handlers: `src/lib/jobs/ugc`
 - Job queue, definitions, and worker environment: `src/lib/jobs`
@@ -125,15 +131,19 @@ pnpm stripe:sync-products
 
 ## 5. UGC Production Pipeline
 
-Five durable jobs are registered in `src/lib/jobs/catalog.ts`:
+Nine durable UGC jobs are registered in `src/lib/jobs/catalog.ts`:
 
-| Job                   | Handler                               | What it does                                                                                |
-| --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Imports source links through Firecrawl, extracts facts, then waits for review or more input |
-| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief, draws one reference image, and archives it                          |
-| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it  |
-| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands            |
-| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model          |
+| Job                     | Handler                                 | What it does                                                                                         |
+| ----------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `ugc.product.ingest`    | `src/lib/jobs/ugc/product-ingest.ts`    | Imports source links through Firecrawl, extracts facts, then waits for review or more input          |
+| `ugc.talent.generate`   | `src/lib/jobs/ugc/talent-generate.ts`   | Expands a talent brief, draws one reference image, and archives it                                   |
+| `ugc.reference.ingest`  | `src/lib/jobs/ugc/reference-ingest.ts`  | Render role: fetches or downloads a reference video, archives it, and samples it into stills         |
+| `ugc.reference.analyze` | `src/lib/jobs/ugc/reference-analyze.ts` | Transcribes the reference, reads stills and speech into a blueprint, then waits for review           |
+| `ugc.work.script`       | `src/lib/jobs/ugc/work-script.ts`       | Writes one script from the product, talent images and any clone blueprint, then waits for acceptance |
+| `ugc.work.storyboard`   | `src/lib/jobs/ugc/work-storyboard.ts`   | Draws one key frame per script beat, together, and archives each one as it lands                     |
+| `ugc.work.video`        | `src/lib/jobs/ugc/work-video.ts`        | Coordinates one task per shot and a versioned composition                                            |
+| `ugc.work.segment`      | `src/lib/jobs/ugc/work-segment.ts`      | Generates one shot, archives it, measures narration, and verifies the spoken line                    |
+| `ugc.work.compose`      | `src/lib/jobs/ugc/work-compose.ts`      | FFmpeg normalisation, measured subtitles, concatenation, and final archive                           |
 
 A **work** (`ugc_works`) runs one clip through `product -> script -> video` by
 default. Storyboard-guided works add a reviewed `storyboard` step before video.
@@ -164,6 +174,46 @@ Rules that are easy to break:
 - **Failure is terminal and visible.** An unreadable product becomes
   `needs_input`; exhausted task retries surface as a failed step with a retry
   action. A work never remains visually "running" after its task has failed.
+- **Never discard a shot that was already paid for.** A take whose audio does
+  not carry the approved line becomes `review`, not `failed`: it keeps its
+  archived video and the operator watches it and chooses to keep or reshoot
+  (`ShotReviewStep`, `acceptWorkTake`). Only a shot with no footage at all is a
+  failure. A kept take has its recognised words cleared, so composition leaves
+  it uncaptioned rather than timing the approved line against words nobody
+  said.
+- **A blueprint records what an event responds to, never when it happened.**
+  A clone has different words, a different performer and different timing, so
+  the reference's seconds are kept only for jumping back to check the reading.
+  Nothing on the generation path may read them.
+- **`yt-dlp` lives in the render image only.** Linked references are fetched by
+  the render worker; uploaded ones need no downloader. Its absence is reported
+  at boot and does not stop composition.
+- **A link to the video file is the reliable path.** `fetchLinkedVideo` fetches
+  a direct media URL with an ordinary request and falls back to the downloader
+  for platform pages, which routinely refuse a datacenter address. The site's
+  reason travels as a `ReferenceFetchFailure`, because "the platform refused"
+  and "this video was removed" call for different actions. Those signatures are
+  real downloader output; match only strings that have been captured, and pin
+  them in the test.
+- **A reading can be corrected but not invented.** An operator may reword or
+  remove anything in a blueprint, because the video is its evidence; nothing
+  may be added that the reading did not find. What a clip uses _instead_ of the
+  original's material is `ugc_works.cloneNotes`, per clip, so one reference can
+  seed a different rebuild for each product.
+- **Captions carry the approved script, never the transcript.** Recognition
+  supplies timing and nothing else (`src/lib/ugc/media/alignment.ts`). A
+  recognizer mangles brand and product names, and a burned-in subtitle cannot
+  be corrected later. Alignment is separate from the verdict on a take:
+  `speechMatchesScript` judges the whole text, because a recognizer that reports
+  Chinese in words rather than characters aligns perfectly with few exact pairs.
+- **Fail where it costs one shot.** Narration length is measured when it is
+  synthesised (`src/lib/ugc/media/audio.ts`), not at composition, and a beat's
+  line is estimated in seconds before the script is accepted
+  (`src/lib/ugc/speech-estimate.ts`). A check that only runs at the last step
+  discards every shot already paid for.
+- **The render worker proves its toolchain at start-up.** `probeMediaToolchain`
+  refuses to start a render role missing an encoder or filter composition uses,
+  rather than failing on the final burn-in after all generation is billed.
 
 ## 6. Engineering Rules
 
@@ -231,6 +281,20 @@ Rules that are easy to break:
 - Use next-intl rich-text tags for mixed text and React elements. Catalog tag names and call-site values must match exactly.
 - Use standard ICU `{name}` placeholders for primitive values and rich-text tags for React nodes. The compatibility adapter supports both forms.
 - Mark technical content that browsers should not translate with the standard `translate="no"` attribute.
+- A beat's `voiceover` may carry two optional annotations and nothing else:
+  `<display|spoken>` for wording that is read and said differently, and `||`
+  for a caption break the writer asked for. Resolve them with
+  `spokenText()` / `displayText()` at every boundary — speech synthesis, the
+  video prompt, duration estimates and recognition take the spoken side;
+  captions and anything shown to a person take the written side.
+- Three languages run through a clone and none substitutes for another: the
+  operator's interface language, the language the reference happens to speak,
+  and the clip's own spoken language. A blueprint is an explanation addressed
+  to the operator, so it is written in their interface language, with words
+  actually spoken in the reference quoted verbatim in the original. The clip's
+  script follows `ugc_works.locale`. A worker has no request to read a locale
+  from, so anything it generates in the operator's language must have that
+  language recorded on the row first (`ugc_references.readingLocale`).
 - Do not branch copy with locale conditionals or pass raw external error text to the UI.
 - Prefer full-sentence messages over concatenated fragments.
 - Prefer controlled UI message codes over raw strings in state for transient feedback such as payment status errors and checkout results; render the final localized message in JSX at the boundary.
@@ -258,7 +322,26 @@ Rules that are easy to break:
 - Use `pnpm db:generate` to create migration files that will be committed and shared across staging and production.
 - Use `pnpm db:migrate` to apply committed migrations to whichever database is selected by `DATABASE_URL`.
 - Do not split migration history by environment. Environment differences belong in deployment configuration, not in separate SQL trees.
-- In CI/CD, run migrations as a dedicated one-shot release step, not on every app process startup.
+- **The Worker migrates at boot; the Web process never does.** `scripts/worker.ts`
+  calls `migrateDatabase` (`src/database/migrate.ts`) before it claims a queue,
+  so a release moves the schema from inside the deployment network with the
+  credentials that process already holds — no CI secret and no publicly
+  reachable database port. A failure exits the container, which is the signal a
+  broken release should give — except a database that is merely not reachable
+  yet, which is retried for a bounded 20 seconds because a pod can start ahead
+  of its own DNS entry. This replaced a rule requiring a CI-only one-shot
+  step: that rule left staging with no lawful way to migrate at all, because its
+  only alternative was opening the database to the internet.
+- Migration is safe to attempt from more than one process. Drizzle records each
+  file and applies a batch in one transaction, and `migrateDatabase` holds a
+  PostgreSQL advisory lock, so the general and render workers may boot in any
+  order and a repeat boot is a no-op.
+- `pnpm db:migrate` runs that same function, so a migration applied by hand, by
+  CI, or by a deploying container is the identical operation. The release
+  workflow keeps its explicit step for production, where moving the schema
+  before any worker rolls is still worth doing deliberately.
+- The runtime image ships `src/database/migrations`; a worker that cannot read
+  its SQL cannot migrate.
 - Keep schema, queries, and types aligned when data models change.
 
 ## 10. Production Promotion
@@ -271,7 +354,8 @@ Rules that are easy to break:
   updates `prod`. Do not push or merge directly into `prod`.
 - Resolve the default branch dynamically in release automation. The current
   branch is `main`, but forks may use `master` or another name.
-- The release workflow verifies Quality for the exact default-branch SHA and runs production migrations as a dedicated step before updating `prod`. Configure the `production` environment database secrets before releasing.
+- CI runs only on pull requests into the default branch and on release tags. Ordinary pushes do not run Quality.
+- The release workflow runs Quality on the tagged commit, then production migrations as a dedicated step, before updating `prod`. Configure the `production` environment database secrets before releasing.
 
 ## 11. Testing and Verification
 

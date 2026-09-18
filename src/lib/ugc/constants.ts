@@ -1,10 +1,13 @@
-/** The fixed timing and speech constraints shared by every clip. */
+/** Timing constraints for a work and each independently generated shot. */
 export const CLIP_SPEC = {
   durationSeconds: 15,
+  durations: [15, 30, 45, 60, 90, 120],
+  minSegmentSeconds: 3,
+  maxSegmentSeconds: 15,
   /** Tolerance either side of the target duration before a clip is rejected. */
   durationToleranceMs: 700,
-  /** Roughly the number of spoken characters that fit in the target duration. */
-  voiceoverBudget: { latin: 210, cjk: 90 },
+  /** How far synthesised narration may overrun the shot that has to hold it. */
+  narrationToleranceMs: 150,
 } as const;
 
 export const SUPPORTED_LOCALES = [
@@ -17,13 +20,51 @@ export const SUPPORTED_LOCALES = [
 ] as const;
 export type ContentLocale = (typeof SUPPORTED_LOCALES)[number];
 
-/** Locales whose voiceover budget is counted in characters rather than words. */
-const CJK_LOCALES = new Set<string>(["zh-Hans", "ja", "ko"]);
+/**
+ * What to call each language when instructing a model. A locale code is an
+ * identifier, not a word a model reliably understands, so speech synthesis and
+ * the video prompt both ask by name.
+ */
+export const LANGUAGE_NAMES: Record<ContentLocale, string> = {
+  en: "English",
+  es: "Spanish",
+  pt: "Portuguese",
+  ja: "Japanese",
+  ko: "Korean",
+  "zh-Hans": "Chinese",
+};
 
-export function voiceoverBudgetFor(locale: string): number {
-  return CJK_LOCALES.has(locale)
-    ? CLIP_SPEC.voiceoverBudget.cjk
-    : CLIP_SPEC.voiceoverBudget.latin;
+export const AUDIO_MODES = ["native", "tts"] as const;
+export type AudioMode = (typeof AUDIO_MODES)[number];
+
+/** Older approved scripts may use fractional beats; providers receive whole seconds. */
+export function shotDurationSeconds(beat: {
+  start: number;
+  end: number;
+}): number {
+  return Math.round(beat.end) - Math.round(beat.start);
+}
+
+export function beatsCoverDuration(
+  beats: readonly { start: number; end: number }[],
+  durationSeconds: number,
+): boolean {
+  return (
+    beats.length >=
+      Math.max(2, Math.ceil(durationSeconds / CLIP_SPEC.maxSegmentSeconds)) &&
+    beats.length <= Math.ceil(durationSeconds / CLIP_SPEC.minSegmentSeconds) &&
+    beats.every(
+      (beat, index) =>
+        Number.isFinite(beat.start) &&
+        Number.isFinite(beat.end) &&
+        beat.end - beat.start >= CLIP_SPEC.minSegmentSeconds &&
+        beat.end - beat.start <= CLIP_SPEC.maxSegmentSeconds &&
+        shotDurationSeconds(beat) >= CLIP_SPEC.minSegmentSeconds &&
+        shotDurationSeconds(beat) <= CLIP_SPEC.maxSegmentSeconds &&
+        Math.abs(beat.start - (index === 0 ? 0 : beats[index - 1]!.end)) < 0.01,
+    ) &&
+    Math.abs(beats.at(-1)!.end - durationSeconds) < 0.01
+  );
 }
 
 export const SUPPORTED_MARKETS = [

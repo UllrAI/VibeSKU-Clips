@@ -1,0 +1,1 @@
+ALTER TABLE "ugc_references" ADD COLUMN "readingLocale" text DEFAULT 'en' NOT NULL;

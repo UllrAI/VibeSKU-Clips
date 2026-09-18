@@ -10,6 +10,7 @@ const MESSAGE_KEYS: Record<string, string> = {
   work_needs_frames: "ugc_error_work_needs_frames",
   work_already_rendered: "ugc_error_work_already_rendered",
   work_busy: "ugc_error_work_busy",
+  reference_busy: "ugc_error_reference_busy",
 };
 
 /**
@@ -59,6 +60,18 @@ const JOB_FAILURE_KEYS: Record<string, string> = {
   LK666_UNAVAILABLE: "ugc_work_failure_lk666_unavailable",
   VIDEO_PROVIDER_TASK_INVALID: "ugc_work_failure_incomplete",
   QUEUE_JOB_TERMINATED: "ugc_work_failure_terminated",
+  REFERENCE_MISSING: "ugc_error_not_found",
+  REFERENCE_NO_SOURCE: "ugc_error_not_found",
+  REFERENCE_FETCH_PLATFORM_REFUSED: "ugc_reference_failure_refused",
+  REFERENCE_FETCH_UNAVAILABLE: "ugc_reference_failure_gone",
+  REFERENCE_FETCH_REGION_BLOCKED: "ugc_reference_failure_region",
+  REFERENCE_FETCH_TOO_LARGE: "ugc_reference_failure_too_large",
+  REFERENCE_FETCH_UNSUPPORTED_SITE: "ugc_reference_failure_unsupported_site",
+  REFERENCE_FETCH_UNREADABLE: "ugc_reference_failure_unreadable",
+  REFERENCE_DURATION_UNSUPPORTED: "ugc_reference_failure_duration",
+  REFERENCE_NOT_INGESTED: "ugc_reference_failure_not_read",
+  REFERENCE_ASR_TIMEOUT: "ugc_reference_failure_asr_timeout",
+  SPEECH_NOT_CONFIGURED: "ugc_reference_failure_speech_config",
 };
 
 export function jobFailureKey(code: string | null): string {

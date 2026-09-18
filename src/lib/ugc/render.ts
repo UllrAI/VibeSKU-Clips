@@ -1,6 +1,11 @@
-import { CLIP_SPEC, DEFAULT_VIDEO_SETTINGS } from "./constants";
-import type { VideoAspectRatio, VideoMode } from "./constants";
-import { TEMPLATE_BRIEFS } from "./templates";
+import {
+  type ContentLocale,
+  DEFAULT_VIDEO_SETTINGS,
+  LANGUAGE_NAMES,
+  shotDurationSeconds,
+} from "./constants";
+import { spokenText } from "./script-notation";
+import type { VideoAspectRatio } from "./constants";
 import type { ScriptBeat } from "./types";
 import type { ScriptTemplate } from "./constants";
 import type { ClipStorage } from "./storage";
@@ -16,36 +21,6 @@ export interface RenderSubject {
 
 function frameDescription(aspectRatio: VideoAspectRatio): string {
   return `${aspectRatio === "9:16" ? "Portrait" : "Landscape"} ${aspectRatio}`;
-}
-
-/**
- * The opening frame is generated first and then handed to the video model as
- * the first frame, which is what keeps the performer and the product looking
- * the same throughout the finished clip.
- */
-export function buildCoverPrompt(
-  subject: RenderSubject,
-  firstBeat: ScriptBeat | undefined,
-  productionPrompt?: string | null,
-  aspectRatio: VideoAspectRatio = DEFAULT_VIDEO_SETTINGS.aspectRatio,
-): string {
-  return [
-    `${frameDescription(aspectRatio)} opening frame for a user-generated product video.`,
-    productionPrompt
-      ? `Production direction:\n${productionPrompt.slice(0, 20_000)}`
-      : "",
-    `Product: ${subject.productName}. ${subject.appearance}`,
-    firstBeat
-      ? `This frame only: ${firstBeat.shot}. ${firstBeat.action}. Camera: ${firstBeat.camera ?? "natural handheld phone framing"}.`
-      : "",
-    subject.talentPrompt
-      ? `Performer: ${subject.talentPrompt}. Match the supplied reference image.`
-      : "Product-led frame with hands only, no recognisable face.",
-    `Setting: an ordinary home or street scene that reads as ${subject.market}.`,
-    "No added on-screen text, subtitles, interface overlays, or watermarks. Preserve authentic branding and label text on the product itself.",
-  ]
-    .filter(Boolean)
-    .join("\n");
 }
 
 /**
@@ -81,7 +56,27 @@ export function buildFramePrompt(
     .join("\n");
 }
 
-const DIRECTION_PREFIX = "Follow this approved production direction exactly:\n";
+/**
+ * What the provider is told about sound. A beat carries a line or it does not,
+ * and saying "speak this: no speech in this shot" is an instruction to read
+ * that sentence aloud, which is how silent beats came back talking.
+ */
+function speechDirection(
+  audioMode: "native" | "tts",
+  beat: ScriptBeat,
+  locale: string,
+): string {
+  if (audioMode === "tts")
+    return "Do not show speaking or lip movement. The final edit will add separate narration. Generate only natural scene ambience.";
+  const line = spokenText(beat.voiceover).trim();
+  if (!line)
+    return "Nobody speaks in this shot. No voice and no lip movement, natural scene ambience only.";
+  const language = LANGUAGE_NAMES[locale as ContentLocale] ?? locale;
+  return `The performer says this in ${language}, word for word and nothing else: ${line}`;
+}
+
+const CONTINUITY_PREFIX =
+  "Global production direction for continuity only; its total duration and other beats do not apply to this shot: ";
 
 /** Providers count characters, not UTF-16 units, so cut on code points. */
 function fitCharacters(text: string, limit: number): string {
@@ -95,85 +90,52 @@ function characterCount(lines: string[]): number {
   return Array.from(lines.join("\n")).length;
 }
 
-/**
- * The whole clip as one provider request, built to the provider's own cap.
- *
- * The beat list is the contract — what happens when, and what is said word for
- * word — and the closing line is what keeps captions and fake shopping UI out
- * of the frame. The production direction is context around both, so it is the
- * part that gives way when the prompt runs long. Truncating the assembled text
- * instead would drop exactly the instructions that matter, and do it silently.
- */
-export function buildVideoPrompt(
+/** One self-contained provider request, with continuity cues but only one timed action. */
+export function buildSegmentVideoPrompt(
   subject: RenderSubject,
   beats: ScriptBeat[],
-  productionPrompt: string | null | undefined,
-  settings: {
-    videoMode: VideoMode;
-    aspectRatio: VideoAspectRatio;
-  },
+  position: number,
+  productionPrompt: string | null,
+  audioMode: "native" | "tts",
+  aspectRatio: VideoAspectRatio,
   maxCharacters: number,
 ): string {
-  const brief = TEMPLATE_BRIEFS[subject.template];
+  const beat = beats[position]!;
+  const duration = shotDurationSeconds(beat);
   const opening = [
-    `A ${CLIP_SPEC.durationSeconds}-second ${frameDescription(settings.aspectRatio).toLowerCase()} user-generated product video shot on a phone.`,
-    `Format: ${brief.structure}`,
-    settings.videoMode === "one_take"
-      ? "Film this as one continuous take with no cuts, transitions, or scene changes. Use natural camera movement to connect every beat."
-      : "Use the supplied storyboard images as the visual reference for each beat.",
-    `Delivery: ${brief.voice} Spoken in ${subject.locale} for the ${subject.market} market.`,
+    `Generate shot ${position + 1} of ${beats.length}, lasting exactly ${duration} seconds, for a ${frameDescription(aspectRatio)} product video.`,
+    "This is one shot only. Keep the same adult performer, product, clothing, room, lighting, and camera character as the other shots.",
     `Product: ${subject.productName}. ${subject.appearance}`,
+    subject.talentPrompt
+      ? `Performer: ${subject.talentPrompt}`
+      : "Product-led shot with no recognisable face.",
   ];
   const instructions = [
-    subject.talentPrompt
-      ? `Keep the performer identical to the first frame: ${subject.talentPrompt}`
-      : "Keep the product identical to the first frame.",
-    "Beats:",
-    "The approved beat list below overrides any conflicting timing, action, camera, or dialogue wording inside the production direction.",
-    ...beats.map(
-      (beat) =>
-        `${beat.start.toFixed(1)}-${beat.end.toFixed(1)}s | shot: ${beat.shot} | visual: ${beat.action} | camera: ${beat.camera ?? "natural handheld phone movement"} | exact dialogue: ${beat.voiceover || "none"}`,
-    ),
-    "No burned-in captions, no on-screen buttons, no fake shopping widgets, no watermark. Authentic product packaging and brand text must remain unchanged.",
-  ];
+    position > 0 ? `Previous shot context: ${beats[position - 1]!.action}` : "",
+    position + 1 < beats.length
+      ? `Next shot context: ${beats[position + 1]!.action}`
+      : "",
+    `Current shot: ${beat.shot}. Action: ${beat.action}. Camera: ${beat.camera ?? "natural handheld phone camera"}.`,
+    speechDirection(audioMode, beat, subject.locale),
+    "Do not add captions, titles, buttons, fake shopping UI, or watermarks. Preserve authentic product branding.",
+  ].filter(Boolean);
 
+  // Providers cap the prompt, and truncating the assembled text would cut the
+  // shot's own direction off the end. The global direction is the only part
+  // that is context rather than instruction, so it is what gives way.
   const room =
     maxCharacters -
     characterCount([...opening, ...instructions]) -
-    Array.from(DIRECTION_PREFIX).length -
+    Array.from(CONTINUITY_PREFIX).length -
     2;
-  const direction = fitCharacters(productionPrompt ?? "", room);
+  const continuity = fitCharacters(productionPrompt ?? "", room);
 
   return [
     ...opening,
-    direction ? `${DIRECTION_PREFIX}${direction}` : "",
+    continuity ? `${CONTINUITY_PREFIX}${continuity}` : "",
     ...instructions,
   ]
     .filter(Boolean)
-    .join("\n");
-}
-
-function formatTimestamp(seconds: number): string {
-  const clamped = Math.max(0, seconds);
-  const hours = String(Math.floor(clamped / 3600)).padStart(2, "0");
-  const minutes = String(Math.floor((clamped % 3600) / 60)).padStart(2, "0");
-  const secs = String(Math.floor(clamped % 60)).padStart(2, "0");
-  const millis = String(Math.round((clamped % 1) * 1000)).padStart(3, "0");
-  return `${hours}:${minutes}:${secs},${millis}`;
-}
-
-/** Subtitles are authored from the locked beats, never transcribed back. */
-export function buildSubtitleTrack(beats: ScriptBeat[]): string {
-  return beats
-    .filter((beat) => beat.voiceover.trim().length > 0)
-    .map((beat, index) =>
-      [
-        String(index + 1),
-        `${formatTimestamp(beat.start)} --> ${formatTimestamp(beat.end)}`,
-        beat.voiceover.trim(),
-        "",
-      ].join("\n"),
-    )
     .join("\n");
 }
 
@@ -219,22 +181,6 @@ export async function archiveRemoteAsset(input: {
       response.headers.get("content-type")?.split(";")[0] ||
       ASSET_CONTENT_TYPES[input.kind],
     body,
-  });
-  return record.url;
-}
-
-export async function archiveSubtitleTrack(input: {
-  storeFile: ClipStorage;
-  userId: string;
-  reference: string;
-  content: string;
-}): Promise<string> {
-  const record = await input.storeFile({
-    userId: input.userId,
-    identity: `${input.reference}:subtitle`,
-    fileName: `${input.reference}.srt`,
-    contentType: "text/plain",
-    body: Buffer.from(input.content, "utf8"),
   });
   return record.url;
 }

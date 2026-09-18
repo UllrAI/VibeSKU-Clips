@@ -7,14 +7,19 @@ on:
 
 permissions:
   contents: write
-  actions: read
 
 concurrency:
   group: promote-release-to-prod
   cancel-in-progress: false
 
 jobs:
+  # Ordinary pushes to main do not run Quality, so the tagged commit is
+  # validated here, exactly as it will be promoted.
+  quality:
+    uses: ./.github/workflows/quality.yml
+
   promote:
+    needs: quality
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     environment: production
@@ -41,22 +46,6 @@ jobs:
 
           if [ "${release_version}" != "${package_version}" ]; then
             echo "::error::${RELEASE_TAG} does not match package.json version ${package_version}"
-            exit 1
-          fi
-
-      - name: Verify the exact release commit passed Quality
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PRIMARY_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -euo pipefail
-          release_commit="$(git rev-parse HEAD)"
-          git merge-base --is-ancestor "$release_commit" "origin/$PRIMARY_BRANCH"
-          passed="$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/quality.yml/runs" \
-            -f head_sha="$release_commit" -f branch="$PRIMARY_BRANCH" -f event=push \
-            --jq '.workflow_runs | sort_by(.run_number) | last | .conclusion == "success"')"
-          if [ "$passed" != "true" ]; then
-            echo "::error::The release commit has not passed Quality on the default branch."
             exit 1
           fi
 
