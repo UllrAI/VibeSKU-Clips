@@ -14,7 +14,3 @@ export function talentScopeKey(userId: string, talentId: string): string {
 export function workScopeKey(userId: string, workId: string): string {
   return `user:${userId}:work:${workId}`;
 }
-
-export function referenceScopeKey(userId: string, referenceId: string): string {
-  return `user:${userId}:reference:${referenceId}`;
-}

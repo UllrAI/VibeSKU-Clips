@@ -10,9 +10,6 @@ import {
 } from "@/components/ui/select";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
-  CLIP_SPEC,
-  AUDIO_MODES,
-  type AudioMode,
   VIDEO_ASPECT_RATIOS,
   type VideoAspectRatio,
   type VideoMode,
@@ -32,10 +29,6 @@ export function VideoSettings({
   resolution,
   onResolutionChange,
   modelOptions,
-  durationSeconds,
-  onDurationChange,
-  audioMode,
-  onAudioModeChange,
 }: {
   videoMode: VideoMode;
   onVideoModeChange: (value: VideoMode) => void;
@@ -46,10 +39,6 @@ export function VideoSettings({
   resolution: VideoResolution;
   onResolutionChange: (value: VideoResolution) => void;
   modelOptions: readonly VideoModelOption[];
-  durationSeconds: number;
-  onDurationChange: (value: number) => void;
-  audioMode: AudioMode;
-  onAudioModeChange: (value: AudioMode) => void;
 }) {
   const { t } = useTranslation();
   const resolutionOptions =
@@ -153,45 +142,6 @@ export function VideoSettings({
               {resolutionOptions.map((value) => (
                 <SelectItem key={value} value={value}>
                   {value === "2k" ? "2K" : value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="work-duration">{t("ugc_video_duration")}</Label>
-          <Select
-            value={String(durationSeconds)}
-            onValueChange={(value) => onDurationChange(Number(value))}
-          >
-            <SelectTrigger id="work-duration" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CLIP_SPEC.durations.map((value) => (
-                <SelectItem key={value} value={String(value)}>
-                  {value}s
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="work-audio-mode">{t("ugc_video_audio_mode")}</Label>
-          <Select
-            value={audioMode}
-            onValueChange={(value) => onAudioModeChange(value as AudioMode)}
-          >
-            <SelectTrigger id="work-audio-mode" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {AUDIO_MODES.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {t(`ugc_video_audio_${value}`)}
                 </SelectItem>
               ))}
             </SelectContent>

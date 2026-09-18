@@ -129,7 +129,6 @@ services:
       DB_POOL_SIZE: 5
       JOB_DB_POOL_SIZE: 3
       WORKER_GRACEFUL_TIMEOUT_MS: 30000
-      WORKER_ROLE: general
       R2_ENDPOINT: ${R2_ENDPOINT:?Set R2_ENDPOINT}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?Set R2_ACCESS_KEY_ID}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?Set R2_SECRET_ACCESS_KEY}
@@ -143,38 +142,6 @@ services:
       PRISM_API_SECRET: ${PRISM_API_SECRET:-}
       LK666_API_BASE_URL: ${LK666_API_BASE_URL:-https://api.lk888.ai}
       LK666_API_KEY: ${LK666_API_KEY:-}
-      DASHSCOPE_API_KEY: ${DASHSCOPE_API_KEY:-}
-      DASHSCOPE_ASR_BASE_URL: ${DASHSCOPE_ASR_BASE_URL:-https://dashscope.aliyuncs.com/api/v1}
-      DASHSCOPE_TTS_BASE_URL: ${DASHSCOPE_TTS_BASE_URL:-https://dashscope.aliyuncs.com/api/v1}
-      DASHSCOPE_TTS_VOICE: ${DASHSCOPE_TTS_VOICE:-Cherry}
-    depends_on:
-      migrate:
-        condition: service_completed_successfully
-    networks:
-      - vibesku-network
-
-  render-worker:
-    image: vibesku-clips-render:local
-    build:
-      context: ..
-      dockerfile: docker/Dockerfile
-      args:
-        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?Set NEXT_PUBLIC_APP_URL}
-        RENDER_WORKER: "1"
-    command: ["node", "dist/worker/worker.mjs"]
-    restart: unless-stopped
-    stop_grace_period: 45s
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vibesku_clips
-      JOB_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vibesku_clips
-      DB_POOL_SIZE: 2
-      JOB_DB_POOL_SIZE: 2
-      WORKER_ROLE: render
-      WORKER_GRACEFUL_TIMEOUT_MS: 30000
-      R2_ENDPOINT: ${R2_ENDPOINT:?Set R2_ENDPOINT}
-      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:?Set R2_ACCESS_KEY_ID}
-      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:?Set R2_SECRET_ACCESS_KEY}
-      R2_BUCKET_NAME: ${R2_BUCKET_NAME:?Set R2_BUCKET_NAME}
     depends_on:
       migrate:
         condition: service_completed_successfully

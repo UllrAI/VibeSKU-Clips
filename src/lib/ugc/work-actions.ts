@@ -7,14 +7,10 @@ import { z } from "zod";
 import { db } from "@/database";
 import {
   ugcProducts,
-  ugcReferences,
   ugcClips,
   ugcScripts,
   ugcTalents,
   ugcWorkFrames,
-  ugcWorkSegments,
-  ugcWorkTakes,
-  ugcCompositions,
   ugcWorks,
 } from "@/database/ugc";
 import { taskRuns } from "@/database/schema";
@@ -27,9 +23,6 @@ import { serverJobQueue } from "@/lib/jobs/server";
 import { createBackgroundTask } from "@/lib/tasks/service";
 import {
   SCRIPT_TEMPLATES,
-  AUDIO_MODES,
-  CLIP_SPEC,
-  beatsCoverDuration,
   VIDEO_ASPECT_RATIOS,
   VIDEO_MODELS,
   VIDEO_MODES,
@@ -37,15 +30,12 @@ import {
 } from "./constants";
 import { isActiveVideoConfiguration } from "./media/video-provider";
 import { talentScopeKey, workScopeKey } from "./scope";
-import { voiceoverFitsBeats } from "./speech-estimate";
 import type { ActionResult } from "./types";
 
 const setupSchema = z
   .object({
     productId: z.uuid(),
     talentId: z.uuid().optional(),
-    referenceId: z.uuid().optional(),
-    cloneNotes: z.string().trim().max(2000).optional(),
     randomTalent: z.boolean().default(false),
     locale: z.string().trim().min(2).max(16),
     market: z.string().trim().min(2).max(16),
@@ -54,13 +44,6 @@ const setupSchema = z
     videoModel: z.enum(VIDEO_MODELS).default("h3"),
     aspectRatio: z.enum(VIDEO_ASPECT_RATIOS).default("9:16"),
     resolution: z.enum(VIDEO_RESOLUTIONS).default("720p"),
-    durationSeconds: z
-      .number()
-      .int()
-      .refine((value) =>
-        CLIP_SPEC.durations.some((duration) => duration === value),
-      ),
-    audioMode: z.enum(AUDIO_MODES).default("native"),
   })
   .refine(
     (input) => isActiveVideoConfiguration(input.videoModel, input.resolution),
@@ -128,34 +111,6 @@ async function resolveTalentSelection(
       ),
     );
   return talent?.id;
-}
-
-/**
- * A blueprint the operator has actually read. Picking one is also the moment
- * it stops being something to look at and becomes something in use, which is
- * the only honest difference between the two states in the library.
- */
-async function resolveReferenceSelection(
-  userId: string,
-  referenceId: string | undefined,
-): Promise<string | null | undefined> {
-  if (!referenceId) return null;
-  const [reference] = await db
-    .select({ id: ugcReferences.id })
-    .from(ugcReferences)
-    .where(
-      and(
-        eq(ugcReferences.id, referenceId),
-        eq(ugcReferences.userId, userId),
-        isNotNull(ugcReferences.blueprint),
-      ),
-    );
-  if (!reference) return undefined;
-  await db
-    .update(ugcReferences)
-    .set({ status: "ready", updatedAt: new Date() })
-    .where(eq(ugcReferences.id, reference.id));
-  return reference.id;
 }
 
 async function loadOwnedWork(workId: string, userId: string) {
@@ -238,12 +193,6 @@ export async function createWork(
     );
   if (!product) return { ok: false, code: "not_found" };
 
-  const referenceId = await resolveReferenceSelection(
-    user.id,
-    parsed.data.referenceId,
-  );
-  if (referenceId === undefined) return { ok: false, code: "not_found" };
-
   const talentId = await resolveTalentSelection(user.id, parsed.data);
   if (talentId === undefined) return { ok: false, code: "not_found" };
 
@@ -254,8 +203,6 @@ export async function createWork(
       title: product.name,
       productId: parsed.data.productId,
       talentId,
-      referenceId,
-      cloneNotes: parsed.data.cloneNotes || null,
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,
@@ -263,8 +210,6 @@ export async function createWork(
       videoModel: parsed.data.videoModel,
       aspectRatio: parsed.data.aspectRatio,
       resolution: parsed.data.resolution,
-      durationSeconds: parsed.data.durationSeconds,
-      audioMode: parsed.data.audioMode,
     })
     .returning();
 
@@ -318,7 +263,6 @@ export async function setWorkSetup(
     .set({
       productId: parsed.data.productId,
       talentId,
-      cloneNotes: parsed.data.cloneNotes || null,
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,
@@ -326,8 +270,6 @@ export async function setWorkSetup(
       videoModel: parsed.data.videoModel,
       aspectRatio: parsed.data.aspectRatio,
       resolution: parsed.data.resolution,
-      durationSeconds: parsed.data.durationSeconds,
-      audioMode: parsed.data.audioMode,
       step: "product",
       stepStatus: "idle",
       updatedAt: new Date(),
@@ -388,8 +330,8 @@ const scriptEditSchema = z.object({
   beats: z
     .array(
       z.object({
-        start: z.number().min(0).max(120),
-        end: z.number().min(0).max(120),
+        start: z.number().min(0).max(15),
+        end: z.number().min(0).max(15),
         shot: z.string().trim().min(1).max(2000),
         action: z.string().trim().min(1).max(4000),
         camera: z.string().trim().min(1).max(2000),
@@ -397,7 +339,16 @@ const scriptEditSchema = z.object({
       }),
     )
     .min(2)
-    .max(40),
+    .max(6)
+    .refine(
+      (beats) =>
+        beats.every(
+          (beat, index) =>
+            beat.end > beat.start &&
+            Math.abs(beat.start - (index === 0 ? 0 : beats[index - 1]!.end)) <
+              0.01,
+        ) && Math.abs(beats.at(-1)!.end - 15) < 0.01,
+    ),
   captions: z.array(z.string().trim().min(1).max(200)).max(8),
   publishCaption: z.string().trim().max(500).optional(),
 });
@@ -414,13 +365,6 @@ export async function saveWorkScript(
   const work = await loadOwnedWork(workId, user.id);
   if (!work?.scriptId) return { ok: false, code: "not_found" };
   if (work.clipId) return { ok: false, code: "work_already_rendered" };
-  if (await hasActiveTask(work)) return { ok: false, code: "work_busy" };
-  if (
-    !beatsCoverDuration(parsed.data.beats, work.durationSeconds) ||
-    !voiceoverFitsBeats(parsed.data.beats, work.locale)
-  ) {
-    return { ok: false, code: "invalid_input" };
-  }
 
   const voiceover = parsed.data.beats
     .map((beat) => beat.voiceover)
@@ -430,64 +374,21 @@ export async function saveWorkScript(
     return { ok: false, code: "invalid_input" };
   }
 
-  const [sourceScript] = await db
-    .select()
-    .from(ugcScripts)
+  await db
+    .update(ugcScripts)
+    .set({
+      title: parsed.data.title,
+      hook: parsed.data.hook,
+      productionPrompt: parsed.data.productionPrompt || null,
+      beats: parsed.data.beats,
+      voiceover,
+      captions: parsed.data.captions,
+      publishCaption: parsed.data.publishCaption || null,
+      updatedAt: new Date(),
+    })
     .where(
       and(eq(ugcScripts.id, work.scriptId), eq(ugcScripts.userId, user.id)),
     );
-  if (!sourceScript) return { ok: false, code: "not_found" };
-  const [existingSegment] = await db
-    .select({ id: ugcWorkSegments.id })
-    .from(ugcWorkSegments)
-    .where(
-      and(
-        eq(ugcWorkSegments.workId, work.id),
-        eq(ugcWorkSegments.scriptId, work.scriptId),
-      ),
-    )
-    .limit(1);
-  const nextScript = {
-    title: parsed.data.title,
-    hook: parsed.data.hook,
-    productionPrompt: parsed.data.productionPrompt || null,
-    beats: parsed.data.beats,
-    voiceover,
-    captions: parsed.data.captions,
-    publishCaption: parsed.data.publishCaption || null,
-    updatedAt: new Date(),
-  };
-  if (existingSegment) {
-    const [created] = await db
-      .insert(ugcScripts)
-      .values({
-        ...nextScript,
-        userId: sourceScript.userId,
-        productId: sourceScript.productId,
-        template: sourceScript.template,
-        locale: sourceScript.locale,
-        market: sourceScript.market,
-        disclosure: sourceScript.disclosure,
-        status: "draft",
-        version: sourceScript.version + 1,
-        parentId: sourceScript.id,
-      })
-      .returning({ id: ugcScripts.id });
-    await db
-      .update(ugcWorks)
-      .set({
-        scriptId: created.id,
-        step: "script",
-        stepStatus: "review",
-        updatedAt: new Date(),
-      })
-      .where(eq(ugcWorks.id, work.id));
-  } else {
-    await db
-      .update(ugcScripts)
-      .set(nextScript)
-      .where(eq(ugcScripts.id, work.scriptId));
-  }
 
   revalidatePath(`/dashboard/works/${workId}`);
   return { ok: true, id: workId };
@@ -534,12 +435,7 @@ async function enqueueVideo(
     .select({ value: max(ugcClips.version) })
     .from(ugcClips)
     .where(eq(ugcClips.workId, work.id));
-  const [latestComposition] = await db
-    .select({ value: max(ugcCompositions.version) })
-    .from(ugcCompositions)
-    .where(eq(ugcCompositions.workId, work.id));
-  const version =
-    Math.max(latestVersion?.value ?? 0, latestComposition?.value ?? 0) + 1;
+  const version = (latestVersion?.value ?? 0) + 1;
   const { taskRun } = await createBackgroundTask({
     db,
     definition: workVideoJob,
@@ -588,17 +484,6 @@ export async function startWorkFromScript(
   const work = await loadOwnedWork(workId, user.id);
   if (!work?.scriptId) return { ok: false, code: "not_found" };
   if (work.clipId) return { ok: false, code: "work_already_rendered" };
-  if (await hasActiveTask(work)) return { ok: false, code: "work_busy" };
-  const [script] = await db
-    .select({ beats: ugcScripts.beats })
-    .from(ugcScripts)
-    .where(eq(ugcScripts.id, work.scriptId));
-  if (
-    !script ||
-    !beatsCoverDuration(script.beats, work.durationSeconds) ||
-    !voiceoverFitsBeats(script.beats, work.locale)
-  )
-    return { ok: false, code: "invalid_input" };
 
   await db
     .update(ugcScripts)
@@ -705,19 +590,7 @@ export async function startWorkVideo(workId: string): Promise<ActionResult> {
   const user = await requireAuth();
   const work = await loadOwnedWork(workId, user.id);
   if (!work) return { ok: false, code: "not_found" };
-  if (!work.scriptId) return { ok: false, code: "not_found" };
   if (work.clipId) return { ok: false, code: "work_already_rendered" };
-  if (await hasActiveTask(work)) return { ok: false, code: "work_busy" };
-  const [script] = await db
-    .select({ beats: ugcScripts.beats })
-    .from(ugcScripts)
-    .where(eq(ugcScripts.id, work.scriptId));
-  if (
-    !script ||
-    !beatsCoverDuration(script.beats, work.durationSeconds) ||
-    !voiceoverFitsBeats(script.beats, work.locale)
-  )
-    return { ok: false, code: "invalid_input" };
 
   if (work.videoMode === "storyboard") {
     const ready = await db
@@ -732,122 +605,12 @@ export async function startWorkVideo(workId: string): Promise<ActionResult> {
     if (ready.length === 0) return { ok: false, code: "work_needs_frames" };
   }
 
-  const segments = await db
-    .select()
-    .from(ugcWorkSegments)
-    .where(
-      and(
-        eq(ugcWorkSegments.workId, work.id),
-        eq(ugcWorkSegments.scriptId, work.scriptId),
-      ),
-    );
-  for (const segment of segments) {
-    if (!segment.activeTakeId) continue;
-    const [take] = await db
-      .select()
-      .from(ugcWorkTakes)
-      .where(eq(ugcWorkTakes.id, segment.activeTakeId));
-    if (!take || take.status === "ready") continue;
-    const [run] = take.taskRunId
-      ? await db
-          .select({ status: taskRuns.status })
-          .from(taskRuns)
-          .where(eq(taskRuns.id, take.taskRunId))
-      : [];
-    if (
-      take.status !== "failed" &&
-      run?.status !== "failed" &&
-      run?.status !== "cancelled"
-    )
-      continue;
-    const [latestTake] = await db
-      .select({ value: max(ugcWorkTakes.version) })
-      .from(ugcWorkTakes)
-      .where(eq(ugcWorkTakes.segmentId, segment.id));
-    const [replacement] = await db
-      .insert(ugcWorkTakes)
-      .values({ segmentId: segment.id, version: (latestTake?.value ?? 0) + 1 })
-      .returning();
-    await db
-      .update(ugcWorkSegments)
-      .set({ activeTakeId: replacement.id })
-      .where(eq(ugcWorkSegments.id, segment.id));
-  }
-
   await enqueueVideo(work, user.id, {
-    idempotencyKey: `${work.id}:video:${crypto.randomUUID()}`,
+    idempotencyKey: `${work.id}:video-version:${work.clipId}:${work.taskRunId ?? "initial"}`,
   });
 
   revalidatePath(`/dashboard/works/${workId}`);
   return { ok: true, id: workId };
-}
-
-/** Replace one shot while retaining all other approved takes and final versions. */
-export async function regenerateWorkSegment(
-  segmentId: string,
-): Promise<ActionResult> {
-  const user = await requireAuth();
-  const [row] = await db
-    .select({ segment: ugcWorkSegments, work: ugcWorks })
-    .from(ugcWorkSegments)
-    .innerJoin(ugcWorks, eq(ugcWorks.id, ugcWorkSegments.workId))
-    .where(
-      and(eq(ugcWorkSegments.id, segmentId), eq(ugcWorks.userId, user.id)),
-    );
-  if (!row || row.segment.scriptId !== row.work.scriptId)
-    return { ok: false, code: "not_found" };
-  if (await hasActiveTask(row.work)) return { ok: false, code: "work_busy" };
-  const [latest] = await db
-    .select({ value: max(ugcWorkTakes.version) })
-    .from(ugcWorkTakes)
-    .where(eq(ugcWorkTakes.segmentId, segmentId));
-  const [take] = await db
-    .insert(ugcWorkTakes)
-    .values({ segmentId, version: (latest?.value ?? 0) + 1 })
-    .returning();
-  await db
-    .update(ugcWorkSegments)
-    .set({ activeTakeId: take.id })
-    .where(eq(ugcWorkSegments.id, segmentId));
-  await enqueueVideo(row.work, user.id, {
-    idempotencyKey: `${row.work.id}:partial:${take.id}`,
-  });
-  revalidatePath(`/dashboard/works/${row.work.id}`);
-  return { ok: true, id: take.id };
-}
-
-/**
- * Keeps a shot whose spoken audio did not match the script. The footage is
- * already generated and billed, and the operator has watched it; the evidence
- * is dropped with it, so composition leaves this shot uncaptioned rather than
- * timing the approved line against words nobody said.
- */
-export async function acceptWorkTake(takeId: string): Promise<ActionResult> {
-  const user = await requireAuth();
-  const [row] = await db
-    .select({ take: ugcWorkTakes, work: ugcWorks })
-    .from(ugcWorkTakes)
-    .innerJoin(ugcWorkSegments, eq(ugcWorkSegments.id, ugcWorkTakes.segmentId))
-    .innerJoin(ugcWorks, eq(ugcWorks.id, ugcWorkSegments.workId))
-    .where(and(eq(ugcWorkTakes.id, takeId), eq(ugcWorks.userId, user.id)));
-  if (!row || row.take.status !== "review" || !row.take.videoUrl)
-    return { ok: false, code: "not_found" };
-  if (await hasActiveTask(row.work)) return { ok: false, code: "work_busy" };
-
-  await db
-    .update(ugcWorkTakes)
-    .set({
-      status: "ready",
-      words: [],
-      failureReason: null,
-      updatedAt: new Date(),
-    })
-    .where(eq(ugcWorkTakes.id, row.take.id));
-  await enqueueVideo(row.work, user.id, {
-    idempotencyKey: `${row.work.id}:accept:${row.take.id}`,
-  });
-  revalidatePath(`/dashboard/works/${row.work.id}`);
-  return { ok: true, id: row.take.id };
 }
 
 /** Renders another take while keeping every completed version available. */
@@ -872,12 +635,6 @@ export async function startNewWorkVideoVersion(
   const work = await loadOwnedWork(workId, user.id);
   if (!work?.clipId || !work.scriptId) {
     return { ok: false, code: "not_found" };
-  }
-  if (
-    !beatsCoverDuration(parsed.data.script.beats, work.durationSeconds) ||
-    !voiceoverFitsBeats(parsed.data.script.beats, work.locale)
-  ) {
-    return { ok: false, code: "invalid_input" };
   }
   if (await hasActiveTask(work)) {
     return { ok: false, code: "work_busy" };

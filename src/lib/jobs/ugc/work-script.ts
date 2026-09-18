@@ -1,12 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import {
-  ugcProducts,
-  ugcReferences,
-  ugcScripts,
-  ugcTalents,
-  ugcWorks,
-} from "@/database/ugc";
+import { ugcProducts, ugcScripts, ugcTalents, ugcWorks } from "@/database/ugc";
 import { composeScript } from "@/lib/ugc/authoring";
 import { CREDIT_COST, type ScriptTemplate } from "@/lib/ugc/constants";
 import { defaultDisclosure } from "@/lib/ugc/templates";
@@ -65,21 +59,11 @@ export const workScriptJob = defineJob(
           .where(eq(ugcTalents.id, work.talentId))
       : [];
 
-    // A clone rebuilds a blueprint. A reference whose reading failed carries
-    // none, and the work is then written the ordinary way rather than stopped.
-    const [reference] = work.referenceId
-      ? await db
-          .select({ blueprint: ugcReferences.blueprint })
-          .from(ugcReferences)
-          .where(eq(ugcReferences.id, work.referenceId))
-      : [];
-
     await context.updateProgress({ step: "writing_script" });
     context.log("work_script_started", {
       workId: work.id,
       productId: product.id,
       talentId: talent?.id ?? null,
-      referenceId: work.referenceId,
     });
 
     const productImageUrls = await resolveReferenceUrls(
@@ -105,9 +89,6 @@ export const workScriptJob = defineJob(
       talentNote: talent
         ? (talent.prompt ?? talent.description ?? talent.name)
         : null,
-      durationSeconds: work.durationSeconds,
-      blueprint: reference?.blueprint ?? null,
-      cloneNotes: work.cloneNotes,
     });
 
     const [script] = await db

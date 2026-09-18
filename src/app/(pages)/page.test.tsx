@@ -67,7 +67,7 @@ describe("HomePage", () => {
     await expect(generateMetadata()).resolves.toMatchObject({
       title: "VibeSKU Clips",
       description:
-        "Turn one product link or photo into a localised UGC clip with selectable length, visible checkpoints, and review.",
+        "Turn one product link or photo into a localised 15-second UGC clip, with visible checkpoints, quality checks, and review.",
     });
 
     expect(mockCreateLocalizedAlternates).toHaveBeenCalledWith("/", "en");

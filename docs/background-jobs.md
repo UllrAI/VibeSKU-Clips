@@ -15,13 +15,12 @@ pnpm worker:start     # production artifact
 pnpm worker:smoke     # production import smoke test
 ```
 
-`pnpm build` includes the Worker artifact. Production runs Web, general Worker,
-and render Worker as separate services. The render image alone contains FFmpeg:
+`pnpm build` includes the Worker artifact. Production runs Web and Worker as
+separate services from the same image:
 
 ```text
 Web:    node server.js
 Worker: node dist/worker/worker.mjs
-Render: WORKER_ROLE=render node dist/worker/worker.mjs
 ```
 
 ## Defining and creating work
@@ -49,16 +48,12 @@ what decides how much of a user's work runs at once. `src/lib/ugc/scope.ts`
 serialises product reading per product and guided generation per work.
 
 The production jobs — `ugc.product.ingest`, `ugc.work.script`,
-`ugc.work.storyboard`, `ugc.work.video`, `ugc.work.segment`, and
-`ugc.work.compose` — live in `src/lib/jobs/ugc`.
+`ugc.work.storyboard`, and `ugc.work.video` — live in `src/lib/jobs/ugc`.
 Product ingestion uses Firecrawl's product, image, and markdown outputs, then
 stores the extracted facts in a review state until an operator confirms them.
 Storyboard and video jobs use `scheduleContinuation` to poll long provider work
-without holding a claim open. The video coordinator creates one independent
-segment task per script beat; the dedicated render worker owns composition.
-Provider video and speech files are archived into R2 before their expiring URLs
-disappear. Segment and composition scopes stay separate from the parent work
-scope so the parent can wait without blocking its children.
+without holding a claim open, and archive every finished asset into R2 before
+the step is shown for review.
 
 ## State and cancellation
 

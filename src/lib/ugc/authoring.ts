@@ -3,13 +3,11 @@ import { z } from "zod";
 import { getAuthoringModel } from "./model";
 import {
   CLIP_SPEC,
-  beatsCoverDuration,
+  voiceoverBudgetFor,
   type ScriptTemplate,
   type VideoAspectRatio,
 } from "./constants";
-import { voiceoverFitsBeats } from "./speech-estimate";
 import type {
-  CloneBlueprint,
   ProductBrief,
   ProductFacts,
   ScriptDraft,
@@ -86,37 +84,40 @@ export async function composeTalentImagePrompt(
   return object.prompt;
 }
 
-const scriptSchema = (durationSeconds: number, locale: string) =>
-  z
-    .object({
-      title: z.string().min(1),
-      hook: z.string().min(1),
-      productionPrompt: z.string().min(1).max(30_000),
-      beats: z
-        .array(
-          z.object({
-            start: z.number().min(0),
-            end: z.number().min(0),
-            shot: z.string().min(1),
-            action: z.string().min(1),
-            camera: z.string().min(1),
-            voiceover: z.string(),
-          }),
-        )
-        .min(
-          Math.max(2, Math.ceil(durationSeconds / CLIP_SPEC.maxSegmentSeconds)),
-        )
-        .max(Math.ceil(durationSeconds / CLIP_SPEC.minSegmentSeconds))
-        .refine(
-          (beats) =>
-            beatsCoverDuration(beats, durationSeconds) &&
-            voiceoverFitsBeats(beats, locale),
-        ),
-      captions: z.array(z.string().min(1)).max(8),
-      publishCaption: z.string().min(1),
-      disclosure: z.string().min(1),
-    })
-    .refine((script) => script.beats.some((beat) => beat.voiceover.trim()));
+function timingsCoverClip(beats: { start: number; end: number }[]): boolean {
+  return (
+    beats.every(
+      (beat, index) =>
+        beat.end > beat.start &&
+        Math.abs(beat.start - (index === 0 ? 0 : beats[index - 1]!.end)) < 0.01,
+    ) && Math.abs(beats.at(-1)!.end - CLIP_SPEC.durationSeconds) < 0.01
+  );
+}
+
+const scriptSchema = z
+  .object({
+    title: z.string().min(1),
+    hook: z.string().min(1),
+    productionPrompt: z.string().min(1).max(30_000),
+    beats: z
+      .array(
+        z.object({
+          start: z.number().min(0),
+          end: z.number().min(0),
+          shot: z.string().min(1),
+          action: z.string().min(1),
+          camera: z.string().min(1),
+          voiceover: z.string(),
+        }),
+      )
+      .min(2)
+      .max(6)
+      .refine(timingsCoverClip),
+    captions: z.array(z.string().min(1)).max(8),
+    publishCaption: z.string().min(1),
+    disclosure: z.string().min(1),
+  })
+  .refine((script) => script.beats.some((beat) => beat.voiceover.trim()));
 
 export interface AnalyzeProductInput {
   name: string;
@@ -145,7 +146,7 @@ export async function analyzeProduct(
       "Only record what the supplied material supports. Never infer a price, a certification, a health claim, or a comparison.",
       "Do not record prices, discounts, availability, inventory, or storefront state; they are not part of this product record.",
       "When prior analysis is supplied, revise it rather than merely repeating it. Operator feedback is a requested correction or clarification; apply it wherever the supplied material supports it and call out unresolved conflicts under `missing`.",
-      "List anything a short product video would need but the material does not provide under `missing`.",
+      "List anything a 15-second product video would need but the material does not provide under `missing`.",
       "`sources` names where each group of facts came from, for example 'product page' or 'uploaded image 2'.",
       "Write every field in the language of the supplied material.",
     ].join("\n"),
@@ -216,46 +217,6 @@ export interface ComposeScriptInput {
   productImageUrls?: string[];
   talentImageUrl?: string | null;
   talentNote?: string | null;
-  durationSeconds?: number;
-  /** Set when this clip rebuilds a reference video rather than starting blank. */
-  blueprint?: CloneBlueprint | null;
-  /** What this clip puts in place of the original's own material. */
-  cloneNotes?: string | null;
-}
-
-/**
- * The blueprint as instructions rather than as a record.
- *
- * Only the relationships travel. Source seconds are left behind on purpose:
- * this clip has its own duration and its own performer, and copying the
- * reference's clock is the one way a clone reliably goes wrong.
- */
-function blueprintDirection(blueprint: CloneBlueprint): string {
-  return [
-    `Reference format: ${blueprint.format}.`,
-    `How its opening earns attention: ${blueprint.hook}`,
-    `Why the piece works: ${blueprint.whyItWorks}`,
-    "Rebuild these beats in order, in proportion to this clip's own duration:",
-    ...blueprint.beats.map((beat, index) => {
-      const events = beat.events
-        .map(
-          (event) =>
-            `${event.kind} answering "${event.respondsTo}" — ${event.purpose}`,
-        )
-        .join("; ");
-      return [
-        `${index + 1}. [${beat.role}] ${beat.purpose}`,
-        beat.spokenGist ? ` Said here, in gist: ${beat.spokenGist}.` : "",
-        events ? ` Visual events: ${events}.` : "",
-      ].join("");
-    }),
-    `Preserve: ${blueprint.preserve.join("; ")}`,
-    blueprint.redesign.length
-      ? `Belongs to the original and must be replaced with something of this product's own: ${blueprint.redesign.join("; ")}`
-      : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
 }
 
 function templateBrief(template: ScriptTemplate): ScriptTemplateBrief {
@@ -263,13 +224,13 @@ function templateBrief(template: ScriptTemplate): ScriptTemplateBrief {
 }
 
 /**
- * Writes a script divided into independently generatable timed shots.
+ * Writes one localised 15-second script from the confirmed product facts.
  */
 export async function composeScript(
   input: ComposeScriptInput,
 ): Promise<ScriptDraft> {
   const brief = templateBrief(input.template);
-  const durationSeconds = input.durationSeconds ?? CLIP_SPEC.durationSeconds;
+  const budget = voiceoverBudgetFor(input.locale);
 
   const productImages = input.productImageUrls ?? [];
   const brief_ = [
@@ -300,36 +261,22 @@ export async function composeScript(
 
   const { object } = await generateObject({
     model: getAuthoringModel(),
-    schema: scriptSchema(durationSeconds, input.locale),
+    schema: scriptSchema,
     system: [
-      `You are both the writer and director of a ${durationSeconds}-second ${input.aspectRatio} UGC video. Produce a shootable production script, not a marketing outline.`,
+      `You are both the writer and director of a ${CLIP_SPEC.durationSeconds}-second ${input.aspectRatio} UGC video. Produce a shootable production script, not a marketing outline.`,
       `Compose every shot and camera move for a ${input.aspectRatio === "9:16" ? "portrait" : "landscape"} frame. Record the ${input.aspectRatio} ratio in OUTPUT SETTINGS.`,
       `Structure: ${brief.structure}`,
       `Voice: ${brief.voice}`,
       `Write every field in ${input.locale} for the ${input.market} market, using local wording, units, and everyday scenes.`,
-      `The whole spoken track must be sayable in ${durationSeconds} seconds at an unhurried, natural pace; do not pad it.`,
-      "Each beat's spoken line must also fit its own duration. Keep narration concise and leave natural pauses.",
+      `The spoken track must fit ${budget} units of speech; do not pad it.`,
       "Use only the supplied product facts. Never state a price, a discount, a medical or safety claim, or a consumer testimonial.",
       "The result must feel like a real person filming themselves, not a polished advert. Use concrete micro-behaviour, natural pauses, imperfect phone-camera movement, focus changes, material physics, and ambient sound appropriate to the scene.",
       "Keep one coherent performer identity, product appearance, wardrobe, location, lighting condition, and time of day from first frame to last. Product packaging, colours, proportions, finish, texture, and any supported label text must remain accurate and legible when shown.",
       "The `productionPrompt` must be a complete standalone prompt with clearly labelled sections: OVERVIEW, TALENT, PRODUCT, LOCATION, LIGHTING, FRAMING, PERFORMANCE, VOICE, REALISM, PHYSICS, CAMERA CHARACTER, STYLE, AUDIO, OUTPUT SETTINGS, POSITIVE LOCKS, and NEGATIVE CONSTRAINTS. Include the exact timed beats and dialogue inside it as well.",
-      `Each beat is a separately generated shot lasting ${CLIP_SPEC.minSegmentSeconds}-${CLIP_SPEC.maxSegmentSeconds} seconds. Use at least ${Math.max(2, Math.ceil(durationSeconds / CLIP_SPEC.maxSegmentSeconds))} beats. Every beat must include a visible action, shot, camera movement, and exact spoken dialogue. Keep locations, identity and product consistent across shots.`,
+      "Each beat must say exactly what is visible in `action`, how it is framed in `shot`, how the phone/camera moves and focuses in `camera`, and the exact spoken dialogue in `voiceover`. Use three to five beats unless the supplied direction explicitly needs another count.",
       "Captions must be short enough to sit clear of the platform buttons and the product card, and must never describe a tappable shopping element.",
       "`disclosure` is a single sentence stating that the clip is AI-generated content, written in the same language.",
       "Beat timings must cover the full duration without gaps or overlap.",
-      "Two optional annotations may appear inside `voiceover`, and nowhere else. Write `<GT-7000|gee tee seven thousand>` when the caption should read one way and the performer should say it another; use it for model numbers, units, abbreviations and invented product words, and keep the spoken side to a few short words. Write `||` where a caption must break, at the end of a complete thought. Use both sparingly; plain text is correct when neither is needed.",
-      input.blueprint
-        ? "A reference blueprint is supplied. Rebuild what it describes for this product: the same roles in the same order, the same reasons for each visual event, the same shape of argument. Nothing else carries over."
-        : "",
-      input.blueprint
-        ? "Write every line from this product's own facts. Do not reuse the reference's wording, its examples, its jokes, or its claims, and never mention the reference or its creator."
-        : "",
-      input.blueprint
-        ? "The reference's own timings do not apply. Fit the rebuilt structure to this clip's duration, dropping or merging beats when it is shorter."
-        : "",
-      input.blueprint && input.cloneNotes
-        ? "The operator has said what this clip puts in place of the original's own material. Their instruction outranks the blueprint's description wherever the two disagree."
-        : "",
       productImages.length || input.talentImageUrl
         ? "Reference images are attached and labelled. Use every attached image as evidence. Do not invent a colour, finish, label, facial feature, garment, or component that is not visible or recorded in the facts."
         : "",
@@ -341,22 +288,6 @@ export async function composeScript(
         role: "user",
         content: [
           { type: "text" as const, text: brief_ },
-          ...(input.blueprint
-            ? [
-                {
-                  type: "text" as const,
-                  text: `Reference blueprint to rebuild:\n${blueprintDirection(input.blueprint)}`,
-                },
-              ]
-            : []),
-          ...(input.blueprint && input.cloneNotes
-            ? [
-                {
-                  type: "text" as const,
-                  text: `What this clip puts in place of the original's own material:\n${input.cloneNotes}`,
-                },
-              ]
-            : []),
           ...(input.talentImageUrl
             ? [
                 { type: "text" as const, text: "Talent reference image" },

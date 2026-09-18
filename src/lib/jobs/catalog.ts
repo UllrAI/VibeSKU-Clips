@@ -4,11 +4,7 @@ import { exampleProcessJob } from "./example";
 import { workScriptJob } from "./ugc/work-script";
 import { workStoryboardJob } from "./ugc/work-storyboard";
 import { workVideoJob } from "./ugc/work-video";
-import { workSegmentJob } from "./ugc/work-segment";
-import { workComposeJob } from "./ugc/work-compose";
 import { productIngestJob } from "./ugc/product-ingest";
-import { referenceIngestJob } from "./ugc/reference-ingest";
-import { referenceAnalyzeJob } from "./ugc/reference-analyze";
 import { talentGenerateJob } from "./ugc/talent-generate";
 
 /**
@@ -21,14 +17,10 @@ export type AnyJobDefinition = JobDefinition<string, z.ZodType, unknown>;
 export const jobDefinitions = [
   exampleProcessJob,
   productIngestJob,
-  referenceIngestJob,
-  referenceAnalyzeJob,
   talentGenerateJob,
   workScriptJob,
   workStoryboardJob,
   workVideoJob,
-  workSegmentJob,
-  workComposeJob,
 ] as unknown as readonly AnyJobDefinition[];
 
 export const deadLetterQueueName = "jobs.dead-letter";

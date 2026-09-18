@@ -38,11 +38,9 @@ ENV NODE_ENV=production
 USER node
 CMD ["pnpm", "db:migrate"]
 
-# Shared production runtime
-FROM node:22-alpine AS runtime
+# Production image
+FROM node:22-alpine AS runner
 WORKDIR /app
-
-ARG RENDER_WORKER=0
 
 LABEL "language"="nodejs"
 LABEL "framework"="next.js"
@@ -51,15 +49,12 @@ ENV NODE_ENV=production
 
 # Create non-root user
 RUN apk add --no-cache su-exec \
-  && if [ "$RENDER_WORKER" = "1" ]; then apk add --no-cache ffmpeg fontconfig font-noto-cjk yt-dlp; fi \
   && addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
 # Copy the self-contained application prepared by the build script
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/dist/worker ./dist/worker
-# The worker applies migrations at boot, so the SQL files ship with it.
-COPY --from=builder /app/src/database/migrations ./src/database/migrations
 COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/docker-entrypoint
 
 # Set correct permissions
@@ -76,6 +71,3 @@ ENV HOSTNAME="0.0.0.0"
 # Start the application
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["node", "server.js"]
-
-# RENDER_WORKER=1 installs media tools only in the render service image.
-FROM runtime AS runner

@@ -15,11 +15,6 @@ const workerEnvSchema = z.object({
   ...modelEnvFields,
   ...scrapingEnvFields,
   ...mediaEnvFields,
-  WORKER_ROLE: z.enum(["general", "render"]).default("general"),
-  DASHSCOPE_API_KEY: z.string().trim().min(1).optional(),
-  DASHSCOPE_ASR_BASE_URL: z.url().optional(),
-  DASHSCOPE_TTS_BASE_URL: z.url().optional(),
-  DASHSCOPE_TTS_VOICE: z.string().trim().min(1).optional(),
 });
 
 export function loadWorkerEnv(source: NodeJS.ProcessEnv = process.env) {

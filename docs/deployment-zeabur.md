@@ -29,11 +29,11 @@ Pushing a `release/vX.Y.Z` tag matching the version in `package.json` triggers
 [`promote-release-to-prod.yml`](../.github/workflows/promote-release-to-prod.yml).
 The workflow reads the repository's default branch from GitHub instead of
 hardcoding its name, verifies that the tagged commit is reachable from that
-branch, runs Quality on that exact commit, applies production migrations once,
-and then moves `prod` to the tagged commit with a guarded force push.
+branch, verifies successful Quality for that exact SHA, applies production migrations
+once, and then moves `prod` to the tagged commit with a guarded force push.
 The current default branch is `main`.
 
-The workflow requests `contents: write`; the repository's default workflow
+The workflow requests `contents: write` and `actions: read`; the repository's default workflow
 permissions can remain read-only. Organization policies and any ruleset
 protecting `prod` must still permit this workflow to update the branch.
 
@@ -48,7 +48,6 @@ the platform store rather than in this file:
 | Zeabur project    | Project and environment IDs                           |
 | Web               | Service ID, branch `prod`                             |
 | Worker            | Service ID, branch `prod`                             |
-| Render worker     | Service ID, branch `prod`                             |
 | Public origin     | The HTTPS origin compiled into `NEXT_PUBLIC_APP_URL`  |
 | Database          | Zeabur `postgresql` service ID and major version      |
 | User storage      | Private R2 bucket holding uploads and generated clips |
@@ -60,14 +59,9 @@ and HTTP readiness at `/api/ready`. Worker overrides the image arguments with
 application drain timeout. Check `worker_ready`, queue metrics, and shutdown
 logs to verify Worker health; Web readiness does not cover it.
 
-The general Worker does product import and cloud provider jobs, so it needs more than Web does:
+The Worker does product import and media work, so it needs more than Web does:
 the same four R2 credentials and upload quotas, plus `LLM_API_KEY`,
-`FIRECRAWL_API_KEY`, the selected video provider credentials, and
-`DASHSCOPE_API_KEY`. AI narration uses Qwen3-TTS-Flash with the same API key;
-`DASHSCOPE_TTS_BASE_URL` can override its endpoint. The render worker needs PostgreSQL and R2 credentials
-and a Docker build with `RENDER_WORKER=1`; `WORKER_ROLE=render` makes it claim
-only composition tasks. It requires enough ephemeral disk for the source shots
-and final MP4, and CPU for FFmpeg.
+`FIRECRAWL_API_KEY`, and the `PRISM_*` credentials.
 A Worker without them accepts work and then fails its media steps.
 
 There is no additional always-on migration service: GitHub Actions uses the
@@ -108,7 +102,7 @@ For a separate queue database, `PRODUCTION_JOB_DATABASE_URL` must also be reacha
 from the release runner. A single database needs no such secret, so leave it
 unset unless the queue really lives elsewhere.
 
-For ordinary releases, the only manual Git operation after merging is
+For ordinary releases, the only manual Git operation after merge/Quality is
 pushing the version tag. Both Zeabur Git triggers watch `prod`; do not manually
 redeploy one service from `main` or override it with a static image tag.
 
@@ -137,9 +131,20 @@ tag and `suspendedAt` is cleared. Use **redeploy**, which builds current `prod`,
 rather than restarting an old image. Ordinary releases keep the services running
 and do not require this step.
 
-The repository ships no backup automation. Use Zeabur's paid automatic backups
-or a scheduled `pg_dump --format=custom` through the same restricted tunnel, and
-periodically restore a dump into a disposable database to prove it works.
+Zeabur automatic backups require a paid subscription. Instead,
+[`database-backup.yml`](../.github/workflows/database-backup.yml) runs daily at
+19:17 UTC (03:17 Asia/Shanghai) and supports manual dispatch. It takes a consistent
+PostgreSQL 17 custom-format dump through the same restricted tunnel and uploads
+it to a private R2 backup bucket. A bucket lifecycle rule expires `postgresql/`
+backups after 30 days. No public domain or `r2.dev` access is enabled.
+
+Set repository variable `PRODUCTION_BACKUP_ENABLED=true` and production environment
+variable `R2_BACKUP_BUCKET`. Store `R2_BACKUP_ENDPOINT`, `R2_BACKUP_ACCESS_KEY_ID`,
+and `R2_BACKUP_SECRET_ACCESS_KEY` as production environment secrets. Forks must
+configure these settings before enabling the schedule. Check failed Actions runs
+and periodically download a backup with authenticated S3 access and restore it
+into a disposable database. Daily dumps provide a recovery point of up to 24 hours;
+they are not point-in-time recovery.
 
 Generated clips, covers, and subtitle files live in R2, not in the database. A
 database restore brings back the manifest rows that point at those objects, so
@@ -166,7 +171,7 @@ named `main` or `master`:
    that branch, update the branch filter in `.github/workflows/quality.yml`;
    the promotion workflow itself needs no change.
 5. Configure the `production` environment database secrets and network access
-   from GitHub Actions, and keep `contents: write`. If `prod` is protected,
+   from GitHub Actions, and keep `contents: write` and `actions: read`. If `prod` is protected,
    allow this workflow to update it with a force-with-lease push.
 
 Treat `prod` as workflow-owned state: do not merge pull requests into it or push
@@ -176,12 +181,13 @@ it manually. Publish production changes only through `release/vX.Y.Z` tags.
 
 1. Update `package.json` to the next unused release version in a PR, revise the
    release notes, and merge only after review and green CI.
-2. Confirm both services still track the expected repository and `prod`, and
-   their variables match `.env.example`.
+2. Wait for Quality to pass on the exact merge commit on the default branch; a
+   successful PR run alone does not satisfy the release gate. Confirm both
+   services still track the expected repository and `prod`, and their variables
+   match `.env.example`.
 3. Configure the database secret and migration tunnel settings described above.
    Set `PRODUCTION_JOB_DATABASE_URL` only when queues use another database. The
-   release workflow runs Quality on the tagged commit, then `pnpm db:migrate`,
-   before promotion.
+   release workflow runs `pnpm db:migrate` after Quality verification and before promotion.
 4. Fetch the default branch, check out the verified merge commit, then create
    an annotated `release/vX.Y.Z` tag matching its `package.json` and push it:
 
@@ -262,20 +268,12 @@ node dist/worker/worker.mjs
 
 Do not wrap the command in `pnpm`; Node must receive SIGTERM directly. Configure
 the Worker with `DATABASE_URL`, optional `JOB_DATABASE_URL`,
-`JOB_DB_POOL_SIZE`, `WORKER_ROLE=general`, and the credentials required by its handlers. Set the
+`JOB_DB_POOL_SIZE`, and the credentials required by its handlers. Set the
 platform stop window above `WORKER_GRACEFUL_TIMEOUT_MS` (30 seconds by default).
 The Worker is a required always-on service whenever durable tasks are enabled,
 but its health is intentionally independent from Web readiness.
 
-Create a third Zeabur service for composition from the same repository and
-`docker/Dockerfile`. Set both `RENDER_WORKER=1` (build argument) and
-`WORKER_ROLE=render` (runtime environment), then use the same Node start command.
-Zeabur passes declared Dockerfile `ARG` values from service environment
-variables. The regular Web and general Worker images leave `RENDER_WORKER`
-unset, so only this image installs FFmpeg and fonts. Provide database and R2
-credentials, and do not expose an HTTP port or domain for this service.
-
-Run `pnpm db:migrate` before starting the runtime services. It applies committed
+Run `pnpm db:migrate` before starting either service. It applies committed
 Drizzle migrations, installs/upgrades the separate `pgboss` schema, and creates
 the declared workload queues. Web and Worker runtime connections disable schema
 migration, so their database roles do not need DDL permission. Drizzle is
