@@ -162,8 +162,8 @@ export const workStoryboardJob = defineJob(
       ? await resolveReferenceUrls(
           db,
           work.userId,
-          [talent?.imageUrl, ...product.images].filter((url): url is string =>
-            Boolean(url),
+          [talent?.imageUrl, talent?.fullBodyUrl, ...product.images].filter(
+            (url): url is string => Boolean(url),
           ),
         )
       : [];

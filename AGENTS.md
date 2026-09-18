@@ -164,6 +164,24 @@ Rules that are easy to break:
 - **Failure is terminal and visible.** An unreadable product becomes
   `needs_input`; exhausted task retries surface as a failed step with a retry
   action. A work never remains visually "running" after its task has failed.
+- **Every clip is anchored on a drawn frame.** A storyboard work has one per
+  beat; a one-take work draws a single opening frame inside `ugc.work.video`
+  before any video is billed (`ensureCoverFrame`). Without it the only visual
+  references are the product's own listing photos, and the model rebuilds their
+  backdrops, props and printed text into the clip. A new version redraws it,
+  because the frame describes the script it was drawn from.
+- **A reference photo is evidence, not a scene.** Every prompt that attaches
+  product images says so (`EVIDENCE_ONLY` in `src/lib/ugc/render.ts`), and at
+  most two are attached. They settle colour, finish and label text; they do not
+  settle where the clip is set.
+- **A format is its shot vocabulary.** `TEMPLATE_BRIEFS[...].shots` reaches the
+  writing model and is what separates a thing held in the hand from a thing
+  worn on the body. A new format without it frames like every other one.
+- **A talent is two images.** A portrait settles who the performer is; a
+  full-length shot settles how clothes fall on them, which is the only thing an
+  apparel clip is about. The second draw takes the first as its reference so
+  the face cannot drift, and a talent whose full-length draw fails stays usable
+  rather than failing outright.
 
 ## 6. Engineering Rules
 

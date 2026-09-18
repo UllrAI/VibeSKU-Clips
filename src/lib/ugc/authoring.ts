@@ -267,6 +267,9 @@ export async function composeScript(
       `Compose every shot and camera move for a ${input.aspectRatio === "9:16" ? "portrait" : "landscape"} frame. Record the ${input.aspectRatio} ratio in OUTPUT SETTINGS.`,
       `Structure: ${brief.structure}`,
       `Voice: ${brief.voice}`,
+      // The shot vocabulary is what separates a thing held in the hand from a
+      // thing worn on the body. Without it every format frames the same way.
+      `Compose the beats from this format's shot vocabulary, adapting each one to this product rather than repeating it word for word: ${brief.shots.join("; ")}`,
       `Write every field in ${input.locale} for the ${input.market} market, using local wording, units, and everyday scenes.`,
       `The spoken track must fit ${budget} units of speech; do not pad it.`,
       "Use only the supplied product facts. Never state a price, a discount, a medical or safety claim, or a consumer testimonial.",

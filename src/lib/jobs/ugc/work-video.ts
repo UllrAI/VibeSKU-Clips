@@ -22,10 +22,17 @@ import {
 } from "@/lib/ugc/media/video-provider";
 import { evaluateClipQuality } from "@/lib/ugc/qc";
 import {
+  createPrismRequestId,
+  getTask as getImageTask,
+  submitImage,
+} from "@/lib/ugc/media/prism";
+import {
   archiveRemoteAsset,
   archiveSubtitleTrack,
+  buildCoverPrompt,
   buildSubtitleTrack,
   buildVideoPrompt,
+  type RenderSubject,
 } from "@/lib/ugc/render";
 import {
   createClipStorage,
@@ -36,7 +43,11 @@ import {
 import { recordUsage } from "@/lib/ugc/usage";
 import type { ScriptBeat } from "@/lib/ugc/types";
 import { VIDEO_PROGRESS_STEP } from "@/lib/ugc/video-progress";
-import { defineJob, PermanentJobError } from "../definition";
+import {
+  defineJob,
+  type JobHandlerContext,
+  PermanentJobError,
+} from "../definition";
 
 const POLL_SECONDS = 15;
 const MAX_POLLS = 80;
@@ -64,6 +75,119 @@ function storage(db: AppDatabase): ClipStorage {
     }
     throw error;
   }
+}
+
+/**
+ * The opening frame for a one-take clip.
+ *
+ * A storyboard gives the video model a drawn anchor for every beat. One take
+ * has none, and what it is handed instead are the product's own listing
+ * photos — studio backdrops, unrelated props, text printed into the image —
+ * which it reads as scene references and rebuilds. Drawing one controlled
+ * frame first costs a single image against a far more expensive video, and it
+ * is what the finished clip's cover is taken from either way.
+ *
+ * Returns null while the frame is still being drawn; the caller polls.
+ */
+async function ensureCoverFrame(input: {
+  db: AppDatabase;
+  context: JobHandlerContext;
+  work: typeof ugcWorks.$inferSelect;
+  product: typeof ugcProducts.$inferSelect;
+  talent: typeof ugcTalents.$inferSelect | undefined;
+  subject: RenderSubject;
+  beats: ScriptBeat[];
+  productionPrompt: string | null;
+}): Promise<typeof ugcWorkFrames.$inferSelect | null> {
+  const { db, context, work } = input;
+  const [existing] = await db
+    .select()
+    .from(ugcWorkFrames)
+    .where(
+      and(eq(ugcWorkFrames.workId, work.id), eq(ugcWorkFrames.position, 0)),
+    );
+
+  const frame =
+    existing ??
+    (
+      await db
+        .insert(ugcWorkFrames)
+        .values({
+          workId: work.id,
+          position: 0,
+          prompt: buildCoverPrompt(
+            input.subject,
+            input.beats[0],
+            input.productionPrompt,
+            work.aspectRatio,
+          ),
+        })
+        .returning()
+    )[0];
+  if (!frame) throw new Error("The opening frame could not be initialized.");
+  if (frame.status === "ready" && frame.imageUrl) return frame;
+
+  if (!frame.providerTaskId) {
+    const references = await resolveReferenceUrls(
+      db,
+      work.userId,
+      [
+        input.talent?.imageUrl,
+        input.talent?.fullBodyUrl,
+        ...input.product.images.slice(0, 2),
+      ].filter((url): url is string => Boolean(url)),
+    );
+    const providerTaskId = await submitImage({
+      prompt: frame.prompt,
+      referenceUrls: references,
+      aspectRatio: work.aspectRatio,
+      requestId: createPrismRequestId(context.taskRunId, frame.id),
+    });
+    await db
+      .update(ugcWorkFrames)
+      .set({ providerTaskId, status: "generating", updatedAt: new Date() })
+      .where(eq(ugcWorkFrames.id, frame.id));
+    context.log("work_cover_submitted", { workId: work.id, providerTaskId });
+    return null;
+  }
+
+  const task = await getImageTask(frame.providerTaskId);
+  if (task.status === "pending") return null;
+  if (task.status === "failed" || !task.outputUrl) {
+    await db
+      .update(ugcWorkFrames)
+      .set({
+        status: "failed",
+        failureReason: task.errorMessage ?? "The opening frame failed.",
+        updatedAt: new Date(),
+      })
+      .where(eq(ugcWorkFrames.id, frame.id));
+    throw new PermanentJobError(
+      "UGC_COVER_FRAME_FAILED",
+      task.errorMessage ?? "The provider could not draw the opening frame.",
+    );
+  }
+
+  const imageUrl = await archiveRemoteAsset({
+    storeFile: storage(db),
+    userId: work.userId,
+    reference: `VW-${work.id.slice(0, 8)}-cover`,
+    kind: "cover",
+    sourceUrl: task.outputUrl,
+  });
+  const [ready] = await db
+    .update(ugcWorkFrames)
+    .set({ imageUrl, status: "ready", updatedAt: new Date() })
+    .where(eq(ugcWorkFrames.id, frame.id))
+    .returning();
+  await recordUsage(db, {
+    userId: work.userId,
+    kind: "render",
+    credits: CREDIT_COST.analysis,
+    note: `cover ${work.id.slice(0, 8)}`,
+  });
+  context.log("work_cover_finished", { workId: work.id });
+  return ready ?? null;
 }
 
 /**
@@ -158,6 +282,35 @@ export const workVideoJob = defineJob(
         : null,
     };
 
+    // One take has nothing drawn to anchor it, so its opening frame is drawn
+    // here before any video is paid for.
+    if (work.videoMode === "one_take" && frames.length === 0) {
+      const cover = await ensureCoverFrame({
+        db,
+        context,
+        work,
+        product,
+        talent,
+        subject,
+        beats,
+        productionPrompt: script.productionPrompt,
+      });
+      if (!cover) {
+        if (payload.polls >= MAX_POLLS) {
+          throw new PermanentJobError(
+            "UGC_RENDER_TIMEOUT",
+            "The provider did not finish the opening frame in time.",
+          );
+        }
+        await context.scheduleContinuation(
+          { ...payload, version, polls: payload.polls + 1 },
+          POLL_SECONDS,
+        );
+        return { drawingCover: true, polls: payload.polls + 1 };
+      }
+      frames.push(cover);
+    }
+
     if (!payload.providerTaskId) {
       const references = await resolveReferenceUrls(
         db,
@@ -165,7 +318,11 @@ export const workVideoJob = defineJob(
         [
           ...frames.map((frame) => frame.imageUrl),
           talent?.imageUrl,
-          ...product.images.slice(0, work.videoMode === "one_take" ? 8 : 2),
+          talent?.fullBodyUrl,
+          // Listing photos are evidence of what the product looks like, not
+          // scenes to rebuild. Two is enough to pin colour and finish; eight
+          // is an invitation to copy their backgrounds.
+          ...product.images.slice(0, 2),
         ].filter((url): url is string => Boolean(url)),
       );
       const providerTaskId = await submitVideo({
