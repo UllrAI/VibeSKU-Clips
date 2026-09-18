@@ -70,6 +70,8 @@ export interface ComposerReference {
   title: string;
   hook: string;
   aspectRatio: string | null;
+  /** What the reading says belongs to the original and has to be replaced. */
+  redesign: string[];
 }
 
 export function WorkComposer({
@@ -114,6 +116,7 @@ export function WorkComposer({
   const [resolution, setResolution] = useState<VideoResolution>("720p");
   const [durationSeconds, setDurationSeconds] = useState(15);
   const [audioMode, setAudioMode] = useState<AudioMode>("native");
+  const [cloneNotes, setCloneNotes] = useState("");
   const [locale, setLocale] = useState("en");
   const [market, setMarket] = useState("US");
 
@@ -162,6 +165,7 @@ export function WorkComposer({
       const work = await createWork({
         productId: id,
         referenceId: reference?.id,
+        cloneNotes: cloneNotes.trim() || undefined,
         talentId:
           talentId === NO_TALENT || talentId === RANDOM_TALENT
             ? undefined
@@ -208,6 +212,28 @@ export function WorkComposer({
             <p className="text-muted-foreground text-xs leading-relaxed">
               {reference.hook}
             </p>
+            {reference.redesign.length > 0 && (
+              <ul className="text-muted-foreground list-disc space-y-0.5 pt-1 pl-4 text-xs leading-relaxed">
+                {reference.redesign.map((item, index) => (
+                  <li key={index}>{item}</li>
+                ))}
+              </ul>
+            )}
+            <div className="space-y-1.5 pt-2">
+              <Label htmlFor="work-clone-notes" className="text-xs">
+                {t("ugc_work_clone_notes_label")}
+              </Label>
+              <Textarea
+                id="work-clone-notes"
+                value={cloneNotes}
+                onChange={(event) => setCloneNotes(event.target.value)}
+                rows={3}
+                placeholder={t("ugc_work_clone_notes_placeholder")}
+              />
+              <p className="text-muted-foreground text-xs">
+                {t("ugc_work_clone_notes_hint")}
+              </p>
+            </div>
           </div>
         )}
         <Tabs

@@ -3,7 +3,14 @@
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Film, Loader2, Play, RefreshCw, TriangleAlert } from "lucide-react";
+import {
+  Film,
+  Loader2,
+  Play,
+  RefreshCw,
+  SquarePen,
+  TriangleAlert,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +22,7 @@ import {
 } from "@/components/ugc/action-message";
 import { ReferenceStatusBadge } from "@/components/ugc/reference-status-badge";
 import { useReferenceState } from "@/hooks/use-reference-state";
+import { BlueprintEditor } from "./blueprint-editor";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import { retryReference } from "@/lib/ugc/reference-actions";
 import type { ReferenceRow, ReferenceState } from "@/lib/ugc/queries";
@@ -50,6 +58,7 @@ export function BlueprintReview({
   const state = useReferenceState(reference.id, initialState);
   const player = useRef<HTMLVideoElement>(null);
   const [activeBeat, setActiveBeat] = useState<number | null>(null);
+  const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const blueprint = reference.blueprint;
@@ -109,13 +118,25 @@ export function BlueprintReview({
                 </span>
               )}
             </div>
-            {blueprint && (
-              <Button asChild className="w-full">
-                <Link href={`/dashboard/works/new?referenceId=${reference.id}`}>
-                  <Film />
-                  {t("ugc_reference_build_from_blueprint")}
-                </Link>
-              </Button>
+            {blueprint && !editing && (
+              <div className="space-y-2">
+                <Button asChild className="w-full">
+                  <Link
+                    href={`/dashboard/works/new?referenceId=${reference.id}`}
+                  >
+                    <Film />
+                    {t("ugc_reference_build_from_blueprint")}
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setEditing(true)}
+                >
+                  <SquarePen />
+                  {t("ugc_blueprint_edit")}
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -167,7 +188,18 @@ export function BlueprintReview({
           </Alert>
         )}
 
-        {blueprint && (
+        {blueprint && editing && (
+          <BlueprintEditor
+            referenceId={reference.id}
+            blueprint={blueprint}
+            onDone={() => {
+              setEditing(false);
+              router.refresh();
+            }}
+          />
+        )}
+
+        {blueprint && !editing && (
           <>
             <Card>
               <CardHeader>

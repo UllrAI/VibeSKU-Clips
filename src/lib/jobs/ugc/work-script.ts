@@ -107,6 +107,7 @@ export const workScriptJob = defineJob(
         : null,
       durationSeconds: work.durationSeconds,
       blueprint: reference?.blueprint ?? null,
+      cloneNotes: work.cloneNotes,
     });
 
     const [script] = await db
