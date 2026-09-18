@@ -378,3 +378,24 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 **原因**：提示词是 `Speak exactly this line in ${locale}: ${spokenText(beat.voiceover) || "No speech in this shot."}`。`||` 的兜底值本意是占位，实际发给模型的整句话是"请一字不差地说出：这一拍没有台词"——模型照做了。同一行还把 `zh-Hans` 这样的 locale 代码当语言名传了出去。
 
 **正确做法**：有台词和没台词是两种指令，不是同一句话填不同的值（`speechDirection`）。给模型的语言要用语言名，locale→语言名只有一份（`LANGUAGE_NAMES`），TTS 和视频提示词共用。写提示词时，任何 `||` / `??` 兜底都要通读一遍拼出来的完整句子——占位符在字符串模板里会变成命令。
+
+### 丢掉 provider 的原话，就只能靠猜
+
+**现象**：镜头持续失败，日志里只有 `PRISM_REQUEST_REJECTED: The media generation provider returned HTTP 422.`。为了定位是哪个字段，只能拿 staging 凭证对着真实接口逐项试探——duration 3/8/15/0/-1、两种画幅、480p/720p/1080p、9 张参考图、presigned 形状的 URL、30KB 提示词，全部被接受，依然复现不出来。
+
+**原因**：`call()` 在 `!response.ok` 时直接丢掉响应体。而 Prism 每次都精确说明了是哪个字段：
+
+```json
+{
+  "detail": [
+    {
+      "loc": ["body", "resolution"],
+      "msg": "无效的分辨率: NOPE，可选值: ['480p','720p','1080p']"
+    }
+  ]
+}
+```
+
+一个只剩状态码的错误，等于把"provider 已经告诉你答案"变成了一次逆向工程。
+
+**正确做法**：refused 的响应体要读进错误消息（`rejectionDetail`，两个适配器共用，长度封顶）。顺带记下两件试探出来的事实：Prism 的 `request_id` 必须是合法 UUID（`/tasks/{id}` 路径同理，非 UUID 直接 422）；Prism 校验器接受的分辨率是 `480p/720p/1080p`，而我们的 `PRISM_VIDEO_MODEL_OPTIONS` 只列了 480p/720p——是否放开 1080p 需要确认 minimax-h3 真能出，不能只凭校验器放行就改。
