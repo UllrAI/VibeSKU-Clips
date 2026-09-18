@@ -6,7 +6,7 @@ import { rejectionDetail } from "./provider-response";
 import type { MediaTask, VideoRequest } from "./video-types";
 
 const MODEL = "hailuo-h3-quannengcankao";
-const MAX_PROMPT_CHARACTERS = 4096;
+export const LK666_MAX_PROMPT_CHARACTERS = 4096;
 const SEEDANCE_TASK_PREFIX = "seedance:";
 
 const SEEDANCE_MODELS = {
@@ -15,7 +15,7 @@ const SEEDANCE_MODELS = {
 } as const;
 
 function fitPrompt(prompt: string): string {
-  return Array.from(prompt).slice(0, MAX_PROMPT_CHARACTERS).join("");
+  return Array.from(prompt).slice(0, LK666_MAX_PROMPT_CHARACTERS).join("");
 }
 
 const taskIdSchema = z
