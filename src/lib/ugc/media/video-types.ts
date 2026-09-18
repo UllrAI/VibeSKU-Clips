@@ -22,5 +22,11 @@ export interface VideoRequest {
   aspectRatio: VideoAspectRatio;
   resolution: VideoResolution;
   requestId: string;
+  /**
+   * Whether the provider should speak the line itself. An adapter with no way
+   * to ask either way ignores it, so `native` mode gets whatever that provider
+   * does by default. Composition never maps a provider's own track once a
+   * narration track exists, which keeps the cost of being ignored to that mode.
+   */
   generateAudio?: boolean;
 }

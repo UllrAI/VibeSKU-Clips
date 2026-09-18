@@ -31,7 +31,12 @@ import {
 } from "@/lib/ugc/storage";
 import type { ScriptBeat } from "@/lib/ugc/types";
 import { recordUsage } from "@/lib/ugc/usage";
-import { defineJob, PermanentJobError } from "../definition";
+import {
+  defineJob,
+  type JobHandlerContext,
+  PermanentJobError,
+  RetryableJobError,
+} from "../definition";
 
 const POLL_SECONDS = 15;
 const MAX_POLLS = 100;
@@ -243,8 +248,10 @@ export const workSegmentJob = defineJob(
       }
     }
 
-    const mustTranscribe = work.audioMode === "native" || hasSpeech;
-    if (mustTranscribe && !take.asrTaskId) {
+    // Recognition exists to time the captions and to check the line was said.
+    // A beat with no line has neither to offer, and asking anyway makes the
+    // provider report a correctly silent shot as an error.
+    if (hasSpeech && !take.asrTaskId) {
       const mediaUrl = await resolveOwnedMediaUrl(
         db,
         work.userId,
@@ -262,9 +269,11 @@ export const workSegmentJob = defineJob(
       return { submitted: "asr" };
     }
 
-    let transcript = "";
+    // Null means recognition never gave a verdict; "" means it ran and heard
+    // nothing. The console says different things about those two.
+    let transcript: string | null = "";
     let words: typeof take.words = [];
-    if (mustTranscribe) {
+    if (hasSpeech) {
       const result = await getTranscription(take.asrTaskId!);
       if (result.status === "pending") {
         await context.scheduleContinuation(
@@ -273,8 +282,39 @@ export const workSegmentJob = defineJob(
         );
         return { waiting: "asr" };
       }
-      if (result.status === "failed")
-        throw new PermanentJobError("SEGMENT_ASR_FAILED", result.reason);
+      // The shot is generated and billed by now, so nothing below throws it
+      // away. A verdict it cannot pass hands it to the operator with what was
+      // actually heard, to keep or to reshoot. The check still does its job:
+      // composition will not caption a shot from evidence like this.
+      const toReview = async (reason: string) => {
+        await db
+          .update(ugcWorkTakes)
+          .set({
+            status: "review",
+            transcript,
+            words,
+            failureReason: reason,
+            updatedAt: new Date(),
+          })
+          .where(eq(ugcWorkTakes.id, take.id));
+        await billShot(db, work, take, segment, beat);
+        context.log("segment_needs_review", {
+          workId: work.id,
+          position: segment.position,
+          takeId: take.id,
+          reason,
+        });
+        return { review: true, position: segment.position };
+      };
+
+      if (result.status === "failed") {
+        // Recognition being unavailable says nothing about the footage. Give
+        // the service a couple of tries, then let a person look instead.
+        if (context.attempt <= 2)
+          throw new RetryableJobError("SEGMENT_ASR_FAILED", result.reason);
+        transcript = null;
+        return await toReview("Speech could not be checked for this shot.");
+      }
       transcript = result.text;
       const spoken = result.words;
       words = spoken;
@@ -282,7 +322,7 @@ export const workSegmentJob = defineJob(
       // was spoken at all is a separate question, asked of the whole text.
       if (
         !speechMatchesScript(spokenLine, transcript) ||
-        (hasSpeech && !spoken.length) ||
+        !spoken.length ||
         spoken.some(
           (word, index) =>
             word.startMs < 0 ||
@@ -294,33 +334,13 @@ export const workSegmentJob = defineJob(
             (index > 0 && word.startMs < spoken[index - 1]!.startMs),
         )
       ) {
-        await db
-          .update(ugcWorkTakes)
-          .set({
-            status: "failed",
-            transcript,
-            words,
-            failureReason: "Spoken audio does not match the approved script.",
-            updatedAt: new Date(),
-          })
-          .where(eq(ugcWorkTakes.id, take.id));
-        throw new PermanentJobError(
-          "SEGMENT_SPEECH_MISMATCH",
+        return await toReview(
           "Spoken audio does not match the approved script.",
         );
       }
     }
 
-    await recordUsage(db, {
-      userId: work.userId,
-      kind: take.version === 1 ? "render" : "regenerate",
-      credits: Math.max(
-        1,
-        Math.ceil((CREDIT_COST.render * shotDurationSeconds(beat)) / 15),
-      ),
-      sourceKey: take.id,
-      note: `Shot ${segment.position + 1} of ${work.id}`,
-    });
+    await billShot(db, work, take, segment, beat);
     await db
       .update(ugcWorkTakes)
       .set({
@@ -351,3 +371,27 @@ export const workSegmentJob = defineJob(
     groupConcurrency: 1,
   },
 );
+
+/**
+ * The provider charges for a shot the moment it renders one, whether or not it
+ * says the right words. Recording it against the take id keeps a re-run of the
+ * same take from counting twice.
+ */
+async function billShot(
+  db: JobHandlerContext["db"],
+  work: { id: string; userId: string },
+  take: { id: string; version: number },
+  segment: { position: number },
+  beat: ScriptBeat,
+): Promise<void> {
+  await recordUsage(db, {
+    userId: work.userId,
+    kind: take.version === 1 ? "render" : "regenerate",
+    credits: Math.max(
+      1,
+      Math.ceil((CREDIT_COST.render * shotDurationSeconds(beat)) / 15),
+    ),
+    sourceKey: take.id,
+    note: `Shot ${segment.position + 1} of ${work.id}`,
+  });
+}

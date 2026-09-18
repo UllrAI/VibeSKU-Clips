@@ -178,7 +178,8 @@ export const workVideoJob = defineJob(
     );
 
     for (const take of takes) {
-      if (take.status === "ready") continue;
+      // A shot waiting on a person is finished as far as this job is concerned.
+      if (take.status === "ready" || take.status === "review") continue;
       if (take.taskRunId) {
         const [run] = await db
           .select({ status: taskRuns.status, error: taskRuns.error })
@@ -220,18 +221,35 @@ export const workVideoJob = defineJob(
     }
 
     const ready = takes.filter((take) => take.status === "ready").length;
+    const reviewing = takes.filter((take) => take.status === "review").length;
     await context.updateProgress({
       step: VIDEO_PROGRESS_STEP.rendering,
       version,
       ready,
       total: takes.length,
     });
-    if (ready < takes.length) {
+    if (ready + reviewing < takes.length) {
       await context.scheduleContinuation(
         { ...payload, version, polls: payload.polls + 1 },
         POLL_SECONDS,
       );
       return { ready, total: takes.length };
+    }
+    // Every shot that could finish on its own has. The rest were generated and
+    // billed but do not say the approved line, so the step stops here and the
+    // operator decides per shot rather than losing the whole work to one of
+    // them. Waiting for the others first means they see it all at once.
+    if (reviewing) {
+      await db
+        .update(ugcWorks)
+        .set({ stepStatus: "review", updatedAt: new Date() })
+        .where(eq(ugcWorks.id, work.id));
+      context.log("work_video_needs_review", {
+        workId: work.id,
+        reviewing,
+        total: takes.length,
+      });
+      return { reviewing, total: takes.length };
     }
 
     let [composition] = await db

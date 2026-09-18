@@ -816,6 +816,40 @@ export async function regenerateWorkSegment(
   return { ok: true, id: take.id };
 }
 
+/**
+ * Keeps a shot whose spoken audio did not match the script. The footage is
+ * already generated and billed, and the operator has watched it; the evidence
+ * is dropped with it, so composition leaves this shot uncaptioned rather than
+ * timing the approved line against words nobody said.
+ */
+export async function acceptWorkTake(takeId: string): Promise<ActionResult> {
+  const user = await requireAuth();
+  const [row] = await db
+    .select({ take: ugcWorkTakes, work: ugcWorks })
+    .from(ugcWorkTakes)
+    .innerJoin(ugcWorkSegments, eq(ugcWorkSegments.id, ugcWorkTakes.segmentId))
+    .innerJoin(ugcWorks, eq(ugcWorks.id, ugcWorkSegments.workId))
+    .where(and(eq(ugcWorkTakes.id, takeId), eq(ugcWorks.userId, user.id)));
+  if (!row || row.take.status !== "review" || !row.take.videoUrl)
+    return { ok: false, code: "not_found" };
+  if (await hasActiveTask(row.work)) return { ok: false, code: "work_busy" };
+
+  await db
+    .update(ugcWorkTakes)
+    .set({
+      status: "ready",
+      words: [],
+      failureReason: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(ugcWorkTakes.id, row.take.id));
+  await enqueueVideo(row.work, user.id, {
+    idempotencyKey: `${row.work.id}:accept:${row.take.id}`,
+  });
+  revalidatePath(`/dashboard/works/${row.work.id}`);
+  return { ok: true, id: row.take.id };
+}
+
 /** Renders another take while keeping every completed version available. */
 const newVideoVersionSchema = z
   .object({
