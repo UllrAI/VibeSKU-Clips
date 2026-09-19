@@ -6,6 +6,7 @@ import { CREDIT_COST, MAX_PRODUCT_IMAGES } from "@/lib/ugc/constants";
 import {
   FirecrawlError,
   importProductSource,
+  firecrawlLog,
   type ImportedProductSource,
 } from "@/lib/ugc/firecrawl";
 import { authoringModelLog } from "@/lib/ugc/model";
@@ -156,12 +157,24 @@ export const productIngestJob = defineJob(
     try {
       let sourceText: string | undefined;
       if (materialProduct.sourceUrl) {
+        const importStartedAt = Date.now();
         try {
           const imported = await importProductSource(
             materialProduct.sourceUrl,
             { signal: context.signal },
           );
           sourceText = imported.text;
+          // Reading the page and extracting the facts are two suppliers and
+          // two waits. Without a line between them, a slow read and a slow
+          // model are the same silence.
+          context.log("product_source_imported", {
+            productId: product.id,
+            ...firecrawlLog(),
+            characters: imported.text.length,
+            images: imported.images.length,
+            named: Boolean(imported.name),
+            elapsedMs: Date.now() - importStartedAt,
+          });
           if (payload.importMaterial) {
             materialProduct = await applyImportedMaterial(
               context,
@@ -182,8 +195,10 @@ export const productIngestJob = defineJob(
           }
           context.log("product_source_unreadable", {
             productId: product.id,
+            ...firecrawlLog(),
             reason: error.message,
             usingImages: true,
+            elapsedMs: Date.now() - importStartedAt,
           });
         }
       }
@@ -195,6 +210,12 @@ export const productIngestJob = defineJob(
       );
 
       await context.updateProgress({ step: "extracting_facts" });
+      context.log("product_facts_started", {
+        productId: product.id,
+        ...authoringModelLog(),
+        sourceCharacters: sourceText?.length ?? 0,
+        imagesRead: imageUrls.length,
+      });
       const facts = await analyzeProduct({
         name: materialProduct.name,
         variant: materialProduct.variant,

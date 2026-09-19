@@ -83,6 +83,16 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: getRemotePatterns(),
   },
+  // The work console polls its own state every couple of seconds while a job
+  // runs, and in development each poll prints a request line. Those lines are
+  // what the worker's own output has to be read through, and they say nothing
+  // the worker has not already logged, so they are dropped. Development only:
+  // this has no effect on a production build.
+  logging: {
+    incomingRequests: {
+      ignore: [/^\/api\/ugc\/works\/[^/]+\/state$/],
+    },
+  },
   async headers() {
     return [
       {

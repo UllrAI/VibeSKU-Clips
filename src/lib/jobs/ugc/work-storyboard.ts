@@ -237,7 +237,16 @@ export const workStoryboardJob = defineJob(
       const task = await getTask(frame.providerTaskId);
       const taskLog = mediaTaskLog("prism", frame.providerTaskId, task);
 
-      if (task.status === "pending") continue;
+      if (task.status === "pending") {
+        context.log("storyboard_frame_pending", {
+          workId: work.id,
+          frameId: frame.id,
+          position: frame.position,
+          ...taskLog,
+          polls: payload.polls + 1,
+        });
+        continue;
+      }
       progressed = true;
       if (task.status === "failed" || !task.outputUrl) {
         await db

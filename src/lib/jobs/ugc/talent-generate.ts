@@ -78,6 +78,7 @@ export const talentGenerateJob = defineJob(
           talent.userId,
           talent.referenceImages,
         );
+        const briefStartedAt = Date.now();
         const identityPrompt =
           talent.prompt ??
           (await composeTalentImagePrompt({
@@ -85,6 +86,14 @@ export const talentGenerateJob = defineJob(
             description: talent.description,
             referenceImageUrls,
           }));
+
+        context.log("talent_brief_expanded", {
+          talentId: talent.id,
+          ...authoringModelLog(),
+          reused: Boolean(talent.prompt),
+          characters: identityPrompt.length,
+          elapsedMs: Date.now() - briefStartedAt,
+        });
 
         await db
           .update(ugcTalents)
@@ -114,9 +123,6 @@ export const talentGenerateJob = defineJob(
           talentId: talent.id,
           ...mediaTaskLog("prism", providerTaskId),
           references: referenceImageUrls.length,
-          // The brief was expanded by the language model before the image was
-          // drawn, so both suppliers belong on the line.
-          ...authoringModelLog(),
         });
         return { providerTaskId, submitted: true };
       }
@@ -124,6 +130,11 @@ export const talentGenerateJob = defineJob(
       const task = await getTask(payload.providerTaskId);
       const taskLog = mediaTaskLog("prism", payload.providerTaskId, task);
       if (task.status === "pending") {
+        context.log("talent_sheet_pending", {
+          talentId: talent.id,
+          ...taskLog,
+          polls: payload.polls + 1,
+        });
         if (payload.polls >= MAX_POLLS) {
           throw new PermanentJobError(
             "UGC_TALENT_GENERATION_TIMEOUT",

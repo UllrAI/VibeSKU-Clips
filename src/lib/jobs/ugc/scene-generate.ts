@@ -78,6 +78,7 @@ export const sceneGenerateJob = defineJob(
           scene.userId,
           scene.referenceImages,
         );
+        const briefStartedAt = Date.now();
         const locationPrompt =
           scene.prompt ??
           (await composeSceneImagePrompt({
@@ -85,6 +86,14 @@ export const sceneGenerateJob = defineJob(
             description: scene.description,
             referenceImageUrls,
           }));
+
+        context.log("scene_brief_expanded", {
+          sceneId: scene.id,
+          ...authoringModelLog(),
+          reused: Boolean(scene.prompt),
+          characters: locationPrompt.length,
+          elapsedMs: Date.now() - briefStartedAt,
+        });
 
         await db
           .update(ugcScenes)
@@ -114,9 +123,6 @@ export const sceneGenerateJob = defineJob(
           sceneId: scene.id,
           ...mediaTaskLog("prism", providerTaskId),
           references: referenceImageUrls.length,
-          // The brief was expanded by the language model before the image was
-          // drawn, so both suppliers belong on the line.
-          ...authoringModelLog(),
         });
         return { providerTaskId, submitted: true };
       }
@@ -124,6 +130,11 @@ export const sceneGenerateJob = defineJob(
       const task = await getTask(payload.providerTaskId);
       const taskLog = mediaTaskLog("prism", payload.providerTaskId, task);
       if (task.status === "pending") {
+        context.log("scene_sheet_pending", {
+          sceneId: scene.id,
+          ...taskLog,
+          polls: payload.polls + 1,
+        });
         if (payload.polls >= MAX_POLLS) {
           throw new PermanentJobError(
             "UGC_SCENE_GENERATION_TIMEOUT",

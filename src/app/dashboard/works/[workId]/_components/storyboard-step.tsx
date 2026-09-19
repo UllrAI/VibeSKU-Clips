@@ -173,7 +173,7 @@ export function StoryboardStep({
         open={editing !== null}
         onOpenChange={(open) => !open && setEditing(null)}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{t("ugc_work_frame_edit_title")}</DialogTitle>
             <DialogDescription>
@@ -184,11 +184,18 @@ export function StoryboardStep({
             <Label htmlFor="work-frame-prompt">
               {t("ugc_work_frame_prompt")}
             </Label>
+            {/*
+              A frame prompt runs to thousands of characters: the beat, the
+              performer, the place, and the rules that make it one photograph.
+              The default textarea grows to fit its content, which is what
+              pushed this dialog off both edges of the screen, so this one is
+              given a fixed height and scrolls itself.
+            */}
             <Textarea
               id="work-frame-prompt"
-              rows={6}
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
+              className="field-sizing-fixed h-[50vh] resize-none overflow-y-auto"
             />
           </div>
           <DialogFooter>

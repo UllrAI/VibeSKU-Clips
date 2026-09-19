@@ -99,6 +99,18 @@ export const workScriptJob = defineJob(
       work.userId,
       scene?.sheetUrl ? [scene.sheetUrl] : [],
     );
+    // Everything the model will be shown, named before the one long call that
+    // shows it: between this line and the next there is nothing but waiting.
+    context.log("work_script_writing", {
+      workId: work.id,
+      ...authoringModelLog(),
+      template: work.template,
+      locale: work.locale,
+      market: work.market,
+      productImages: productImageUrls.length,
+      hasTalentSheet: Boolean(talentImageUrl),
+      hasSceneSheet: sceneImageUrls.length > 0,
+    });
     const draft = await composeScript({
       facts: product.facts,
       brief: product.brief,

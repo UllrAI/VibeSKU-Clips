@@ -118,6 +118,22 @@ export interface ImportedProductSource {
   text: string;
 }
 
+/**
+ * Which scraper a product read went to, for job logs. The key is never part
+ * of it, and an unconfigured environment says so rather than throwing: this is
+ * a log line, not a precondition.
+ */
+export function firecrawlLog(source: NodeJS.ProcessEnv = process.env): {
+  scraperBaseUrl: string;
+} {
+  const parsed = firecrawlEnvSchema.safeParse(source);
+  return {
+    scraperBaseUrl: parsed.success
+      ? parsed.data.FIRECRAWL_API_BASE_URL
+      : "unconfigured",
+  };
+}
+
 function firecrawlConfig(source: NodeJS.ProcessEnv) {
   const parsed = firecrawlEnvSchema.safeParse(source);
   if (!parsed.success || !parsed.data.FIRECRAWL_API_KEY) {
