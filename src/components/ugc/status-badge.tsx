@@ -33,10 +33,17 @@ const TALENT_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
   failed: { key: "ugc_talent_status_failed", variant: "destructive" },
 };
 
+const SCENE_STATUS: Record<string, { key: string; variant: BadgeVariant }> = {
+  generating: { key: "ugc_scene_status_generating", variant: "secondary" },
+  ready: { key: "ugc_scene_status_ready", variant: "default" },
+  failed: { key: "ugc_scene_status_failed", variant: "destructive" },
+};
+
 const MAPS = {
   product: PRODUCT_STATUS,
   clip: CLIP_STATUS,
   talent: TALENT_STATUS,
+  scene: SCENE_STATUS,
 } as const;
 
 export function StatusBadge({

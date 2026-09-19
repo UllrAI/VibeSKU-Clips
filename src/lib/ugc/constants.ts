@@ -47,6 +47,16 @@ export const SCRIPT_TEMPLATES = [
 ] as const;
 export type ScriptTemplate = (typeof SCRIPT_TEMPLATES)[number];
 
+/**
+ * The viewpoints a scene is drawn from. A location is not one photograph: the
+ * wide shot settles the space, the eye-level shot settles where a person
+ * stands in it, and the detail shot settles the surface a product is set down
+ * on. The order is the drawing order — each view takes the ones already drawn
+ * as its reference, so all three read as the same place.
+ */
+export const SCENE_ANGLES = ["establishing", "eye_level", "detail"] as const;
+export type SceneAngle = (typeof SCENE_ANGLES)[number];
+
 /** Whether the operator reviews generated key frames before video rendering. */
 export const VIDEO_MODES = ["one_take", "storyboard"] as const;
 export type VideoMode = (typeof VIDEO_MODES)[number];

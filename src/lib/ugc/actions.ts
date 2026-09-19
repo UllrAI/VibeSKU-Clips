@@ -5,15 +5,17 @@ import { isDeepStrictEqual } from "node:util";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/database";
-import { ugcProducts, ugcTalents } from "@/database/ugc";
+import { ugcProducts, ugcScenes, ugcTalents } from "@/database/ugc";
 import { requireAuth } from "@/lib/auth/permissions";
 import { productIngestJob } from "@/lib/jobs/ugc/product-ingest";
+import { sceneGenerateJob } from "@/lib/jobs/ugc/scene-generate";
 import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
 import { serverJobQueue } from "@/lib/jobs/server";
 import { fileKeyFromUrl } from "@/lib/uploads/url";
 import { createBackgroundTask } from "@/lib/tasks/service";
+import { SCENE_ANGLES } from "./constants";
 import { productNameFromUrl } from "./product-name";
-import { productScopeKey, talentScopeKey } from "./scope";
+import { productScopeKey, sceneScopeKey, talentScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
 const briefSchema = z.object({
@@ -389,5 +391,87 @@ export async function archiveTalent(talentId: string): Promise<ActionResult> {
     .set({ archived: true, updatedAt: new Date() })
     .where(and(eq(ugcTalents.id, talentId), eq(ugcTalents.userId, user.id)));
   revalidatePath("/dashboard/talents");
+  return { ok: true };
+}
+
+const sceneSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  description: z.string().trim().min(1).max(6000),
+  referenceImages: z.array(imageReferenceSchema).max(3),
+});
+
+async function enqueueSceneGeneration(
+  scene: typeof ugcScenes.$inferSelect,
+): Promise<void> {
+  await createBackgroundTask({
+    db,
+    queue: serverJobQueue,
+    definition: sceneGenerateJob,
+    scopeKey: sceneScopeKey(scene.userId, scene.id),
+    payload: { sceneId: scene.id, userId: scene.userId, polls: 0 },
+    idempotencyKey: `${scene.id}:views:${crypto.randomUUID()}`,
+  });
+}
+
+export async function createScene(
+  input: z.infer<typeof sceneSchema>,
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const parsed = sceneSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, code: "invalid_input" };
+
+  const [scene] = await db
+    .insert(ugcScenes)
+    .values({
+      userId: user.id,
+      name: parsed.data.name,
+      description: parsed.data.description,
+      referenceImages: parsed.data.referenceImages,
+      status: "generating",
+    })
+    .returning();
+
+  await enqueueSceneGeneration(scene);
+  revalidatePath("/dashboard/scenes");
+  return { ok: true, id: scene.id };
+}
+
+/**
+ * Picks up a scene that is short of views. A location that already has all of
+ * them is being asked for a new version, so it is redrawn from the start.
+ */
+export async function retrySceneGeneration(
+  sceneId: string,
+): Promise<ActionResult> {
+  const user = await requireAuth();
+  const [current] = await db
+    .select({ views: ugcScenes.views })
+    .from(ugcScenes)
+    .where(and(eq(ugcScenes.id, sceneId), eq(ugcScenes.userId, user.id)));
+  if (!current) return { ok: false, code: "not_found" };
+
+  const [scene] = await db
+    .update(ugcScenes)
+    .set({
+      status: "generating",
+      views: current.views.length >= SCENE_ANGLES.length ? [] : current.views,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(ugcScenes.id, sceneId), eq(ugcScenes.userId, user.id)))
+    .returning();
+  if (!scene) return { ok: false, code: "not_found" };
+
+  await enqueueSceneGeneration(scene);
+  revalidatePath("/dashboard/scenes");
+  return { ok: true, id: scene.id };
+}
+
+export async function archiveScene(sceneId: string): Promise<ActionResult> {
+  const user = await requireAuth();
+  await db
+    .update(ugcScenes)
+    .set({ archived: true, updatedAt: new Date() })
+    .where(and(eq(ugcScenes.id, sceneId), eq(ugcScenes.userId, user.id)));
+  revalidatePath("/dashboard/scenes");
   return { ok: true };
 }

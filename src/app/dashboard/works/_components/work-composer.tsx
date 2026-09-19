@@ -31,6 +31,15 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { actionMessageKey } from "@/components/ugc/action-message";
+import {
+  NO_SCENE,
+  NO_TALENT,
+  RANDOM_TALENT,
+  SceneField,
+  TalentField,
+  selectableScenes,
+  selectableTalents,
+} from "@/components/ugc/cast-fields";
 import { ImageField } from "@/components/ugc/image-field";
 import {
   LOCALE_OPTIONS,
@@ -51,11 +60,8 @@ import type {
   VideoResolution,
 } from "@/lib/ugc/constants";
 import { createProduct, createProductFromUrl } from "@/lib/ugc/actions";
-import type { ProductRow, TalentRow } from "@/lib/ugc/queries";
+import type { ProductRow, SceneRow, TalentRow } from "@/lib/ugc/queries";
 import { createWork } from "@/lib/ugc/work-actions";
-
-const NO_TALENT = "none";
-const RANDOM_TALENT = "random";
 
 /**
  * Everything the first step needs, asked once. The product is the subject, so
@@ -67,11 +73,13 @@ const RANDOM_TALENT = "random";
 export function WorkComposer({
   products,
   talents,
+  scenes,
   initialProductId,
   modelOptions,
 }: {
   products: ProductRow[];
   talents: TalentRow[];
+  scenes: SceneRow[];
   initialProductId?: string;
   modelOptions: readonly VideoModelOption[];
 }) {
@@ -92,6 +100,7 @@ export function WorkComposer({
   const [images, setImages] = useState<string[]>([]);
   const [productionDirection, setProductionDirection] = useState("");
   const [talentId, setTalentId] = useState(NO_TALENT);
+  const [sceneId, setSceneId] = useState(NO_SCENE);
   const [template, setTemplate] = useState<ScriptTemplate>("spokesperson");
   const [videoMode, setVideoMode] = useState<VideoMode>("one_take");
   const [videoModel, setVideoModel] = useState<VideoModel>("h3");
@@ -101,9 +110,8 @@ export function WorkComposer({
   const [market, setMarket] = useState("US");
 
   const chosen = products.find((product) => product.id === productId);
-  const availableTalents = talents.filter(
-    (talent) => talent.status === "ready" && talent.imageUrl,
-  );
+  const availableTalents = selectableTalents(talents);
+  const availableScenes = selectableScenes(scenes);
   const ready =
     source === "library"
       ? Boolean(productId)
@@ -149,6 +157,7 @@ export function WorkComposer({
             ? undefined
             : talentId,
         randomTalent: talentId === RANDOM_TALENT,
+        sceneId: sceneId === NO_SCENE ? undefined : sceneId,
         locale,
         market,
         template,
@@ -346,31 +355,19 @@ export function WorkComposer({
           modelOptions={modelOptions}
         />
 
-        <div className="space-y-2">
-          <Label htmlFor="work-talent">{t("ugc_plan_talents")}</Label>
-          <Select value={talentId} onValueChange={setTalentId}>
-            <SelectTrigger id="work-talent" className="w-full sm:w-72">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={NO_TALENT}>
-                {t("ugc_work_no_talent")}
-              </SelectItem>
-              <SelectItem value={RANDOM_TALENT}>
-                {t("ugc_work_random_talent")}
-              </SelectItem>
-              {availableTalents.map((talent) => (
-                <SelectItem key={talent.id} value={talent.id}>
-                  {talent.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {talentId === RANDOM_TALENT && (
-            <p className="text-muted-foreground text-xs">
-              {t("ugc_work_random_talent_hint")}
-            </p>
-          )}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TalentField
+            id="work-talent"
+            value={talentId}
+            onChange={setTalentId}
+            talents={availableTalents}
+          />
+          <SceneField
+            id="work-scene"
+            value={sceneId}
+            onChange={setSceneId}
+            scenes={availableScenes}
+          />
         </div>
 
         <Collapsible className="border-border rounded-lg border">

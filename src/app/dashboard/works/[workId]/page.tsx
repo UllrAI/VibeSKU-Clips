@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { DashboardPageWrapper } from "../../_components/dashboard-page-wrapper";
 import { getServerTranslations } from "@/lib/i18n/translation/server";
 import { createMetadataDefaults } from "@/lib/metadata";
-import { listProducts, listTalents } from "@/lib/ugc/queries";
+import { listProducts, listScenes, listTalents } from "@/lib/ugc/queries";
 import { activeVideoModelOptions } from "@/lib/ugc/media/video-provider";
 import { getWork, getWorkState } from "@/lib/ugc/works";
 import { WorkConsole } from "./_components/work-console";
@@ -29,9 +29,10 @@ export default async function WorkDetailPage({
   ]);
   if (!detail || !state) notFound();
 
-  const [products, talents] = await Promise.all([
+  const [products, talents, scenes] = await Promise.all([
     listProducts(),
     listTalents(),
+    listScenes(),
   ]);
 
   return (
@@ -45,6 +46,7 @@ export default async function WorkDetailPage({
         detail={detail}
         products={products}
         talents={talents}
+        scenes={scenes}
         initialState={state}
         modelOptions={activeVideoModelOptions()}
       />

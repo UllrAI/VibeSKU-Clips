@@ -1,7 +1,7 @@
 import { CLIP_SPEC, DEFAULT_VIDEO_SETTINGS } from "./constants";
-import type { VideoAspectRatio, VideoMode } from "./constants";
+import type { SceneAngle, VideoAspectRatio, VideoMode } from "./constants";
 import { TEMPLATE_BRIEFS } from "./templates";
-import type { ScriptBeat } from "./types";
+import type { ProductFacts, SceneView, ScriptBeat } from "./types";
 import type { ScriptTemplate } from "./constants";
 import type { ClipStorage } from "./storage";
 
@@ -12,6 +12,46 @@ export interface RenderSubject {
   locale: string;
   template: ScriptTemplate;
   talentPrompt: string | null;
+  /** The place this clip is filmed in, when the operator picked one. */
+  scenePrompt: string | null;
+}
+
+/** A talent and a scene are both described the same way: by their expanded
+ * prompt, falling back to whatever the operator actually typed. */
+function describedBy(
+  record: { prompt: string | null; description: string; name: string } | null,
+): string | null {
+  return record ? record.prompt || record.description || record.name : null;
+}
+
+/** The one place a work's render subject is assembled, so the storyboard and
+ * the video describe the same product, performer, and location. */
+export function renderSubjectFor(input: {
+  product: { name: string; facts: ProductFacts | null };
+  work: { market: string; locale: string; template: ScriptTemplate };
+  talent?: { prompt: string | null; description: string; name: string } | null;
+  scene?: { prompt: string | null; description: string; name: string } | null;
+}): RenderSubject {
+  return {
+    productName: input.product.name,
+    appearance: input.product.facts?.appearance ?? "",
+    market: input.work.market,
+    locale: input.work.locale,
+    template: input.work.template,
+    talentPrompt: describedBy(input.talent ?? null),
+    scenePrompt: describedBy(input.scene ?? null),
+  };
+}
+
+/**
+ * How much of a scene reaches one request. Two views fix the place; more only
+ * crowd out the product and the performer in a reference set the provider
+ * caps anyway.
+ */
+export function sceneReferenceUrls(
+  scene: { views: SceneView[] } | null | undefined,
+): string[] {
+  return (scene?.views ?? []).slice(0, 2).map((view) => view.imageUrl);
 }
 
 /**
@@ -24,6 +64,17 @@ const EVIDENCE_ONLY =
 
 function frameDescription(aspectRatio: VideoAspectRatio): string {
   return `${aspectRatio === "9:16" ? "Portrait" : "Landscape"} ${aspectRatio}`;
+}
+
+/**
+ * Where the clip is filmed. A chosen scene is an operator decision and the
+ * attached views are photographs of it, so it outranks both the generic market
+ * fallback and whatever location the production direction improvised.
+ */
+function settingLine(subject: RenderSubject): string {
+  return subject.scenePrompt
+    ? `Setting — compose this frame inside the location described here, matching the attached location reference images for layout, materials, and light:\n${subject.scenePrompt}`
+    : `Setting: an ordinary home or street scene that reads as ${subject.market}.`;
 }
 
 /**
@@ -49,7 +100,7 @@ export function buildCoverPrompt(
     subject.talentPrompt
       ? `Performer: ${subject.talentPrompt}. Match the supplied reference image.`
       : "Product-led frame with hands only, no recognisable face.",
-    `Setting: an ordinary home or street scene that reads as ${subject.market}.`,
+    settingLine(subject),
     EVIDENCE_ONLY,
     "No added on-screen text, subtitles, interface overlays, or watermarks. Preserve authentic branding and label text on the product itself.",
   ]
@@ -81,9 +132,9 @@ export function buildFramePrompt(
     subject.talentPrompt
       ? `Performer: ${subject.talentPrompt}. Match the supplied reference image exactly.`
       : "Product-led frame with hands only, no recognisable face.",
-    productionPrompt
-      ? ""
-      : `Setting: an ordinary home or street scene that reads as ${subject.market}.`,
+    // The production direction already carries a location of its own, so it is
+    // only restated when a scene was chosen and has to win.
+    productionPrompt && !subject.scenePrompt ? "" : settingLine(subject),
     EVIDENCE_ONLY,
     "No added on-screen text, subtitles, interface overlays, or watermarks. Preserve authentic branding and label text on the product itself.",
   ]
@@ -92,6 +143,14 @@ export function buildFramePrompt(
 }
 
 const DIRECTION_PREFIX = "Follow this approved production direction exactly:\n";
+
+/**
+ * Identity and location prompts are written for an image model and run to
+ * thousands of characters each. The video prompt has a hard provider cap, and
+ * the beat list is what must survive it, so these two are cut to the length
+ * that still describes a person and a place.
+ */
+const SUBJECT_PROMPT_LIMIT = 1200;
 
 /** Providers count characters, not UTF-16 units, so cut on code points. */
 function fitCharacters(text: string, limit: number): string {
@@ -136,8 +195,11 @@ export function buildVideoPrompt(
   ];
   const instructions = [
     subject.talentPrompt
-      ? `Keep the performer identical to the first frame: ${subject.talentPrompt}`
+      ? `Keep the performer identical to the first frame: ${fitCharacters(subject.talentPrompt, SUBJECT_PROMPT_LIMIT)}`
       : "Keep the product identical to the first frame.",
+    subject.scenePrompt
+      ? `The clip stays in this one place from first frame to last: ${fitCharacters(subject.scenePrompt, SUBJECT_PROMPT_LIMIT)}`
+      : "",
     "The reference images begin with the approved key frames for this clip: match their performer, product, wardrobe, location, and lighting exactly.",
     EVIDENCE_ONLY,
     "Beats:",
@@ -249,6 +311,48 @@ export async function archiveSubtitleTrack(input: {
     body: Buffer.from(input.content, "utf8"),
   });
   return record.url;
+}
+
+/**
+ * How each viewpoint of a scene is framed. The three answer different
+ * questions about the same place: where it is, where a person stands in it,
+ * and what a product is set down on.
+ */
+const SCENE_VIEW_FRAMING: Record<SceneAngle, string> = {
+  establishing:
+    "Wide establishing shot of the whole space from its natural entrance, camera at chest height, taking in the floor, the far wall, and the main light source so the layout reads at a glance.",
+  eye_level:
+    "Eye-level shot from where a person would stand and talk in this place, camera at about 1.6 metres, framed on the part of the space that would be behind them, at a natural conversational distance.",
+  detail:
+    "Close shot of the surface a small object would be set down on in this place, camera low and near, shallow depth of field, showing the material and the everyday objects immediately around it.",
+};
+
+/**
+ * One viewpoint of a location.
+ *
+ * The location prompt is reused verbatim so the place cannot drift, and the
+ * framing is restated after it because framing is the one thing being
+ * overridden — the location prompt describes a viewpoint of its own. Views
+ * after the first take the earlier ones as references, which is what makes
+ * three photographs read as one room rather than three rooms.
+ */
+export function buildSceneViewPrompt(
+  locationPrompt: string,
+  angle: SceneAngle,
+  hasReference: boolean,
+): string {
+  return [
+    "Photograph of the place described below, as it is, with nobody in it.",
+    `Location to reproduce:\n${locationPrompt}`,
+    `This framing overrides every viewpoint, camera height, and crop named above: ${SCENE_VIEW_FRAMING[angle]}`,
+    hasReference
+      ? "The attached images are other photographs of this same place. The layout, materials, fittings, colours, light direction, and time of day must match them exactly; only the viewpoint changes."
+      : "",
+    "No people, no hands, no pets, no products, no packages, no logos, and no branded objects anywhere in the frame.",
+    "Natural light consistent with the description. No text overlay, no watermark, no fisheye distortion, no impossible architecture.",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 /**

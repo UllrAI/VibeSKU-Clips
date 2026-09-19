@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AppDatabase } from "@/database/client";
 import {
   ugcProducts,
+  ugcScenes,
   ugcScripts,
   ugcTalents,
   ugcWorkFrames,
@@ -14,7 +15,12 @@ import {
   getTask,
   submitImage,
 } from "@/lib/ugc/media/prism";
-import { archiveRemoteAsset, buildFramePrompt } from "@/lib/ugc/render";
+import {
+  archiveRemoteAsset,
+  buildFramePrompt,
+  renderSubjectFor,
+  sceneReferenceUrls,
+} from "@/lib/ugc/render";
 import {
   createClipStorage,
   resolveReferenceUrls,
@@ -100,17 +106,11 @@ export const workStoryboardJob = defineJob(
           .from(ugcTalents)
           .where(eq(ugcTalents.id, work.talentId))
       : [];
+    const [scene] = work.sceneId
+      ? await db.select().from(ugcScenes).where(eq(ugcScenes.id, work.sceneId))
+      : [];
 
-    const subject = {
-      productName: product.name,
-      appearance: product.facts?.appearance ?? "",
-      market: work.market,
-      locale: work.locale,
-      template: work.template,
-      talentPrompt: talent
-        ? (talent.prompt ?? talent.description ?? talent.name)
-        : null,
-    };
+    const subject = renderSubjectFor({ product, work, talent, scene });
 
     // First pass: create the frame rows from the accepted beats.
     let frameIds = payload.frameIds;
@@ -162,9 +162,14 @@ export const workStoryboardJob = defineJob(
       ? await resolveReferenceUrls(
           db,
           work.userId,
-          [talent?.imageUrl, talent?.fullBodyUrl, ...product.images].filter(
-            (url): url is string => Boolean(url),
-          ),
+          [
+            talent?.imageUrl,
+            talent?.fullBodyUrl,
+            ...sceneReferenceUrls(scene),
+            // Listing photos are evidence of what the product looks like, not
+            // scenes to rebuild, and two of them settle colour and finish.
+            ...product.images.slice(0, 2),
+          ].filter((url): url is string => Boolean(url)),
         )
       : [];
 

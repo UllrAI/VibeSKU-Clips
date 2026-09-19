@@ -1,13 +1,14 @@
 import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/database";
-import { ugcProducts, ugcScripts, ugcTalents } from "@/database/ugc";
+import { ugcProducts, ugcScenes, ugcScripts, ugcTalents } from "@/database/ugc";
 import { requireAuth } from "@/lib/auth/permissions";
 import { latestRunStateForScope, type RunState } from "./run-state";
 import { productScopeKey } from "./scope";
 
 export type ProductRow = typeof ugcProducts.$inferSelect;
 export type TalentRow = typeof ugcTalents.$inferSelect;
+export type SceneRow = typeof ugcScenes.$inferSelect;
 export type ScriptRow = typeof ugcScripts.$inferSelect;
 
 export async function listProducts(): Promise<ProductRow[]> {
@@ -87,4 +88,13 @@ export async function listTalents(): Promise<TalentRow[]> {
     .from(ugcTalents)
     .where(and(eq(ugcTalents.userId, user.id), eq(ugcTalents.archived, false)))
     .orderBy(desc(ugcTalents.createdAt));
+}
+
+export async function listScenes(): Promise<SceneRow[]> {
+  const user = await requireAuth();
+  return db
+    .select()
+    .from(ugcScenes)
+    .where(and(eq(ugcScenes.userId, user.id), eq(ugcScenes.archived, false)))
+    .orderBy(desc(ugcScenes.createdAt));
 }

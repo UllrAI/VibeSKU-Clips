@@ -3,9 +3,13 @@ import { PRISM_MEDIA, SCRIPT_TEMPLATES } from "./constants";
 import { TEMPLATE_BRIEFS } from "./templates";
 import {
   buildCoverPrompt,
+  buildFramePrompt,
+  buildSceneViewPrompt,
   buildSubtitleTrack,
   buildTalentFullBodyPrompt,
   buildVideoPrompt,
+  renderSubjectFor,
+  sceneReferenceUrls,
 } from "./render";
 import type { ScriptBeat } from "./types";
 
@@ -35,6 +39,7 @@ const subject = {
   locale: "en",
   template: "spokesperson" as const,
   talentPrompt: "A woman in her thirties in a bright living room",
+  scenePrompt: null,
 };
 
 describe("render prompts", () => {
@@ -169,6 +174,140 @@ describe("talent full-length reference", () => {
 
   it("keeps the talent free of products, as the portrait is", () => {
     expect(prompt).toContain("Both hands empty");
+  });
+});
+
+describe("a chosen scene", () => {
+  const location =
+    "A small city kitchen with a pale oak counter and white tiles.";
+  const staged = { ...subject, scenePrompt: location };
+
+  it("replaces the generic market setting in the opening frame", () => {
+    const prompt = buildCoverPrompt(staged, beats[0]);
+
+    expect(prompt).toContain(location);
+    expect(prompt).not.toContain("ordinary home or street scene");
+  });
+
+  it("still states the location when production direction is present", () => {
+    // The operator picked this place; the direction improvised its own.
+    const prompt = buildFramePrompt(
+      staged,
+      beats[0],
+      0,
+      "LOCATION: a rooftop at dusk",
+    );
+
+    expect(prompt).toContain(location);
+  });
+
+  it("leaves the market fallback in place when no scene was chosen", () => {
+    expect(buildFramePrompt(subject, beats[0], 0)).toContain(
+      "ordinary home or street scene",
+    );
+    expect(
+      buildFramePrompt(subject, beats[0], 0, "LOCATION: a rooftop"),
+    ).not.toContain("ordinary home or street scene");
+  });
+
+  it("holds the clip in one place for the whole video", () => {
+    const prompt = buildVideoPrompt(
+      staged,
+      beats,
+      null,
+      { videoMode: "one_take", aspectRatio: "9:16" },
+      PRISM_MEDIA.maxVideoPromptCharacters,
+    );
+
+    expect(prompt).toContain("stays in this one place");
+    expect(prompt).toContain(location);
+  });
+
+  it("cuts long subject prompts so the beats keep their room", () => {
+    // Identity and location prompts are written for an image model and run to
+    // thousands of characters; the beat list is what must survive the cap.
+    const prompt = buildVideoPrompt(
+      {
+        ...staged,
+        talentPrompt: "T".repeat(8000),
+        scenePrompt: "S".repeat(8000),
+      },
+      beats,
+      null,
+      { videoMode: "one_take", aspectRatio: "9:16" },
+      PRISM_MEDIA.maxVideoPromptCharacters,
+    );
+
+    expect(Array.from(prompt).length).toBeLessThanOrEqual(
+      PRISM_MEDIA.maxVideoPromptCharacters,
+    );
+    expect(prompt).toContain("0.0-3.5s");
+    expect(prompt).toContain("No burned-in captions");
+  });
+
+  it("hands at most two views to one request", () => {
+    const views = [
+      { angle: "establishing" as const, imageUrl: "https://x/1.webp" },
+      { angle: "eye_level" as const, imageUrl: "https://x/2.webp" },
+      { angle: "detail" as const, imageUrl: "https://x/3.webp" },
+    ];
+
+    expect(sceneReferenceUrls({ views })).toEqual([
+      "https://x/1.webp",
+      "https://x/2.webp",
+    ]);
+    expect(sceneReferenceUrls(null)).toEqual([]);
+  });
+
+  it("describes the talent and the scene by their expanded prompts", () => {
+    const built = renderSubjectFor({
+      product: { name: "Cordless hand vacuum", facts: null },
+      work: { market: "US", locale: "en", template: "spokesperson" },
+      talent: { prompt: "", description: "", name: "Mia" },
+      scene: { prompt: location, description: "kitchen", name: "Kitchen" },
+    });
+
+    expect(built.scenePrompt).toBe(location);
+    // An empty expanded prompt falls through to what the operator typed.
+    expect(built.talentPrompt).toBe("Mia");
+    expect(built.appearance).toBe("");
+  });
+});
+
+describe("scene views", () => {
+  const location = "A small city kitchen with a pale oak counter.";
+
+  it("keeps the location prompt so the place cannot drift", () => {
+    expect(buildSceneViewPrompt(location, "establishing", false)).toContain(
+      location,
+    );
+  });
+
+  it("frames each view for the question it answers", () => {
+    expect(buildSceneViewPrompt(location, "establishing", false)).toContain(
+      "Wide establishing shot",
+    );
+    expect(buildSceneViewPrompt(location, "eye_level", false)).toContain(
+      "where a person would stand",
+    );
+    expect(buildSceneViewPrompt(location, "detail", false)).toContain(
+      "set down on",
+    );
+  });
+
+  it("matches earlier views only once there are some", () => {
+    expect(buildSceneViewPrompt(location, "detail", true)).toContain(
+      "same place",
+    );
+    expect(buildSceneViewPrompt(location, "detail", false)).not.toContain(
+      "same place",
+    );
+  });
+
+  it("keeps people and products out of a location reference", () => {
+    expect(buildSceneViewPrompt(location, "eye_level", false)).toContain(
+      "No people",
+    );
   });
 });
 

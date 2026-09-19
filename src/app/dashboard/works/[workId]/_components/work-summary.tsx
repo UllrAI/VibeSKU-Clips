@@ -37,7 +37,7 @@ export function WorkSummary({ detail }: { detail: WorkDetail }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [pending, startTransition] = useTransition();
-  const { work, product, talent } = detail;
+  const { work, product, talent, scene } = detail;
 
   const remove = () =>
     startTransition(async () => {
@@ -85,6 +85,9 @@ export function WorkSummary({ detail }: { detail: WorkDetail }) {
         </Fact>
         <Fact label={t("ugc_plan_talents")}>
           {talent?.name ?? t("ugc_work_no_talent")}
+        </Fact>
+        <Fact label={t("ugc_plan_scene")}>
+          {scene?.name ?? t("ugc_work_no_scene")}
         </Fact>
         <Fact label={t("ugc_plan_template")}>
           {t(templateKey(work.template))}

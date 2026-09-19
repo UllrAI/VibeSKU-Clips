@@ -5,6 +5,7 @@ import { workScriptJob } from "./ugc/work-script";
 import { workStoryboardJob } from "./ugc/work-storyboard";
 import { workVideoJob } from "./ugc/work-video";
 import { productIngestJob } from "./ugc/product-ingest";
+import { sceneGenerateJob } from "./ugc/scene-generate";
 import { talentGenerateJob } from "./ugc/talent-generate";
 
 /**
@@ -18,6 +19,7 @@ export const jobDefinitions = [
   exampleProcessJob,
   productIngestJob,
   talentGenerateJob,
+  sceneGenerateJob,
   workScriptJob,
   workStoryboardJob,
   workVideoJob,

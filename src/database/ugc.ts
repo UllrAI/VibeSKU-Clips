@@ -16,6 +16,7 @@ import type {
   ClipQualityReport,
   ProductBrief,
   ProductFacts,
+  SceneView,
   ScriptBeat,
 } from "@/lib/ugc/types";
 
@@ -29,6 +30,12 @@ export const ugcProductStatusEnum = pgEnum("ugc_product_status", [
 ]);
 
 export const ugcTalentStatusEnum = pgEnum("ugc_talent_status", [
+  "generating",
+  "ready",
+  "failed",
+]);
+
+export const ugcSceneStatusEnum = pgEnum("ugc_scene_status", [
   "generating",
   "ready",
   "failed",
@@ -189,6 +196,45 @@ export const ugcTalents = pgTable(
   }),
 );
 
+/**
+ * One reusable location. A talent settles who is on camera; a scene settles
+ * where they are, which is otherwise re-invented by the model on every clip.
+ * Each row holds the views it has been drawn from so far, so a location that
+ * loses one viewpoint is still usable with the ones that landed.
+ */
+export const ugcScenes = pgTable(
+  "ugc_scenes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description").notNull().default(""),
+    referenceImages: jsonb("referenceImages")
+      .$type<string[]>()
+      .notNull()
+      .default([]),
+    views: jsonb("views").$type<SceneView[]>().notNull().default([]),
+    // Expanded location prompt every view is drawn from.
+    prompt: text("prompt"),
+    status: ugcSceneStatusEnum("status").notNull().default("generating"),
+    archived: boolean("archived").notNull().default(false),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updatedAt", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => ({
+    userCreatedAtIdx: index("ugc_scenes_userId_createdAt_idx").on(
+      table.userId,
+      table.createdAt.desc(),
+    ),
+  }),
+);
+
 export const ugcScripts = pgTable(
   "ugc_scripts",
   {
@@ -245,6 +291,9 @@ export const ugcClips = pgTable(
       onDelete: "set null",
     }),
     talentId: uuid("talentId").references(() => ugcTalents.id, {
+      onDelete: "set null",
+    }),
+    sceneId: uuid("sceneId").references(() => ugcScenes.id, {
       onDelete: "set null",
     }),
     workId: uuid("workId").references((): AnyPgColumn => ugcWorks.id, {
@@ -330,6 +379,9 @@ export const ugcWorks = pgTable(
       onDelete: "set null",
     }),
     talentId: uuid("talentId").references(() => ugcTalents.id, {
+      onDelete: "set null",
+    }),
+    sceneId: uuid("sceneId").references(() => ugcScenes.id, {
       onDelete: "set null",
     }),
     locale: text("locale").notNull().default("en"),

@@ -1,9 +1,16 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
-import { ugcProducts, ugcScripts, ugcTalents, ugcWorks } from "@/database/ugc";
+import {
+  ugcProducts,
+  ugcScenes,
+  ugcScripts,
+  ugcTalents,
+  ugcWorks,
+} from "@/database/ugc";
 import { composeScript } from "@/lib/ugc/authoring";
 import { CREDIT_COST, type ScriptTemplate } from "@/lib/ugc/constants";
 import { defaultDisclosure } from "@/lib/ugc/templates";
+import { sceneReferenceUrls } from "@/lib/ugc/render";
 import { resolveReferenceUrls } from "@/lib/ugc/storage";
 import { recordUsage } from "@/lib/ugc/usage";
 import { defineJob, PermanentJobError } from "../definition";
@@ -58,12 +65,16 @@ export const workScriptJob = defineJob(
           .from(ugcTalents)
           .where(eq(ugcTalents.id, work.talentId))
       : [];
+    const [scene] = work.sceneId
+      ? await db.select().from(ugcScenes).where(eq(ugcScenes.id, work.sceneId))
+      : [];
 
     await context.updateProgress({ step: "writing_script" });
     context.log("work_script_started", {
       workId: work.id,
       productId: product.id,
       talentId: talent?.id ?? null,
+      sceneId: scene?.id ?? null,
     });
 
     const productImageUrls = await resolveReferenceUrls(
@@ -74,6 +85,11 @@ export const workScriptJob = defineJob(
     const [talentImageUrl] = talent?.imageUrl
       ? await resolveReferenceUrls(db, work.userId, [talent.imageUrl])
       : [];
+    const sceneImageUrls = await resolveReferenceUrls(
+      db,
+      work.userId,
+      sceneReferenceUrls(scene),
+    );
     const draft = await composeScript({
       facts: product.facts,
       brief: product.brief,
@@ -87,8 +103,12 @@ export const workScriptJob = defineJob(
       productImageUrls,
       talentImageUrl,
       talentNote: talent
-        ? (talent.prompt ?? talent.description ?? talent.name)
+        ? talent.prompt || talent.description || talent.name
         : null,
+      // The place is settled before a word is written, so the beats are
+      // composed from what is actually in it.
+      sceneImageUrls,
+      sceneNote: scene ? scene.prompt || scene.description || scene.name : null,
     });
 
     const [script] = await db

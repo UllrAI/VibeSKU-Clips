@@ -4,6 +4,7 @@ import type { AppDatabase } from "@/database/client";
 import {
   ugcClips,
   ugcProducts,
+  ugcScenes,
   ugcScripts,
   ugcTalents,
   ugcWorkFrames,
@@ -32,6 +33,8 @@ import {
   buildCoverPrompt,
   buildSubtitleTrack,
   buildVideoPrompt,
+  renderSubjectFor,
+  sceneReferenceUrls,
   type RenderSubject,
 } from "@/lib/ugc/render";
 import {
@@ -95,6 +98,7 @@ async function ensureCoverFrame(input: {
   work: typeof ugcWorks.$inferSelect;
   product: typeof ugcProducts.$inferSelect;
   talent: typeof ugcTalents.$inferSelect | undefined;
+  scene: typeof ugcScenes.$inferSelect | undefined;
   subject: RenderSubject;
   beats: ScriptBeat[];
   productionPrompt: string | null;
@@ -134,6 +138,7 @@ async function ensureCoverFrame(input: {
       [
         input.talent?.imageUrl,
         input.talent?.fullBodyUrl,
+        ...sceneReferenceUrls(input.scene),
         ...input.product.images.slice(0, 2),
       ].filter((url): url is string => Boolean(url)),
     );
@@ -235,6 +240,9 @@ export const workVideoJob = defineJob(
           .from(ugcTalents)
           .where(eq(ugcTalents.id, work.talentId))
       : [];
+    const [scene] = work.sceneId
+      ? await db.select().from(ugcScenes).where(eq(ugcScenes.id, work.sceneId))
+      : [];
     if (!script || !product) {
       throw new PermanentJobError(
         "UGC_WORK_INCOMPLETE",
@@ -271,16 +279,7 @@ export const workVideoJob = defineJob(
       step: VIDEO_PROGRESS_STEP.preparing,
       version,
     });
-    const subject = {
-      productName: product.name,
-      appearance: product.facts?.appearance ?? "",
-      market: work.market,
-      locale: work.locale,
-      template: work.template,
-      talentPrompt: talent
-        ? (talent.prompt ?? talent.description ?? talent.name)
-        : null,
-    };
+    const subject = renderSubjectFor({ product, work, talent, scene });
 
     // One take has nothing drawn to anchor it, so its opening frame is drawn
     // here before any video is paid for.
@@ -291,6 +290,7 @@ export const workVideoJob = defineJob(
         work,
         product,
         talent,
+        scene,
         subject,
         beats,
         productionPrompt: script.productionPrompt,
@@ -417,6 +417,7 @@ export const workVideoJob = defineJob(
         productId: product.id,
         scriptId: script.id,
         talentId: talent?.id ?? null,
+        sceneId: scene?.id ?? null,
         workId: work.id,
         version,
         reference,

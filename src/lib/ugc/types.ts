@@ -1,3 +1,5 @@
+import type { SceneAngle } from "./constants";
+
 export interface ProductBrief {
   audience?: string;
   sellingPoints?: string[];
@@ -18,6 +20,12 @@ export interface ProductFacts {
   sources: string[];
   /** Set when the source material is incomplete or self-contradictory. */
   missing?: string[];
+}
+
+/** One drawn viewpoint of a scene, archived in the project's own storage. */
+export interface SceneView {
+  angle: SceneAngle;
+  imageUrl: string;
 }
 
 export interface ScriptBeat {

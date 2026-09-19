@@ -8,6 +8,7 @@ import { db } from "@/database";
 import {
   ugcProducts,
   ugcClips,
+  ugcScenes,
   ugcScripts,
   ugcTalents,
   ugcWorkFrames,
@@ -37,6 +38,7 @@ const setupSchema = z
     productId: z.uuid(),
     talentId: z.uuid().optional(),
     randomTalent: z.boolean().default(false),
+    sceneId: z.uuid().optional(),
     locale: z.string().trim().min(2).max(16),
     market: z.string().trim().min(2).max(16),
     template: z.enum(SCRIPT_TEMPLATES),
@@ -111,6 +113,30 @@ async function resolveTalentSelection(
       ),
     );
   return talent?.id;
+}
+
+/**
+ * A scene is only offered once it has been drawn, so an unknown or unfinished
+ * one is a stale selection rather than a silent fallback to nowhere.
+ * `undefined` means the selection was rejected; `null` means none was made.
+ */
+async function resolveSceneSelection(
+  userId: string,
+  sceneId: string | undefined,
+): Promise<string | null | undefined> {
+  if (!sceneId) return null;
+  const [scene] = await db
+    .select({ id: ugcScenes.id })
+    .from(ugcScenes)
+    .where(
+      and(
+        eq(ugcScenes.id, sceneId),
+        eq(ugcScenes.userId, userId),
+        eq(ugcScenes.archived, false),
+        eq(ugcScenes.status, "ready"),
+      ),
+    );
+  return scene?.id;
 }
 
 async function loadOwnedWork(workId: string, userId: string) {
@@ -195,6 +221,8 @@ export async function createWork(
 
   const talentId = await resolveTalentSelection(user.id, parsed.data);
   if (talentId === undefined) return { ok: false, code: "not_found" };
+  const sceneId = await resolveSceneSelection(user.id, parsed.data.sceneId);
+  if (sceneId === undefined) return { ok: false, code: "not_found" };
 
   const [work] = await db
     .insert(ugcWorks)
@@ -203,6 +231,7 @@ export async function createWork(
       title: product.name,
       productId: parsed.data.productId,
       talentId,
+      sceneId,
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,
@@ -257,12 +286,15 @@ export async function setWorkSetup(
 
   const talentId = await resolveTalentSelection(user.id, parsed.data);
   if (talentId === undefined) return { ok: false, code: "not_found" };
+  const sceneId = await resolveSceneSelection(user.id, parsed.data.sceneId);
+  if (sceneId === undefined) return { ok: false, code: "not_found" };
 
   await db
     .update(ugcWorks)
     .set({
       productId: parsed.data.productId,
       talentId,
+      sceneId,
       locale: parsed.data.locale,
       market: parsed.data.market,
       template: parsed.data.template,

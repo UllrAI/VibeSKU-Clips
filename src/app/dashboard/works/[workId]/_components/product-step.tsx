@@ -23,6 +23,15 @@ import {
 } from "@/components/ui/select";
 import { actionMessageKey } from "@/components/ugc/action-message";
 import {
+  NO_SCENE,
+  NO_TALENT,
+  RANDOM_TALENT,
+  SceneField,
+  TalentField,
+  selectableScenes,
+  selectableTalents,
+} from "@/components/ugc/cast-fields";
+import {
   LOCALE_OPTIONS,
   MARKET_OPTIONS,
   contentLocaleKey,
@@ -39,13 +48,10 @@ import type {
   VideoModelOption,
   VideoResolution,
 } from "@/lib/ugc/constants";
-import type { ProductRow, TalentRow } from "@/lib/ugc/queries";
+import type { ProductRow, SceneRow, TalentRow } from "@/lib/ugc/queries";
 import { setWorkSetup, startWorkScript } from "@/lib/ugc/work-actions";
 import type { WorkDetail } from "@/lib/ugc/works";
 import { StepCard } from "./step-card";
-
-const NO_TALENT = "none";
-const RANDOM_TALENT = "random";
 
 /**
  * The first step is a confirmation, not a form: the composer already asked
@@ -57,6 +63,7 @@ export function ProductStep({
   detail,
   products,
   talents,
+  scenes,
   productState,
   modelOptions,
   onRefresh,
@@ -64,6 +71,7 @@ export function ProductStep({
   detail: WorkDetail;
   products: ProductRow[];
   talents: TalentRow[];
+  scenes: SceneRow[];
   productState: "empty" | "reading" | "needs_input" | "review" | "ready";
   modelOptions: readonly VideoModelOption[];
   onRefresh: () => void;
@@ -73,6 +81,7 @@ export function ProductStep({
   const { work, product } = detail;
   const [productId, setProductId] = useState(work.productId ?? "");
   const [talentId, setTalentId] = useState(work.talentId ?? NO_TALENT);
+  const [sceneId, setSceneId] = useState(work.sceneId ?? NO_SCENE);
   const [locale, setLocale] = useState(work.locale);
   const [market, setMarket] = useState(work.market);
   const [template, setTemplate] = useState<ScriptTemplate>(work.template);
@@ -100,6 +109,7 @@ export function ProductStep({
           ? undefined
           : talentId,
       randomTalent: talentId === RANDOM_TALENT,
+      sceneId: sceneId === NO_SCENE ? undefined : sceneId,
       locale,
       market,
       template,
@@ -241,32 +251,18 @@ export function ProductStep({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="work-talent">{t("ugc_plan_talents")}</Label>
-              <Select value={talentId} onValueChange={setTalentId}>
-                <SelectTrigger id="work-talent" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={NO_TALENT}>
-                    {t("ugc_work_no_talent")}
-                  </SelectItem>
-                  <SelectItem value={RANDOM_TALENT}>
-                    {t("ugc_work_random_talent")}
-                  </SelectItem>
-                  {talents.map((entry) => (
-                    <SelectItem key={entry.id} value={entry.id}>
-                      {entry.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {talentId === RANDOM_TALENT && (
-                <p className="text-muted-foreground text-xs">
-                  {t("ugc_work_random_talent_hint")}
-                </p>
-              )}
-            </div>
+            <TalentField
+              id="work-talent"
+              value={talentId}
+              onChange={setTalentId}
+              talents={selectableTalents(talents)}
+            />
+            <SceneField
+              id="work-scene"
+              value={sceneId}
+              onChange={setSceneId}
+              scenes={selectableScenes(scenes)}
+            />
           </div>
 
           <TemplatePicker value={template} onChange={setTemplate} />

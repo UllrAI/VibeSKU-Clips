@@ -105,6 +105,7 @@ pnpm stripe:sync-products
 - UGC domain logic (QC and render prompts): `src/lib/ugc`
 - UGC server actions and queries: `src/lib/ugc/actions.ts`, `src/lib/ugc/queries.ts`
 - Stepped single-clip flow: `src/lib/ugc/works.ts`, `src/lib/ugc/work-actions.ts`, `src/app/dashboard/works`
+- Reusable talent and scene libraries: `src/app/dashboard/talents`, `src/app/dashboard/scenes`
 - Background-run state shared by the product and work consoles: `src/lib/ugc/run-state.ts`
 - UGC job handlers: `src/lib/jobs/ugc`
 - Job queue, definitions, and worker environment: `src/lib/jobs`
@@ -125,12 +126,13 @@ pnpm stripe:sync-products
 
 ## 5. UGC Production Pipeline
 
-Five durable jobs are registered in `src/lib/jobs/catalog.ts`:
+Six durable jobs are registered in `src/lib/jobs/catalog.ts`:
 
 | Job                   | Handler                               | What it does                                                                                |
 | --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Imports source links through Firecrawl, extracts facts, then waits for review or more input |
 | `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief, draws one reference image, and archives it                          |
+| `ugc.scene.generate`  | `src/lib/jobs/ugc/scene-generate.ts`  | Expands a scene brief into one place, then photographs it from each angle in turn           |
 | `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it  |
 | `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands            |
 | `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model          |
@@ -142,7 +144,7 @@ output is traceable. The step's own
 task run records why it gave up, so the console reads failure and stall state
 from `task_runs` (`src/lib/ugc/run-state.ts`) and never spins indefinitely.
 
-The work composer asks for the product, talent, format, generation mode, language and market in
+The work composer asks for the product, talent, scene, format, generation mode, language and market in
 one card, and creates the product in place when it does not exist yet. Creating
 a work therefore starts the script immediately when the product has already
 been read; a product still being read stops the work on step one, where its
@@ -177,6 +179,14 @@ Rules that are easy to break:
 - **A format is its shot vocabulary.** `TEMPLATE_BRIEFS[...].shots` reaches the
   writing model and is what separates a thing held in the hand from a thing
   worn on the body. A new format without it frames like every other one.
+- **A scene is a place, not a shot.** A talent settles who is on camera; a
+  scene (`ugc_scenes`) settles where they are, which the model otherwise
+  re-invents on every clip. Each one is drawn from the viewpoints in
+  `SCENE_ANGLES` — wide, eye level, detail — each view referencing the ones
+  already archived so the three read as one room. A scene that loses a view
+  stays usable with the ones that landed. Where a clip is filmed outranks both
+  the generic market fallback and whatever location the production direction
+  improvised, and at most two views reach any one request.
 - **A talent is two images.** A portrait settles who the performer is; a
   full-length shot settles how clothes fall on them, which is the only thing an
   apparel clip is about. The second draw takes the first as its reference so

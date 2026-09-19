@@ -84,6 +84,71 @@ export async function composeTalentImagePrompt(
   return object.prompt;
 }
 
+const sceneImagePromptSchema = z.object({
+  prompt: z.string().min(1).max(12_000),
+});
+
+export interface ComposeSceneImagePromptInput {
+  name: string;
+  description: string;
+  referenceImageUrls: string[];
+}
+
+/**
+ * Turns a short operator brief into one complete description of a place.
+ *
+ * A scene is a location, not a shot: the prompt has to fix the architecture,
+ * surfaces, furniture, props, light and time of day precisely enough that
+ * three separate draws land in the same room, and say nothing about who is in
+ * it or what is being sold.
+ */
+export async function composeSceneImagePrompt(
+  input: ComposeSceneImagePromptInput,
+): Promise<string> {
+  const { object } = await generateObject({
+    model: getAuthoringModel(),
+    schema: sceneImagePromptSchema,
+    system: [
+      "You write one production-ready prompt for a photorealistic location reference image.",
+      "This image is a reusable set reference: an empty place, photographed as it is. It is never an advertisement and never a scene with a story happening in it.",
+      "No people, no hands, no pets, and no product, package, device, or branded object anywhere in the frame. The place must stay recognisable and usable on its own.",
+      "Preserve every explicit fact in the operator brief. Expand missing detail coherently without changing the requested location, period, style, or mood.",
+      "Write in the same language as the operator brief.",
+      "Describe the type of place, the architecture and layout, wall, floor and surface materials, furniture and fittings, the everyday objects that belong there, what is visible through any window, the depth of the space, the direction and quality of the light, the time of day, the weather where it applies, the colour temperature, and the palette.",
+      "Fix the details that must not drift between photographs of this place: the layout, the materials, the light direction, and the time of day.",
+      "Finish with concise negative constraints: no people, no products, no logos, no text overlay, no watermark, no fisheye distortion, no HDR halo, no impossible architecture.",
+      input.referenceImageUrls.length
+        ? "Reference images are attached. State that the layout, materials, fittings, and light of the place must match the references exactly; use the operator brief for intentional changes. Omit any person or product visible in a reference image."
+        : "No reference image is attached. Define one coherent real-feeling place from the operator brief.",
+      "Return only the final image prompt in `prompt`, with no explanation or markdown.",
+    ].join("\n"),
+    messages: [
+      {
+        role: "user",
+        content: [
+          {
+            type: "text" as const,
+            text: `Scene name: ${input.name}\nOperator brief:\n${input.description}`,
+          },
+          ...input.referenceImageUrls.flatMap((url, index) => [
+            {
+              type: "text" as const,
+              text: `Scene reference image ${index + 1} of ${input.referenceImageUrls.length}`,
+            },
+            {
+              type: "file" as const,
+              data: new URL(url),
+              mediaType: "image",
+            },
+          ]),
+        ],
+      },
+    ],
+  });
+
+  return object.prompt;
+}
+
 function timingsCoverClip(beats: { start: number; end: number }[]): boolean {
   return (
     beats.every(
@@ -217,6 +282,8 @@ export interface ComposeScriptInput {
   productImageUrls?: string[];
   talentImageUrl?: string | null;
   talentNote?: string | null;
+  sceneImageUrls?: string[];
+  sceneNote?: string | null;
 }
 
 function templateBrief(template: ScriptTemplate): ScriptTemplateBrief {
@@ -233,6 +300,7 @@ export async function composeScript(
   const budget = voiceoverBudgetFor(input.locale);
 
   const productImages = input.productImageUrls ?? [];
+  const sceneImages = input.sceneImageUrls ?? [];
   const brief_ = [
     `Product: ${input.productName}`,
     `Summary: ${input.facts.summary}`,
@@ -245,6 +313,9 @@ export async function composeScript(
     input.talentNote
       ? `Performer: ${input.talentNote}`
       : "Performer: none. Keep the video product-led with hands only and no recognisable face.",
+    input.sceneNote
+      ? `Location, already chosen and photographed — every beat happens here:\n${input.sceneNote}`
+      : "",
     input.brief?.audience ? `Audience: ${input.brief.audience}` : "",
     input.brief?.tone ? `Tone: ${input.brief.tone}` : "",
     input.brief?.scenes ? `Requested scenes: ${input.brief.scenes}` : "",
@@ -271,6 +342,9 @@ export async function composeScript(
       // thing worn on the body. Without it every format frames the same way.
       `Compose the beats from this format's shot vocabulary, adapting each one to this product rather than repeating it word for word: ${brief.shots.join("; ")}`,
       `Write every field in ${input.locale} for the ${input.market} market, using local wording, units, and everyday scenes.`,
+      input.sceneNote
+        ? "A location has been chosen and photographed for this clip. Set every beat inside it, compose the shots from what that place actually contains, and do not move to another location or invent a second one."
+        : "",
       `The spoken track must fit ${budget} units of speech; do not pad it.`,
       "Use only the supplied product facts. Never state a price, a discount, a medical or safety claim, or a consumer testimonial.",
       "The result must feel like a real person filming themselves, not a polished advert. Use concrete micro-behaviour, natural pauses, imperfect phone-camera movement, focus changes, material physics, and ambient sound appropriate to the scene.",
@@ -280,7 +354,7 @@ export async function composeScript(
       "Captions must be short enough to sit clear of the platform buttons and the product card, and must never describe a tappable shopping element.",
       "`disclosure` is a single sentence stating that the clip is AI-generated content, written in the same language.",
       "Beat timings must cover the full duration without gaps or overlap.",
-      productImages.length || input.talentImageUrl
+      productImages.length || input.talentImageUrl || sceneImages.length
         ? "Reference images are attached and labelled. Use every attached image as evidence. Do not invent a colour, finish, label, facial feature, garment, or component that is not visible or recorded in the facts."
         : "",
     ]
@@ -301,6 +375,17 @@ export async function composeScript(
                 },
               ]
             : []),
+          ...sceneImages.flatMap((url, index) => [
+            {
+              type: "text" as const,
+              text: `Location reference image ${index + 1} of ${sceneImages.length}`,
+            },
+            {
+              type: "file" as const,
+              data: new URL(url),
+              mediaType: "image",
+            },
+          ]),
           ...productImages.flatMap((url, index) => [
             {
               type: "text" as const,

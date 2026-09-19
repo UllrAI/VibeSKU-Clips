@@ -9,6 +9,7 @@ import {
   Film,
   KeyRound,
   LucideIcon,
+  MapPin,
   Package,
   Settings,
   Shield,
@@ -167,6 +168,13 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         label: <>{t("ugc_nav_talents")}</>,
         url: "/dashboard/talents",
         icon: UserRound,
+        matchMode: "exact",
+      },
+      {
+        id: "scenes",
+        label: <>{t("ugc_nav_scenes")}</>,
+        url: "/dashboard/scenes",
+        icon: MapPin,
         matchMode: "exact",
       },
     ] satisfies NavigationItem[]

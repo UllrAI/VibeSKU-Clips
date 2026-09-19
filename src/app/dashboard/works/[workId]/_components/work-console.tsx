@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { StepRail } from "@/components/ugc/step-rail";
 import { useWorkState } from "@/hooks/use-work-state";
-import type { ProductRow, TalentRow } from "@/lib/ugc/queries";
+import type { ProductRow, SceneRow, TalentRow } from "@/lib/ugc/queries";
 import type { WorkDetail, WorkState } from "@/lib/ugc/works";
 import type { VideoModelOption } from "@/lib/ugc/constants";
 import { videoGenerationPhase } from "@/lib/ugc/video-progress";
@@ -23,12 +23,14 @@ export function WorkConsole({
   detail,
   products,
   talents,
+  scenes,
   initialState,
   modelOptions,
 }: {
   detail: WorkDetail;
   products: ProductRow[];
   talents: TalentRow[];
+  scenes: SceneRow[];
   initialState: WorkState;
   modelOptions: readonly VideoModelOption[];
 }) {
@@ -84,6 +86,7 @@ export function WorkConsole({
         detail={detail}
         products={products}
         talents={talents}
+        scenes={scenes}
         productState={liveState.productState}
         modelOptions={modelOptions}
         onRefresh={refresh}

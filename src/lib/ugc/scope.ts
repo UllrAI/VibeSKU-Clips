@@ -11,6 +11,10 @@ export function talentScopeKey(userId: string, talentId: string): string {
   return `user:${userId}:talent:${talentId}`;
 }
 
+export function sceneScopeKey(userId: string, sceneId: string): string {
+  return `user:${userId}:scene:${sceneId}`;
+}
+
 export function workScopeKey(userId: string, workId: string): string {
   return `user:${userId}:work:${workId}`;
 }

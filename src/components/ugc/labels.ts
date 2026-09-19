@@ -20,6 +20,10 @@ export function marketKey(market: string): string {
   return `ugc_market_${market.toLowerCase()}`;
 }
 
+export function sceneAngleKey(angle: string): string {
+  return `ugc_scene_angle_${angle}`;
+}
+
 export function templateKey(template: string): string {
   return `ugc_template_${template}`;
 }

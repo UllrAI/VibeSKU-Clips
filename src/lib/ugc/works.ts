@@ -4,6 +4,7 @@ import { db } from "@/database";
 import {
   ugcClips,
   ugcProducts,
+  ugcScenes,
   ugcScripts,
   ugcTalents,
   ugcWorkFrames,
@@ -11,7 +12,7 @@ import {
 } from "@/database/ugc";
 import { taskRuns } from "@/database/schema";
 import { requireAuth } from "@/lib/auth/permissions";
-import type { ProductRow, ScriptRow, TalentRow } from "./queries";
+import type { ProductRow, SceneRow, ScriptRow, TalentRow } from "./queries";
 import { runStateFor, type RunState } from "./run-state";
 import {
   videoGenerationPhase,
@@ -31,6 +32,7 @@ export interface WorkDetail {
   work: WorkRow;
   product: ProductRow | null;
   talent: TalentRow | null;
+  scene: SceneRow | null;
   script: ScriptRow | null;
   clip: ClipRow | null;
   versions: WorkVersion[];
@@ -110,6 +112,9 @@ export async function getWork(workId: string): Promise<WorkDetail | null> {
   const [talent] = work.talentId
     ? await db.select().from(ugcTalents).where(eq(ugcTalents.id, work.talentId))
     : [];
+  const [scene] = work.sceneId
+    ? await db.select().from(ugcScenes).where(eq(ugcScenes.id, work.sceneId))
+    : [];
   const [script] = work.scriptId
     ? await db.select().from(ugcScripts).where(eq(ugcScripts.id, work.scriptId))
     : [];
@@ -133,6 +138,7 @@ export async function getWork(workId: string): Promise<WorkDetail | null> {
     run: await runStateFor(work.taskRunId),
     product: product ?? null,
     talent: talent ?? null,
+    scene: scene ?? null,
     script: script ?? null,
     clip: clip ?? null,
     versions:
