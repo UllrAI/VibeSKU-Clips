@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from "@jest/globals";
 import { PermanentJobError } from "@/lib/jobs/definition";
-import { getLk666Task, lk666Resolution, submitLk666Video } from "./lk666";
+import { getLk888Task, lk888Resolution, submitLk888Video } from "./lk888";
 
-describe("lk666 media client", () => {
+describe("lk888 media client", () => {
   beforeEach(() => {
-    process.env.LK666_API_BASE_URL = "https://api.lk888.ai/";
-    process.env.LK666_API_KEY = "test-key";
+    process.env.LK888_API_BASE_URL = "https://api.lk888.ai/";
+    process.env.LK888_API_KEY = "test-key";
   });
 
   afterEach(() => {
     jest.restoreAllMocks();
-    delete process.env.LK666_API_BASE_URL;
-    delete process.env.LK666_API_KEY;
+    delete process.env.LK888_API_BASE_URL;
+    delete process.env.LK888_API_KEY;
   });
 
   it("submits H3 with the provider resolution mapping", async () => {
@@ -24,7 +24,7 @@ describe("lk666 media client", () => {
     );
 
     await expect(
-      submitLk666Video({
+      submitLk888Video({
         model: "h3",
         prompt: "One continuous product demonstration",
         referenceUrls: ["https://example.com/product.png"],
@@ -77,15 +77,15 @@ describe("lk666 media client", () => {
         }),
       );
 
-    await expect(getLk666Task("123456")).resolves.toMatchObject({
+    await expect(getLk888Task("123456")).resolves.toMatchObject({
       status: "pending",
       outputUrl: null,
     });
-    await expect(getLk666Task("123456")).resolves.toEqual({
+    await expect(getLk888Task("123456")).resolves.toEqual({
       status: "completed",
       outputUrl: "https://example.com/video.mp4",
       errorMessage: null,
-      provider: "lk666",
+      provider: "lk888",
       extra: { cost: 0.23 },
     });
   });
@@ -96,7 +96,7 @@ describe("lk666 media client", () => {
       .mockResolvedValue(Response.json({ id: "99936297", status: "queued" }));
 
     await expect(
-      submitLk666Video({
+      submitLk888Video({
         model: "seedance-2.5",
         prompt: "A continuous product demonstration",
         referenceUrls: ["https://example.com/product.png"],
@@ -137,11 +137,11 @@ describe("lk666 media client", () => {
       }),
     );
 
-    await expect(getLk666Task("seedance:99936297")).resolves.toEqual({
+    await expect(getLk888Task("seedance:99936297")).resolves.toEqual({
       status: "completed",
       outputUrl: "https://example.com/seedance.mp4",
       errorMessage: null,
-      provider: "lk666",
+      provider: "lk888",
       extra: { completion_tokens: 107680 },
     });
     expect(fetchMock.mock.calls.at(-1)?.[0]).toBe(
@@ -156,7 +156,7 @@ describe("lk666 media client", () => {
         Response.json({ code: 200, data: { task_id: 123456 } }),
       );
 
-    await submitLk666Video({
+    await submitLk888Video({
       model: "h3",
       prompt: "画".repeat(5_000),
       referenceUrls: ["https://example.com/product.png"],
@@ -172,8 +172,8 @@ describe("lk666 media client", () => {
   });
 
   it("rejects unsupported 480p requests before spending", () => {
-    expect(() => lk666Resolution("480p")).toThrow(PermanentJobError);
-    expect(lk666Resolution("1080p")).toBe("1080P");
-    expect(lk666Resolution("2k")).toBe("2K");
+    expect(() => lk888Resolution("480p")).toThrow(PermanentJobError);
+    expect(lk888Resolution("1080p")).toBe("1080P");
+    expect(lk888Resolution("2k")).toBe("2K");
   });
 });

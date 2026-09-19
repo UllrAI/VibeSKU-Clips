@@ -10,10 +10,10 @@ import {
 import { PermanentJobError } from "@/lib/jobs/definition";
 import { loadMediaEnv } from "./config";
 import {
-  getLk666Task,
-  LK666_MAX_PROMPT_CHARACTERS,
-  submitLk666Video,
-} from "./lk666";
+  getLk888Task,
+  LK888_MAX_PROMPT_CHARACTERS,
+  submitLk888Video,
+} from "./lk888";
 import {
   getTask as getPrismTask,
   submitVideo as submitPrismVideo,
@@ -52,8 +52,8 @@ export function isActiveVideoConfiguration(
 export function videoPromptLimit(
   source: NodeJS.ProcessEnv = process.env,
 ): number {
-  return activeVideoProvider(source) === "lk666"
-    ? LK666_MAX_PROMPT_CHARACTERS
+  return activeVideoProvider(source) === "lk888"
+    ? LK888_MAX_PROMPT_CHARACTERS
     : PRISM_MEDIA.maxVideoPromptCharacters;
 }
 
@@ -61,15 +61,15 @@ export async function submitVideo(request: VideoRequest): Promise<string> {
   const provider = activeVideoProvider();
   if (!isActiveVideoConfiguration(request.model, request.resolution)) {
     throw new PermanentJobError(
-      provider === "lk666"
-        ? "LK666_REQUEST_REJECTED"
+      provider === "lk888"
+        ? "LK888_REQUEST_REJECTED"
         : "PRISM_REQUEST_REJECTED",
       "The selected video model does not support this resolution.",
     );
   }
   const taskId =
-    provider === "lk666"
-      ? await submitLk666Video(request)
+    provider === "lk888"
+      ? await submitLk888Video(request)
       : await submitPrismVideo(request);
   return `${provider}${PREFIX_SEPARATOR}${taskId}`;
 }
@@ -83,7 +83,7 @@ export async function getVideoTask(providerTaskId: string): Promise<MediaTask> {
 
   const provider = providerTaskId.slice(0, separator);
   const taskId = providerTaskId.slice(separator + 1);
-  if (provider === "lk666") return getLk666Task(taskId);
+  if (provider === "lk888") return getLk888Task(taskId);
   if (provider === "prism") return getPrismTask(taskId);
   throw new PermanentJobError(
     "VIDEO_PROVIDER_TASK_INVALID",

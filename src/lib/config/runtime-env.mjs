@@ -6,7 +6,7 @@ import { z } from "zod";
  * A variable left empty in `.env` arrives as "", not as `undefined`, and zod's
  * `.default()` only fires on `undefined`. Without this an empty line skips the
  * default and is validated as a value instead — so `VIDEO_GENERATION_PROVIDER=`
- * fails as "expected prism|lk666" rather than falling back to Prism, which is
+ * fails as "expected prism|lk888" rather than falling back to Prism, which is
  * exactly backwards for a field that has a default to fall back on.
  *
  * Surrounding whitespace is stripped for the same reason: `FOO=prism ` is a
@@ -71,13 +71,13 @@ export const scrapingEnvFields = {
 // schema. Model choices remain product constants in `src/lib/ugc/constants.ts`.
 export const mediaEnvFields = {
   VIDEO_GENERATION_PROVIDER: blankAsAbsent(
-    z.enum(["prism", "lk666"]).default("prism"),
+    z.enum(["prism", "lk888"]).default("prism"),
   ),
   PRISM_API_BASE_URL: blankAsAbsent(z.url().default(defaultPrismApiBaseUrl)),
   PRISM_API_KEY: blankAsAbsent(z.string().trim().min(1).optional()),
   PRISM_API_SECRET: blankAsAbsent(z.string().trim().min(1).optional()),
-  LK666_API_BASE_URL: blankAsAbsent(z.url().default("https://api.lk888.ai")),
-  LK666_API_KEY: blankAsAbsent(z.string().trim().min(1).optional()),
+  LK888_API_BASE_URL: blankAsAbsent(z.url().default("https://api.lk888.ai")),
+  LK888_API_KEY: blankAsAbsent(z.string().trim().min(1).optional()),
 };
 
 // Object storage is used by the Web process, the worker, and the renderer, so

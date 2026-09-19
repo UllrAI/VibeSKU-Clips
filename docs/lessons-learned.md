@@ -37,7 +37,7 @@
 
 ### `.env` 里留空的变量不会走 zod 的 `.default()`
 
-**现象**:`.env` 里有一行 `VIDEO_GENERATION_PROVIDER=`(等号后面什么都没写),`pnpm dev` 直接起不来,Web 和 Worker 报同一个错:`Invalid option: expected one of "prism"|"lk666"`。可这个字段明明写着 `.default("prism")`。
+**现象**:`.env` 里有一行 `VIDEO_GENERATION_PROVIDER=`(等号后面什么都没写),`pnpm dev` 直接起不来,Web 和 Worker 报同一个错:`Invalid option: expected one of "prism"|"lk888"`。可这个字段明明写着 `.default("prism")`。
 
 **原因**:dotenv 把空行解析成空字符串 `""`,不是 `undefined`。zod 的 `.default()` 只在 `undefined` 时触发,于是空串跳过默认值,直接去撞字段自己的校验规则。`runtime-env.mjs` 里所有 `.optional()` 字段本来都包了 `preprocess((value) => value || undefined, ...)`,说明写的时候是知道这回事的——但九个带 `.default()` 的字段全漏了,而恰恰是有默认值的变量最容易被留空,因为「反正有默认值」。
 
@@ -285,11 +285,11 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 
 ### 提示词有上限时，让出位置的必须是上下文而不是指令
 
-**现象**：先是 lk666 在接受视频任务后才以“最多 4096 字符”失败；后来 Prism 侧整片提交全部 422，`模型 minimax-h3 的 prompt 不能超过 10000 个字符`。
+**现象**：先是 lk888 在接受视频任务后才以“最多 4096 字符”失败；后来 Prism 侧整片提交全部 422，`模型 minimax-h3 的 prompt 不能超过 10000 个字符`。
 
 **原因**：`buildVideoPrompt` 把全局制作指导按 `slice(0, 24_000)` 原样塞进提示，而 Prism 适配器不做任何长度控制。**最初的结论“在适配层裁剪”是错的**——提示词末尾是分镜表和“不要加字幕/水印”的规则，截尾砍掉的正好是最该保留的指令，而且是静默发生的，比 422 更糟。
 
-**正确做法**：按预算组装。分镜表与收尾规则先占满，全局制作指导拿剩下的空间（`buildVideoPrompt` 的 `maxCharacters`），上限由 `videoPromptLimit()` 从当前 provider 取——Prism 的 minimax-h3 是 10000，lk666 是 4096。provider 按字符数（code point）计，不是 UTF-16 单元，所以要用 `Array.from().length` 而不是 `.length`。适配层的 `fitPrompt` 只作为最后一道兜底，不承担业务判断。
+**正确做法**：按预算组装。分镜表与收尾规则先占满，全局制作指导拿剩下的空间（`buildVideoPrompt` 的 `maxCharacters`），上限由 `videoPromptLimit()` 从当前 provider 取——Prism 的 minimax-h3 是 10000，lk888 是 4096。provider 按字符数（code point）计，不是 UTF-16 单元，所以要用 `Array.from().length` 而不是 `.length`。适配层的 `fitPrompt` 只作为最后一道兜底，不承担业务判断。
 
 ### 丢掉 provider 的原话，就只能靠猜
 

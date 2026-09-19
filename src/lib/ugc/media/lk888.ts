@@ -6,7 +6,7 @@ import { rejectionDetail } from "./provider-response";
 import type { MediaTask, VideoRequest } from "./video-types";
 
 const MODEL = "hailuo-h3-quannengcankao";
-export const LK666_MAX_PROMPT_CHARACTERS = 4096;
+export const LK888_MAX_PROMPT_CHARACTERS = 4096;
 const SEEDANCE_TASK_PREFIX = "seedance:";
 
 const SEEDANCE_MODELS = {
@@ -15,7 +15,7 @@ const SEEDANCE_MODELS = {
 } as const;
 
 function fitPrompt(prompt: string): string {
-  return Array.from(prompt).slice(0, LK666_MAX_PROMPT_CHARACTERS).join("");
+  return Array.from(prompt).slice(0, LK888_MAX_PROMPT_CHARACTERS).join("");
 }
 
 const taskIdSchema = z
@@ -51,58 +51,58 @@ const seedanceTaskSchema = z.object({
 
 async function call(path: string, init: RequestInit): Promise<unknown> {
   const env = loadMediaEnv();
-  if (!env.LK666_API_KEY) {
+  if (!env.LK888_API_KEY) {
     throw new PermanentJobError(
-      "LK666_NOT_CONFIGURED",
-      "The lk666 video provider is not configured.",
+      "LK888_NOT_CONFIGURED",
+      "The lk888 video provider is not configured.",
     );
   }
 
-  const baseUrl = env.LK666_API_BASE_URL.replace(/\/$/, "");
+  const baseUrl = env.LK888_API_BASE_URL.replace(/\/$/, "");
   const response = await fetch(`${baseUrl}${path}`, {
     ...init,
     signal: AbortSignal.timeout(MEDIA_REQUEST_TIMEOUT_MS),
     headers: {
-      authorization: `Bearer ${env.LK666_API_KEY}`,
+      authorization: `Bearer ${env.LK888_API_KEY}`,
       "content-type": "application/json",
       ...init.headers,
     },
   }).catch(() => {
     throw new RetryableJobError(
-      "LK666_UNREACHABLE",
-      "The lk666 video provider could not be reached.",
+      "LK888_UNREACHABLE",
+      "The lk888 video provider could not be reached.",
     );
   });
 
   if (!response.ok) {
     const detail = await rejectionDetail(response);
     const message = detail
-      ? `The lk666 video provider returned HTTP ${response.status}: ${detail}`
-      : `The lk666 video provider returned HTTP ${response.status}.`;
+      ? `The lk888 video provider returned HTTP ${response.status}: ${detail}`
+      : `The lk888 video provider returned HTTP ${response.status}.`;
     if (response.status === 401 || response.status === 403) {
-      throw new PermanentJobError("LK666_AUTH_FAILED", message);
+      throw new PermanentJobError("LK888_AUTH_FAILED", message);
     }
     if (response.status === 429 || response.status >= 500) {
-      throw new RetryableJobError("LK666_UNAVAILABLE", message);
+      throw new RetryableJobError("LK888_UNAVAILABLE", message);
     }
-    throw new PermanentJobError("LK666_REQUEST_REJECTED", message);
+    throw new PermanentJobError("LK888_REQUEST_REJECTED", message);
   }
 
   return response.json().catch(() => {
     throw new PermanentJobError(
-      "LK666_INVALID_RESPONSE",
-      "The lk666 video provider returned invalid JSON.",
+      "LK888_INVALID_RESPONSE",
+      "The lk888 video provider returned invalid JSON.",
     );
   });
 }
 
-export function lk666Resolution(resolution: VideoResolution): string {
+export function lk888Resolution(resolution: VideoResolution): string {
   if (resolution === "720p") return "768P";
   if (resolution === "1080p") return "1080P";
   if (resolution === "2k") return "2K";
   throw new PermanentJobError(
-    "LK666_REQUEST_REJECTED",
-    "lk666 does not support 480p video.",
+    "LK888_REQUEST_REJECTED",
+    "lk888 does not support 480p video.",
   );
 }
 
@@ -115,7 +115,7 @@ async function submitH3Video(request: VideoRequest): Promise<string> {
       params: {
         duration: String(request.durationSeconds),
         aspect_ratio: request.aspectRatio,
-        resolution: lk666Resolution(request.resolution),
+        resolution: lk888Resolution(request.resolution),
         image_url: request.referenceUrls.slice(0, 9),
       },
     }),
@@ -123,20 +123,20 @@ async function submitH3Video(request: VideoRequest): Promise<string> {
   const parsed = submissionSchema.safeParse(raw);
   if (!parsed.success) {
     throw new PermanentJobError(
-      "LK666_INVALID_RESPONSE",
-      "The lk666 video provider returned an unexpected submission response.",
+      "LK888_INVALID_RESPONSE",
+      "The lk888 video provider returned an unexpected submission response.",
     );
   }
   if (parsed.data.code !== 200) {
     throw new PermanentJobError(
-      "LK666_REQUEST_REJECTED",
-      parsed.data.msg ?? "The lk666 video provider rejected the request.",
+      "LK888_REQUEST_REJECTED",
+      parsed.data.msg ?? "The lk888 video provider rejected the request.",
     );
   }
   if (!parsed.data.data) {
     throw new PermanentJobError(
-      "LK666_INVALID_RESPONSE",
-      "The lk666 video provider omitted the task id.",
+      "LK888_INVALID_RESPONSE",
+      "The lk888 video provider omitted the task id.",
     );
   }
   return parsed.data.data.task_id;
@@ -145,7 +145,7 @@ async function submitH3Video(request: VideoRequest): Promise<string> {
 async function submitSeedanceVideo(request: VideoRequest): Promise<string> {
   if (request.model === "h3") {
     throw new PermanentJobError(
-      "LK666_REQUEST_REJECTED",
+      "LK888_REQUEST_REJECTED",
       "A Seedance model must be selected.",
     );
   }
@@ -169,14 +169,14 @@ async function submitSeedanceVideo(request: VideoRequest): Promise<string> {
   const parsed = seedanceSubmissionSchema.safeParse(raw);
   if (!parsed.success) {
     throw new PermanentJobError(
-      "LK666_INVALID_RESPONSE",
-      "The lk666 Seedance endpoint omitted the task id.",
+      "LK888_INVALID_RESPONSE",
+      "The lk888 Seedance endpoint omitted the task id.",
     );
   }
   return `${SEEDANCE_TASK_PREFIX}${parsed.data.id}`;
 }
 
-export async function submitLk666Video(request: VideoRequest): Promise<string> {
+export async function submitLk888Video(request: VideoRequest): Promise<string> {
   return request.model === "h3"
     ? submitH3Video(request)
     : submitSeedanceVideo(request);
@@ -190,8 +190,8 @@ async function getH3Task(taskId: string): Promise<MediaTask> {
   const parsed = taskSchema.safeParse(raw);
   if (!parsed.success) {
     throw new PermanentJobError(
-      "LK666_INVALID_RESPONSE",
-      "The lk666 video provider returned an unexpected task response.",
+      "LK888_INVALID_RESPONSE",
+      "The lk888 video provider returned an unexpected task response.",
     );
   }
 
@@ -201,7 +201,7 @@ async function getH3Task(taskId: string): Promise<MediaTask> {
     status: completed ? "completed" : task.is_final ? "failed" : "pending",
     outputUrl: completed ? (task.result_url ?? null) : null,
     errorMessage: task.state === "failed" ? (task.error ?? null) : null,
-    provider: "lk666",
+    provider: "lk888",
     extra: task.cost === undefined ? null : { cost: task.cost },
   };
 }
@@ -222,8 +222,8 @@ async function getSeedanceTask(taskId: string): Promise<MediaTask> {
   const parsed = seedanceTaskSchema.safeParse(raw);
   if (!parsed.success) {
     throw new PermanentJobError(
-      "LK666_INVALID_RESPONSE",
-      "The lk666 Seedance endpoint returned an unexpected task response.",
+      "LK888_INVALID_RESPONSE",
+      "The lk888 Seedance endpoint returned an unexpected task response.",
     );
   }
 
@@ -239,12 +239,12 @@ async function getSeedanceTask(taskId: string): Promise<MediaTask> {
       task.status === "succeeded" ? (task.content?.video_url ?? null) : null,
     errorMessage:
       task.status === "failed" ? seedanceErrorMessage(task.error) : null,
-    provider: "lk666",
+    provider: "lk888",
     extra: task.usage ?? null,
   };
 }
 
-export async function getLk666Task(taskId: string): Promise<MediaTask> {
+export async function getLk888Task(taskId: string): Promise<MediaTask> {
   return taskId.startsWith(SEEDANCE_TASK_PREFIX)
     ? getSeedanceTask(taskId.slice(SEEDANCE_TASK_PREFIX.length))
     : getH3Task(taskId);

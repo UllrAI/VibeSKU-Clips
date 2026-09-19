@@ -43,7 +43,7 @@ VibeSKU Clips 把商品资料转化为一条 15 秒本地化 UGC 视频。运营
 
 任务通过 pg-boss 与仓库既有的 task-run 出箱机制执行，每一步都可在重启后继续或
 独立重试。图片生成走 Prism；视频由 `VIDEO_GENERATION_PROVIDER` 选择 Prism 或
-lk666，商品页导入走 Firecrawl，脚本创作走任意 OpenAI 兼容接口。Prism 视频固定使用 H3；lk666
+lk888，商品页导入走 Firecrawl，脚本创作走任意 OpenAI 兼容接口。Prism 视频固定使用 H3；lk888
 还可选择 Seedance 2.0 或 2.5，并按模型限制可用分辨率。
 
 业务逻辑位于 `src/lib/ugc`，任务处理器位于 `src/lib/jobs/ugc`，操作界面位于
@@ -127,12 +127,12 @@ cp .env.example .env
 | `AI_DEFAULT_MODEL`           | 可选的模型 id，默认 `openai/gpt-5.6-luna`。           | `openai/gpt-5.6-luna`                               |
 | `FIRECRAWL_API_BASE_URL`     | 可选的 Firecrawl 兼容 API 根地址。                    | `https://api.firecrawl.dev/v2`                      |
 | `FIRECRAWL_API_KEY`          | **URL 导入必填。** 仅供 Worker 使用的 API Key。       | `fc-...`                                            |
-| `VIDEO_GENERATION_PROVIDER`  | 视频供应商，可选 `prism` 或 `lk666`，默认 Prism。     | `lk666`                                             |
+| `VIDEO_GENERATION_PROVIDER`  | 视频供应商，可选 `prism` 或 `lk888`，默认 Prism。     | `lk888`                                             |
 | `PRISM_API_BASE_URL`         | Prism 根地址；开发默认 staging，生产默认 production。 | `https://staging-prism.ullrai.com/api/v1`           |
 | `PRISM_API_KEY`              | **生成必填。** 当前 Prism 环境的 API Key。            | `pk_...`                                            |
 | `PRISM_API_SECRET`           | **生成必填。** 当前 Prism 环境的 API Secret。         | `sk_...`                                            |
-| `LK666_API_BASE_URL`         | 可选的 lk666 兼容 API 根地址。                        | `https://api.lk888.ai`                              |
-| `LK666_API_KEY`              | 视频供应商选择 `lk666` 时必填。                       | `sk-...`                                            |
+| `LK888_API_BASE_URL`         | 可选的 lk888 兼容 API 根地址。                        | `https://api.lk888.ai`                              |
+| `LK888_API_KEY`              | 视频供应商选择 `lk888` 时必填。                       | `sk-...`                                            |
 | `STRIPE_SECRET_KEY`          | 启用 `billing` 时必需。需与环境模式匹配。             | `sk_test_...` 或 `sk_live_...`                      |
 | `STRIPE_ENVIRONMENT`         | Stripe 环境模式，默认为 `test_mode`。                 | `test_mode` 或 `live_mode`                          |
 | `STRIPE_WEBHOOK_SECRET`      | 启用 `billing` 时必需。Endpoint 签名密钥。            | `whsec_your_webhook_secret`                         |

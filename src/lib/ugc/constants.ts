@@ -68,7 +68,7 @@ export type VideoResolution = (typeof VIDEO_RESOLUTIONS)[number];
 export const VIDEO_MODELS = ["h3", "seedance-2.0", "seedance-2.5"] as const;
 export type VideoModel = (typeof VIDEO_MODELS)[number];
 
-export type VideoGenerationProvider = "prism" | "lk666";
+export type VideoGenerationProvider = "prism" | "lk888";
 
 export interface VideoModelOption {
   model: VideoModel;
@@ -79,7 +79,7 @@ const PRISM_VIDEO_MODEL_OPTIONS = [
   { model: "h3", resolutions: ["480p", "720p"] },
 ] as const satisfies readonly VideoModelOption[];
 
-const LK666_VIDEO_MODEL_OPTIONS = [
+const LK888_VIDEO_MODEL_OPTIONS = [
   { model: "h3", resolutions: ["720p", "1080p", "2k"] },
   { model: "seedance-2.0", resolutions: ["480p", "720p", "1080p"] },
   { model: "seedance-2.5", resolutions: ["480p", "720p", "1080p"] },
@@ -88,8 +88,8 @@ const LK666_VIDEO_MODEL_OPTIONS = [
 export function videoModelsForProvider(
   provider: VideoGenerationProvider,
 ): readonly VideoModelOption[] {
-  return provider === "lk666"
-    ? LK666_VIDEO_MODEL_OPTIONS
+  return provider === "lk888"
+    ? LK888_VIDEO_MODEL_OPTIONS
     : PRISM_VIDEO_MODEL_OPTIONS;
 }
 
