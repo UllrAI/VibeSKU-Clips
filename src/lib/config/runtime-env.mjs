@@ -1,16 +1,23 @@
 import { z } from "zod";
 
 /**
- * Treats a blank variable as an absent one.
+ * Treats a blank variable as an absent one, and trims the rest.
  *
  * A variable left empty in `.env` arrives as "", not as `undefined`, and zod's
  * `.default()` only fires on `undefined`. Without this an empty line skips the
  * default and is validated as a value instead — so `VIDEO_GENERATION_PROVIDER=`
  * fails as "expected prism|lk666" rather than falling back to Prism, which is
  * exactly backwards for a field that has a default to fall back on.
+ *
+ * Surrounding whitespace is stripped for the same reason: `FOO=prism ` is a
+ * typo the operator cannot see, and every string field in these schemas
+ * already trims its own value.
  */
 export const blankAsAbsent = (schema) =>
-  z.preprocess((value) => value || undefined, schema);
+  z.preprocess((value) => {
+    if (typeof value !== "string") return value ?? undefined;
+    return value.trim() || undefined;
+  }, schema);
 
 const defaultPrismApiBaseUrl =
   process.env.NODE_ENV === "production"

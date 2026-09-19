@@ -54,6 +54,19 @@ describe("worker environment", () => {
     expect(env.R2_ENDPOINT).toBeUndefined();
   });
 
+  it("ignores whitespace an operator cannot see in .env", () => {
+    const env = loadWorkerEnv({
+      DATABASE_URL: "postgresql://worker:worker@localhost/app",
+      VIDEO_GENERATION_PROVIDER: " lk666 ",
+      LK666_API_KEY: " test-key ",
+      DB_POOL_SIZE: "  ",
+    });
+
+    expect(env.VIDEO_GENERATION_PROVIDER).toBe("lk666");
+    expect(env.LK666_API_KEY).toBe("test-key");
+    expect(env.DB_POOL_SIZE).toBe(5);
+  });
+
   it("accepts lk666 as the video provider", () => {
     const env = loadWorkerEnv({
       DATABASE_URL: "postgresql://worker:worker@localhost/app",
