@@ -45,7 +45,7 @@ describe("render prompts", () => {
   it("anchors the opening frame on the talent reference", () => {
     const prompt = buildCoverPrompt(subject, beats[0]);
 
-    expect(prompt).toContain("Match the supplied reference sheet");
+    expect(prompt).toContain("from the attached reference sheet");
     expect(prompt).toContain("Cordless hand vacuum");
     expect(prompt).toContain("on-screen text");
   });
@@ -317,6 +317,78 @@ describe("reference sheets", () => {
     expect(buildTalentSheetPrompt(identity, false)).not.toContain(
       "same person",
     );
+  });
+});
+
+describe("one photograph, not an arrangement", () => {
+  const staged = {
+    ...subject,
+    scenePrompt: "A small city kitchen with a pale oak counter.",
+  };
+
+  it("tells both frame builders the elements share one light and one lens", () => {
+    for (const prompt of [
+      buildCoverPrompt(staged, beats[0]),
+      buildFramePrompt(staged, beats[0], 0),
+    ]) {
+      expect(prompt).toContain("one camera in one exposure");
+      expect(prompt).toContain("Relight the performer and the product");
+      expect(prompt).toContain("One lens throughout");
+    }
+  });
+
+  it("asks for contact where things touch, which is what floating looks like", () => {
+    const prompt = buildFramePrompt(staged, beats[0], 0);
+
+    expect(prompt).toContain("shadow gathering under them");
+    expect(prompt).toContain("Nothing floats");
+    expect(prompt).toContain("no edge looks cut out");
+  });
+
+  it("takes the pose and the light from the frame, not from the sheet", () => {
+    // "Match the sheet exactly" pulled the sheet's studio lighting into the
+    // frame along with the face, which is half of why frames read as pasted.
+    const prompt = buildFramePrompt(staged, beats[0], 0);
+
+    expect(prompt).toContain("take the pose, the eye line, and the light");
+    expect(prompt).not.toContain("Match the supplied reference sheet exactly");
+  });
+
+  it("composes the frame rather than laying it out", () => {
+    expect(buildFramePrompt(staged, beats[0], 0)).toContain(
+      "Compose the frame, do not lay it out",
+    );
+  });
+
+  it("carries the short form into the video prompt, which has a hard cap", () => {
+    const prompt = buildVideoPrompt(
+      staged,
+      beats,
+      null,
+      { videoMode: "one_take", aspectRatio: "9:16" },
+      PRISM_MEDIA.maxVideoPromptCharacters,
+    );
+
+    expect(prompt).toContain("filmed at once");
+    expect(prompt).toContain("shadow gathering where things touch");
+  });
+
+  it("bounds the subject prompts so a frame request cannot pass 32k", () => {
+    // Identity, location, and production direction are each written against a
+    // schema of their own; unbounded they can exceed what Prism accepts.
+    const prompt = buildFramePrompt(
+      {
+        ...staged,
+        talentPrompt: "T".repeat(20_000),
+        scenePrompt: "S".repeat(20_000),
+      },
+      beats[0],
+      0,
+      "D".repeat(30_000),
+    );
+
+    expect(Array.from(prompt).length).toBeLessThan(32_000);
+    expect(prompt).toContain("Nothing floats");
   });
 });
 

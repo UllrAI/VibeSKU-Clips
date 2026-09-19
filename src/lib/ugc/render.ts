@@ -66,15 +66,47 @@ function frameDescription(aspectRatio: VideoAspectRatio): string {
 }
 
 /**
+ * How much of a subject prompt goes into one frame request.
+ *
+ * Identity and location prompts are written by a model against a 12,000
+ * character schema, and a frame also carries the production direction. Three
+ * unbounded fields in one request can pass Prism's own 32,000 ceiling, which
+ * it refuses outright rather than trimming.
+ */
+const FRAME_SUBJECT_LIMIT = 4000;
+
+/**
  * Where the clip is filmed. A chosen scene is an operator decision and the
  * attached views are photographs of it, so it outranks both the generic market
  * fallback and whatever location the production direction improvised.
  */
 function settingLine(subject: RenderSubject): string {
   return subject.scenePrompt
-    ? `Setting — compose this frame inside the location described here, matching the attached location reference sheet for layout, materials, and light:\n${subject.scenePrompt}`
+    ? `Setting — this frame happens inside the location described here. Match its layout, materials, and colours to the attached location reference sheet, and let the light of that room fall on everything in the frame:\n${fitCharacters(subject.scenePrompt, FRAME_SUBJECT_LIMIT)}`
     : `Setting: an ordinary home or street scene that reads as ${subject.market}.`;
 }
+
+/**
+ * What stops a frame reading as three things pasted together.
+ *
+ * The model is handed a person, a place, and a product as three separate
+ * references and three separate paragraphs, and the most literal thing it can
+ * do with them is arrange them in one rectangle. Nothing above tells it they
+ * were photographed at the same moment, so nothing makes them look like it.
+ *
+ * What separates a photograph from an arrangement is physical, and each line
+ * here answers one way the eye catches the difference: one light, contact
+ * where things touch, one lens, one atmosphere, and a frame composed rather
+ * than laid out.
+ */
+const ONE_PHOTOGRAPH = [
+  "This is a single photograph made by one camera in one exposure. The performer, the product, and the location are lit by the same sources at the same colour temperature, with the same contrast and the same exposure.",
+  "The reference sheets fix identity, wardrobe, materials, and the layout of the place — never the lighting. Relight the performer and the product for this location: the direction, hardness, and colour of the light come from the room they are standing in, and every shadow in the frame falls away from that light the same way.",
+  "Things touch the world they are in. Feet and furniture meet the floor with shadow gathering under them, a held product is gripped with the fingers wrapping around its form and pressing into it, and anything resting on a surface darkens where it meets that surface and picks up a soft reflection in it. Nothing floats, and no edge looks cut out.",
+  "One lens throughout: the performer, the product, and the room share a single eye level, a single vanishing point, and the perspective of one focal length. Depth falls off continuously from the focal plane, rather than a sharp subject sitting on a blurred backdrop.",
+  "The same air in front of everything: one colour grade, one level of grain, the same softness and falloff toward the frame edges, and bounced light carrying colour from nearby surfaces onto skin, clothing, and the product.",
+  "Compose the frame, do not lay it out. Place the subject off-centre, let the frame edge crop what it would really crop, let objects overlap and pass in front of one another at different distances, and leave the room doing its own thing behind the action instead of arranged neatly around it.",
+];
 
 /**
  * The opening frame is generated first and then handed to the video model as
@@ -97,11 +129,12 @@ export function buildCoverPrompt(
       ? `This frame only: ${firstBeat.shot}. ${firstBeat.action}. Camera: ${firstBeat.camera ?? "natural handheld phone framing"}.`
       : "",
     subject.talentPrompt
-      ? `Performer: ${subject.talentPrompt}. Match the supplied reference sheet.`
+      ? `Performer: ${fitCharacters(subject.talentPrompt, FRAME_SUBJECT_LIMIT)}. Take the face, build, hair, and wardrobe from the attached reference sheet; take the pose, the eye line, and the light from this frame.`
       : "Product-led frame with hands only, no recognisable face.",
     settingLine(subject),
     SHEET_NOT_A_LAYOUT,
     EVIDENCE_ONLY,
+    ...ONE_PHOTOGRAPH,
     "No added on-screen text, subtitles, interface overlays, or watermarks. Preserve authentic branding and label text on the product itself.",
   ]
     .filter(Boolean)
@@ -130,13 +163,14 @@ export function buildFramePrompt(
     `Action: ${beat.action}`,
     `Camera: ${beat.camera ?? "natural handheld phone framing"}`,
     subject.talentPrompt
-      ? `Performer: ${subject.talentPrompt}. Match the supplied reference sheet exactly.`
+      ? `Performer: ${fitCharacters(subject.talentPrompt, FRAME_SUBJECT_LIMIT)}. Take the face, build, hair, and wardrobe from the attached reference sheet; take the pose, the eye line, and the light from this frame.`
       : "Product-led frame with hands only, no recognisable face.",
     // The production direction already carries a location of its own, so it is
     // only restated when a scene was chosen and has to win.
     productionPrompt && !subject.scenePrompt ? "" : settingLine(subject),
     SHEET_NOT_A_LAYOUT,
     EVIDENCE_ONLY,
+    ...ONE_PHOTOGRAPH,
     "No added on-screen text, subtitles, interface overlays, or watermarks. Preserve authentic branding and label text on the product itself.",
   ]
     .filter(Boolean)
@@ -204,6 +238,7 @@ export function buildVideoPrompt(
     "The reference images begin with the approved key frames for this clip: match their performer, product, wardrobe, location, and lighting exactly.",
     SHEET_NOT_A_LAYOUT,
     EVIDENCE_ONLY,
+    "Everything in shot was filmed at once: one light, one lens, shadow gathering where things touch, and no element that reads as pasted over the others.",
     "Beats:",
     "The approved beat list below overrides any conflicting timing, action, camera, or dialogue wording inside the production direction.",
     ...beats.map(

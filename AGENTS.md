@@ -189,6 +189,14 @@ Rules that are easy to break:
   four, and downstream requests spend one reference slot instead of several.
   Sheets are drawn at `PRISM_MEDIA.sheetImageSize`, larger than a frame,
   because each panel only gets a fraction of the canvas.
+- **A frame is one photograph, not an arrangement.** The model is handed a
+  person, a place, and a product as three separate references and three
+  separate paragraphs; left at that it arranges them in a rectangle and the
+  result reads as pasted together. `ONE_PHOTOGRAPH` in `src/lib/ugc/render.ts`
+  is what makes it a photograph instead: one light for everything, subjects
+  relit by the room rather than by their sheet, shadow where things touch, one
+  eye level and one focal length, one grade and one grain, and a composed frame
+  rather than a laid-out one. The video prompt carries the short form of it.
 - **A sheet is reference, not composition.** Every prompt that attaches one
   says so (`SHEET_NOT_A_LAYOUT` in `src/lib/ugc/render.ts`). Without that line
   a model reads the panel grid as the composition it was asked for and draws
