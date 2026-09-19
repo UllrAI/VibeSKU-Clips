@@ -129,6 +129,7 @@
   "admin_ops_overview_hint": "See what is moving, what is waiting for an operator, and what needs recovery.",
   "admin_ops_overview_title": "Production operations",
   "admin_ops_owner": "Owner",
+  "admin_ops_provider_job": "Provider job",
   "admin_ops_product_and_talent": "Product and talent",
   "admin_ops_progress": "Progress",
   "admin_ops_quality": "Quality checks",

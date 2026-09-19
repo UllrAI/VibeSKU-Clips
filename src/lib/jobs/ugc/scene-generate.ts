@@ -104,16 +104,21 @@ export const sceneGenerateJob = defineJob(
           })
           .where(eq(ugcScenes.id, scene.id));
 
-        const providerTaskId = await submitImage({
-          prompt: buildSceneSheetPrompt(
-            locationPrompt,
-            referenceImageUrls.length > 0,
-          ),
-          referenceUrls: referenceImageUrls,
-          aspectRatio: REFERENCE_ASPECT_RATIO,
-          imageSize: PRISM_MEDIA.sheetImageSize,
-          requestId: context.taskRunId,
-        });
+        // Registered on the task run so the id outlives the log line and a
+        // retry resumes the same draw instead of paying for a second one.
+        const providerTaskId = await context.submitProviderJob(
+          ({ idempotencyKey }) =>
+            submitImage({
+              prompt: buildSceneSheetPrompt(
+                locationPrompt,
+                referenceImageUrls.length > 0,
+              ),
+              referenceUrls: referenceImageUrls,
+              aspectRatio: REFERENCE_ASPECT_RATIO,
+              imageSize: PRISM_MEDIA.sheetImageSize,
+              requestId: idempotencyKey,
+            }),
+        );
         await context.updateProgress({ step: "drawing_scene" });
         await context.scheduleContinuation(
           { ...payload, providerTaskId, polls: 0 },

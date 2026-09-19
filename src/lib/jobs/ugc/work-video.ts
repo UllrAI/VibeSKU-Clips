@@ -359,21 +359,29 @@ export const workVideoJob = defineJob(
           talent?.sheetUrl,
         ].filter((url): url is string => Boolean(url)),
       );
-      const providerTaskId = await submitVideo({
-        model: videoModel,
-        prompt: buildVideoPrompt(
-          subject,
-          beats,
-          script.productionPrompt,
-          { videoMode: work.videoMode, aspectRatio: work.aspectRatio },
-          videoPromptLimit(),
-        ),
-        referenceUrls: references,
-        durationSeconds: CLIP_SPEC.durationSeconds,
-        aspectRatio: work.aspectRatio,
-        resolution,
-        requestId: context.taskRunId,
-      });
+      // Registered on the task run rather than submitted directly: the id
+      // then survives on `task_runs.providerJobId`, where the operations
+      // console can search for it long after the log line has scrolled away,
+      // and a worker that dies between the provider accepting and the payload
+      // being saved resumes the same render instead of paying for a second.
+      const providerTaskId = await context.submitProviderJob(
+        ({ idempotencyKey }) =>
+          submitVideo({
+            model: videoModel,
+            prompt: buildVideoPrompt(
+              subject,
+              beats,
+              script.productionPrompt,
+              { videoMode: work.videoMode, aspectRatio: work.aspectRatio },
+              videoPromptLimit(),
+            ),
+            referenceUrls: references,
+            durationSeconds: CLIP_SPEC.durationSeconds,
+            aspectRatio: work.aspectRatio,
+            resolution,
+            requestId: idempotencyKey,
+          }),
+      );
       await context.updateProgress({
         step: VIDEO_PROGRESS_STEP.rendering,
         version,

@@ -116,7 +116,7 @@ export function TaskManagementTable({
     {
       key: "task",
       label: <>{t("admin_ops_task")}</>,
-      headerClassName: "w-[18%]",
+      headerClassName: "w-[22%]",
       render: (item) => (
         <div className="min-w-0 space-y-1">
           <p className="font-medium" translate="no">
@@ -129,13 +129,28 @@ export function TaskManagementTable({
           >
             {item.id}
           </p>
+          {/*
+            The id the provider knows this job by. It is what a question to
+            them has to quote, and the search box above already matches on it.
+          */}
+          {item.providerJobId && (
+            <p
+              className="text-muted-foreground max-w-full truncate text-xs"
+              title={item.providerJobId}
+            >
+              {t("admin_ops_provider_job")}{" "}
+              <span className="font-mono" translate="no">
+                {item.providerJobId}
+              </span>
+            </p>
+          )}
         </div>
       ),
     },
     {
       key: "owner",
       label: <>{t("admin_ops_owner")}</>,
-      headerClassName: "w-[17%]",
+      headerClassName: "w-[15%]",
       render: (item) =>
         item.owner ? (
           <UserAvatarCell
@@ -151,7 +166,7 @@ export function TaskManagementTable({
     {
       key: "subject",
       label: <>{t("admin_ops_subject")}</>,
-      headerClassName: "w-[17%]",
+      headerClassName: "w-[15%]",
       render: (item) =>
         item.work ? (
           <LocalizedLink
