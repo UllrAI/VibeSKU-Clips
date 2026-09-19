@@ -7,11 +7,11 @@ import { createDatabaseClient } from "@/database/client";
 import { taskRuns, taskDispatches } from "@/database/schema";
 import { defineJob } from "@/lib/jobs/definition";
 import { JobQueue } from "@/lib/jobs/queue";
-import { ensureProviderJobSubmitted } from "@/lib/tasks/provider-submission";
 import {
   cancelTaskRun,
   createTaskRun,
   getTaskRun,
+  recordProviderJob,
   transitionTaskRun,
 } from "@/lib/tasks/repository";
 import {
@@ -423,7 +423,7 @@ describe("background jobs with PostgreSQL", () => {
     );
   });
 
-  it("recovers a provider submission after a crash with provider idempotency", async () => {
+  it("reports the provider job a run is currently working through", async () => {
     const { taskRun } = await createTaskRun(database.db, {
       kind: integrationJob.name,
       scopeKey: `${scopePrefix}:provider`,
@@ -436,27 +436,44 @@ describe("background jobs with PostgreSQL", () => {
       patch: { startedAt: new Date() },
     });
 
-    const providerJobs = new Map<string, string>();
-    await expect(
-      ensureProviderJobSubmitted({
-        db: database.db,
-        taskRunId: taskRun.id,
-        submit: async ({ idempotencyKey }) => {
-          providerJobs.set(idempotencyKey, "provider-job-1");
-          throw new Error("worker crashed before persistence");
-        },
-      }),
-    ).rejects.toThrow("worker crashed");
-
-    const providerJobId = await ensureProviderJobSubmitted({
-      db: database.db,
-      taskRunId: taskRun.id,
-      submit: async ({ idempotencyKey }) =>
-        providerJobs.get(idempotencyKey) ?? "unexpected-duplicate",
-    });
-    expect(providerJobId).toBe("provider-job-1");
+    // A run may call the provider more than once -- a storyboard draws a frame
+    // per beat -- so the record is the job in flight, not the first one.
+    await recordProviderJob(database.db, taskRun.id, "prism:frame-1");
     expect((await getTaskRun(database.db, taskRun.id))?.providerJobId).toBe(
-      "provider-job-1",
+      "prism:frame-1",
+    );
+
+    await recordProviderJob(database.db, taskRun.id, "prism:frame-2");
+    expect((await getTaskRun(database.db, taskRun.id))?.providerJobId).toBe(
+      "prism:frame-2",
+    );
+  });
+
+  it("stops recording once a run has finished", async () => {
+    const { taskRun } = await createTaskRun(database.db, {
+      kind: integrationJob.name,
+      scopeKey: `${scopePrefix}:provider-finished`,
+      input: {},
+    });
+    await transitionTaskRun(database.db, {
+      taskRunId: taskRun.id,
+      from: ["queued"],
+      to: "running",
+      patch: { startedAt: new Date() },
+    });
+    await recordProviderJob(database.db, taskRun.id, "prism:last");
+    await transitionTaskRun(database.db, {
+      taskRunId: taskRun.id,
+      from: ["running"],
+      to: "completed",
+      patch: { completedAt: new Date() },
+    });
+
+    // A late write from an abandoned attempt must not overwrite what the
+    // finished run was actually working through.
+    await recordProviderJob(database.db, taskRun.id, "prism:stray");
+    expect((await getTaskRun(database.db, taskRun.id))?.providerJobId).toBe(
+      "prism:last",
     );
   });
 });

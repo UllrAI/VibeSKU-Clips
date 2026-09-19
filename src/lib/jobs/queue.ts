@@ -7,11 +7,11 @@ import { scheduleTaskContinuation } from "@/lib/tasks/dispatch";
 import type { AppDatabase } from "@/database/client";
 import {
   getTaskRun,
+  recordProviderJob,
   transitionTaskRun,
   updateTaskRunProgress,
 } from "@/lib/tasks/repository";
 import type { TaskRunError } from "@/lib/tasks/types";
-import { ensureProviderJobSubmitted } from "@/lib/tasks/provider-submission";
 import { deadLetterQueueName, jobDefinitions } from "./catalog";
 import {
   type JobDefinition,
@@ -451,7 +451,6 @@ export class JobQueue {
       taskRunId,
       scopeKey,
       attempt,
-      providerIdempotencyKey: taskRunId,
       signal: job.signal,
       isCancelled: async () =>
         job.signal.aborted ||
@@ -472,27 +471,8 @@ export class JobQueue {
           from: "running",
         });
       },
-      submitProviderJob: async (submit) => {
-        try {
-          return await ensureProviderJobSubmitted({
-            db,
-            taskRunId,
-            submit,
-          });
-        } catch (error) {
-          if (
-            error instanceof Error &&
-            error.message ===
-              "Provider accepted the job but its id could not be persisted."
-          ) {
-            throw new PermanentJobError(
-              "PROVIDER_JOB_ID_NOT_PERSISTED",
-              error.message,
-            );
-          }
-          throw error;
-        }
-      },
+      recordProviderJob: (providerJobId) =>
+        recordProviderJob(db, taskRunId, providerJobId),
     };
 
     log("info", {

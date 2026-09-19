@@ -210,6 +210,7 @@ export const workStoryboardJob = defineJob(
           updatedAt: new Date(),
         })
         .where(eq(ugcWorkFrames.id, next.id));
+      await context.recordProviderJob(providerTaskId);
       context.log("storyboard_frame_submitted", {
         workId: work.id,
         frameId: next.id,
@@ -232,20 +233,15 @@ export const workStoryboardJob = defineJob(
       );
 
     let progressed = false;
-    // Which frame the run is waiting on. A storyboard calls the provider once
-    // per beat, which a single-valued column cannot hold, so the job in
-    // flight is reported through progress instead.
-    let waitingOn: { position: number; providerTaskId: string } | null = null;
+    /** Which frame the run is still waiting on, for the console's state column. */
+    let waitingOn: number | null = null;
     for (const frame of inFlight) {
       if (!frame.providerTaskId) continue;
       const task = await getTask(frame.providerTaskId);
       const taskLog = mediaTaskLog("prism", frame.providerTaskId, task);
 
       if (task.status === "pending") {
-        waitingOn = {
-          position: frame.position,
-          providerTaskId: frame.providerTaskId,
-        };
+        waitingOn = frame.position;
         context.log("storyboard_frame_pending", {
           workId: work.id,
           frameId: frame.id,
@@ -329,9 +325,8 @@ export const workStoryboardJob = defineJob(
       }
       await context.updateProgress({
         step: "drawing_storyboard",
-        frame: waitingOn ? waitingOn.position + 1 : null,
+        frame: waitingOn === null ? null : waitingOn + 1,
         frames: allFrames.length,
-        providerTaskId: waitingOn?.providerTaskId ?? null,
       });
       const polls = progressed ? 0 : payload.polls + 1;
       await context.scheduleContinuation(

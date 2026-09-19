@@ -105,9 +105,7 @@ function storage(db: AppDatabase): ClipStorage {
  * frame first costs a single image against a far more expensive video, and it
  * is what the finished clip's cover is taken from either way.
  *
- * Returns a null frame while it is still being drawn, together with the
- * provider job that is drawing it, so the caller can both poll and say what
- * it is waiting on.
+ * Returns null while the frame is still being drawn; the caller polls.
  */
 async function ensureCoverFrame(input: {
   db: AppDatabase;
@@ -119,10 +117,7 @@ async function ensureCoverFrame(input: {
   subject: RenderSubject;
   beats: ScriptBeat[];
   productionPrompt: string | null;
-}): Promise<{
-  frame: typeof ugcWorkFrames.$inferSelect | null;
-  providerTaskId: string | null;
-}> {
+}): Promise<typeof ugcWorkFrames.$inferSelect | null> {
   const { db, context, work } = input;
   const [existing] = await db
     .select()
@@ -149,9 +144,7 @@ async function ensureCoverFrame(input: {
         .returning()
     )[0];
   if (!frame) throw new Error("The opening frame could not be initialized.");
-  if (frame.status === "ready" && frame.imageUrl) {
-    return { frame, providerTaskId: frame.providerTaskId };
-  }
+  if (frame.status === "ready" && frame.imageUrl) return frame;
 
   if (!frame.providerTaskId) {
     const references = await resolveReferenceUrls(
@@ -173,11 +166,12 @@ async function ensureCoverFrame(input: {
       .update(ugcWorkFrames)
       .set({ providerTaskId, status: "generating", updatedAt: new Date() })
       .where(eq(ugcWorkFrames.id, frame.id));
+    await context.recordProviderJob(providerTaskId);
     context.log("work_cover_submitted", {
       workId: work.id,
       ...mediaTaskLog("prism", providerTaskId),
     });
-    return { frame: null, providerTaskId };
+    return null;
   }
 
   const task = await getImageTask(frame.providerTaskId);
@@ -186,7 +180,7 @@ async function ensureCoverFrame(input: {
       workId: work.id,
       ...mediaTaskLog("prism", frame.providerTaskId, task),
     });
-    return { frame: null, providerTaskId: frame.providerTaskId };
+    return null;
   }
   if (task.status === "failed" || !task.outputUrl) {
     await db
@@ -230,7 +224,7 @@ async function ensureCoverFrame(input: {
     ...mediaTaskLog("prism", frame.providerTaskId, task),
     imageUrl,
   });
-  return { frame: ready ?? null, providerTaskId: frame.providerTaskId };
+  return ready ?? null;
 }
 
 /**
@@ -333,25 +327,20 @@ export const workVideoJob = defineJob(
         beats,
         productionPrompt: script.productionPrompt,
       });
-      if (!cover.frame) {
+      if (!cover) {
         if (payload.polls >= COVER_MAX_POLLS) {
           throw new PermanentJobError(
             "UGC_RENDER_TIMEOUT",
             "The provider did not finish the opening frame in time.",
           );
         }
-        await context.updateProgress({
-          step: VIDEO_PROGRESS_STEP.preparing,
-          version,
-          providerTaskId: cover.providerTaskId,
-        });
         await context.scheduleContinuation(
           { ...payload, version, polls: payload.polls + 1 },
           POLL_SECONDS,
         );
         return { drawingCover: true, polls: payload.polls + 1 };
       }
-      frames.push(cover.frame);
+      frames.push(cover);
     }
 
     if (!payload.providerTaskId) {
@@ -371,33 +360,26 @@ export const workVideoJob = defineJob(
           talent?.sheetUrl,
         ].filter((url): url is string => Boolean(url)),
       );
-      // Registered on the task run rather than submitted directly: the id
-      // then survives on `task_runs.providerJobId`, where the operations
-      // console can search for it long after the log line has scrolled away,
-      // and a worker that dies between the provider accepting and the payload
-      // being saved resumes the same render instead of paying for a second.
-      const providerTaskId = await context.submitProviderJob(
-        ({ idempotencyKey }) =>
-          submitVideo({
-            model: videoModel,
-            prompt: buildVideoPrompt(
-              subject,
-              beats,
-              script.productionPrompt,
-              { videoMode: work.videoMode, aspectRatio: work.aspectRatio },
-              videoPromptLimit(),
-            ),
-            referenceUrls: references,
-            durationSeconds: CLIP_SPEC.durationSeconds,
-            aspectRatio: work.aspectRatio,
-            resolution,
-            requestId: idempotencyKey,
-          }),
-      );
+      const providerTaskId = await submitVideo({
+        model: videoModel,
+        prompt: buildVideoPrompt(
+          subject,
+          beats,
+          script.productionPrompt,
+          { videoMode: work.videoMode, aspectRatio: work.aspectRatio },
+          videoPromptLimit(),
+        ),
+        referenceUrls: references,
+        durationSeconds: CLIP_SPEC.durationSeconds,
+        aspectRatio: work.aspectRatio,
+        resolution,
+        // Deterministic: the provider dedupes a resubmission of the same run.
+        requestId: context.taskRunId,
+      });
+      await context.recordProviderJob(providerTaskId);
       await context.updateProgress({
         step: VIDEO_PROGRESS_STEP.rendering,
         version,
-        providerTaskId,
       });
       await context.scheduleContinuation(
         { ...payload, providerTaskId, version, polls: 0 },
@@ -426,7 +408,6 @@ export const workVideoJob = defineJob(
       await context.updateProgress({
         step: VIDEO_PROGRESS_STEP.rendering,
         version,
-        providerTaskId: payload.providerTaskId,
       });
       await context.scheduleContinuation(
         { ...payload, version, polls: payload.polls + 1 },
@@ -453,7 +434,6 @@ export const workVideoJob = defineJob(
     await context.updateProgress({
       step: VIDEO_PROGRESS_STEP.archiving,
       version,
-      providerTaskId: payload.providerTaskId,
     });
 
     const storeFile = storage(db);

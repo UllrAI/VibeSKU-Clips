@@ -104,25 +104,19 @@ export const talentGenerateJob = defineJob(
           })
           .where(eq(ugcTalents.id, talent.id));
 
-        // Registered on the task run so the id outlives the log line and a
-        // retry resumes the same draw instead of paying for a second one.
-        const providerTaskId = await context.submitProviderJob(
-          ({ idempotencyKey }) =>
-            submitImage({
-              prompt: buildTalentSheetPrompt(
-                identityPrompt,
-                referenceImageUrls.length > 0,
-              ),
-              referenceUrls: referenceImageUrls,
-              aspectRatio: REFERENCE_ASPECT_RATIO,
-              imageSize: PRISM_MEDIA.sheetImageSize,
-              requestId: idempotencyKey,
-            }),
-        );
-        await context.updateProgress({
-          step: "drawing_talent",
-          providerTaskId,
+        const providerTaskId = await submitImage({
+          prompt: buildTalentSheetPrompt(
+            identityPrompt,
+            referenceImageUrls.length > 0,
+          ),
+          referenceUrls: referenceImageUrls,
+          aspectRatio: REFERENCE_ASPECT_RATIO,
+          imageSize: PRISM_MEDIA.sheetImageSize,
+          // Deterministic: the provider dedupes a resubmission of the same run.
+          requestId: context.taskRunId,
         });
+        await context.recordProviderJob(providerTaskId);
+        await context.updateProgress({ step: "drawing_talent" });
         await context.scheduleContinuation(
           { ...payload, providerTaskId, polls: 0 },
           POLL_SECONDS,

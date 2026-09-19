@@ -3,7 +3,6 @@ import { describe, expect, it } from "@jest/globals";
 import {
   deriveAdminWorkState,
   progressStep,
-  resolveProviderTaskId,
   taskPayloadReferences,
 } from "./operations-state";
 
@@ -54,43 +53,6 @@ describe("admin operation state", () => {
       userId: null,
       workId: null,
     });
-  });
-});
-
-describe("provider job shown for a run", () => {
-  it("prefers the job a working run is waiting on", () => {
-    // A storyboard draws a frame per beat, and a video render spends its
-    // first minutes on an opening frame. Neither is the registered job.
-    expect(
-      resolveProviderTaskId(
-        {
-          step: "drawing_storyboard",
-          frame: 3,
-          providerTaskId: "prism-frame-3",
-        },
-        null,
-      ),
-    ).toBe("prism-frame-3");
-    expect(
-      resolveProviderTaskId(
-        { step: "preparing_video", providerTaskId: "prism-cover" },
-        "lk888:99",
-      ),
-    ).toBe("prism-cover");
-  });
-
-  it("falls back to the registered job once progress is cleared", () => {
-    // A finished run has no progress left, but the job it was billed for is
-    // still the one to quote.
-    expect(resolveProviderTaskId(null, "lk888:99")).toBe("lk888:99");
-    expect(resolveProviderTaskId({ step: "rendering_video" }, "lk888:99")).toBe(
-      "lk888:99",
-    );
-  });
-
-  it("reports nothing for a run that never called a provider", () => {
-    expect(resolveProviderTaskId({ step: "writing_script" }, null)).toBeNull();
-    expect(resolveProviderTaskId({ providerTaskId: 42 }, null)).toBeNull();
   });
 });
 

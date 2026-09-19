@@ -7,7 +7,6 @@ export interface JobHandlerContext<Payload = unknown> {
   taskRunId: string;
   scopeKey: string;
   attempt: number;
-  providerIdempotencyKey: string;
   signal: AbortSignal;
   isCancelled(): Promise<boolean>;
   /**
@@ -21,9 +20,12 @@ export interface JobHandlerContext<Payload = unknown> {
     payload: Payload,
     startAfter: Date | number,
   ): Promise<boolean>;
-  submitProviderJob(
-    submit: (input: { idempotencyKey: string }) => Promise<string>,
-  ): Promise<string>;
+  /**
+   * Names the provider job this run is now working through, so the operations
+   * console can show and search for it. Called after a provider hands back an
+   * id; a run that submits several times reports each in turn.
+   */
+  recordProviderJob(providerJobId: string): Promise<void>;
 }
 
 export interface JobDefinition<

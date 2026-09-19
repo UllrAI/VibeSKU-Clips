@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { isDeepStrictEqual } from "node:util";
 import type { DatabaseExecutor } from "@/database/client";
 import { taskRuns } from "@/database/schema";
@@ -170,28 +170,29 @@ export async function updateTaskRunProgress(
   return updated ?? null;
 }
 
-export async function setProviderJobIdIfAbsent(
+/**
+ * Records the provider job a run is currently working through.
+ *
+ * A run may hand work to a provider more than once — a storyboard draws a
+ * frame per beat, a video render draws its opening frame before it renders
+ * anything — so this is the latest one, not the first. It is what a person
+ * chasing a slow or wrong result has to quote at the provider, and it is
+ * searchable in the operations console.
+ */
+export async function recordProviderJob(
   db: DatabaseExecutor,
   taskRunId: string,
   providerJobId: string,
-): Promise<string | null> {
-  const [updated] = await db
+): Promise<void> {
+  await db
     .update(taskRuns)
     .set({ providerJobId, updatedAt: new Date() })
     .where(
       and(
         eq(taskRuns.id, taskRunId),
         inArray(taskRuns.status, ["running", "cancelled"]),
-        isNull(taskRuns.providerJobId),
       ),
-    )
-    .returning({ providerJobId: taskRuns.providerJobId });
-
-  if (updated?.providerJobId) {
-    return updated.providerJobId;
-  }
-
-  return (await getTaskRun(db, taskRunId))?.providerJobId ?? null;
+    );
 }
 
 export class TaskInputConflictError extends Error {
