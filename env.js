@@ -1,4 +1,5 @@
 import {
+  blankAsAbsent,
   databaseUrlSchema,
   databaseEnvFields,
   mediaEnvFields,
@@ -52,14 +53,16 @@ const env = createEnv({
   // Server-side environment variables
   server: {
     ...databaseEnvFields(20),
-    RATE_LIMIT_IP_HEADER: z
-      .enum([
-        "cf-connecting-ip",
-        "x-vercel-forwarded-for",
-        "x-real-ip",
-        "x-forwarded-for",
-      ])
-      .default("x-forwarded-for"),
+    RATE_LIMIT_IP_HEADER: blankAsAbsent(
+      z
+        .enum([
+          "cf-connecting-ip",
+          "x-vercel-forwarded-for",
+          "x-real-ip",
+          "x-forwarded-for",
+        ])
+        .default("x-forwarded-for"),
+    ),
     BING_SITE_VERIFICATION: optionalCredentialSchema,
 
     // Authentication credentials
@@ -89,7 +92,9 @@ const env = createEnv({
 
     // Payments
     STRIPE_SECRET_KEY: optionalCredentialSchema,
-    STRIPE_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).default("test_mode"),
+    STRIPE_ENVIRONMENT: blankAsAbsent(
+      z.enum(["test_mode", "live_mode"]).default("test_mode"),
+    ),
     STRIPE_WEBHOOK_SECRET: optionalCredentialSchema,
 
     // AI assistant (OpenAI Responses-compatible endpoint)

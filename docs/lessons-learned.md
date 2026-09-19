@@ -33,6 +33,18 @@
 
 搬迁 SQL 值得单独验一次——它只会在生产上跑一次,而且没有测试覆盖。对着 e2e 库跑一段 `WITH t(...) AS (VALUES ...)` 的 SELECT,把各种输入(两列都有、只有一列、都为空)的结果打出来看,比读一遍 SQL 可靠。
 
+## 环境变量
+
+### `.env` 里留空的变量不会走 zod 的 `.default()`
+
+**现象**:`.env` 里有一行 `VIDEO_GENERATION_PROVIDER=`(等号后面什么都没写),`pnpm dev` 直接起不来,Web 和 Worker 报同一个错:`Invalid option: expected one of "prism"|"lk666"`。可这个字段明明写着 `.default("prism")`。
+
+**原因**:dotenv 把空行解析成空字符串 `""`,不是 `undefined`。zod 的 `.default()` 只在 `undefined` 时触发,于是空串跳过默认值,直接去撞字段自己的校验规则。`runtime-env.mjs` 里所有 `.optional()` 字段本来都包了 `preprocess((value) => value || undefined, ...)`,说明写的时候是知道这回事的——但九个带 `.default()` 的字段全漏了,而恰恰是有默认值的变量最容易被留空,因为「反正有默认值」。
+
+**正确做法**:用 `blankAsAbsent()` 包住每一个字段,不分 `optional` 还是 `default`。判断一个 env 字段安不安全,看的不是它有没有默认值,而是它有没有把空串当缺省。
+
+---
+
 ---
 
 ## AI

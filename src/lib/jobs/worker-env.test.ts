@@ -19,6 +19,41 @@ describe("worker environment", () => {
     expect(env.FIRECRAWL_API_BASE_URL).toBe("https://api.firecrawl.dev/v2");
   });
 
+  it("treats a variable left blank in .env as one that was never set", () => {
+    // `FOO=` arrives as "", which is not `undefined`, so a zod default would
+    // otherwise be skipped and the blank validated as a value.
+    const env = loadWorkerEnv({
+      DATABASE_URL: "postgresql://worker:worker@localhost/app",
+      JOB_DATABASE_URL: "",
+      VIDEO_GENERATION_PROVIDER: "",
+      PRISM_API_BASE_URL: "",
+      PRISM_API_KEY: "",
+      LK666_API_BASE_URL: "",
+      FIRECRAWL_API_BASE_URL: "",
+      LLM_BASE_URL: "",
+      AI_DEFAULT_MODEL: "",
+      DB_POOL_SIZE: "",
+      JOB_DB_POOL_SIZE: "",
+      WORKER_GRACEFUL_TIMEOUT_MS: "",
+      R2_ENDPOINT: "",
+    });
+
+    expect(env.VIDEO_GENERATION_PROVIDER).toBe("prism");
+    expect(env.PRISM_API_BASE_URL).toBe(
+      "https://staging-prism.ullrai.com/api/v1",
+    );
+    expect(env.LK666_API_BASE_URL).toBe("https://api.lk888.ai");
+    expect(env.FIRECRAWL_API_BASE_URL).toBe("https://api.firecrawl.dev/v2");
+    expect(env.LLM_BASE_URL).toBe("https://openrouter.ai/api/v1");
+    expect(env.AI_DEFAULT_MODEL).toBe("openai/gpt-5.6-luna");
+    expect(env.DB_POOL_SIZE).toBe(5);
+    expect(env.JOB_DB_POOL_SIZE).toBe(3);
+    expect(env.WORKER_GRACEFUL_TIMEOUT_MS).toBe(30_000);
+    expect(env.JOB_DATABASE_URL).toBe(env.DATABASE_URL);
+    expect(env.PRISM_API_KEY).toBeUndefined();
+    expect(env.R2_ENDPOINT).toBeUndefined();
+  });
+
   it("accepts lk666 as the video provider", () => {
     const env = loadWorkerEnv({
       DATABASE_URL: "postgresql://worker:worker@localhost/app",
