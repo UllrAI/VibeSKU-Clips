@@ -1,7 +1,12 @@
 import { CLIP_SPEC, DEFAULT_VIDEO_SETTINGS } from "./constants";
-import type { SceneAngle, VideoAspectRatio, VideoMode } from "./constants";
+import type {
+  SceneAngle,
+  TalentAngle,
+  VideoAspectRatio,
+  VideoMode,
+} from "./constants";
 import { TEMPLATE_BRIEFS } from "./templates";
-import type { ProductFacts, SceneView, ScriptBeat } from "./types";
+import type { ProductFacts, ReferenceView, ScriptBeat } from "./types";
 import type { ScriptTemplate } from "./constants";
 import type { ClipStorage } from "./storage";
 
@@ -44,14 +49,17 @@ export function renderSubjectFor(input: {
 }
 
 /**
- * How much of a scene reaches one request. Two views fix the place; more only
- * crowd out the product and the performer in a reference set the provider
- * caps anyway.
+ * How much of a subject reaches one request.
+ *
+ * Views are stored in the order they are drawn, which is also their order of
+ * importance, so the first two are the ones worth sending. More would only
+ * crowd out the rest of the reference set, which the provider caps anyway.
  */
-export function sceneReferenceUrls(
-  scene: { views: SceneView[] } | null | undefined,
+export function referenceViewUrls(
+  subject: { views: ReferenceView[] } | null | undefined,
+  limit = 2,
 ): string[] {
-  return (scene?.views ?? []).slice(0, 2).map((view) => view.imageUrl);
+  return (subject?.views ?? []).slice(0, limit).map((view) => view.imageUrl);
 }
 
 /**
@@ -356,22 +364,43 @@ export function buildSceneViewPrompt(
 }
 
 /**
- * The same person at full length.
- *
- * A portrait reference settles who the performer is; it cannot settle how a
- * garment falls on them, which is the only thing an apparel clip is about. The
- * identity prompt is reused verbatim so the face and wardrobe stay put, and
- * the framing is restated after it because framing is the one thing being
- * overridden — the identity prompt describes a crop of its own.
+ * How each viewpoint of a talent is framed. The portrait is not here: it is
+ * the identity prompt itself, which already describes its own viewpoint and
+ * crop, and overriding those would throw away the phone-camera framing that
+ * makes the person read as real. Every later view overrides it deliberately.
  */
-export function buildTalentFullBodyPrompt(identityPrompt: string): string {
+const TALENT_VIEW_FRAMING: Record<Exclude<TalentAngle, "portrait">, string> = {
+  full_body:
+    "Photograph the whole figure from head to feet, both shoes fully visible, with clear space above the head and below the feet. Place the camera at chest height and far enough back that the entire body fits without distortion. Natural relaxed standing pose, weight on one leg, arms at the sides, face to camera.",
+  three_quarter:
+    "Waist-up photograph with the head and shoulders turned about forty-five degrees away from the camera, eyes to camera. Camera at eye height at a natural conversational distance, so the structure of the face reads from the side as well as the front.",
+  detail:
+    "Close photograph of the details that identify this person: the cut and texture of their hair, their hands, and any jewellery or accessory they wear. Camera near, shallow depth of field, even light, skin texture and fabric weave clearly visible. The face may be partly out of frame.",
+};
+
+/**
+ * One viewpoint of a talent.
+ *
+ * The identity prompt is reused verbatim so the face and wardrobe cannot
+ * drift, and the framing is restated after it because framing is the one thing
+ * being overridden. Views after the first take the earlier ones as references,
+ * which is what keeps four photographs on one person.
+ */
+export function buildTalentViewPrompt(
+  identityPrompt: string,
+  angle: Exclude<TalentAngle, "portrait">,
+  hasReference: boolean,
+): string {
   return [
-    "Full-length standing photograph of the person described below, matching the attached reference image.",
+    "Photograph of the person described below.",
     `Identity, wardrobe, and setting to reproduce:\n${identityPrompt}`,
-    "This framing overrides every crop, camera height, and viewpoint named above: photograph the whole figure from head to feet, both shoes fully visible, with clear space above the head and below the feet. Place the camera at chest height and far enough back that the entire body fits without distortion.",
-    "Natural relaxed standing pose, weight on one leg, arms at the sides, face to camera.",
-    "Facial identity, facial proportions, complexion, eyes, hair, and the colour, cut, and length of every garment must match the reference image.",
+    `This framing overrides every crop, camera height, and viewpoint named above: ${TALENT_VIEW_FRAMING[angle]}`,
+    hasReference
+      ? "The attached images are other photographs of this same person. Facial identity, facial proportions, complexion, eyes, hair, and the colour, cut, and length of every garment must match them exactly; only the viewpoint changes."
+      : "",
     "Both hands empty. No products, props, packages, devices, bags, logos, or branded objects anywhere in the frame.",
-    "Plain uncluttered setting, even light, the whole body sharp and unobstructed. No text overlay, no watermark, no beauty filter, no anatomical errors.",
-  ].join("\n");
+    "Plain uncluttered setting, even light, the subject sharp and unobstructed. No text overlay, no watermark, no beauty filter, no anatomical errors.",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

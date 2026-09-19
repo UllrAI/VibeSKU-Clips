@@ -48,6 +48,22 @@ export const SCRIPT_TEMPLATES = [
 export type ScriptTemplate = (typeof SCRIPT_TEMPLATES)[number];
 
 /**
+ * The viewpoints a talent is drawn from. One photograph settles a face and
+ * nothing else: it cannot say how a garment falls on this person, what their
+ * head looks like turned, or how their hands and hair read up close. The order
+ * is the drawing order and the order of importance — each view takes the ones
+ * already drawn as its reference, and the first two are what downstream
+ * requests are given.
+ */
+export const TALENT_ANGLES = [
+  "portrait",
+  "full_body",
+  "three_quarter",
+  "detail",
+] as const;
+export type TalentAngle = (typeof TALENT_ANGLES)[number];
+
+/**
  * The viewpoints a scene is drawn from. A location is not one photograph: the
  * wide shot settles the space, the eye-level shot settles where a person
  * stands in it, and the detail shot settles the surface a product is set down
@@ -63,6 +79,14 @@ export type VideoMode = (typeof VIDEO_MODES)[number];
 
 export const VIDEO_ASPECT_RATIOS = ["9:16", "16:9"] as const;
 export type VideoAspectRatio = (typeof VIDEO_ASPECT_RATIOS)[number];
+
+/**
+ * Library references are square. A talent and a scene outlive any one clip, so
+ * the frame settings of the clip that happened to be made first must not be
+ * baked into them, and a square crop wastes nothing at either ratio.
+ */
+export const REFERENCE_ASPECT_RATIO = "1:1" as const;
+export type ImageAspectRatio = VideoAspectRatio | typeof REFERENCE_ASPECT_RATIO;
 
 export const VIDEO_RESOLUTIONS = ["480p", "720p", "1080p", "2k"] as const;
 export type VideoResolution = (typeof VIDEO_RESOLUTIONS)[number];

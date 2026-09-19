@@ -6,10 +6,10 @@ import {
   buildFramePrompt,
   buildSceneViewPrompt,
   buildSubtitleTrack,
-  buildTalentFullBodyPrompt,
+  buildTalentViewPrompt,
   buildVideoPrompt,
+  referenceViewUrls,
   renderSubjectFor,
-  sceneReferenceUrls,
 } from "./render";
 import type { ScriptBeat } from "./types";
 
@@ -159,24 +159,6 @@ describe("reference images", () => {
   });
 });
 
-describe("talent full-length reference", () => {
-  const identity = "A woman in her thirties, waist-up crop, bright kitchen.";
-  const prompt = buildTalentFullBodyPrompt(identity);
-
-  it("keeps the identity prompt so the face and wardrobe cannot drift", () => {
-    expect(prompt).toContain(identity);
-  });
-
-  it("states that framing overrides the crop the identity prompt named", () => {
-    expect(prompt).toContain("overrides every crop");
-    expect(prompt).toContain("head to feet");
-  });
-
-  it("keeps the talent free of products, as the portrait is", () => {
-    expect(prompt).toContain("Both hands empty");
-  });
-});
-
 describe("a chosen scene", () => {
   const location =
     "A small city kitchen with a pale oak counter and white tiles.";
@@ -252,11 +234,12 @@ describe("a chosen scene", () => {
       { angle: "detail" as const, imageUrl: "https://x/3.webp" },
     ];
 
-    expect(sceneReferenceUrls({ views })).toEqual([
+    expect(referenceViewUrls({ views })).toEqual([
       "https://x/1.webp",
       "https://x/2.webp",
     ]);
-    expect(sceneReferenceUrls(null)).toEqual([]);
+    expect(referenceViewUrls({ views }, 1)).toEqual(["https://x/1.webp"]);
+    expect(referenceViewUrls(null)).toEqual([]);
   });
 
   it("describes the talent and the scene by their expanded prompts", () => {
@@ -307,6 +290,47 @@ describe("scene views", () => {
   it("keeps people and products out of a location reference", () => {
     expect(buildSceneViewPrompt(location, "eye_level", false)).toContain(
       "No people",
+    );
+  });
+});
+
+describe("talent views", () => {
+  const identity = "A woman in her thirties, waist-up crop, bright kitchen.";
+
+  it("keeps the identity prompt so the face and wardrobe cannot drift", () => {
+    expect(buildTalentViewPrompt(identity, "full_body", true)).toContain(
+      identity,
+    );
+  });
+
+  it("states that framing overrides the crop the identity prompt named", () => {
+    const prompt = buildTalentViewPrompt(identity, "full_body", true);
+
+    expect(prompt).toContain("overrides every crop");
+    expect(prompt).toContain("head to feet");
+  });
+
+  it("frames each view for the question it answers", () => {
+    expect(buildTalentViewPrompt(identity, "three_quarter", true)).toContain(
+      "forty-five degrees",
+    );
+    expect(buildTalentViewPrompt(identity, "detail", true)).toContain(
+      "hair, their hands",
+    );
+  });
+
+  it("matches earlier views only once there are some", () => {
+    expect(buildTalentViewPrompt(identity, "full_body", true)).toContain(
+      "same person",
+    );
+    expect(buildTalentViewPrompt(identity, "full_body", false)).not.toContain(
+      "same person",
+    );
+  });
+
+  it("keeps the talent free of products, as the portrait is", () => {
+    expect(buildTalentViewPrompt(identity, "detail", true)).toContain(
+      "Both hands empty",
     );
   });
 });

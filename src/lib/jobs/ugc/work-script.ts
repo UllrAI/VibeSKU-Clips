@@ -10,7 +10,7 @@ import {
 import { composeScript } from "@/lib/ugc/authoring";
 import { CREDIT_COST, type ScriptTemplate } from "@/lib/ugc/constants";
 import { defaultDisclosure } from "@/lib/ugc/templates";
-import { sceneReferenceUrls } from "@/lib/ugc/render";
+import { referenceViewUrls } from "@/lib/ugc/render";
 import { resolveReferenceUrls } from "@/lib/ugc/storage";
 import { recordUsage } from "@/lib/ugc/usage";
 import { defineJob, PermanentJobError } from "../definition";
@@ -82,13 +82,15 @@ export const workScriptJob = defineJob(
       work.userId,
       product.images,
     );
-    const [talentImageUrl] = talent?.imageUrl
-      ? await resolveReferenceUrls(db, work.userId, [talent.imageUrl])
-      : [];
+    const [talentImageUrl] = await resolveReferenceUrls(
+      db,
+      work.userId,
+      referenceViewUrls(talent, 1),
+    );
     const sceneImageUrls = await resolveReferenceUrls(
       db,
       work.userId,
-      sceneReferenceUrls(scene),
+      referenceViewUrls(scene),
     );
     const draft = await composeScript({
       facts: product.facts,

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
-import { and, eq, isNotNull, max } from "drizzle-orm";
+import { and, eq, max } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/database";
 import {
@@ -109,7 +109,6 @@ async function resolveTalentSelection(
         eq(ugcTalents.userId, userId),
         eq(ugcTalents.archived, false),
         eq(ugcTalents.status, "ready"),
-        isNotNull(ugcTalents.imageUrl),
       ),
     );
   return talent?.id;

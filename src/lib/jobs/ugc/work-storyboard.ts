@@ -18,8 +18,8 @@ import {
 import {
   archiveRemoteAsset,
   buildFramePrompt,
+  referenceViewUrls,
   renderSubjectFor,
-  sceneReferenceUrls,
 } from "@/lib/ugc/render";
 import {
   createClipStorage,
@@ -159,18 +159,13 @@ export const workStoryboardJob = defineJob(
 
     const unsubmitted = frames.filter((frame) => !frame.providerTaskId);
     const references = unsubmitted.length
-      ? await resolveReferenceUrls(
-          db,
-          work.userId,
-          [
-            talent?.imageUrl,
-            talent?.fullBodyUrl,
-            ...sceneReferenceUrls(scene),
-            // Listing photos are evidence of what the product looks like, not
-            // scenes to rebuild, and two of them settle colour and finish.
-            ...product.images.slice(0, 2),
-          ].filter((url): url is string => Boolean(url)),
-        )
+      ? await resolveReferenceUrls(db, work.userId, [
+          ...referenceViewUrls(talent),
+          ...referenceViewUrls(scene),
+          // Listing photos are evidence of what the product looks like, not
+          // scenes to rebuild, and two of them settle colour and finish.
+          ...product.images.slice(0, 2),
+        ])
       : [];
 
     // Submit anything that has not been handed to the provider yet.

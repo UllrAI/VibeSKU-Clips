@@ -131,7 +131,7 @@ Six durable jobs are registered in `src/lib/jobs/catalog.ts`:
 | Job                   | Handler                               | What it does                                                                                |
 | --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Imports source links through Firecrawl, extracts facts, then waits for review or more input |
-| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief, draws one reference image, and archives it                          |
+| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief into one identity, then photographs it from each angle in turn        |
 | `ugc.scene.generate`  | `src/lib/jobs/ugc/scene-generate.ts`  | Expands a scene brief into one place, then photographs it from each angle in turn           |
 | `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it  |
 | `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands            |
@@ -187,11 +187,17 @@ Rules that are easy to break:
   stays usable with the ones that landed. Where a clip is filmed outranks both
   the generic market fallback and whatever location the production direction
   improvised, and at most two views reach any one request.
-- **A talent is two images.** A portrait settles who the performer is; a
-  full-length shot settles how clothes fall on them, which is the only thing an
-  apparel clip is about. The second draw takes the first as its reference so
-  the face cannot drift, and a talent whose full-length draw fails stays usable
-  rather than failing outright.
+- **A talent is a set of views.** A single photograph settles a face and
+  nothing else. Each talent is drawn from the viewpoints in `TALENT_ANGLES` —
+  portrait, full length, three-quarter, close detail — in that order, each view
+  referencing the ones already archived so the face cannot drift. The portrait
+  is the identity prompt itself, because that prompt describes its own
+  phone-camera viewpoint and overriding it would throw away what makes the
+  person read as real. A talent that loses a view stays usable with the ones
+  that landed.
+- **Library references are square.** A talent and a scene outlive any one clip,
+  so `REFERENCE_ASPECT_RATIO` is what they are drawn at; a work's own frame
+  settings apply to its frames and its video, never to the library.
 
 ## 6. Engineering Rules
 

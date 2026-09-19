@@ -295,6 +295,20 @@
       "when": 1789779013925,
       "tag": "0041_glorious_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1789782386879,
+      "tag": "0042_useful_joshua_kane",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1789782397509,
+      "tag": "0043_sparkling_lionheart",
+      "breakpoints": true
     }
   ]
 }

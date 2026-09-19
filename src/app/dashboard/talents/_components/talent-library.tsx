@@ -35,13 +35,16 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageField } from "@/components/ugc/image-field";
 import { actionMessageKey } from "@/components/ugc/action-message";
+import { talentAngleKey } from "@/components/ugc/labels";
 import { StatusBadge } from "@/components/ugc/status-badge";
+import { ViewStrip } from "@/components/ugc/view-strip";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   archiveTalent,
   createTalent,
   retryTalentGeneration,
 } from "@/lib/ugc/actions";
+import { TALENT_ANGLES } from "@/lib/ugc/constants";
 import type { TalentRow } from "@/lib/ugc/queries";
 
 export function TalentLibrary({ talents }: { talents: TalentRow[] }) {
@@ -89,33 +92,20 @@ export function TalentLibrary({ talents }: { talents: TalentRow[] }) {
       router.refresh();
     });
 
-  const retry = (talentId: string) => {
+  const runAction = (
+    talentId: string,
+    action: () => Promise<{ ok: boolean; code?: string }>,
+    successKey: string,
+  ) => {
     setActingTalentId(talentId);
     startActionTransition(async () => {
       try {
-        const result = await retryTalentGeneration(talentId);
+        const result = await action();
         if (!result.ok) {
           toast.error(t(actionMessageKey(result.code)));
           return;
         }
-        toast.success(t("ugc_talent_generation_started"));
-        router.refresh();
-      } finally {
-        setActingTalentId(null);
-      }
-    });
-  };
-
-  const archive = (talentId: string) => {
-    setActingTalentId(talentId);
-    startActionTransition(async () => {
-      try {
-        const result = await archiveTalent(talentId);
-        if (!result.ok) {
-          toast.error(t(actionMessageKey(result.code)));
-          return;
-        }
-        toast.success(t("ugc_talent_archived"));
+        toast.success(t(successKey));
         router.refresh();
       } finally {
         setActingTalentId(null);
@@ -127,8 +117,19 @@ export function TalentLibrary({ talents }: { talents: TalentRow[] }) {
     if (!confirmation) return;
     const { type, talent } = confirmation;
     setConfirmation(null);
-    if (type === "regenerate") retry(talent.id);
-    else archive(talent.id);
+    if (type === "regenerate") {
+      runAction(
+        talent.id,
+        () => retryTalentGeneration(talent.id),
+        "ugc_talent_generation_started",
+      );
+    } else {
+      runAction(
+        talent.id,
+        () => archiveTalent(talent.id),
+        "ugc_talent_archived",
+      );
+    }
   };
 
   const normalizedQuery = query.trim().toLowerCase();
@@ -172,124 +173,129 @@ export function TalentLibrary({ talents }: { talents: TalentRow[] }) {
         />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-          {visible.map((talent) => (
-            <li key={talent.id}>
-              <Card className="h-full gap-3 py-3">
-                <CardContent className="space-y-3 px-3">
-                  <div className="border-border bg-muted relative aspect-[4/5] overflow-hidden rounded-md border">
-                    {talent.imageUrl ? (
-                      <Image
-                        src={talent.imageUrl}
-                        alt=""
-                        fill
-                        sizes="(min-width: 1536px) 200px, (min-width: 1280px) 240px, (min-width: 1024px) 30vw, 45vw"
-                        className="object-cover"
-                        unoptimized
-                      />
-                    ) : (
-                      <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 p-4 text-center text-sm">
-                        {talent.status === "generating" && (
-                          <Loader2
-                            className="size-5 animate-spin motion-reduce:animate-none"
-                            aria-hidden
-                          />
-                        )}
-                        <span>
-                          {t(
-                            talent.status === "failed"
-                              ? "ugc_talent_generation_failed"
-                              : "ugc_talent_generating",
-                          )}
-                        </span>
-                      </div>
-                    )}
-                    {talent.fullBodyUrl && (
-                      <div className="border-background absolute right-1.5 bottom-1.5 aspect-[10/16] w-10 overflow-hidden rounded border-2 shadow-sm">
+          {visible.map((talent) => {
+            const busy = actionPending && actingTalentId === talent.id;
+            const [cover, ...otherViews] = talent.views;
+            return (
+              <li key={talent.id}>
+                <Card className="h-full gap-3 py-3">
+                  <CardContent className="space-y-3 px-3">
+                    <div className="border-border bg-muted relative aspect-square overflow-hidden rounded-md border">
+                      {cover ? (
                         <Image
-                          src={talent.fullBodyUrl}
-                          alt={t("ugc_talent_full_body")}
+                          src={cover.imageUrl}
+                          alt=""
                           fill
-                          sizes="40px"
+                          sizes="(min-width: 1536px) 200px, (min-width: 1280px) 240px, (min-width: 1024px) 30vw, 45vw"
                           className="object-cover"
                           unoptimized
                         />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 space-y-1.5">
-                      <h3 className="truncate text-sm font-medium">
-                        {talent.name}
-                      </h3>
-                      <StatusBadge kind="talent" status={talent.status} />
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="size-11 sm:size-8"
-                          disabled={
-                            actionPending && actingTalentId === talent.id
-                          }
-                        >
-                          {actionPending && actingTalentId === talent.id ? (
+                      ) : (
+                        <div className="text-muted-foreground flex h-full flex-col items-center justify-center gap-2 p-4 text-center text-sm">
+                          {talent.status === "generating" && (
                             <Loader2
-                              className="animate-spin motion-reduce:animate-none"
+                              className="size-5 animate-spin motion-reduce:animate-none"
                               aria-hidden
                             />
-                          ) : (
-                            <MoreHorizontal aria-hidden />
                           )}
-                          <span className="sr-only">
-                            {t("ugc_common_actions")}
+                          <span>
+                            {t(
+                              talent.status === "failed"
+                                ? "ugc_talent_generation_failed"
+                                : "ugc_talent_generating",
+                            )}
                           </span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {talent.status !== "generating" && (
+                        </div>
+                      )}
+                    </div>
+
+                    <ViewStrip
+                      views={otherViews}
+                      labelKey={talentAngleKey}
+                      drawing={talent.status === "generating"}
+                    />
+
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 space-y-1.5">
+                        <h3 className="truncate text-sm font-medium">
+                          {talent.name}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <StatusBadge kind="talent" status={talent.status} />
+                          <span className="text-muted-foreground text-xs tabular-nums">
+                            {t("ugc_view_count", {
+                              count: talent.views.length,
+                              total: TALENT_ANGLES.length,
+                            })}
+                          </span>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="size-11 sm:size-8"
+                            disabled={busy}
+                          >
+                            {busy ? (
+                              <Loader2
+                                className="animate-spin motion-reduce:animate-none"
+                                aria-hidden
+                              />
+                            ) : (
+                              <MoreHorizontal aria-hidden />
+                            )}
+                            <span className="sr-only">
+                              {t("ugc_common_actions")}
+                            </span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {talent.status !== "generating" && (
+                            <DropdownMenuItem
+                              onSelect={() =>
+                                setConfirmation({ type: "regenerate", talent })
+                              }
+                            >
+                              <RefreshCw />
+                              {t("ugc_talent_retry")}
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
+                            variant="destructive"
                             onSelect={() =>
-                              setConfirmation({ type: "regenerate", talent })
+                              setConfirmation({ type: "archive", talent })
                             }
                           >
-                            <RefreshCw />
-                            {t("ugc_talent_retry")}
+                            <Archive />
+                            {t("ugc_talent_archive")}
                           </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onSelect={() =>
-                            setConfirmation({ type: "archive", talent })
-                          }
-                        >
-                          <Archive />
-                          {t("ugc_talent_archive")}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
-                    {talent.prompt ?? talent.description}
-                  </p>
-                  {talent.status === "failed" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="w-full"
-                      disabled={actionPending && actingTalentId === talent.id}
-                      onClick={() =>
-                        setConfirmation({ type: "regenerate", talent })
-                      }
-                    >
-                      <RefreshCw />
-                      {t("ugc_talent_retry")}
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            </li>
-          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <p className="text-muted-foreground line-clamp-2 text-xs leading-relaxed">
+                      {talent.prompt ?? talent.description}
+                    </p>
+                    {talent.status === "failed" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                        disabled={busy}
+                        onClick={() =>
+                          setConfirmation({ type: "regenerate", talent })
+                        }
+                      >
+                        <RefreshCw />
+                        {t("ugc_talent_retry")}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              </li>
+            );
+          })}
         </ul>
       )}
 

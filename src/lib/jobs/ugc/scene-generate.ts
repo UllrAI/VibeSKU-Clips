@@ -5,7 +5,7 @@ import { ugcScenes } from "@/database/ugc";
 import { composeSceneImagePrompt } from "@/lib/ugc/authoring";
 import {
   CREDIT_COST,
-  DEFAULT_VIDEO_SETTINGS,
+  REFERENCE_ASPECT_RATIO,
   SCENE_ANGLES,
 } from "@/lib/ugc/constants";
 import {
@@ -106,7 +106,7 @@ export const sceneGenerateJob = defineJob(
 
     try {
       if (!payload.providerTaskId) {
-        const drawnViews = scene.views.slice(-MAX_VIEW_REFERENCES);
+        const drawnViews = scene.views.slice(0, MAX_VIEW_REFERENCES);
         const referenceImageUrls = await resolveReferenceUrls(
           db,
           scene.userId,
@@ -138,7 +138,7 @@ export const sceneGenerateJob = defineJob(
             drawnViews.length > 0,
           ),
           referenceUrls: referenceImageUrls,
-          aspectRatio: DEFAULT_VIDEO_SETTINGS.aspectRatio,
+          aspectRatio: REFERENCE_ASPECT_RATIO,
           // Prism keys submissions on request_id, so each view needs its own
           // or the second draw is handed the first one back.
           requestId: createPrismRequestId(context.taskRunId, angle),

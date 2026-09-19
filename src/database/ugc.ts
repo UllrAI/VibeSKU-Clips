@@ -18,6 +18,7 @@ import type {
   ProductFacts,
   SceneView,
   ScriptBeat,
+  TalentView,
 } from "@/lib/ugc/types";
 
 export const ugcProductStatusEnum = pgEnum("ugc_product_status", [
@@ -156,6 +157,13 @@ export const ugcProducts = pgTable(
   }),
 );
 
+/**
+ * One reusable performer, held as the views it has been drawn from. A single
+ * photograph settles a face and nothing else: it cannot say how a garment
+ * falls on this person, what their head looks like turned, or how their hands
+ * and hair read up close. A talent that loses a view stays usable with the
+ * ones that landed.
+ */
 export const ugcTalents = pgTable(
   "ugc_talents",
   {
@@ -169,17 +177,10 @@ export const ugcTalents = pgTable(
       .$type<string[]>()
       .notNull()
       .default([]),
-    imageUrl: text("imageUrl"),
-    /**
-     * The same person at full length. A portrait settles who the performer is
-     * but not how a garment falls on them, which is the only thing an apparel
-     * clip is about. Null when the second draw did not land; the talent is
-     * still usable, just not for a format that needs the whole figure.
-     */
-    fullBodyUrl: text("fullBodyUrl"),
-    // Expanded photography prompt used to create the final reference image.
+    views: jsonb("views").$type<TalentView[]>().notNull().default([]),
+    // Expanded photography prompt every view is drawn from.
     prompt: text("prompt"),
-    status: ugcTalentStatusEnum("status").notNull().default("ready"),
+    status: ugcTalentStatusEnum("status").notNull().default("generating"),
     archived: boolean("archived").notNull().default(false),
     createdAt: timestamp("createdAt", { withTimezone: true })
       .notNull()

@@ -24,6 +24,10 @@ export function sceneAngleKey(angle: string): string {
   return `ugc_scene_angle_${angle}`;
 }
 
+export function talentAngleKey(angle: string): string {
+  return `ugc_talent_angle_${angle}`;
+}
+
 export function templateKey(template: string): string {
   return `ugc_template_${template}`;
 }

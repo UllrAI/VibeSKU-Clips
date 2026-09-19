@@ -4,7 +4,7 @@ import { PermanentJobError, RetryableJobError } from "@/lib/jobs/definition";
 import {
   MEDIA_REQUEST_TIMEOUT_MS,
   PRISM_MEDIA,
-  type VideoAspectRatio,
+  type ImageAspectRatio,
 } from "../constants";
 import { loadMediaEnv } from "./config";
 import { rejectionDetail } from "./provider-response";
@@ -92,7 +92,7 @@ async function call<T>(
 export interface ImageRequest {
   prompt: string;
   referenceUrls: string[];
-  aspectRatio: VideoAspectRatio;
+  aspectRatio: ImageAspectRatio;
   requestId: string;
 }
 

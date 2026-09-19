@@ -37,6 +37,7 @@ import { ImageField } from "@/components/ugc/image-field";
 import { actionMessageKey } from "@/components/ugc/action-message";
 import { sceneAngleKey } from "@/components/ugc/labels";
 import { StatusBadge } from "@/components/ugc/status-badge";
+import { ViewStrip } from "@/components/ugc/view-strip";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   archiveScene,
@@ -175,7 +176,7 @@ export function SceneLibrary({ scenes }: { scenes: SceneRow[] }) {
               <li key={scene.id}>
                 <Card className="h-full gap-3 py-3">
                   <CardContent className="space-y-3 px-3">
-                    <div className="border-border bg-muted relative aspect-[4/5] overflow-hidden rounded-md border">
+                    <div className="border-border bg-muted relative aspect-square overflow-hidden rounded-md border">
                       {cover ? (
                         <Image
                           src={cover.imageUrl}
@@ -204,33 +205,11 @@ export function SceneLibrary({ scenes }: { scenes: SceneRow[] }) {
                       )}
                     </div>
 
-                    {otherViews.length > 0 && (
-                      <ul className="flex gap-1.5">
-                        {otherViews.map((view) => (
-                          <li
-                            key={view.angle}
-                            className="border-border relative aspect-square w-10 overflow-hidden rounded border"
-                          >
-                            <Image
-                              src={view.imageUrl}
-                              alt={t(sceneAngleKey(view.angle))}
-                              fill
-                              sizes="40px"
-                              className="object-cover"
-                              unoptimized
-                            />
-                          </li>
-                        ))}
-                        {scene.status === "generating" && (
-                          <li className="border-border text-muted-foreground flex aspect-square w-10 items-center justify-center rounded border border-dashed">
-                            <Loader2
-                              className="size-3.5 animate-spin motion-reduce:animate-none"
-                              aria-hidden
-                            />
-                          </li>
-                        )}
-                      </ul>
-                    )}
+                    <ViewStrip
+                      views={otherViews}
+                      labelKey={sceneAngleKey}
+                      drawing={scene.status === "generating"}
+                    />
 
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 space-y-1.5">
@@ -240,7 +219,7 @@ export function SceneLibrary({ scenes }: { scenes: SceneRow[] }) {
                         <div className="flex flex-wrap items-center gap-1.5">
                           <StatusBadge kind="scene" status={scene.status} />
                           <span className="text-muted-foreground text-xs tabular-nums">
-                            {t("ugc_scene_view_count", {
+                            {t("ugc_view_count", {
                               count: scene.views.length,
                               total: SCENE_ANGLES.length,
                             })}
