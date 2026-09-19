@@ -8,6 +8,7 @@ import {
   importProductSource,
   type ImportedProductSource,
 } from "@/lib/ugc/firecrawl";
+import { authoringModelLog } from "@/lib/ugc/model";
 import { productNameFromUrl } from "@/lib/ugc/product-name";
 import { recordUsage } from "@/lib/ugc/usage";
 import { UnreadableSourceError } from "@/lib/ugc/source-fetch";
@@ -144,10 +145,12 @@ export const productIngestJob = defineJob(
       .returning();
     let materialProduct = analyzingProduct ?? product;
     await context.updateProgress({ step: "reading_source" });
+    const startedAt = Date.now();
     context.log("product_ingest_started", {
       productId: product.id,
       hasSourceUrl: Boolean(product.sourceUrl),
       images: product.images.length,
+      ...authoringModelLog(),
     });
 
     try {
@@ -227,6 +230,8 @@ export const productIngestJob = defineJob(
         status: nextStatus,
         imagesRead: imageUrls.length,
         missing,
+        ...authoringModelLog(),
+        elapsedMs: Date.now() - startedAt,
       });
       return { status: nextStatus };
     } catch (error) {

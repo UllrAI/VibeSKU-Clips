@@ -9,6 +9,7 @@ import {
   REFERENCE_ASPECT_RATIO,
 } from "@/lib/ugc/constants";
 import { getTask, submitImage } from "@/lib/ugc/media/prism";
+import { authoringModelLog } from "@/lib/ugc/model";
 import { mediaTaskLog } from "@/lib/ugc/media/task-log";
 import { archiveRemoteAsset, buildTalentSheetPrompt } from "@/lib/ugc/render";
 import {
@@ -113,6 +114,9 @@ export const talentGenerateJob = defineJob(
           talentId: talent.id,
           ...mediaTaskLog("prism", providerTaskId),
           references: referenceImageUrls.length,
+          // The brief was expanded by the language model before the image was
+          // drawn, so both suppliers belong on the line.
+          ...authoringModelLog(),
         });
         return { providerTaskId, submitted: true };
       }

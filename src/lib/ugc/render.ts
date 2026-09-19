@@ -226,10 +226,18 @@ export function buildFramePrompt(
  * wrong against the frame before. A photograph settles what prose cannot.
  *
  * What it must not settle is the framing: it is the shot before, not the shot
- * being drawn, and a model given it without this line simply redraws it.
+ * being drawn, and a model given it without this line simply redraws it. So
+ * the line is written as two explicit lists — what carries over and what
+ * moves on — because a model told only to "continue" produces the same
+ * photograph again, and one told only "this is a new shot" drifts exactly the
+ * way drawing them apart did.
  */
-export const CONTINUES_FROM_PREVIOUS =
-  "One attached photograph is the previous key frame of this same clip: the same person, in the same place, moments earlier. Continue from it exactly — the same face, hair, make-up and wardrobe down to the creases, the same room with the same objects in the same places, the same light direction, colour temperature and colour grade, the same product in the same condition. Do not copy its camera angle, its framing, or its composition: this is the next shot, framed as described above, with the action moved on.";
+export const CONTINUES_FROM_PREVIOUS = [
+  "One attached photograph is the previous key frame of this same clip, made moments earlier: the same person, in the same place, during the same continuous filming.",
+  "Carry these over from it unchanged, because the viewer sees both frames within seconds of each other: the performer's face, hair, and make-up; every garment they wear, down to its colour, fabric, length, and how it is creased, fastened, and pushed up; the product itself, in the same condition, in the same packaging, with the same label text; the room, with the same furniture, surfaces, and objects in the same positions; the light, with the same direction, hardness, colour temperature, and time of day; and the colour grade, contrast, and grain.",
+  "Change these deliberately, because this is the next shot and not the same one: the camera, which takes the shot size, angle, distance, and eye level described above rather than the ones in that photograph; the performer's pose, gesture, weight, and eye line, which have moved on with the action; and what the frame is built around.",
+  "Never redraw the previous frame, never repeat its composition, and never place it inside this image.",
+].join("\n");
 
 const DIRECTION_PREFIX = "Follow this approved production direction exactly:\n";
 

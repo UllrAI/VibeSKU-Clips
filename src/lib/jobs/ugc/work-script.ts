@@ -13,6 +13,7 @@ import {
   MAX_PRODUCT_IMAGES,
   type ScriptTemplate,
 } from "@/lib/ugc/constants";
+import { authoringModelLog } from "@/lib/ugc/model";
 import { defaultDisclosure } from "@/lib/ugc/templates";
 import { productReferenceUrls } from "@/lib/ugc/render";
 import { resolveReferenceUrls } from "@/lib/ugc/storage";
@@ -74,11 +75,13 @@ export const workScriptJob = defineJob(
       : [];
 
     await context.updateProgress({ step: "writing_script" });
+    const startedAt = Date.now();
     context.log("work_script_started", {
       workId: work.id,
       productId: product.id,
       talentId: talent?.id ?? null,
       sceneId: scene?.id ?? null,
+      ...authoringModelLog(),
     });
 
     const productImageUrls = await resolveReferenceUrls(
@@ -160,6 +163,8 @@ export const workScriptJob = defineJob(
       workId: work.id,
       scriptId: script.id,
       beats: draft.beats.length,
+      ...authoringModelLog(),
+      elapsedMs: Date.now() - startedAt,
     });
     return { scriptId: script.id, beats: draft.beats.length };
   },

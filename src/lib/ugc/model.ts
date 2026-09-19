@@ -41,3 +41,30 @@ export function getAuthoringModel(
   }
   return cached.model;
 }
+
+export interface AuthoringModelLog {
+  llmBaseUrl: string;
+  llmModel: string;
+}
+
+/**
+ * Which endpoint and model an authoring call goes to, for job logs.
+ *
+ * A script that comes back wrong, slow, or not at all is a question for
+ * whoever serves that endpoint, and the job log is where chasing it has to
+ * start. These calls are synchronous and have no task id to quote, so the
+ * endpoint and the model name are the whole of the address. The key is never
+ * part of it, and an unconfigured environment says so rather than throwing:
+ * this is a log line, not a precondition.
+ */
+export function authoringModelLog(
+  source: NodeJS.ProcessEnv = process.env,
+): AuthoringModelLog {
+  const parsed = modelEnvSchema.safeParse(source);
+  return parsed.success
+    ? {
+        llmBaseUrl: parsed.data.LLM_BASE_URL,
+        llmModel: parsed.data.AI_DEFAULT_MODEL,
+      }
+    : { llmBaseUrl: "unconfigured", llmModel: "unconfigured" };
+}

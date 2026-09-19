@@ -2,6 +2,7 @@ import { describe, expect, it } from "@jest/globals";
 import { MAX_PRODUCT_IMAGES, PRISM_MEDIA, SCRIPT_TEMPLATES } from "./constants";
 import { TEMPLATE_BRIEFS } from "./templates";
 import {
+  CONTINUES_FROM_PREVIOUS,
   buildCoverPrompt,
   buildFramePrompt,
   buildSceneSheetPrompt,
@@ -433,6 +434,23 @@ describe("format briefs", () => {
     ).toBe(garments.length);
     expect(TEMPLATE_BRIEFS.styling.structure).toContain("restyled");
     expect(TEMPLATE_BRIEFS.fit_check.structure).toContain("size");
+  });
+});
+
+describe("continuing a storyboard", () => {
+  it("separates what carries over from what has to move on", () => {
+    // Told only to continue, a model redraws the previous frame; told only
+    // that this is a new shot, it drifts the way drawing frames apart did.
+    expect(CONTINUES_FROM_PREVIOUS).toContain("Carry these over");
+    expect(CONTINUES_FROM_PREVIOUS).toContain("Change these deliberately");
+
+    const [, carried, changed] = CONTINUES_FROM_PREVIOUS.split("\n");
+    // Wardrobe and light hold the clip together; the camera is what moves.
+    expect(carried).toMatch(/garment/);
+    expect(carried).toMatch(/light/);
+    expect(carried).not.toMatch(/camera/);
+    expect(changed).toMatch(/camera/);
+    expect(changed).toMatch(/pose/);
   });
 });
 
