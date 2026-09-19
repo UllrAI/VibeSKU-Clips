@@ -11,7 +11,7 @@ import type { ScriptTemplate } from "@/lib/ugc/constants";
 import { cn } from "@/lib/utils";
 
 /**
- * What kind of clip this is. Three cards rather than a select, because the
+ * What kind of clip this is. Cards rather than a select, because the
  * choice changes how the fifteen seconds are spent and the difference is
  * worth reading before picking.
  */

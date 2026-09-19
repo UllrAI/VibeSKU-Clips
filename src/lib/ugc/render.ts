@@ -105,6 +105,18 @@ function frameDescription(aspectRatio: VideoAspectRatio): string {
   return `${aspectRatio === "9:16" ? "Portrait" : "Landscape"} ${aspectRatio}`;
 }
 
+const GARMENT_TEMPLATES = new Set<ScriptTemplate>([
+  "apparel",
+  "styling",
+  "fit_check",
+]);
+
+function garmentOrientationRule(template: ScriptTemplate): string {
+  return GARMENT_TEMPLATES.has(template)
+    ? "Garment orientation is literal. When the assignment says back, rear, turn away, side, or three-quarter, show that view clearly; never turn the torso or garment back toward camera just to keep the performer's face visible."
+    : "";
+}
+
 /**
  * How much of a subject prompt goes into one frame request.
  *
@@ -161,13 +173,20 @@ export function buildCoverPrompt(
 ): string {
   return [
     `${frameDescription(aspectRatio)} opening frame for a user-generated product video.`,
+    firstBeat
+      ? [
+          `OPENING-FRAME ASSIGNMENT — depict only ${firstBeat.start.toFixed(1)}-${firstBeat.end.toFixed(1)}s of the script:`,
+          `Shot: ${firstBeat.shot}`,
+          `Visible action at this exact moment: ${firstBeat.action}`,
+          `Camera: ${firstBeat.camera ?? "natural handheld phone framing"}`,
+          "Do not preview, combine, or foreshadow any later action from the clip.",
+        ].join("\n")
+      : "",
+    garmentOrientationRule(subject.template),
     productionPrompt
-      ? `Production direction:\n${productionPrompt.slice(0, 20_000)}`
+      ? `Whole-clip visual direction only — use this for identity, setting, light, texture, and camera character, never for additional actions or shots in this image. The opening-frame assignment above overrides it:\n${productionPrompt.slice(0, 20_000)}`
       : "",
     `Product: ${subject.productName}. ${subject.appearance}`,
-    firstBeat
-      ? `This frame only: ${firstBeat.shot}. ${firstBeat.action}. Camera: ${firstBeat.camera ?? "natural handheld phone framing"}.`
-      : "",
     subject.talentPrompt
       ? `Performer: ${fitCharacters(subject.talentPrompt, FRAME_SUBJECT_LIMIT)}. Take the face, build, hair, and wardrobe from the attached reference sheet; take the pose, the eye line, and the light from this frame.`
       : "Product-led frame with hands only, no recognisable face.",
@@ -195,13 +214,16 @@ export function buildFramePrompt(
 ): string {
   return [
     `${frameDescription(aspectRatio)} key frame ${position + 1} of a user-generated product video.`,
+    `CURRENT-FRAME ASSIGNMENT — depict only ${beat.start.toFixed(1)}-${beat.end.toFixed(1)}s of the script. This assignment has priority over every reference image and every whole-clip direction below.`,
+    `Shot: ${beat.shot}`,
+    `Visible action at this exact moment: ${beat.action}`,
+    `Camera: ${beat.camera ?? "natural handheld phone framing"}`,
+    "Render one frozen moment from this assignment only. Do not combine, preview, foreshadow, repeat, or summarise any other beat from the script.",
+    garmentOrientationRule(subject.template),
     productionPrompt
-      ? `Production direction shared by every frame:\n${productionPrompt.slice(0, 20_000)}`
+      ? `Whole-clip visual direction only — use this for identity, setting, light, texture, and camera character, never for additional actions, poses, or shots in this image:\n${productionPrompt.slice(0, 20_000)}`
       : "",
     `Product: ${subject.productName}. ${subject.appearance}`,
-    `Shot: ${beat.shot}`,
-    `Action: ${beat.action}`,
-    `Camera: ${beat.camera ?? "natural handheld phone framing"}`,
     subject.talentPrompt
       ? `Performer: ${fitCharacters(subject.talentPrompt, FRAME_SUBJECT_LIMIT)}. Take the face, build, hair, and wardrobe from the attached reference sheet; take the pose, the eye line, and the light from this frame.`
       : "Product-led frame with hands only, no recognisable face.",
@@ -235,7 +257,8 @@ export function buildFramePrompt(
 export const CONTINUES_FROM_PREVIOUS = [
   "One attached photograph is the previous key frame of this same clip, made moments earlier: the same person, in the same place, during the same continuous filming.",
   "Carry these over from it unchanged, because the viewer sees both frames within seconds of each other: the performer's face, hair, and make-up; every garment they wear, down to its colour, fabric, length, and how it is creased, fastened, and pushed up; the product itself, in the same condition, in the same packaging, with the same label text; the room, with the same furniture, surfaces, and objects in the same positions; the light, with the same direction, hardness, colour temperature, and time of day; and the colour grade, contrast, and grain.",
-  "Change these deliberately, because this is the next shot and not the same one: the camera, which takes the shot size, angle, distance, and eye level described above rather than the ones in that photograph; the performer's pose, gesture, weight, and eye line, which have moved on with the action; and what the frame is built around.",
+  "Change these deliberately, because this is the next shot and not the same one: the camera, which takes the shot size, angle, distance, and eye level described in the CURRENT-FRAME ASSIGNMENT rather than the ones in that photograph; the performer's body orientation, pose, gesture, weight, and eye line, which have moved on with the action; and what the frame is built around. The previous image is continuity evidence, never a pose or composition reference.",
+  "Make the new frame visibly different from the previous frame in at least two ways among shot size, viewpoint, body orientation, pose, and product interaction. If the CURRENT-FRAME ASSIGNMENT asks for a rear, side, or detail view, that view must be unmistakable even when the previous frame faces camera.",
   "Never redraw the previous frame, never repeat its composition, and never place it inside this image.",
 ].join("\n");
 

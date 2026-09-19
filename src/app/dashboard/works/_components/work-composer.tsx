@@ -99,7 +99,7 @@ export function WorkComposer({
   const [sourceUrl, setSourceUrl] = useState("");
   const [variant, setVariant] = useState("");
   const [images, setImages] = useState<string[]>([]);
-  const [productionDirection, setProductionDirection] = useState("");
+  const [creativeDirection, setCreativeDirection] = useState("");
   const [talentId, setTalentId] = useState(NO_TALENT);
   const [sceneId, setSceneId] = useState(NO_SCENE);
   const [template, setTemplate] = useState<ScriptTemplate>("spokesperson");
@@ -126,15 +126,11 @@ export function WorkComposer({
       let id = productId;
 
       if (source === "new") {
-        const brief = {
-          providedScript: productionDirection.trim() || undefined,
-        };
         const created =
           newProductMode === "url"
             ? await createProductFromUrl({
                 sourceUrl: sourceUrl.trim(),
                 market,
-                brief,
               })
             : await createProduct({
                 name: name.trim(),
@@ -142,7 +138,6 @@ export function WorkComposer({
                 variant: variant.trim(),
                 market,
                 images,
-                brief,
               });
         if (!created.ok || !created.id) {
           toast.error(t(actionMessageKey(created.code)));
@@ -162,6 +157,7 @@ export function WorkComposer({
         locale,
         market,
         template,
+        creativeDirection: creativeDirection.trim() || undefined,
         videoMode,
         videoModel,
         aspectRatio,
@@ -324,23 +320,28 @@ export function WorkComposer({
                 </p>
               </TabsContent>
             </Tabs>
-            <div className="space-y-2">
-              <Label htmlFor="work-new-production-direction">
-                {t("ugc_brief_script")}
-              </Label>
-              <Textarea
-                id="work-new-production-direction"
-                rows={6}
-                value={productionDirection}
-                onChange={(event) => setProductionDirection(event.target.value)}
-                placeholder={t("ugc_brief_script_hint")}
-              />
-            </div>
             <p className="text-muted-foreground text-xs">
               {t("ugc_work_new_product_hint")}
             </p>
           </TabsContent>
         </Tabs>
+
+        <div className="space-y-2">
+          <Label htmlFor="work-creative-direction">
+            {t("ugc_work_creative_direction")}
+          </Label>
+          <Textarea
+            id="work-creative-direction"
+            rows={4}
+            maxLength={6000}
+            value={creativeDirection}
+            onChange={(event) => setCreativeDirection(event.target.value)}
+            placeholder={t("ugc_work_creative_direction_hint")}
+          />
+          <p className="text-muted-foreground text-xs">
+            {t("ugc_work_creative_direction_description")}
+          </p>
+        </div>
 
         <TemplatePicker value={template} onChange={setTemplate} />
 

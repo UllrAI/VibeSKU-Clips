@@ -110,6 +110,8 @@ describe("composeScript", () => {
       locale: "en",
       market: "US",
       aspectRatio: "9:16",
+      creativeDirection:
+        "Keep it quiet and natural. Start mid-sentence and avoid sales language.",
       productImageUrls: productImages,
       talentImageUrl: "https://example.com/talent.jpg",
       talentNote: "Young adult woman",
@@ -125,6 +127,12 @@ describe("composeScript", () => {
     expect(request.system).toContain("exact spoken dialogue");
     expect(request.system).toContain("portrait");
     expect(request.system).toContain("9:16");
+    expect(request.system).toContain("Do not repeat the beat list");
+    expect(request.system).toContain("visibly different in action");
+    expect(content[0]!.text).toContain(
+      "Direction for this clip (highest-priority creative instruction;",
+    );
+    expect(content[0]!.text).toContain("Keep it quiet and natural");
     expect(result.voiceover).toBe("Last step. Then sleep.");
   });
 });

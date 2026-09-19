@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -85,6 +86,9 @@ export function ProductStep({
   const [locale, setLocale] = useState(work.locale);
   const [market, setMarket] = useState(work.market);
   const [template, setTemplate] = useState<ScriptTemplate>(work.template);
+  const [creativeDirection, setCreativeDirection] = useState(
+    work.creativeDirection ?? "",
+  );
   const [videoMode, setVideoMode] = useState<VideoMode>(work.videoMode);
   const initialModelOption =
     modelOptions.find((option) => option.model === work.videoModel) ??
@@ -113,6 +117,7 @@ export function ProductStep({
       locale,
       market,
       template,
+      creativeDirection: creativeDirection.trim() || undefined,
       videoMode,
       videoModel,
       aspectRatio,
@@ -263,6 +268,23 @@ export function ProductStep({
               onChange={setSceneId}
               scenes={selectableScenes(scenes)}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="work-creative-direction">
+              {t("ugc_work_creative_direction")}
+            </Label>
+            <Textarea
+              id="work-creative-direction"
+              rows={4}
+              maxLength={6000}
+              value={creativeDirection}
+              onChange={(event) => setCreativeDirection(event.target.value)}
+              placeholder={t("ugc_work_creative_direction_hint")}
+            />
+            <p className="text-muted-foreground text-xs">
+              {t("ugc_work_creative_direction_description")}
+            </p>
           </div>
 
           <TemplatePicker value={template} onChange={setTemplate} />

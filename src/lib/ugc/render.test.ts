@@ -62,6 +62,40 @@ describe("render prompts", () => {
     expect(prompt).toContain("no recognisable face");
   });
 
+  it("makes one beat the frame assignment instead of asking for the whole script", () => {
+    const direction =
+      "OVERVIEW: casual phone clip\nTIMELINE: later the creator cleans the cushion";
+    const prompt = buildFramePrompt(subject, beats[0], 0, direction);
+
+    expect(prompt).toContain("CURRENT-FRAME ASSIGNMENT");
+    expect(prompt).toContain("depict only 0.0-3.5s");
+    expect(prompt).toContain("picks up the vacuum");
+    expect(prompt).toContain("Do not combine, preview, foreshadow");
+    expect(prompt).toContain("Whole-clip visual direction only");
+    expect(prompt.indexOf("CURRENT-FRAME ASSIGNMENT")).toBeLessThan(
+      prompt.indexOf("Whole-clip visual direction only"),
+    );
+  });
+
+  it("makes a requested garment back view override a front-facing reference", () => {
+    const prompt = buildFramePrompt(
+      { ...subject, template: "apparel" },
+      {
+        ...beats[1]!,
+        shot: "full-length rear view",
+        action: "turns fully away and pauses with the back unobstructed",
+      },
+      1,
+      "STYLE: natural mirror check",
+    );
+
+    expect(prompt).toContain("Garment orientation is literal");
+    expect(prompt).toContain(
+      "never turn the torso or garment back toward camera",
+    );
+    expect(prompt).toContain("turns fully away");
+  });
+
   it("passes every beat to the video model with its timing", () => {
     const prompt = buildVideoPrompt(
       subject,
@@ -424,6 +458,7 @@ describe("format briefs", () => {
       expect(TEMPLATE_BRIEFS[template].shots.join(" ")).toMatch(
         /full-length|head to feet/,
       );
+      expect(TEMPLATE_BRIEFS[template].shots.join(" ")).toMatch(/back|rear/);
     }
 
     // And none of them is a rename of another: what it looks like on, what
@@ -434,6 +469,14 @@ describe("format briefs", () => {
     ).toBe(garments.length);
     expect(TEMPLATE_BRIEFS.styling.structure).toContain("restyled");
     expect(TEMPLATE_BRIEFS.fit_check.structure).toContain("size");
+  });
+
+  it("provides distinct recipes for technology, beauty, and food", () => {
+    expect(TEMPLATE_BRIEFS.tech_demo.structure).toContain("one real task");
+    expect(TEMPLATE_BRIEFS.beauty_routine.shots.join(" ")).toContain(
+      "dispensed texture",
+    );
+    expect(TEMPLATE_BRIEFS.food_drink.voice).toContain("preparation sounds");
   });
 });
 
@@ -451,6 +494,9 @@ describe("continuing a storyboard", () => {
     expect(carried).not.toMatch(/camera/);
     expect(changed).toMatch(/camera/);
     expect(changed).toMatch(/pose/);
+    expect(CONTINUES_FROM_PREVIOUS).toContain(
+      "visibly different from the previous frame",
+    );
   });
 });
 

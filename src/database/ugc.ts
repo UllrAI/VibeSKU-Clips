@@ -44,6 +44,9 @@ export const ugcScriptTemplateEnum = pgEnum("ugc_script_template", [
   "spokesperson",
   "scenario",
   "tutorial",
+  "tech_demo",
+  "beauty_routine",
+  "food_drink",
   "apparel",
   "styling",
   "fit_check",
@@ -392,6 +395,8 @@ export const ugcWorks = pgTable(
     template: ugcScriptTemplateEnum("template")
       .notNull()
       .default("spokesperson"),
+    /** Per-work direction for the writer; product facts remain reusable. */
+    creativeDirection: text("creativeDirection"),
     videoMode: ugcVideoModeEnum("videoMode").notNull().default("one_take"),
     videoModel: ugcVideoModelEnum("videoModel").notNull().default("h3"),
     aspectRatio: ugcVideoAspectRatioEnum("aspectRatio")

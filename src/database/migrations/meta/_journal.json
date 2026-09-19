@@ -330,6 +330,13 @@
       "when": 1789789048809,
       "tag": "0046_shiny_wild_child",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1789831062420,
+      "tag": "0047_lonely_chameleon",
+      "breakpoints": true
     }
   ]
 }

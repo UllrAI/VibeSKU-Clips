@@ -20,27 +20,27 @@ import type { ScriptTemplate } from "./constants";
 export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
   spokesperson: {
     structure:
-      "0-3s the presenter speaks straight to camera with the product in hand, 3-7s one clear close-up of the product, 7-12s the single strongest selling point demonstrated, 12-15s a calm sign-off pointing to the in-app listing.",
+      "0-2s start mid-thought with one specific observation while the product is already in hand, 2-6s show the detail that prompted it, 6-12s use the product once so the observation is visible, 12-15s end on a plain who-it-is-for takeaway rather than a pitch.",
     voice:
-      "A real person recommending something they use, speaking in short spoken sentences with no advertising cadence.",
+      "A creator thinking out loud to one friend: short, concrete, lightly imperfect, and free of slogans, superlatives, rehearsed enthusiasm, or sales cadence.",
     angles: [
       "open on the outcome the viewer wants",
-      "open on the moment the presenter first tried it",
-      "open on the one detail people always ask about",
-      "open on a direct comparison with the usual workaround",
+      "open on the first useful detail visible in hand",
+      "open on the practical question this demo answers",
+      "open on the ordinary workaround this product replaces",
     ],
     shots: [
-      "handheld medium shot, presenter to camera",
-      "close-up of the product, shallow depth of field",
-      "over-the-shoulder demonstration",
-      "product on a plain surface, slow push in",
+      "handheld chest-up phone shot that begins mid-gesture rather than in a presenter pose",
+      "close-up from the creator's own point of view, autofocus finding the product",
+      "over-the-shoulder use in the room where it naturally belongs",
+      "brief reaction shot that ends before it becomes a sign-off",
     ],
   },
   scenario: {
     structure:
-      "0-3s the everyday problem shown, not narrated, 3-7s the product enters the scene, 7-12s the situation resolves with the product in use, 12-15s a short line closing the loop.",
+      "0-2s begin inside a recognisable small annoyance with no introduction, 2-6s reach for the product as part of the same moment, 6-12s show one complete use with the useful change visible, 12-15s return to the ordinary activity and let the result close the loop.",
     voice:
-      "Observational and low-key, the way someone describes a small fix that worked.",
+      "Observational and low-key, describing only the small fix visible on screen.",
     angles: [
       "open in the middle of the annoyance",
       "open on the moment right before it goes wrong",
@@ -56,7 +56,7 @@ export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
   },
   tutorial: {
     structure:
-      "0-3s state what will be shown, 3-7s step one, 7-12s steps two and three at pace, 12-15s the finished result held to camera.",
+      "0-2s show the finished state or the mistake this avoids, 2-5s the first physical step, 5-11s one or two remaining steps without skipping the product interaction, 11-15s show the finished state in its real context with one concise takeaway.",
     voice:
       "Instructional but unhurried, using the imperative and naming each step once.",
     angles: [
@@ -72,9 +72,63 @@ export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
       "finished result held to camera",
     ],
   },
+  tech_demo: {
+    structure:
+      "0-2s show the task already failing or taking too many steps, 2-5s put the device into use without a product introduction, 5-12s complete one real task with the relevant control and response visible, 12-15s show the outcome and state one practical limitation or best-fit use.",
+    voice:
+      "Sparse and matter-of-fact. Let taps, clicks, indicator sounds, and the visible response carry the demo; never read a feature list or pretend to have tested what the supplied facts do not prove.",
+    angles: [
+      "open on the exact task the device shortens",
+      "open on the control people need to find first",
+      "open on the small physical detail listing photos hide",
+      "open on the device responding in real time",
+    ],
+    shots: [
+      "over-the-shoulder view of the device in its normal setup, screen or controls readable",
+      "tight hand-held close-up of one control being used once",
+      "side angle showing the device and its physical response in the same frame",
+      "wider view of the completed task, with the device left naturally in place",
+    ],
+  },
+  beauty_routine: {
+    structure:
+      "0-2s begin at the exact point in a real routine where this product enters, 2-6s show the amount and texture at true scale, 6-12s apply it with one useful technique or answer one common usage question, 12-15s show the immediate finish in ordinary light without claiming an unsupported result.",
+    voice:
+      "Personal and useful like a get-ready-with-me aside, but never a fabricated testimonial. Describe only visible texture, application, finish, and recorded product facts; no miracle language or long-term efficacy claim.",
+    angles: [
+      "open halfway through the routine, reaching for this step",
+      "open on how much product is actually used",
+      "open on the texture in natural light",
+      "open by answering one common application question",
+    ],
+    shots: [
+      "casual mirror or vanity shot with the rest of the routine still around",
+      "macro of the dispensed texture on a fingertip, applicator, or brush",
+      "three-quarter close-up while the product is applied, hand and contact point visible",
+      "unfiltered finish turned between window light and room light",
+    ],
+  },
+  food_drink: {
+    structure:
+      "0-2s open on the most sensory real action — tear, pour, fizz, crunch, steam — with no greeting, 2-6s show preparation at true scale, 6-12s show the product being served or tasted and name only supported flavour or texture facts, 12-15s leave it in the everyday moment where someone would actually have it.",
+    voice:
+      "Sensory and economical, led by natural preparation sounds. Never invent a tasting history, popularity claim, or flavour note that is absent from the supplied facts.",
+    angles: [
+      "open on the package sound and first pour",
+      "open on the texture changing during preparation",
+      "open on the serving size beside an ordinary hand or cup",
+      "open on the first bite or sip without an exaggerated reaction",
+    ],
+    shots: [
+      "tight handheld macro of opening, pouring, bubbling, breaking, or steam",
+      "top-down preparation shot with ordinary kitchen clutter at the edges",
+      "side close-up at table height showing texture and true portion size",
+      "medium candid shot of one bite or sip, then the product set back down",
+    ],
+  },
   apparel: {
     structure:
-      "0-3s already wearing it and already mid-sentence, filmed in a mirror or on a propped phone, 3-7s walking a few steps across the room so the fabric moves, 7-12s two details the wearer reaches down and shows on themselves, 12-15s one last unposed look while they finish the thought.",
+      "0-3s already wearing it and mid-sentence in a mirror or on a propped phone, 3-7s walk past camera and turn fully away so the entire back and rear fit are unobstructed, 7-12s return at a side or three-quarter angle and show two details on the body, 12-15s one unposed full-length movement while finishing the thought.",
     voice:
       "Answering a friend who asked how it fits: mid-thought, specific, and a little unedited. Never a reveal, never a final pose, never a closing pitch, and never a phrase copied from the listing.",
     angles: [
@@ -84,33 +138,34 @@ export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
       "open on the fit question everyone asks first",
     ],
     shots: [
-      "full-length in a mirror, phone in hand, the room visible around them",
-      "a turn or a few steps across the room, showing drape, movement, and the back",
+      "full-length front view in a mirror, phone in hand, the room visible around them",
+      "full-length rear view after a complete turn, back of the garment unobstructed from shoulders or waist to hem",
       "close-up of fabric, seam, or hardware, held up by the wearer's own hand",
-      "waist-up, the wearer pulling at a hem or waistband to show how much give it has",
+      "side or three-quarter full-body view while walking, sitting, or reaching so the garment moves",
     ],
   },
   styling: {
     structure:
-      "0-3s the one garment named plainly, already on or held up, 3-7s the first way it is worn, head to feet, 7-12s the same piece restyled once or twice more, each look on screen long enough to read, 12-15s which of them they would actually leave the house in.",
+      "0-3s the one garment named plainly, already on or held up, 3-7s the first look head to feet from the front, 7-11s the next look restyled and seen from the side and then fully turned away so the shared piece is visible from the back, 11-15s one close styling adjustment and the look they would actually leave in.",
     voice:
       "Thinking out loud while getting dressed, weighing the options rather than presenting them.",
     angles: [
-      "open on the piece everyone says they cannot style",
-      "open on the outfit it gets worn with most",
+      "open on a piece that needs more than one styling idea",
+      "open on the simplest outfit built around it",
       "open on the same piece dressed up and dressed down",
       "open on what they nearly wore instead",
     ],
     shots: [
       "the garment held against the body in front of a mirror",
-      "full-length of each look, head to feet, with a beat to turn",
+      "full-length front view of the first look, head to feet",
+      "full-length back view of the restyled look after a complete turn, the shared garment unobstructed",
       "cut between two looks from the same standing position and framing",
       "waist-up on the change that makes the difference: a tuck, a layer, a pushed-up sleeve",
     ],
   },
   fit_check: {
     structure:
-      "0-3s their height, the size they usually wear, and the size they are in, 3-7s standing square to camera head to feet, arms down then raised, 7-12s where it actually runs big or small, pinched and pulled on camera, 12-15s the size they would tell someone to order.",
+      "0-3s their height, usual size, and the size shown, 3-6s stand square to camera head to feet, 6-9s turn fully around and pause on the back fit, 9-13s sit, raise the arms, or pinch the exact area that runs big or small, 13-15s give the plain sizing takeaway without a recommendation pitch.",
     voice:
       "Flat and factual, the way someone reads out numbers they have just checked. No enthusiasm and nothing that sounds like selling.",
     angles: [
@@ -121,16 +176,16 @@ export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
     ],
     shots: [
       "full-length standing square to camera, arms at the sides, whole garment in frame",
-      "the same stance with arms raised and a quarter turn, showing where it pulls",
+      "full-length directly from behind after a complete turn, showing the rear waist, rise, shoulders, and hem that apply",
+      "side view with arms raised or while sitting, showing where the garment pulls",
       "close on a waistband, shoulder seam, or cuff pinched between finger and thumb to show the slack",
-      "seated or crouched, showing the fit that standing still hides",
     ],
   },
   accessory: {
     structure:
       "0-3s the piece by itself, close enough to read the material, 3-7s it goes on, 7-12s worn and moving at the scale it is actually seen, 12-15s a last look with the rest of the outfit in frame.",
     voice:
-      "Low-key and specific, the way someone talks about a small thing they keep reaching for.",
+      "Low-key and specific, focused on scale, material, fastening, and how the piece sits when worn.",
     angles: [
       "open on the material catching the light",
       "open on how small or how large it really is",
@@ -146,7 +201,7 @@ export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
   },
   unboxing: {
     structure:
-      "0-3s the sealed package in hand, 3-7s it opens and the product comes out, 7-12s first contact and the one thing that is better or smaller than expected, 12-15s the product set down ready to use.",
+      "0-2s begin with the parcel already being opened, 2-7s reveal the product and everything verifiably included, 7-12s handle one material or setup detail at true scale, 12-15s set it down ready for first use without a performed reaction or sales close.",
     voice:
       "Reacting in the moment, plainly, without performing surprise the product has not earned.",
     angles: [

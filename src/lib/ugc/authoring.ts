@@ -287,6 +287,8 @@ export async function analyzeProduct(
 export interface ComposeScriptInput {
   facts: ProductFacts;
   brief?: ProductBrief | null;
+  /** Direction for this clip only, separate from the reusable product brief. */
+  creativeDirection?: string | null;
   template: ScriptTemplate;
   locale: string;
   market: string;
@@ -336,7 +338,10 @@ export async function composeScript(
       ? `Banned expressions: ${input.brief.bannedPhrases.join("; ")}`
       : "",
     input.brief?.providedScript
-      ? `Operator-supplied script or production direction (honour every explicit constraint and keep quoted dialogue verbatim):\n${input.brief.providedScript}`
+      ? `Product-level creative notes (honour every explicit constraint and keep quoted dialogue verbatim):\n${input.brief.providedScript}`
+      : "",
+    input.creativeDirection
+      ? `Direction for this clip (highest-priority creative instruction; honour every explicit constraint and keep quoted dialogue verbatim):\n${input.creativeDirection}`
       : "",
     `Creative angle: ${brief.angles[0]}`,
   ]
@@ -361,9 +366,14 @@ export async function composeScript(
       `The spoken track must fit ${budget} units of speech; do not pad it.`,
       "Use only the supplied product facts. Never state a price, a discount, a medical or safety claim, or a consumer testimonial.",
       "The result must feel like a real person filming themselves, not a polished advert. Use concrete micro-behaviour, natural pauses, imperfect phone-camera movement, focus changes, material physics, and ambient sound appropriate to the scene.",
+      "Do not invent personal experience, purchase history, popularity, review counts, long-term results, or a customer testimonial. UGC authenticity comes from the creator's filming and speech patterns, not from made-up proof.",
       "Keep one coherent performer identity, product appearance, wardrobe, location, lighting condition, and time of day from first frame to last. Product packaging, colours, proportions, finish, texture, and any supported label text must remain accurate and legible when shown.",
-      "The `productionPrompt` must be a complete standalone prompt with clearly labelled sections: OVERVIEW, TALENT, PRODUCT, LOCATION, LIGHTING, FRAMING, PERFORMANCE, VOICE, REALISM, PHYSICS, CAMERA CHARACTER, STYLE, AUDIO, OUTPUT SETTINGS, POSITIVE LOCKS, and NEGATIVE CONSTRAINTS. Include the exact timed beats and dialogue inside it as well.",
+      "The `productionPrompt` must be a complete standalone visual and performance direction with clearly labelled sections: OVERVIEW, TALENT, PRODUCT, LOCATION, LIGHTING, FRAMING, PERFORMANCE, VOICE, REALISM, PHYSICS, CAMERA CHARACTER, STYLE, AUDIO, OUTPUT SETTINGS, POSITIVE LOCKS, and NEGATIVE CONSTRAINTS. Do not repeat the beat list, timestamps, shot list, actions, or dialogue inside it; those belong only in `beats` so one storyboard frame cannot accidentally depict the whole script.",
       "Each beat must say exactly what is visible in `action`, how it is framed in `shot`, how the phone/camera moves and focuses in `camera`, and the exact spoken dialogue in `voiceover`. Use three to five beats unless the supplied direction explicitly needs another count.",
+      "Make adjacent beats visibly different in action and composition. Change at least two of shot size, camera viewpoint, performer orientation, body pose, or product interaction between neighbouring beats; never fill a storyboard with repeated front-facing poses.",
+      ["apparel", "styling", "fit_check"].includes(input.template)
+        ? "This is a garment format. Across the beats, show the garment from the front, from a side or three-quarter angle, and from the back, plus one useful material or fit detail. Include an explicit turn or walk that makes the back visible; do not keep the performer facing camera throughout."
+        : "",
       "Captions must be short enough to sit clear of the platform buttons and the product card, and must never describe a tappable shopping element.",
       "`disclosure` is a single sentence stating that the clip is AI-generated content, written in the same language.",
       "Beat timings must cover the full duration without gaps or overlap.",

@@ -114,6 +114,7 @@ export const workScriptJob = defineJob(
     const draft = await composeScript({
       facts: product.facts,
       brief: product.brief,
+      creativeDirection: work.creativeDirection,
       template: work.template as ScriptTemplate,
       locale: work.locale,
       market: work.market,
