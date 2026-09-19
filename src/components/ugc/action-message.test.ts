@@ -14,4 +14,10 @@ describe("product operation failures", () => {
       "ugc_product_failure_source_read",
     );
   });
+
+  it("maps lk888 configuration failures to a translated message key", () => {
+    expect(jobFailureKey("LK888_NOT_CONFIGURED")).toBe(
+      "ugc_work_failure_lk888_config",
+    );
+  });
 });
