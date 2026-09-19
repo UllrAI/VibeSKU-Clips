@@ -38,3 +38,29 @@ export function deriveAdminWorkState(input: {
   if (input.step === "done") return "completed";
   return "attention";
 }
+
+export function progressStep(
+  progress: Record<string, unknown> | null,
+): string | null {
+  return typeof progress?.step === "string" ? progress.step : null;
+}
+
+/**
+ * The provider job to show for a run.
+ *
+ * `providerJobId` records the one submission that defines a run's cost and is
+ * what a retry resumes, so it is the durable answer. But a run that calls the
+ * provider several times — a storyboard draws a frame per beat — cannot fit
+ * them in one column, and a video render spends its first minutes on an
+ * opening frame that is not the video job at all. Those report whichever job
+ * they are waiting on through their progress, which is live and therefore
+ * preferred while it is there.
+ */
+export function resolveProviderTaskId(
+  progress: Record<string, unknown> | null,
+  providerJobId: string | null,
+): string | null {
+  return typeof progress?.providerTaskId === "string"
+    ? progress.providerTaskId
+    : providerJobId;
+}

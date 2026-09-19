@@ -119,7 +119,10 @@ export const sceneGenerateJob = defineJob(
               requestId: idempotencyKey,
             }),
         );
-        await context.updateProgress({ step: "drawing_scene" });
+        await context.updateProgress({
+          step: "drawing_scene",
+          providerTaskId,
+        });
         await context.scheduleContinuation(
           { ...payload, providerTaskId, polls: 0 },
           POLL_SECONDS,

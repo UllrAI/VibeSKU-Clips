@@ -130,17 +130,18 @@ export function TaskManagementTable({
             {item.id}
           </p>
           {/*
-            The id the provider knows this job by. It is what a question to
-            them has to quote, and the search box above already matches on it.
+            The id the provider knows this job by: while a run is working, the
+            job it is waiting on right now; once it is done, the one that
+            defined it. It is what a question to the provider has to quote.
           */}
-          {item.providerJobId && (
+          {item.providerTaskId && (
             <p
               className="text-muted-foreground max-w-full truncate text-xs"
-              title={item.providerJobId}
+              title={item.providerTaskId}
             >
               {t("admin_ops_provider_job")}{" "}
               <span className="font-mono" translate="no">
-                {item.providerJobId}
+                {item.providerTaskId}
               </span>
             </p>
           )}

@@ -105,7 +105,9 @@ function storage(db: AppDatabase): ClipStorage {
  * frame first costs a single image against a far more expensive video, and it
  * is what the finished clip's cover is taken from either way.
  *
- * Returns null while the frame is still being drawn; the caller polls.
+ * Returns a null frame while it is still being drawn, together with the
+ * provider job that is drawing it, so the caller can both poll and say what
+ * it is waiting on.
  */
 async function ensureCoverFrame(input: {
   db: AppDatabase;
@@ -117,7 +119,10 @@ async function ensureCoverFrame(input: {
   subject: RenderSubject;
   beats: ScriptBeat[];
   productionPrompt: string | null;
-}): Promise<typeof ugcWorkFrames.$inferSelect | null> {
+}): Promise<{
+  frame: typeof ugcWorkFrames.$inferSelect | null;
+  providerTaskId: string | null;
+}> {
   const { db, context, work } = input;
   const [existing] = await db
     .select()
@@ -144,7 +149,9 @@ async function ensureCoverFrame(input: {
         .returning()
     )[0];
   if (!frame) throw new Error("The opening frame could not be initialized.");
-  if (frame.status === "ready" && frame.imageUrl) return frame;
+  if (frame.status === "ready" && frame.imageUrl) {
+    return { frame, providerTaskId: frame.providerTaskId };
+  }
 
   if (!frame.providerTaskId) {
     const references = await resolveReferenceUrls(
@@ -170,7 +177,7 @@ async function ensureCoverFrame(input: {
       workId: work.id,
       ...mediaTaskLog("prism", providerTaskId),
     });
-    return null;
+    return { frame: null, providerTaskId };
   }
 
   const task = await getImageTask(frame.providerTaskId);
@@ -179,7 +186,7 @@ async function ensureCoverFrame(input: {
       workId: work.id,
       ...mediaTaskLog("prism", frame.providerTaskId, task),
     });
-    return null;
+    return { frame: null, providerTaskId: frame.providerTaskId };
   }
   if (task.status === "failed" || !task.outputUrl) {
     await db
@@ -223,7 +230,7 @@ async function ensureCoverFrame(input: {
     ...mediaTaskLog("prism", frame.providerTaskId, task),
     imageUrl,
   });
-  return ready ?? null;
+  return { frame: ready ?? null, providerTaskId: frame.providerTaskId };
 }
 
 /**
@@ -326,20 +333,25 @@ export const workVideoJob = defineJob(
         beats,
         productionPrompt: script.productionPrompt,
       });
-      if (!cover) {
+      if (!cover.frame) {
         if (payload.polls >= COVER_MAX_POLLS) {
           throw new PermanentJobError(
             "UGC_RENDER_TIMEOUT",
             "The provider did not finish the opening frame in time.",
           );
         }
+        await context.updateProgress({
+          step: VIDEO_PROGRESS_STEP.preparing,
+          version,
+          providerTaskId: cover.providerTaskId,
+        });
         await context.scheduleContinuation(
           { ...payload, version, polls: payload.polls + 1 },
           POLL_SECONDS,
         );
         return { drawingCover: true, polls: payload.polls + 1 };
       }
-      frames.push(cover);
+      frames.push(cover.frame);
     }
 
     if (!payload.providerTaskId) {
@@ -385,6 +397,7 @@ export const workVideoJob = defineJob(
       await context.updateProgress({
         step: VIDEO_PROGRESS_STEP.rendering,
         version,
+        providerTaskId,
       });
       await context.scheduleContinuation(
         { ...payload, providerTaskId, version, polls: 0 },
@@ -413,6 +426,7 @@ export const workVideoJob = defineJob(
       await context.updateProgress({
         step: VIDEO_PROGRESS_STEP.rendering,
         version,
+        providerTaskId: payload.providerTaskId,
       });
       await context.scheduleContinuation(
         { ...payload, version, polls: payload.polls + 1 },
@@ -439,6 +453,7 @@ export const workVideoJob = defineJob(
     await context.updateProgress({
       step: VIDEO_PROGRESS_STEP.archiving,
       version,
+      providerTaskId: payload.providerTaskId,
     });
 
     const storeFile = storage(db);

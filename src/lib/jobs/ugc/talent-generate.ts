@@ -119,7 +119,10 @@ export const talentGenerateJob = defineJob(
               requestId: idempotencyKey,
             }),
         );
-        await context.updateProgress({ step: "drawing_talent" });
+        await context.updateProgress({
+          step: "drawing_talent",
+          providerTaskId,
+        });
         await context.scheduleContinuation(
           { ...payload, providerTaskId, polls: 0 },
           POLL_SECONDS,

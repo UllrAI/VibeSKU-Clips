@@ -19,6 +19,8 @@ import { requireAdmin } from "@/lib/auth/permissions";
 import type { TaskRunStatus } from "@/lib/tasks/types";
 import {
   deriveAdminWorkState,
+  progressStep,
+  resolveProviderTaskId,
   taskPayloadReferences,
   type AdminWorkState,
 } from "./operations-state";
@@ -54,7 +56,8 @@ export interface AdminTaskListItem {
   work: { id: string; title: string } | null;
   errorCode: string | null;
   attempt: number | null;
-  providerJobId: string | null;
+  /** The provider job this run is waiting on, or the one that defined it. */
+  providerTaskId: string | null;
   progressStep: string | null;
   stalled: boolean;
   createdAt: Date;
@@ -68,10 +71,6 @@ interface Pagination {
   limit: number;
   total: number;
   totalPages: number;
-}
-
-function progressStep(progress: Record<string, unknown> | null): string | null {
-  return typeof progress?.step === "string" ? progress.step : null;
 }
 
 const workStateSql = sql<AdminWorkState>`case
@@ -290,7 +289,7 @@ export async function getAdminTasks({
           : null,
         errorCode: row.error?.code ?? null,
         attempt: row.error?.attempt ?? null,
-        providerJobId: row.providerJobId,
+        providerTaskId: resolveProviderTaskId(row.progress, row.providerJobId),
         progressStep: progressStep(row.progress),
         stalled:
           row.status === "queued" &&
