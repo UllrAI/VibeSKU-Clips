@@ -9,6 +9,7 @@ import {
   REFERENCE_ASPECT_RATIO,
 } from "@/lib/ugc/constants";
 import { getTask, submitImage } from "@/lib/ugc/media/prism";
+import { mediaTaskLog } from "@/lib/ugc/media/task-log";
 import { archiveRemoteAsset, buildTalentSheetPrompt } from "@/lib/ugc/render";
 import {
   createClipStorage,
@@ -110,13 +111,14 @@ export const talentGenerateJob = defineJob(
         );
         context.log("talent_sheet_submitted", {
           talentId: talent.id,
-          providerTaskId,
+          ...mediaTaskLog("prism", providerTaskId),
           references: referenceImageUrls.length,
         });
         return { providerTaskId, submitted: true };
       }
 
       const task = await getTask(payload.providerTaskId);
+      const taskLog = mediaTaskLog("prism", payload.providerTaskId, task);
       if (task.status === "pending") {
         if (payload.polls >= MAX_POLLS) {
           throw new PermanentJobError(
@@ -131,6 +133,7 @@ export const talentGenerateJob = defineJob(
         return { waiting: true, polls: payload.polls + 1 };
       }
       if (task.status === "failed" || !task.outputUrl) {
+        context.log("talent_sheet_failed", { talentId: talent.id, ...taskLog });
         throw new PermanentJobError(
           "UGC_TALENT_GENERATION_FAILED",
           task.errorMessage ?? "The provider could not draw the talent sheet.",
@@ -156,7 +159,8 @@ export const talentGenerateJob = defineJob(
       });
       context.log("talent_sheet_finished", {
         talentId: talent.id,
-        providerTaskId: payload.providerTaskId,
+        ...taskLog,
+        sheetUrl,
       });
       return { sheetUrl };
     } catch (error) {

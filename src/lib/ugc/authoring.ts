@@ -124,9 +124,11 @@ export async function composeSceneImagePrompt(
       "Preserve every explicit fact in the operator brief. Expand missing detail coherently without changing the requested location, period, style, or mood.",
       "Write in the same language as the operator brief.",
       "Describe the type of place, the architecture and layout, wall, floor and surface materials, furniture and fittings, the everyday objects that belong there, what is visible through any window, the depth of the space, the direction and quality of the light, the time of day, the weather where it applies, the colour temperature, and the palette.",
+      "Describe a place someone lives or works in, not a showroom: a few ordinary things left where they were last put down, furniture that does not line up perfectly, textiles that hang and fold as used textiles do, and the light wear that daily use leaves on surfaces and finishes.",
+      "Keep it clean, cared for, and unremarkable. No styling for a catalogue, no colour-matched props, no symmetry arranged for a camera — and equally no mess, no grime, no damage, no clutter, and nothing derelict or poor.",
       "Fix the details that must not drift between viewpoints of this place: the layout, the materials, the light direction, and the time of day.",
       "Do not specify a camera, a viewpoint, a camera height, or a crop. The reference sheet fixes those.",
-      "Finish with concise negative constraints: no people, no products, no logos, no text overlay, no watermark, no fisheye distortion, no HDR halo, no impossible architecture.",
+      "Finish with concise negative constraints: no people, no products, no logos, no text overlay, no watermark, no fisheye distortion, no HDR halo, no impossible architecture, no showroom staging.",
       input.referenceImageUrls.length
         ? "Reference images are attached. State that the layout, materials, fittings, and light of the place must match the references exactly; use the operator brief for intentional changes. Omit any person or product visible in a reference image."
         : "No reference image is attached. Define one coherent real-feeling place from the operator brief.",

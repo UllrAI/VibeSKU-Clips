@@ -9,6 +9,7 @@ import {
   REFERENCE_ASPECT_RATIO,
 } from "@/lib/ugc/constants";
 import { getTask, submitImage } from "@/lib/ugc/media/prism";
+import { mediaTaskLog } from "@/lib/ugc/media/task-log";
 import { archiveRemoteAsset, buildSceneSheetPrompt } from "@/lib/ugc/render";
 import {
   createClipStorage,
@@ -110,13 +111,14 @@ export const sceneGenerateJob = defineJob(
         );
         context.log("scene_sheet_submitted", {
           sceneId: scene.id,
-          providerTaskId,
+          ...mediaTaskLog("prism", providerTaskId),
           references: referenceImageUrls.length,
         });
         return { providerTaskId, submitted: true };
       }
 
       const task = await getTask(payload.providerTaskId);
+      const taskLog = mediaTaskLog("prism", payload.providerTaskId, task);
       if (task.status === "pending") {
         if (payload.polls >= MAX_POLLS) {
           throw new PermanentJobError(
@@ -131,6 +133,7 @@ export const sceneGenerateJob = defineJob(
         return { waiting: true, polls: payload.polls + 1 };
       }
       if (task.status === "failed" || !task.outputUrl) {
+        context.log("scene_sheet_failed", { sceneId: scene.id, ...taskLog });
         throw new PermanentJobError(
           "UGC_SCENE_GENERATION_FAILED",
           task.errorMessage ?? "The provider could not draw the scene sheet.",
@@ -156,7 +159,8 @@ export const sceneGenerateJob = defineJob(
       });
       context.log("scene_sheet_finished", {
         sceneId: scene.id,
-        providerTaskId: payload.providerTaskId,
+        ...taskLog,
+        sheetUrl,
       });
       return { sheetUrl };
     } catch (error) {

@@ -45,6 +45,8 @@ export const ugcScriptTemplateEnum = pgEnum("ugc_script_template", [
   "scenario",
   "tutorial",
   "apparel",
+  "styling",
+  "fit_check",
   "accessory",
   "unboxing",
 ]);

@@ -42,6 +42,8 @@ export const SCRIPT_TEMPLATES = [
   "scenario",
   "tutorial",
   "apparel",
+  "styling",
+  "fit_check",
   "accessory",
   "unboxing",
 ] as const;

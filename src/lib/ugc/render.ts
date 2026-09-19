@@ -217,6 +217,20 @@ export function buildFramePrompt(
     .join("\n");
 }
 
+/**
+ * What the frame before this one is attached for.
+ *
+ * Key frames drawn independently disagree with each other. The same room comes
+ * back with the cushions moved, the same jumper in a different weave, the same
+ * afternoon an hour later — none of it wrong against the prompt, all of it
+ * wrong against the frame before. A photograph settles what prose cannot.
+ *
+ * What it must not settle is the framing: it is the shot before, not the shot
+ * being drawn, and a model given it without this line simply redraws it.
+ */
+export const CONTINUES_FROM_PREVIOUS =
+  "One attached photograph is the previous key frame of this same clip: the same person, in the same place, moments earlier. Continue from it exactly — the same face, hair, make-up and wardrobe down to the creases, the same room with the same objects in the same places, the same light direction, colour temperature and colour grade, the same product in the same condition. Do not copy its camera angle, its framing, or its composition: this is the next shot, framed as described above, with the action moved on.";
+
 const DIRECTION_PREFIX = "Follow this approved production direction exactly:\n";
 
 /**
@@ -477,6 +491,10 @@ export function buildSceneSheetPrompt(
       : "",
     ...SHEET_RULES,
     "No people, no hands, no pets, no products, no packages, and no branded objects anywhere in the image.",
+    // A location model handed a room description draws the advertisement for
+    // that room: everything squared up, nothing out of place, every surface
+    // new. A clip shot in it then reads as an advertisement too.
+    "Photograph this as a real place rather than an interiors advertisement. Available light, nothing arranged for the camera, no colour-matched styling, no magazine symmetry, no showroom gloss, and no empty pristine surfaces. Ordinary use should show: things left where someone put them, soft creases in fabric, light wear on what gets touched. Keep it clean and cared for — no mess, no grime, no damage, nothing shabby.",
     "Natural light consistent with the description. No fisheye distortion, no HDR halo, no impossible architecture.",
   ]
     .filter(Boolean)

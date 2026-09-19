@@ -134,7 +134,7 @@ Six durable jobs are registered in `src/lib/jobs/catalog.ts`:
 | `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief into one identity, then photographs it from each angle in turn       |
 | `ugc.scene.generate`  | `src/lib/jobs/ugc/scene-generate.ts`  | Expands a scene brief into one place and draws its multi-panel reference sheet              |
 | `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it  |
-| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands            |
+| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, in order, each one shown the frame before it           |
 | `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model          |
 
 A **work** (`ugc_works`) runs one clip through `product -> script -> video` by
@@ -166,6 +166,14 @@ Rules that are easy to break:
 - **Failure is terminal and visible.** An unreadable product becomes
   `needs_input`; exhausted task retries surface as a failed step with a retry
   action. A work never remains visually "running" after its task has failed.
+- **A key frame is drawn after the one before it.** A storyboard drawn all at
+  once comes back internally inconsistent: the room rearranges itself between
+  shots, the garment changes weave, the light moves an hour. Each frame is
+  therefore submitted only once its predecessor has landed, and that image goes
+  in as the first reference with `CONTINUES_FROM_PREVIOUS`
+  (`src/lib/ugc/render.ts`), which also says not to copy its framing — it is
+  the shot before, not the shot being drawn. The wait is the price of
+  continuity; a failed frame does not hold up the rest.
 - **Every clip is anchored on a drawn frame.** A storyboard work has one per
   beat; a one-take work draws a single opening frame inside `ugc.work.video`
   before any video is billed (`ensureCoverFrame`). Without it the only visual

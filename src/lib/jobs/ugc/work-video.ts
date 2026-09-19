@@ -21,7 +21,9 @@ import {
   getVideoTask,
   submitVideo,
   videoPromptLimit,
+  videoTaskProvider,
 } from "@/lib/ugc/media/video-provider";
+import { mediaTaskLog } from "@/lib/ugc/media/task-log";
 import { evaluateClipQuality } from "@/lib/ugc/qc";
 import {
   createPrismRequestId,
@@ -54,8 +56,19 @@ import {
   PermanentJobError,
 } from "../definition";
 
-const POLL_SECONDS = 15;
-const MAX_POLLS = 80;
+const POLL_SECONDS = 20;
+
+/**
+ * How long each provider step is given before the work gives up.
+ *
+ * Video is the generous one. A 1080p or 2K render waits in the provider's
+ * queue for as long as it takes to render, and a job abandoned while it is
+ * still queued has already been paid for, so the deadline is set past the
+ * worst queue a person is willing to sit through rather than past the render.
+ * The opening frame is a single image and needs nothing like it.
+ */
+const VIDEO_MAX_POLLS = Math.ceil((45 * 60) / POLL_SECONDS);
+const COVER_MAX_POLLS = Math.ceil((10 * 60) / POLL_SECONDS);
 
 const payloadSchema = z
   .object({
@@ -153,12 +166,21 @@ async function ensureCoverFrame(input: {
       .update(ugcWorkFrames)
       .set({ providerTaskId, status: "generating", updatedAt: new Date() })
       .where(eq(ugcWorkFrames.id, frame.id));
-    context.log("work_cover_submitted", { workId: work.id, providerTaskId });
+    context.log("work_cover_submitted", {
+      workId: work.id,
+      ...mediaTaskLog("prism", providerTaskId),
+    });
     return null;
   }
 
   const task = await getImageTask(frame.providerTaskId);
-  if (task.status === "pending") return null;
+  if (task.status === "pending") {
+    context.log("work_cover_pending", {
+      workId: work.id,
+      ...mediaTaskLog("prism", frame.providerTaskId, task),
+    });
+    return null;
+  }
   if (task.status === "failed" || !task.outputUrl) {
     await db
       .update(ugcWorkFrames)
@@ -168,6 +190,10 @@ async function ensureCoverFrame(input: {
         updatedAt: new Date(),
       })
       .where(eq(ugcWorkFrames.id, frame.id));
+    context.log("work_cover_failed", {
+      workId: work.id,
+      ...mediaTaskLog("prism", frame.providerTaskId, task),
+    });
     throw new PermanentJobError(
       "UGC_COVER_FRAME_FAILED",
       task.errorMessage ?? "The provider could not draw the opening frame.",
@@ -192,7 +218,11 @@ async function ensureCoverFrame(input: {
     credits: CREDIT_COST.analysis,
     note: `cover ${work.id.slice(0, 8)}`,
   });
-  context.log("work_cover_finished", { workId: work.id });
+  context.log("work_cover_finished", {
+    workId: work.id,
+    ...mediaTaskLog("prism", frame.providerTaskId, task),
+    imageUrl,
+  });
   return ready ?? null;
 }
 
@@ -297,7 +327,7 @@ export const workVideoJob = defineJob(
         productionPrompt: script.productionPrompt,
       });
       if (!cover) {
-        if (payload.polls >= MAX_POLLS) {
+        if (payload.polls >= COVER_MAX_POLLS) {
           throw new PermanentJobError(
             "UGC_RENDER_TIMEOUT",
             "The provider did not finish the opening frame in time.",
@@ -354,15 +384,19 @@ export const workVideoJob = defineJob(
       );
       context.log("work_video_submitted", {
         workId: work.id,
-        providerTaskId,
+        ...mediaTaskLog(videoTaskProvider(providerTaskId), providerTaskId),
+        videoModel,
+        resolution,
         references: references.length,
       });
       return { providerTaskId, submitted: true };
     }
 
+    const provider = videoTaskProvider(payload.providerTaskId);
     const task = await getVideoTask(payload.providerTaskId);
+    const taskLog = mediaTaskLog(provider, payload.providerTaskId, task);
     if (task.status === "pending") {
-      if (payload.polls >= MAX_POLLS) {
+      if (payload.polls >= VIDEO_MAX_POLLS) {
         throw new PermanentJobError(
           "UGC_RENDER_TIMEOUT",
           "The provider did not finish the video in time.",
@@ -376,15 +410,24 @@ export const workVideoJob = defineJob(
         { ...payload, version, polls: payload.polls + 1 },
         POLL_SECONDS,
       );
+      context.log("work_video_pending", {
+        workId: work.id,
+        ...taskLog,
+        polls: payload.polls + 1,
+      });
       return { waiting: true, polls: payload.polls + 1 };
     }
     if (task.status === "failed" || !task.outputUrl) {
+      context.log("work_video_failed", { workId: work.id, ...taskLog });
       throw new PermanentJobError(
         "UGC_RENDER_FAILED",
         task.errorMessage ?? "The provider could not produce the video.",
       );
     }
 
+    // Logged before archiving: the provider's link is the only copy until R2
+    // holds one, and archiving is the step most likely to lose it.
+    context.log("work_video_rendered", { workId: work.id, ...taskLog });
     await context.updateProgress({
       step: VIDEO_PROGRESS_STEP.archiving,
       version,
@@ -475,6 +518,8 @@ export const workVideoJob = defineJob(
       clipId: clip.id,
       version,
       passed: quality.passed,
+      ...taskLog,
+      videoUrl,
     });
     return { clipId: clip.id, version, passed: quality.passed };
   },
@@ -483,7 +528,7 @@ export const workVideoJob = defineJob(
       retryLimit: 2,
       retryDelay: 20,
       retryBackoff: true,
-      expireInSeconds: 30 * 60,
+      expireInSeconds: 60 * 60,
     },
     localConcurrency: 2,
     groupConcurrency: 1,

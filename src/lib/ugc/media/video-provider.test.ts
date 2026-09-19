@@ -4,6 +4,7 @@ import {
   activeVideoProvider,
   isActiveVideoConfiguration,
   submitVideo,
+  videoTaskProvider,
 } from "./video-provider";
 
 describe("video provider selection", () => {
@@ -61,5 +62,15 @@ describe("video provider selection", () => {
         requestId: "request-id",
       }),
     ).resolves.toBe("lk888:99");
+  });
+
+  it("reads the provider back off a saved task id", () => {
+    expect(videoTaskProvider("lk888:seedance:99")).toBe("lk888");
+    expect(videoTaskProvider("prism:abc")).toBe("prism");
+    // Saved before provider routing existed.
+    expect(videoTaskProvider("abc")).toBe("prism");
+    expect(() => videoTaskProvider("vendor:abc")).toThrow(
+      "The saved video provider task id is invalid.",
+    );
   });
 });

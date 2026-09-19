@@ -74,19 +74,36 @@ export async function submitVideo(request: VideoRequest): Promise<string> {
   return `${provider}${PREFIX_SEPARATOR}${taskId}`;
 }
 
-export async function getVideoTask(providerTaskId: string): Promise<MediaTask> {
+/**
+ * Splits a saved task id back into the provider that issued it and the id that
+ * provider knows it by. Ids saved before provider routing carry no prefix and
+ * belong to Prism.
+ */
+function routeVideoTask(providerTaskId: string): {
+  provider: VideoGenerationProvider;
+  taskId: string;
+} {
   const separator = providerTaskId.indexOf(PREFIX_SEPARATOR);
-  if (separator < 0) {
-    // Tasks submitted before provider routing was introduced belong to Prism.
-    return getPrismTask(providerTaskId);
-  }
+  if (separator < 0) return { provider: "prism", taskId: providerTaskId };
 
   const provider = providerTaskId.slice(0, separator);
-  const taskId = providerTaskId.slice(separator + 1);
-  if (provider === "lk888") return getLk888Task(taskId);
-  if (provider === "prism") return getPrismTask(taskId);
-  throw new PermanentJobError(
-    "VIDEO_PROVIDER_TASK_INVALID",
-    "The saved video provider task id is invalid.",
-  );
+  if (provider !== "prism" && provider !== "lk888") {
+    throw new PermanentJobError(
+      "VIDEO_PROVIDER_TASK_INVALID",
+      "The saved video provider task id is invalid.",
+    );
+  }
+  return { provider, taskId: providerTaskId.slice(separator + 1) };
+}
+
+/** Which provider a job must be chased with, for logs and for polling. */
+export function videoTaskProvider(
+  providerTaskId: string,
+): VideoGenerationProvider {
+  return routeVideoTask(providerTaskId).provider;
+}
+
+export async function getVideoTask(providerTaskId: string): Promise<MediaTask> {
+  const { provider, taskId } = routeVideoTask(providerTaskId);
+  return provider === "lk888" ? getLk888Task(taskId) : getPrismTask(taskId);
 }

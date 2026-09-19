@@ -10,6 +10,12 @@ import type { ScriptTemplate } from "./constants";
  * a thing worn on the body. A handheld demo is framed on the object and the
  * hands; a garment has to be seen at full length and in motion, or its fit —
  * the only thing the buyer is deciding about — never appears on screen.
+ *
+ * The three garment formats answer three different questions and are not
+ * interchangeable: `apparel` asks what it looks like on, `styling` asks what
+ * else it goes with, and `fit_check` asks what size to order. Each one is also
+ * written away from advertising cadence, because a clip that sounds like an
+ * advertisement is the one thing a shoppable feed scrolls past.
  */
 export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
   spokesperson: {
@@ -68,20 +74,56 @@ export const TEMPLATE_BRIEFS: Record<ScriptTemplate, ScriptTemplateBrief> = {
   },
   apparel: {
     structure:
-      "0-3s the whole look lands on camera at full length, 3-7s the wearer moves so the fabric moves with them, 7-12s two close details that decide the purchase, 12-15s the look held still, facing camera.",
+      "0-3s already wearing it and already mid-sentence, filmed in a mirror or on a propped phone, 3-7s walking a few steps across the room so the fabric moves, 7-12s two details the wearer reaches down and shows on themselves, 12-15s one last unposed look while they finish the thought.",
     voice:
-      "Someone describing how a thing actually fits them, the way they would to a friend who asked, with no runway commentary.",
+      "Answering a friend who asked how it fits: mid-thought, specific, and a little unedited. Never a reveal, never a final pose, never a closing pitch, and never a phrase copied from the listing.",
     angles: [
-      "open on how it moves rather than how it looks standing still",
+      "open still adjusting it, not yet settled",
       "open on the detail the listing photos never show",
       "open on what it was worn with",
       "open on the fit question everyone asks first",
     ],
     shots: [
-      "full-length shot, head to feet, natural stance, whole garment in frame",
-      "a turn or a few steps, showing drape, movement, and the back",
-      "close-up of fabric, seam, or hardware at conversational distance",
-      "waist-up with the wearer's own hands adjusting the fit",
+      "full-length in a mirror, phone in hand, the room visible around them",
+      "a turn or a few steps across the room, showing drape, movement, and the back",
+      "close-up of fabric, seam, or hardware, held up by the wearer's own hand",
+      "waist-up, the wearer pulling at a hem or waistband to show how much give it has",
+    ],
+  },
+  styling: {
+    structure:
+      "0-3s the one garment named plainly, already on or held up, 3-7s the first way it is worn, head to feet, 7-12s the same piece restyled once or twice more, each look on screen long enough to read, 12-15s which of them they would actually leave the house in.",
+    voice:
+      "Thinking out loud while getting dressed, weighing the options rather than presenting them.",
+    angles: [
+      "open on the piece everyone says they cannot style",
+      "open on the outfit it gets worn with most",
+      "open on the same piece dressed up and dressed down",
+      "open on what they nearly wore instead",
+    ],
+    shots: [
+      "the garment held against the body in front of a mirror",
+      "full-length of each look, head to feet, with a beat to turn",
+      "cut between two looks from the same standing position and framing",
+      "waist-up on the change that makes the difference: a tuck, a layer, a pushed-up sleeve",
+    ],
+  },
+  fit_check: {
+    structure:
+      "0-3s their height, the size they usually wear, and the size they are in, 3-7s standing square to camera head to feet, arms down then raised, 7-12s where it actually runs big or small, pinched and pulled on camera, 12-15s the size they would tell someone to order.",
+    voice:
+      "Flat and factual, the way someone reads out numbers they have just checked. No enthusiasm and nothing that sounds like selling.",
+    angles: [
+      "open on the size ordered against the size usually worn",
+      "open on the measurement people get wrong",
+      "open on how it sits after sitting down in it",
+      "open on the one place it is tight",
+    ],
+    shots: [
+      "full-length standing square to camera, arms at the sides, whole garment in frame",
+      "the same stance with arms raised and a quarter turn, showing where it pulls",
+      "close on a waistband, shoulder seam, or cuff pinched between finger and thumb to show the slack",
+      "seated or crouched, showing the fit that standing still hides",
     ],
   },
   accessory: {

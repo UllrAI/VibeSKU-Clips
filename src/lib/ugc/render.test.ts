@@ -414,6 +414,26 @@ describe("format briefs", () => {
       "full-length",
     );
   });
+
+  it("gives each garment format its own question to answer", () => {
+    const garments = ["apparel", "styling", "fit_check"] as const;
+
+    // All three are worn, so all three must frame the whole figure.
+    for (const template of garments) {
+      expect(TEMPLATE_BRIEFS[template].shots.join(" ")).toMatch(
+        /full-length|head to feet/,
+      );
+    }
+
+    // And none of them is a rename of another: what it looks like on, what
+    // else it goes with, and what size to order are three different clips.
+    expect(
+      new Set(garments.map((template) => TEMPLATE_BRIEFS[template].structure))
+        .size,
+    ).toBe(garments.length);
+    expect(TEMPLATE_BRIEFS.styling.structure).toContain("restyled");
+    expect(TEMPLATE_BRIEFS.fit_check.structure).toContain("size");
+  });
 });
 
 describe("subtitle track", () => {

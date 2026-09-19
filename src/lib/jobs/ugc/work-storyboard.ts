@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { AppDatabase } from "@/database/client";
 import {
@@ -15,9 +15,11 @@ import {
   getTask,
   submitImage,
 } from "@/lib/ugc/media/prism";
+import { mediaTaskLog } from "@/lib/ugc/media/task-log";
 import {
   archiveRemoteAsset,
   buildFramePrompt,
+  CONTINUES_FROM_PREVIOUS,
   productReferenceUrls,
   renderSubjectFor,
 } from "@/lib/ugc/render";
@@ -32,7 +34,12 @@ import type { ScriptBeat } from "@/lib/ugc/types";
 import { defineJob, PermanentJobError } from "../definition";
 
 const POLL_SECONDS = 8;
-const MAX_POLLS = 45;
+
+/**
+ * Frames are drawn one after another, so this budget guards a stalled frame
+ * rather than the length of the storyboard: it resets every time one lands.
+ */
+const MAX_STALLED_POLLS = Math.ceil((10 * 60) / POLL_SECONDS);
 
 const payloadSchema = z
   .object({
@@ -58,10 +65,16 @@ function storage(db: AppDatabase): ClipStorage {
 /**
  * Draws every key frame of a storyboard, then stops for the operator.
  *
- * Frames are submitted together and polled together: a storyboard is three to
- * six images and the person is waiting on all of them, so serialising would
- * multiply the wait for no benefit. Regenerating one frame reuses this same
- * job with that frame's id.
+ * Frames are drawn in order, one at a time, and each one is shown the frame
+ * before it. Drawn all at once they were each right and collectively wrong:
+ * the room rearranged itself between shots, the garment changed weave, the
+ * light moved. Continuity of that kind comes from a photograph, not from a
+ * longer prompt, and the only photograph that can supply it is the previous
+ * frame — which means waiting for it. A storyboard of three to six images
+ * therefore costs a few minutes rather than one image's wait.
+ *
+ * Regenerating one frame reuses this same job with that frame's id; it still
+ * sees the finished frame before it.
  */
 export const workStoryboardJob = defineJob(
   "ugc.work.storyboard",
@@ -147,38 +160,46 @@ export const workStoryboardJob = defineJob(
       }
     }
 
-    const frames = await db
+    // Every frame of the work, in order, not only the ones being drawn: a
+    // single-frame redraw still needs the finished frame before it.
+    const allFrames = await db
       .select()
       .from(ugcWorkFrames)
-      .where(
-        and(
-          eq(ugcWorkFrames.workId, work.id),
-          inArray(ugcWorkFrames.id, frameIds),
-        ),
+      .where(eq(ugcWorkFrames.workId, work.id))
+      .orderBy(asc(ugcWorkFrames.position));
+    const targets = allFrames.filter((frame) => frameIds.includes(frame.id));
+
+    // One submission per pass, lowest position first. A frame that failed is
+    // left alone for the operator to retry, and does not hold up the rest.
+    const next = targets.find((frame) => frame.status === "pending");
+    const previous = next
+      ? allFrames.find((frame) => frame.position === next.position - 1)
+      : undefined;
+
+    if (next && previous?.status !== "generating") {
+      const previousImageUrl =
+        previous?.status === "ready" ? previous.imageUrl : null;
+      const references = await resolveReferenceUrls(
+        db,
+        work.userId,
+        [
+          // The frame before leads: it is already this performer, in this
+          // room, under this light, so it settles more continuity than any
+          // sheet can. The product follows, because its colour, finish and
+          // label text are what must survive most intact.
+          previousImageUrl,
+          ...productReferenceUrls(product, MAX_PRODUCT_IMAGES),
+          talent?.sheetUrl,
+          scene?.sheetUrl,
+        ].filter((url): url is string => Boolean(url)),
       );
-
-    const unsubmitted = frames.filter((frame) => !frame.providerTaskId);
-    const references = unsubmitted.length
-      ? await resolveReferenceUrls(
-          db,
-          work.userId,
-          [
-            // The product leads: it is the thing being sold, so its colour,
-            // finish and label text are what must survive most intact.
-            ...productReferenceUrls(product, MAX_PRODUCT_IMAGES),
-            talent?.sheetUrl,
-            scene?.sheetUrl,
-          ].filter((url): url is string => Boolean(url)),
-        )
-      : [];
-
-    // Submit anything that has not been handed to the provider yet.
-    for (const frame of unsubmitted) {
       const providerTaskId = await submitImage({
-        prompt: frame.prompt,
+        prompt: previousImageUrl
+          ? `${next.prompt}\n${CONTINUES_FROM_PREVIOUS}`
+          : next.prompt,
         referenceUrls: references,
         aspectRatio: work.aspectRatio,
-        requestId: createPrismRequestId(context.taskRunId, frame.id),
+        requestId: createPrismRequestId(context.taskRunId, next.id),
       });
       await db
         .update(ugcWorkFrames)
@@ -188,12 +209,13 @@ export const workStoryboardJob = defineJob(
           failureReason: null,
           updatedAt: new Date(),
         })
-        .where(eq(ugcWorkFrames.id, frame.id));
+        .where(eq(ugcWorkFrames.id, next.id));
       context.log("storyboard_frame_submitted", {
         workId: work.id,
-        frameId: frame.id,
-        position: frame.position,
-        providerTaskId,
+        frameId: next.id,
+        position: next.position,
+        ...mediaTaskLog("prism", providerTaskId),
+        continuesFrom: previousImageUrl ? previous?.position : null,
       });
     }
 
@@ -209,15 +231,14 @@ export const workStoryboardJob = defineJob(
         ),
       );
 
-    let waiting = 0;
+    let progressed = false;
     for (const frame of inFlight) {
       if (!frame.providerTaskId) continue;
       const task = await getTask(frame.providerTaskId);
+      const taskLog = mediaTaskLog("prism", frame.providerTaskId, task);
 
-      if (task.status === "pending") {
-        waiting += 1;
-        continue;
-      }
+      if (task.status === "pending") continue;
+      progressed = true;
       if (task.status === "failed" || !task.outputUrl) {
         await db
           .update(ugcWorkFrames)
@@ -229,6 +250,12 @@ export const workStoryboardJob = defineJob(
             updatedAt: new Date(),
           })
           .where(eq(ugcWorkFrames.id, frame.id));
+        context.log("storyboard_frame_failed", {
+          workId: work.id,
+          frameId: frame.id,
+          position: frame.position,
+          ...taskLog,
+        });
         continue;
       }
 
@@ -254,20 +281,41 @@ export const workStoryboardJob = defineJob(
         credits: CREDIT_COST.analysis,
         note: `frame ${frame.position + 1}`,
       });
+      context.log("storyboard_frame_finished", {
+        workId: work.id,
+        frameId: frame.id,
+        position: frame.position,
+        ...taskLog,
+        imageUrl: archived,
+      });
     }
 
-    if (waiting > 0) {
-      if (payload.polls >= MAX_POLLS) {
+    // A pass that finished a frame leaves the next one still to submit, so
+    // what decides whether to come back is the work left, not the poll result.
+    const outstanding = await db
+      .select({ id: ugcWorkFrames.id })
+      .from(ugcWorkFrames)
+      .where(
+        and(
+          eq(ugcWorkFrames.workId, work.id),
+          inArray(ugcWorkFrames.id, frameIds),
+          inArray(ugcWorkFrames.status, ["pending", "generating"]),
+        ),
+      );
+
+    if (outstanding.length > 0) {
+      if (!progressed && payload.polls >= MAX_STALLED_POLLS) {
         throw new PermanentJobError(
           "UGC_STORYBOARD_TIMEOUT",
           "The provider did not finish the storyboard in time.",
         );
       }
+      const polls = progressed ? 0 : payload.polls + 1;
       await context.scheduleContinuation(
-        { ...payload, frameIds, polls: payload.polls + 1 },
+        { ...payload, frameIds, polls },
         POLL_SECONDS,
       );
-      return { waiting, polls: payload.polls + 1 };
+      return { outstanding: outstanding.length, polls };
     }
 
     await db
