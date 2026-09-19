@@ -128,6 +128,16 @@ export const CREDIT_COST = {
 /** Shared network deadline for media provider requests. */
 export const MEDIA_REQUEST_TIMEOUT_MS = 60_000;
 
+/**
+ * How many photographs one product keeps.
+ *
+ * The same number bounds an upload, an import, and what a drawn frame is
+ * shown, so a picture the operator chose to keep is a picture the model sees.
+ * Six of them beside a talent sheet and a scene sheet is eight references,
+ * well inside the fourteen Prism accepts for an image.
+ */
+export const MAX_PRODUCT_IMAGES = 6;
+
 /** Prism model choices are product decisions; credentials remain environment settings. */
 export const PRISM_MEDIA = {
   /** `quality` is only honoured by Prism's gpt-image-* family. */

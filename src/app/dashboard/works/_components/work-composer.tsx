@@ -60,6 +60,7 @@ import type {
   VideoResolution,
 } from "@/lib/ugc/constants";
 import { createProduct, createProductFromUrl } from "@/lib/ugc/actions";
+import { MAX_PRODUCT_IMAGES } from "@/lib/ugc/constants";
 import type { ProductRow, SceneRow, TalentRow } from "@/lib/ugc/queries";
 import { createWork } from "@/lib/ugc/work-actions";
 
@@ -302,7 +303,7 @@ export function WorkComposer({
                 <ImageField
                   value={images}
                   onChange={setImages}
-                  maxFiles={8}
+                  maxFiles={MAX_PRODUCT_IMAGES}
                   label={t("ugc_product_images")}
                 />
               </TabsContent>

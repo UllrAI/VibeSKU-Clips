@@ -13,6 +13,7 @@ import {
 import {
   CLIP_SPEC,
   CREDIT_COST,
+  MAX_PRODUCT_IMAGES,
   VIDEO_MODELS,
   VIDEO_RESOLUTIONS,
 } from "@/lib/ugc/constants";
@@ -33,6 +34,8 @@ import {
   buildCoverPrompt,
   buildSubtitleTrack,
   buildVideoPrompt,
+  productReferenceUrls,
+  videoProductBudget,
   renderSubjectFor,
   type RenderSubject,
 } from "@/lib/ugc/render";
@@ -135,9 +138,9 @@ async function ensureCoverFrame(input: {
       db,
       work.userId,
       [
+        ...productReferenceUrls(input.product, MAX_PRODUCT_IMAGES),
         input.talent?.sheetUrl,
         input.scene?.sheetUrl,
-        ...input.product.images.slice(0, 2),
       ].filter((url): url is string => Boolean(url)),
     );
     const providerTaskId = await submitImage({
@@ -314,12 +317,16 @@ export const workVideoJob = defineJob(
         db,
         work.userId,
         [
+          // The approved key frames come first: they are this clip. The
+          // product follows, ahead of the performer sheet, because its colour
+          // and label text are what a viewer checks against the listing --
+          // but only as far as the nine references reach.
           ...frames.map((frame) => frame.imageUrl),
+          ...productReferenceUrls(
+            product,
+            videoProductBudget(frames.length, Boolean(talent?.sheetUrl)),
+          ),
           talent?.sheetUrl,
-          // Listing photos are evidence of what the product looks like, not
-          // scenes to rebuild. Two is enough to pin colour and finish; eight
-          // is an invitation to copy their backgrounds.
-          ...product.images.slice(0, 2),
         ].filter((url): url is string => Boolean(url)),
       );
       const providerTaskId = await submitVideo({

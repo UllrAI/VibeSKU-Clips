@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getAuthoringModel } from "./model";
 import {
   CLIP_SPEC,
+  MAX_PRODUCT_IMAGES,
   voiceoverBudgetFor,
   type ScriptTemplate,
   type VideoAspectRatio,
@@ -23,6 +24,7 @@ const factsSchema = z.object({
   scenarios: z.array(z.string()).max(6),
   sources: z.array(z.string()).max(16),
   missing: z.array(z.string()).max(6),
+  keyImages: z.array(z.number().int().min(0)).max(MAX_PRODUCT_IMAGES),
 });
 
 const talentImagePromptSchema = z.object({
@@ -221,6 +223,7 @@ export async function analyzeProduct(
       "When prior analysis is supplied, revise it rather than merely repeating it. Operator feedback is a requested correction or clarification; apply it wherever the supplied material supports it and call out unresolved conflicts under `missing`.",
       "List anything a 15-second product video would need but the material does not provide under `missing`.",
       "`sources` names where each group of facts came from, for example 'product page' or 'uploaded image 2'.",
+      "`keyImages` lists the supplied images that show the product itself most clearly, best first, by their 1-based number minus one. Prefer a clean view of the whole product and a close view of its material or finish. Leave out any image that is mostly a person, a styled lifestyle scene, packaging, a size chart, or text, because a later model is given these as evidence of what the product looks like and will rebuild whatever else is in them. Return an empty list when no image is supplied.",
       "Write every field in the language of the supplied material.",
     ].join("\n"),
     messages: [

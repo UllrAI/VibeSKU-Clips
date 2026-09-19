@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@jest/globals";
-import { PRISM_MEDIA, SCRIPT_TEMPLATES } from "./constants";
+import { MAX_PRODUCT_IMAGES, PRISM_MEDIA, SCRIPT_TEMPLATES } from "./constants";
 import { TEMPLATE_BRIEFS } from "./templates";
 import {
   buildCoverPrompt,
@@ -8,7 +8,9 @@ import {
   buildSubtitleTrack,
   buildTalentSheetPrompt,
   buildVideoPrompt,
+  productReferenceUrls,
   renderSubjectFor,
+  videoProductBudget,
 } from "./render";
 import type { ScriptBeat } from "./types";
 
@@ -423,6 +425,53 @@ describe("subtitle track", () => {
         "This lives by the sofa now.",
         "",
       ].join("\n"),
+    );
+  });
+});
+
+describe("product reference photos", () => {
+  const images = ["a.jpg", "b.jpg", "c.jpg", "d.jpg"];
+
+  it("leads with the images the product read marked, then the rest", () => {
+    expect(
+      productReferenceUrls({ images, facts: { keyImages: [2, 0] } }, 4),
+    ).toEqual(["c.jpg", "a.jpg", "b.jpg", "d.jpg"]);
+  });
+
+  it("falls back to page order when nothing was marked", () => {
+    expect(productReferenceUrls({ images, facts: null }, 2)).toEqual([
+      "a.jpg",
+      "b.jpg",
+    ]);
+  });
+
+  it("ignores a mark that points outside the kept images", () => {
+    expect(
+      productReferenceUrls({ images, facts: { keyImages: [9] } }, 1),
+    ).toEqual(["a.jpg"]);
+  });
+});
+
+describe("video reference budget", () => {
+  it("keeps a storyboard clip within the references the provider accepts", () => {
+    const frames = 6;
+    const budget = videoProductBudget(frames, true);
+
+    expect(frames + budget + 1).toBeLessThanOrEqual(
+      PRISM_MEDIA.maxVideoReferences,
+    );
+    expect(budget).toBeGreaterThan(0);
+  });
+
+  it("gives a one-take clip every product photo it has", () => {
+    expect(videoProductBudget(1, true)).toBeGreaterThanOrEqual(
+      MAX_PRODUCT_IMAGES,
+    );
+  });
+
+  it("never asks for a negative number of photos", () => {
+    expect(videoProductBudget(PRISM_MEDIA.maxVideoReferences + 2, true)).toBe(
+      0,
     );
   });
 });

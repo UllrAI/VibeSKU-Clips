@@ -1,4 +1,4 @@
-import { CLIP_SPEC, DEFAULT_VIDEO_SETTINGS } from "./constants";
+import { CLIP_SPEC, DEFAULT_VIDEO_SETTINGS, PRISM_MEDIA } from "./constants";
 import type { VideoAspectRatio, VideoMode } from "./constants";
 import { TEMPLATE_BRIEFS } from "./templates";
 import type { ProductFacts, ScriptBeat } from "./types";
@@ -50,6 +50,46 @@ export function renderSubjectFor(input: {
  */
 const EVIDENCE_ONLY =
   "Any attached product photo is evidence of the product's true colour, finish, proportions, and label text only. Do not reproduce its background, surface, props, packaging shots, or any text printed into the photo.";
+
+/**
+ * Which of a product's photos travel with a request, best first.
+ *
+ * A listing carries a main shot, detail shots, a lifestyle scene, a size
+ * chart and a packaging shot, in whatever order the page happened to list
+ * them. Taking the first two blind is how a styled scene ends up as the
+ * evidence of what the product looks like — and the model rebuilds that scene.
+ * The reader marks the useful ones while it is already looking at them; the
+ * rest follow in their own order so a product read before that still works.
+ */
+export function productReferenceUrls(
+  product: { images: string[]; facts: Pick<ProductFacts, "keyImages"> | null },
+  limit: number,
+): string[] {
+  const picked = (product.facts?.keyImages ?? [])
+    .filter((index) => Number.isInteger(index) && index in product.images)
+    .map((index) => product.images[index]!);
+  const rest = product.images.filter((url) => !picked.includes(url));
+  return [...picked, ...rest].slice(0, limit);
+}
+
+/**
+ * How many product photos a video can still carry.
+ *
+ * A drawn frame simply takes all of them. A video cannot: the provider
+ * accepts nine references in total, and a storyboard work spends up to six of
+ * those on the key frames the clip is actually made of. The performer sheet
+ * is set aside first, because a clip that loses the face is not a retake away
+ * from being right, and the product fills whatever is left. Passing more than
+ * nine is not an error the provider reports — it silently drops the tail,
+ * which is exactly where the sheet would sit.
+ */
+export function videoProductBudget(
+  frameCount: number,
+  hasTalentSheet: boolean,
+): number {
+  const reserved = frameCount + (hasTalentSheet ? 1 : 0);
+  return Math.max(0, PRISM_MEDIA.maxVideoReferences - reserved);
+}
 
 /**
  * What an attached reference sheet is for.

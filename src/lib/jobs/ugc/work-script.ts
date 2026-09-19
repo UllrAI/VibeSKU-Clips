@@ -8,8 +8,13 @@ import {
   ugcWorks,
 } from "@/database/ugc";
 import { composeScript } from "@/lib/ugc/authoring";
-import { CREDIT_COST, type ScriptTemplate } from "@/lib/ugc/constants";
+import {
+  CREDIT_COST,
+  MAX_PRODUCT_IMAGES,
+  type ScriptTemplate,
+} from "@/lib/ugc/constants";
 import { defaultDisclosure } from "@/lib/ugc/templates";
+import { productReferenceUrls } from "@/lib/ugc/render";
 import { resolveReferenceUrls } from "@/lib/ugc/storage";
 import { recordUsage } from "@/lib/ugc/usage";
 import { defineJob, PermanentJobError } from "../definition";
@@ -79,7 +84,7 @@ export const workScriptJob = defineJob(
     const productImageUrls = await resolveReferenceUrls(
       db,
       work.userId,
-      product.images,
+      productReferenceUrls(product, MAX_PRODUCT_IMAGES),
     );
     const [talentImageUrl] = await resolveReferenceUrls(
       db,

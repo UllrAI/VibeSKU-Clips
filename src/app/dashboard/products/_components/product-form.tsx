@@ -37,6 +37,7 @@ import {
   createProductFromUrl,
   updateProduct,
 } from "@/lib/ugc/actions";
+import { MAX_PRODUCT_IMAGES } from "@/lib/ugc/constants";
 import type { ProductRow } from "@/lib/ugc/queries";
 import { actionMessageKey } from "@/components/ugc/action-message";
 
@@ -304,7 +305,7 @@ function ManualProductFields({
       <ImageField
         value={state.images}
         onChange={(images) => update("images", images)}
-        maxFiles={8}
+        maxFiles={MAX_PRODUCT_IMAGES}
         label={t("ugc_product_images")}
       />
 

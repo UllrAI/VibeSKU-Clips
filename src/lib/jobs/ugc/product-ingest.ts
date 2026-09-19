@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { ugcProducts } from "@/database/ugc";
 import { analyzeProduct } from "@/lib/ugc/authoring";
-import { CREDIT_COST } from "@/lib/ugc/constants";
+import { CREDIT_COST, MAX_PRODUCT_IMAGES } from "@/lib/ugc/constants";
 import {
   FirecrawlError,
   importProductSource,
@@ -49,7 +49,7 @@ function mergeImportedImages(existing: string[], imported: string[]): string[] {
     }
     if (!images.has(key)) images.set(key, image);
   }
-  return [...images.values()].slice(0, 8);
+  return [...images.values()].slice(0, MAX_PRODUCT_IMAGES);
 }
 
 async function stopProduct(

@@ -8,6 +8,7 @@ import { db } from "@/database";
 import { ugcProducts, ugcScenes, ugcTalents } from "@/database/ugc";
 import { requireAuth } from "@/lib/auth/permissions";
 import { productIngestJob } from "@/lib/jobs/ugc/product-ingest";
+import { MAX_PRODUCT_IMAGES } from "@/lib/ugc/constants";
 import { sceneGenerateJob } from "@/lib/jobs/ugc/scene-generate";
 import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
 import { serverJobQueue } from "@/lib/jobs/server";
@@ -45,7 +46,7 @@ const productSchema = z.object({
   sourceUrl: z.string().trim().url().max(2000).optional().or(z.literal("")),
   variant: z.string().trim().max(200).optional(),
   market: z.string().trim().max(16).optional(),
-  images: z.array(imageReferenceSchema).max(8),
+  images: z.array(imageReferenceSchema).max(MAX_PRODUCT_IMAGES),
   brief: briefSchema.optional(),
 });
 
@@ -302,8 +303,10 @@ export async function saveProductFacts(
     .set({
       facts: {
         ...parsed.data,
-        // Provenance is the reader's, not the editor's: keep what it recorded.
+        // Provenance and image selection are the reader's, not the editor's:
+        // keep what it recorded.
         sources: product.facts?.sources ?? [],
+        keyImages: product.facts?.keyImages,
       },
       status: "ready",
       issue: null,

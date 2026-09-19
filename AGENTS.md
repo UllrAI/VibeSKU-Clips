@@ -173,9 +173,18 @@ Rules that are easy to break:
   backdrops, props and printed text into the clip. A new version redraws it,
   because the frame describes the script it was drawn from.
 - **A reference photo is evidence, not a scene.** Every prompt that attaches
-  product images says so (`EVIDENCE_ONLY` in `src/lib/ugc/render.ts`), and at
-  most two are attached. They settle colour, finish and label text; they do not
-  settle where the clip is set.
+  product images says so (`EVIDENCE_ONLY` in `src/lib/ugc/render.ts`). They
+  settle colour, finish and label text; they do not settle where the clip is
+  set.
+- **A product keeps six photographs, and a drawn image sees all of them.**
+  `MAX_PRODUCT_IMAGES` bounds the upload, the Firecrawl import, and what a
+  frame is shown, so the operator's choice is the model's input. The product
+  read marks which ones show the product rather than a scene it appears in
+  (`facts.keyImages`), and `productReferenceUrls` puts those first. Video is
+  the tight one: the provider takes nine references in total and a storyboard
+  work spends up to six on its own key frames, so `videoProductBudget` reserves
+  the performer sheet and gives the product what is left. Exceeding nine is not
+  reported — the tail is dropped silently.
 - **A format is its shot vocabulary.** `TEMPLATE_BRIEFS[...].shots` reaches the
   writing model and is what separates a thing held in the hand from a thing
   worn on the body. A new format without it frames like every other one.

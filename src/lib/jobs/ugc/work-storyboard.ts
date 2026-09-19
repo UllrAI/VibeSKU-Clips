@@ -9,7 +9,7 @@ import {
   ugcWorkFrames,
   ugcWorks,
 } from "@/database/ugc";
-import { CREDIT_COST } from "@/lib/ugc/constants";
+import { CREDIT_COST, MAX_PRODUCT_IMAGES } from "@/lib/ugc/constants";
 import {
   createPrismRequestId,
   getTask,
@@ -18,6 +18,7 @@ import {
 import {
   archiveRemoteAsset,
   buildFramePrompt,
+  productReferenceUrls,
   renderSubjectFor,
 } from "@/lib/ugc/render";
 import {
@@ -162,11 +163,11 @@ export const workStoryboardJob = defineJob(
           db,
           work.userId,
           [
+            // The product leads: it is the thing being sold, so its colour,
+            // finish and label text are what must survive most intact.
+            ...productReferenceUrls(product, MAX_PRODUCT_IMAGES),
             talent?.sheetUrl,
             scene?.sheetUrl,
-            // Listing photos are evidence of what the product looks like, not
-            // scenes to rebuild, and two of them settle colour and finish.
-            ...product.images.slice(0, 2),
           ].filter((url): url is string => Boolean(url)),
         )
       : [];

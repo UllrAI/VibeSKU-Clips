@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { scrapingEnvFields } from "@/lib/config/runtime-env.mjs";
+import { MAX_PRODUCT_IMAGES } from "./constants";
 import {
   UnreadableSourceError,
   validatePublicProductUrl,
@@ -8,7 +9,6 @@ import {
 const REQUEST_TIMEOUT_MS = 70_000;
 const MAX_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_SOURCE_TEXT_LENGTH = 80_000;
-const MAX_PRODUCT_IMAGES = 8;
 const MAX_IMAGE_CANDIDATES_TO_CHECK = 32;
 const IMAGE_CHECK_BATCH_SIZE = 8;
 const IMAGE_CHECK_TIMEOUT_MS = 10_000;

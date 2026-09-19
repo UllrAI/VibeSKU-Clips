@@ -18,6 +18,12 @@ export interface ProductFacts {
   sources: string[];
   /** Set when the source material is incomplete or self-contradictory. */
   missing?: string[];
+  /**
+   * Indices into the product's own images, best first: the ones that show the
+   * product rather than a scene it happens to appear in. Absent on products
+   * read before this existed, which fall back to the order they were added.
+   */
+  keyImages?: number[];
 }
 
 export interface ScriptBeat {
