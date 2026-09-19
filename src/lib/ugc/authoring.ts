@@ -343,7 +343,7 @@ export async function composeScript(
     input.creativeDirection
       ? `Direction for this clip (highest-priority creative instruction; honour every explicit constraint and keep quoted dialogue verbatim):\n${input.creativeDirection}`
       : "",
-    `Creative angle: ${brief.angles[0]}`,
+    `Candidate creative angles (choose the single strongest fit for the supplied facts and audience; do not combine them): ${brief.angles.join("; ")}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -365,6 +365,11 @@ export async function composeScript(
         : "",
       `The spoken track must fit ${budget} units of speech; do not pad it.`,
       "Use only the supplied product facts. Never state a price, a discount, a medical or safety claim, or a consumer testimonial.",
+      "Choose one narrow creative angle for the whole clip: one concrete buyer question, hesitation, task, or visible detail. Make the opening specific to this product and audience; do not stack several benefits or turn the clip into a feature list.",
+      "Write the voiceover like an unsent voice note to one person, not finished ad copy. Short fragments, one small aside or self-correction, and an uneven sentence rhythm are welcome when they sound natural; fake stutters, repeated filler words, and exaggerated reactions are not.",
+      "Avoid stock creator hooks and ad language such as 'stop scrolling', 'you need this', 'game changer', 'run, don't walk', 'I'm obsessed', and generic 'I didn't expect this to work' claims. Begin with the specific observation or action instead.",
+      "If the supplied facts, product notes, or operator direction contain real customer wording or a real objection, preserve its concrete phrasing instead of polishing it into marketing language. Never invent a quote, review, purchase history, or personal result.",
+      "Keep the template structure invisible: the speaker must not sound as if they are stepping through hook, problem, solution, and CTA. End on a plain verdict, best-fit use, caveat, or visible result; only include a sales CTA when the operator explicitly supplied one.",
       "The result must feel like a real person filming themselves, not a polished advert. Use concrete micro-behaviour, natural pauses, imperfect phone-camera movement, focus changes, material physics, and ambient sound appropriate to the scene.",
       "Do not invent personal experience, purchase history, popularity, review counts, long-term results, or a customer testimonial. UGC authenticity comes from the creator's filming and speech patterns, not from made-up proof.",
       "Keep one coherent performer identity, product appearance, wardrobe, location, lighting condition, and time of day from first frame to last. Product packaging, colours, proportions, finish, texture, and any supported label text must remain accurate and legible when shown.",

@@ -82,7 +82,7 @@ export interface ScriptTemplateBrief {
   /** How the 15 seconds are spent, expressed for the writing model. */
   structure: string;
   voice: string;
-  /** Candidate opening angles; the single-clip flow uses the first one. */
+  /** Candidate opening angles; the writer chooses the best single fit. */
   angles: string[];
   shots: string[];
 }

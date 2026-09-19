@@ -129,10 +129,17 @@ describe("composeScript", () => {
     expect(request.system).toContain("9:16");
     expect(request.system).toContain("Do not repeat the beat list");
     expect(request.system).toContain("visibly different in action");
+    expect(request.system).toContain("unsent voice note");
+    expect(request.system).toContain("one narrow creative angle");
+    expect(request.system).toContain("stock creator hooks");
     expect(content[0]!.text).toContain(
       "Direction for this clip (highest-priority creative instruction;",
     );
     expect(content[0]!.text).toContain("Keep it quiet and natural");
+    expect(content[0]!.text).toContain("Candidate creative angles");
+    expect(content[0]!.text).toContain(
+      "open on the practical question this demo answers",
+    );
     expect(result.voiceover).toBe("Last step. Then sleep.");
   });
 });
