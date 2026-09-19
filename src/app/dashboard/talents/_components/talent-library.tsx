@@ -35,16 +35,13 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageField } from "@/components/ugc/image-field";
 import { actionMessageKey } from "@/components/ugc/action-message";
-import { talentAngleKey } from "@/components/ugc/labels";
 import { StatusBadge } from "@/components/ugc/status-badge";
-import { ViewStrip } from "@/components/ugc/view-strip";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   archiveTalent,
   createTalent,
   retryTalentGeneration,
 } from "@/lib/ugc/actions";
-import { TALENT_ANGLES } from "@/lib/ugc/constants";
 import type { TalentRow } from "@/lib/ugc/queries";
 
 export function TalentLibrary({ talents }: { talents: TalentRow[] }) {
@@ -175,19 +172,20 @@ export function TalentLibrary({ talents }: { talents: TalentRow[] }) {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {visible.map((talent) => {
             const busy = actionPending && actingTalentId === talent.id;
-            const [cover, ...otherViews] = talent.views;
             return (
               <li key={talent.id}>
                 <Card className="h-full gap-3 py-3">
                   <CardContent className="space-y-3 px-3">
                     <div className="border-border bg-muted relative aspect-square overflow-hidden rounded-md border">
-                      {cover ? (
+                      {talent.sheetUrl ? (
                         <Image
-                          src={cover.imageUrl}
+                          src={talent.sheetUrl}
                           alt=""
                           fill
                           sizes="(min-width: 1536px) 200px, (min-width: 1280px) 240px, (min-width: 1024px) 30vw, 45vw"
-                          className="object-cover"
+                          // A sheet is one image of panels; cropping it would
+                          // cut half the angles out of the card.
+                          className="object-contain"
                           unoptimized
                         />
                       ) : (
@@ -209,26 +207,12 @@ export function TalentLibrary({ talents }: { talents: TalentRow[] }) {
                       )}
                     </div>
 
-                    <ViewStrip
-                      views={otherViews}
-                      labelKey={talentAngleKey}
-                      drawing={talent.status === "generating"}
-                    />
-
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 space-y-1.5">
                         <h3 className="truncate text-sm font-medium">
                           {talent.name}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <StatusBadge kind="talent" status={talent.status} />
-                          <span className="text-muted-foreground text-xs tabular-nums">
-                            {t("ugc_view_count", {
-                              count: talent.views.length,
-                              total: TALENT_ANGLES.length,
-                            })}
-                          </span>
-                        </div>
+                        <StatusBadge kind="talent" status={talent.status} />
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

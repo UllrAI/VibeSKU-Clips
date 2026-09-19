@@ -4,11 +4,10 @@ import { TEMPLATE_BRIEFS } from "./templates";
 import {
   buildCoverPrompt,
   buildFramePrompt,
-  buildSceneViewPrompt,
+  buildSceneSheetPrompt,
   buildSubtitleTrack,
-  buildTalentViewPrompt,
+  buildTalentSheetPrompt,
   buildVideoPrompt,
-  referenceViewUrls,
   renderSubjectFor,
 } from "./render";
 import type { ScriptBeat } from "./types";
@@ -46,7 +45,7 @@ describe("render prompts", () => {
   it("anchors the opening frame on the talent reference", () => {
     const prompt = buildCoverPrompt(subject, beats[0]);
 
-    expect(prompt).toContain("Match the supplied reference image");
+    expect(prompt).toContain("Match the supplied reference sheet");
     expect(prompt).toContain("Cordless hand vacuum");
     expect(prompt).toContain("on-screen text");
   });
@@ -157,6 +156,23 @@ describe("reference images", () => {
       "Do not reproduce its background",
     );
   });
+  it("says a reference sheet is a set of angles, not a layout to copy", () => {
+    // Without this the model reads the panel grid as the composition it was
+    // asked for and draws the gutters into the clip.
+    for (const prompt of [
+      buildCoverPrompt(subject, beats[0]),
+      buildFramePrompt(subject, beats[0], 0),
+      buildVideoPrompt(
+        subject,
+        beats,
+        null,
+        { videoMode: "one_take", aspectRatio: "9:16" },
+        PRISM_MEDIA.maxVideoPromptCharacters,
+      ),
+    ]) {
+      expect(prompt).toContain("Never reproduce its panel grid");
+    }
+  });
 });
 
 describe("a chosen scene", () => {
@@ -227,21 +243,6 @@ describe("a chosen scene", () => {
     expect(prompt).toContain("No burned-in captions");
   });
 
-  it("hands at most two views to one request", () => {
-    const views = [
-      { angle: "establishing" as const, imageUrl: "https://x/1.webp" },
-      { angle: "eye_level" as const, imageUrl: "https://x/2.webp" },
-      { angle: "detail" as const, imageUrl: "https://x/3.webp" },
-    ];
-
-    expect(referenceViewUrls({ views })).toEqual([
-      "https://x/1.webp",
-      "https://x/2.webp",
-    ]);
-    expect(referenceViewUrls({ views }, 1)).toEqual(["https://x/1.webp"]);
-    expect(referenceViewUrls(null)).toEqual([]);
-  });
-
   it("describes the talent and the scene by their expanded prompts", () => {
     const built = renderSubjectFor({
       product: { name: "Cordless hand vacuum", facts: null },
@@ -257,80 +258,64 @@ describe("a chosen scene", () => {
   });
 });
 
-describe("scene views", () => {
+describe("reference sheets", () => {
   const location = "A small city kitchen with a pale oak counter.";
-
-  it("keeps the location prompt so the place cannot drift", () => {
-    expect(buildSceneViewPrompt(location, "establishing", false)).toContain(
-      location,
-    );
-  });
-
-  it("frames each view for the question it answers", () => {
-    expect(buildSceneViewPrompt(location, "establishing", false)).toContain(
-      "Wide establishing shot",
-    );
-    expect(buildSceneViewPrompt(location, "eye_level", false)).toContain(
-      "where a person would stand",
-    );
-    expect(buildSceneViewPrompt(location, "detail", false)).toContain(
-      "set down on",
-    );
-  });
-
-  it("matches earlier views only once there are some", () => {
-    expect(buildSceneViewPrompt(location, "detail", true)).toContain(
-      "same place",
-    );
-    expect(buildSceneViewPrompt(location, "detail", false)).not.toContain(
-      "same place",
-    );
-  });
-
-  it("keeps people and products out of a location reference", () => {
-    expect(buildSceneViewPrompt(location, "eye_level", false)).toContain(
-      "No people",
-    );
-  });
-});
-
-describe("talent views", () => {
   const identity = "A woman in her thirties, waist-up crop, bright kitchen.";
 
-  it("keeps the identity prompt so the face and wardrobe cannot drift", () => {
-    expect(buildTalentViewPrompt(identity, "full_body", true)).toContain(
-      identity,
+  it("keeps the subject prompt verbatim so it cannot drift", () => {
+    expect(buildSceneSheetPrompt(location, false)).toContain(location);
+    expect(buildTalentSheetPrompt(identity, false)).toContain(identity);
+  });
+
+  it("states that the layout overrides the viewpoint the prompt named", () => {
+    expect(buildSceneSheetPrompt(location, false)).toContain(
+      "overrides every viewpoint",
+    );
+    expect(buildTalentSheetPrompt(identity, false)).toContain(
+      "overrides every crop",
     );
   });
 
-  it("states that framing overrides the crop the identity prompt named", () => {
-    const prompt = buildTalentViewPrompt(identity, "full_body", true);
+  it("asks for one image of panels rather than several images", () => {
+    for (const prompt of [
+      buildSceneSheetPrompt(location, false),
+      buildTalentSheetPrompt(identity, false),
+    ]) {
+      expect(prompt).toContain("one single image divided into clean");
+      expect(prompt).toContain("same lighting against the same plain");
+    }
+  });
 
-    expect(prompt).toContain("overrides every crop");
+  it("keeps text off the sheet, because a later model would draw it back in", () => {
+    expect(buildTalentSheetPrompt(identity, false)).toContain(
+      "No text, no letters",
+    );
+  });
+
+  it("gives a talent sheet every angle one photograph cannot carry", () => {
+    const prompt = buildTalentSheetPrompt(identity, false);
+
+    expect(prompt).toContain("forty-five degrees");
     expect(prompt).toContain("head to feet");
+    expect(prompt).toContain("texture of the hair");
+    expect(prompt).toContain("Both hands empty");
   });
 
-  it("frames each view for the question it answers", () => {
-    expect(buildTalentViewPrompt(identity, "three_quarter", true)).toContain(
-      "forty-five degrees",
-    );
-    expect(buildTalentViewPrompt(identity, "detail", true)).toContain(
-      "hair, their hands",
-    );
+  it("gives a scene sheet the space, the eye line, and the surface", () => {
+    const prompt = buildSceneSheetPrompt(location, false);
+
+    expect(prompt).toContain("wide establishing shot");
+    expect(prompt).toContain("where a person would stand");
+    expect(prompt).toContain("set down on");
+    expect(prompt).toContain("No people");
   });
 
-  it("matches earlier views only once there are some", () => {
-    expect(buildTalentViewPrompt(identity, "full_body", true)).toContain(
+  it("matches an uploaded reference only when one was attached", () => {
+    expect(buildSceneSheetPrompt(location, true)).toContain("same place");
+    expect(buildSceneSheetPrompt(location, false)).not.toContain("same place");
+    expect(buildTalentSheetPrompt(identity, true)).toContain("same person");
+    expect(buildTalentSheetPrompt(identity, false)).not.toContain(
       "same person",
-    );
-    expect(buildTalentViewPrompt(identity, "full_body", false)).not.toContain(
-      "same person",
-    );
-  });
-
-  it("keeps the talent free of products, as the portrait is", () => {
-    expect(buildTalentViewPrompt(identity, "detail", true)).toContain(
-      "Both hands empty",
     );
   });
 });

@@ -33,7 +33,6 @@ import {
   buildCoverPrompt,
   buildSubtitleTrack,
   buildVideoPrompt,
-  referenceViewUrls,
   renderSubjectFor,
   type RenderSubject,
 } from "@/lib/ugc/render";
@@ -132,11 +131,15 @@ async function ensureCoverFrame(input: {
   if (frame.status === "ready" && frame.imageUrl) return frame;
 
   if (!frame.providerTaskId) {
-    const references = await resolveReferenceUrls(db, work.userId, [
-      ...referenceViewUrls(input.talent),
-      ...referenceViewUrls(input.scene),
-      ...input.product.images.slice(0, 2),
-    ]);
+    const references = await resolveReferenceUrls(
+      db,
+      work.userId,
+      [
+        input.talent?.sheetUrl,
+        input.scene?.sheetUrl,
+        ...input.product.images.slice(0, 2),
+      ].filter((url): url is string => Boolean(url)),
+    );
     const providerTaskId = await submitImage({
       prompt: frame.prompt,
       referenceUrls: references,
@@ -312,7 +315,7 @@ export const workVideoJob = defineJob(
         work.userId,
         [
           ...frames.map((frame) => frame.imageUrl),
-          ...referenceViewUrls(talent),
+          talent?.sheetUrl,
           // Listing photos are evidence of what the product looks like, not
           // scenes to rebuild. Two is enough to pin colour and finish; eight
           // is an invitation to copy their backgrounds.
@@ -401,7 +404,7 @@ export const workVideoJob = defineJob(
       locale: work.locale,
       durationMs,
       script: { voiceover: script.voiceover, captions: script.captions },
-      hasTalentReference: (talent?.views.length ?? 0) > 0,
+      hasTalentReference: Boolean(talent?.sheetUrl),
     });
 
     const [clip] = await db

@@ -309,6 +309,20 @@
       "when": 1789782397509,
       "tag": "0043_sparkling_lionheart",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1789783263986,
+      "tag": "0044_damp_shinko_yamashiro",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1789783269256,
+      "tag": "0045_shallow_blindfold",
+      "breakpoints": true
     }
   ]
 }

@@ -35,16 +35,13 @@ import { SearchInput } from "@/components/ui/search-input";
 import { Textarea } from "@/components/ui/textarea";
 import { ImageField } from "@/components/ugc/image-field";
 import { actionMessageKey } from "@/components/ugc/action-message";
-import { sceneAngleKey } from "@/components/ugc/labels";
 import { StatusBadge } from "@/components/ugc/status-badge";
-import { ViewStrip } from "@/components/ugc/view-strip";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import {
   archiveScene,
   createScene,
   retrySceneGeneration,
 } from "@/lib/ugc/actions";
-import { SCENE_ANGLES } from "@/lib/ugc/constants";
 import type { SceneRow } from "@/lib/ugc/queries";
 
 export function SceneLibrary({ scenes }: { scenes: SceneRow[] }) {
@@ -171,19 +168,20 @@ export function SceneLibrary({ scenes }: { scenes: SceneRow[] }) {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
           {visible.map((scene) => {
             const busy = actionPending && actingSceneId === scene.id;
-            const [cover, ...otherViews] = scene.views;
             return (
               <li key={scene.id}>
                 <Card className="h-full gap-3 py-3">
                   <CardContent className="space-y-3 px-3">
                     <div className="border-border bg-muted relative aspect-square overflow-hidden rounded-md border">
-                      {cover ? (
+                      {scene.sheetUrl ? (
                         <Image
-                          src={cover.imageUrl}
+                          src={scene.sheetUrl}
                           alt=""
                           fill
                           sizes="(min-width: 1536px) 200px, (min-width: 1280px) 240px, (min-width: 1024px) 30vw, 45vw"
-                          className="object-cover"
+                          // A sheet is one image of panels; cropping it would
+                          // cut half the angles out of the card.
+                          className="object-contain"
                           unoptimized
                         />
                       ) : (
@@ -205,26 +203,12 @@ export function SceneLibrary({ scenes }: { scenes: SceneRow[] }) {
                       )}
                     </div>
 
-                    <ViewStrip
-                      views={otherViews}
-                      labelKey={sceneAngleKey}
-                      drawing={scene.status === "generating"}
-                    />
-
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 space-y-1.5">
                         <h3 className="truncate text-sm font-medium">
                           {scene.name}
                         </h3>
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <StatusBadge kind="scene" status={scene.status} />
-                          <span className="text-muted-foreground text-xs tabular-nums">
-                            {t("ugc_view_count", {
-                              count: scene.views.length,
-                              total: SCENE_ANGLES.length,
-                            })}
-                          </span>
-                        </div>
+                        <StatusBadge kind="scene" status={scene.status} />
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

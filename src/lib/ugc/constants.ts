@@ -47,32 +47,6 @@ export const SCRIPT_TEMPLATES = [
 ] as const;
 export type ScriptTemplate = (typeof SCRIPT_TEMPLATES)[number];
 
-/**
- * The viewpoints a talent is drawn from. One photograph settles a face and
- * nothing else: it cannot say how a garment falls on this person, what their
- * head looks like turned, or how their hands and hair read up close. The order
- * is the drawing order and the order of importance — each view takes the ones
- * already drawn as its reference, and the first two are what downstream
- * requests are given.
- */
-export const TALENT_ANGLES = [
-  "portrait",
-  "full_body",
-  "three_quarter",
-  "detail",
-] as const;
-export type TalentAngle = (typeof TALENT_ANGLES)[number];
-
-/**
- * The viewpoints a scene is drawn from. A location is not one photograph: the
- * wide shot settles the space, the eye-level shot settles where a person
- * stands in it, and the detail shot settles the surface a product is set down
- * on. The order is the drawing order — each view takes the ones already drawn
- * as its reference, so all three read as the same place.
- */
-export const SCENE_ANGLES = ["establishing", "eye_level", "detail"] as const;
-export type SceneAngle = (typeof SCENE_ANGLES)[number];
-
 /** Whether the operator reviews generated key frames before video rendering. */
 export const VIDEO_MODES = ["one_take", "storyboard"] as const;
 export type VideoMode = (typeof VIDEO_MODES)[number];
@@ -159,6 +133,12 @@ export const PRISM_MEDIA = {
   /** `quality` is only honoured by Prism's gpt-image-* family. */
   imageModel: "gpt-image-2",
   imageSize: "1K",
+  /**
+   * Reference sheets are drawn larger because they are divided into panels: at
+   * 1K each panel of a four-panel sheet is barely 512 across, which is not
+   * enough of a face to hold an identity.
+   */
+  sheetImageSize: "2K",
   imageQuality: "low",
   /** H3 takes up to nine reference images and a 1-15 second duration. */
   videoModel: "minimax-h3",

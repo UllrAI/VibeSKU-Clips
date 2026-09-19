@@ -18,7 +18,6 @@ import {
 import {
   archiveRemoteAsset,
   buildFramePrompt,
-  referenceViewUrls,
   renderSubjectFor,
 } from "@/lib/ugc/render";
 import {
@@ -159,13 +158,17 @@ export const workStoryboardJob = defineJob(
 
     const unsubmitted = frames.filter((frame) => !frame.providerTaskId);
     const references = unsubmitted.length
-      ? await resolveReferenceUrls(db, work.userId, [
-          ...referenceViewUrls(talent),
-          ...referenceViewUrls(scene),
-          // Listing photos are evidence of what the product looks like, not
-          // scenes to rebuild, and two of them settle colour and finish.
-          ...product.images.slice(0, 2),
-        ])
+      ? await resolveReferenceUrls(
+          db,
+          work.userId,
+          [
+            talent?.sheetUrl,
+            scene?.sheetUrl,
+            // Listing photos are evidence of what the product looks like, not
+            // scenes to rebuild, and two of them settle colour and finish.
+            ...product.images.slice(0, 2),
+          ].filter((url): url is string => Boolean(url)),
+        )
       : [];
 
     // Submit anything that has not been handed to the provider yet.

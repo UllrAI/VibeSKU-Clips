@@ -94,6 +94,8 @@ export interface ImageRequest {
   referenceUrls: string[];
   aspectRatio: ImageAspectRatio;
   requestId: string;
+  /** Defaults to the size a storyboard frame is drawn at. */
+  imageSize?: string;
 }
 
 export async function submitImage(request: ImageRequest): Promise<string> {
@@ -104,7 +106,7 @@ export async function submitImage(request: ImageRequest): Promise<string> {
       body: {
         prompt: request.prompt,
         model: PRISM_MEDIA.imageModel,
-        image_size: PRISM_MEDIA.imageSize,
+        image_size: request.imageSize ?? PRISM_MEDIA.imageSize,
         quality: PRISM_MEDIA.imageQuality,
         aspect_ratio: request.aspectRatio,
         request_id: request.requestId,

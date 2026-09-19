@@ -1,5 +1,3 @@
-import type { SceneAngle, TalentAngle } from "./constants";
-
 export interface ProductBrief {
   audience?: string;
   sellingPoints?: string[];
@@ -21,15 +19,6 @@ export interface ProductFacts {
   /** Set when the source material is incomplete or self-contradictory. */
   missing?: string[];
 }
-
-/** One drawn viewpoint of a subject, archived in the project's own storage. */
-export interface ReferenceView<TAngle extends string = string> {
-  angle: TAngle;
-  imageUrl: string;
-}
-
-export type TalentView = ReferenceView<TalentAngle>;
-export type SceneView = ReferenceView<SceneAngle>;
 
 export interface ScriptBeat {
   /** Seconds from the start of the clip. */

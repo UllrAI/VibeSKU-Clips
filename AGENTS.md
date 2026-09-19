@@ -131,8 +131,8 @@ Six durable jobs are registered in `src/lib/jobs/catalog.ts`:
 | Job                   | Handler                               | What it does                                                                                |
 | --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Imports source links through Firecrawl, extracts facts, then waits for review or more input |
-| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief into one identity, then photographs it from each angle in turn        |
-| `ugc.scene.generate`  | `src/lib/jobs/ugc/scene-generate.ts`  | Expands a scene brief into one place, then photographs it from each angle in turn           |
+| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief into one identity, then photographs it from each angle in turn       |
+| `ugc.scene.generate`  | `src/lib/jobs/ugc/scene-generate.ts`  | Expands a scene brief into one place and draws its multi-panel reference sheet              |
 | `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it  |
 | `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, together, and archives each one as it lands            |
 | `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model          |
@@ -179,22 +179,24 @@ Rules that are easy to break:
 - **A format is its shot vocabulary.** `TEMPLATE_BRIEFS[...].shots` reaches the
   writing model and is what separates a thing held in the hand from a thing
   worn on the body. A new format without it frames like every other one.
-- **A scene is a place, not a shot.** A talent settles who is on camera; a
-  scene (`ugc_scenes`) settles where they are, which the model otherwise
-  re-invents on every clip. Each one is drawn from the viewpoints in
-  `SCENE_ANGLES` — wide, eye level, detail — each view referencing the ones
-  already archived so the three read as one room. A scene that loses a view
-  stays usable with the ones that landed. Where a clip is filmed outranks both
-  the generic market fallback and whatever location the production direction
-  improvised, and at most two views reach any one request.
-- **A talent is a set of views.** A single photograph settles a face and
-  nothing else. Each talent is drawn from the viewpoints in `TALENT_ANGLES` —
-  portrait, full length, three-quarter, close detail — in that order, each view
-  referencing the ones already archived so the face cannot drift. The portrait
-  is the identity prompt itself, because that prompt describes its own
-  phone-camera viewpoint and overriding it would throw away what makes the
-  person read as real. A talent that loses a view stays usable with the ones
-  that landed.
+- **A talent and a scene are each one sheet.** A talent settles who is on
+  camera; a scene (`ugc_scenes`) settles where they are, which the model
+  otherwise re-invents on every clip. Each is drawn as a single square image
+  divided into panels — the talent square to camera, turned, at full length and
+  in close detail; the scene wide, at eye level, and close on a surface. They
+  are panels of one image rather than separate draws because a subject drawn
+  once cannot drift between its own angles, it costs one generation instead of
+  four, and downstream requests spend one reference slot instead of several.
+  Sheets are drawn at `PRISM_MEDIA.sheetImageSize`, larger than a frame,
+  because each panel only gets a fraction of the canvas.
+- **A sheet is reference, not composition.** Every prompt that attaches one
+  says so (`SHEET_NOT_A_LAYOUT` in `src/lib/ugc/render.ts`). Without that line
+  a model reads the panel grid as the composition it was asked for and draws
+  the gutters and the studio ground into the clip. Sheets also carry no text,
+  for the same reason: printed labels come back as burned-in captions.
+- **Where a clip is filmed is decided before it is drawn.** A chosen scene
+  outranks both the generic market fallback and whatever location the
+  production direction improvised.
 - **Library references are square.** A talent and a scene outlive any one clip,
   so `REFERENCE_ASPECT_RATIO` is what they are drawn at; a work's own frame
   settings apply to its frames and its video, never to the library.

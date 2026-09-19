@@ -13,7 +13,6 @@ import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
 import { serverJobQueue } from "@/lib/jobs/server";
 import { fileKeyFromUrl } from "@/lib/uploads/url";
 import { createBackgroundTask } from "@/lib/tasks/service";
-import { SCENE_ANGLES, TALENT_ANGLES } from "./constants";
 import { productNameFromUrl } from "./product-name";
 import { productScopeKey, sceneScopeKey, talentScopeKey } from "./scope";
 import type { ActionResult } from "./types";
@@ -326,18 +325,6 @@ export async function deleteProduct(productId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-/**
- * What a retry starts from. A subject that is short of views is picked up
- * where it stopped; one that already has all of them is being asked for a new
- * version, so it is redrawn from the start.
- */
-function viewsForRetry<TView>(
-  views: TView[],
-  angles: readonly string[],
-): TView[] {
-  return views.length >= angles.length ? [] : views;
-}
-
 const talentSchema = z.object({
   name: z.string().trim().min(1).max(120),
   description: z.string().trim().min(1).max(6000),
@@ -384,19 +371,11 @@ export async function retryTalentGeneration(
   talentId: string,
 ): Promise<ActionResult> {
   const user = await requireAuth();
-  const [current] = await db
-    .select({ views: ugcTalents.views })
-    .from(ugcTalents)
-    .where(and(eq(ugcTalents.id, talentId), eq(ugcTalents.userId, user.id)));
-  if (!current) return { ok: false, code: "not_found" };
-
   const [talent] = await db
     .update(ugcTalents)
-    .set({
-      status: "generating",
-      views: viewsForRetry(current.views, TALENT_ANGLES),
-      updatedAt: new Date(),
-    })
+    // The sheet is left in place until the new one lands, so a talent already
+    // chosen for a work keeps working while it is redrawn.
+    .set({ status: "generating", prompt: null, updatedAt: new Date() })
     .where(and(eq(ugcTalents.id, talentId), eq(ugcTalents.userId, user.id)))
     .returning();
   if (!talent) return { ok: false, code: "not_found" };
@@ -458,27 +437,15 @@ export async function createScene(
   return { ok: true, id: scene.id };
 }
 
-/**
- * Picks up a scene that is short of views. A location that already has all of
- * them is being asked for a new version, so it is redrawn from the start.
- */
 export async function retrySceneGeneration(
   sceneId: string,
 ): Promise<ActionResult> {
   const user = await requireAuth();
-  const [current] = await db
-    .select({ views: ugcScenes.views })
-    .from(ugcScenes)
-    .where(and(eq(ugcScenes.id, sceneId), eq(ugcScenes.userId, user.id)));
-  if (!current) return { ok: false, code: "not_found" };
-
   const [scene] = await db
     .update(ugcScenes)
-    .set({
-      status: "generating",
-      views: viewsForRetry(current.views, SCENE_ANGLES),
-      updatedAt: new Date(),
-    })
+    // The sheet is left in place until the new one lands, so a scene already
+    // chosen for a work keeps working while it is redrawn.
+    .set({ status: "generating", prompt: null, updatedAt: new Date() })
     .where(and(eq(ugcScenes.id, sceneId), eq(ugcScenes.userId, user.id)))
     .returning();
   if (!scene) return { ok: false, code: "not_found" };

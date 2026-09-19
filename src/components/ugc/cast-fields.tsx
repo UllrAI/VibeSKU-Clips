@@ -101,12 +101,10 @@ export function SceneField({
 /** Only a finished talent or scene can anchor a clip. */
 export function selectableTalents(talents: TalentRow[]): TalentRow[] {
   return talents.filter(
-    (talent) => talent.status === "ready" && talent.views.length > 0,
+    (talent) => talent.status === "ready" && talent.sheetUrl,
   );
 }
 
 export function selectableScenes(scenes: SceneRow[]): SceneRow[] {
-  return scenes.filter(
-    (scene) => scene.status === "ready" && scene.views.length > 0,
-  );
+  return scenes.filter((scene) => scene.status === "ready" && scene.sheetUrl);
 }

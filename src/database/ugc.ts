@@ -16,9 +16,7 @@ import type {
   ClipQualityReport,
   ProductBrief,
   ProductFacts,
-  SceneView,
   ScriptBeat,
-  TalentView,
 } from "@/lib/ugc/types";
 
 export const ugcProductStatusEnum = pgEnum("ugc_product_status", [
@@ -158,11 +156,11 @@ export const ugcProducts = pgTable(
 );
 
 /**
- * One reusable performer, held as the views it has been drawn from. A single
- * photograph settles a face and nothing else: it cannot say how a garment
- * falls on this person, what their head looks like turned, or how their hands
- * and hair read up close. A talent that loses a view stays usable with the
- * ones that landed.
+ * One reusable performer, held as a single reference sheet. A lone photograph
+ * settles a face and nothing else: it cannot say how a garment falls on this
+ * person, what their head looks like turned, or how their hands and hair read
+ * up close. All of that sits in one drawn sheet of panels, which is also the
+ * one image downstream requests are given.
  */
 export const ugcTalents = pgTable(
   "ugc_talents",
@@ -177,8 +175,9 @@ export const ugcTalents = pgTable(
       .$type<string[]>()
       .notNull()
       .default([]),
-    views: jsonb("views").$type<TalentView[]>().notNull().default([]),
-    // Expanded photography prompt every view is drawn from.
+    /** The multi-panel reference sheet, once it has been drawn. */
+    sheetUrl: text("sheetUrl"),
+    // Expanded identity prompt the sheet is drawn from.
     prompt: text("prompt"),
     status: ugcTalentStatusEnum("status").notNull().default("generating"),
     archived: boolean("archived").notNull().default(false),
@@ -200,8 +199,8 @@ export const ugcTalents = pgTable(
 /**
  * One reusable location. A talent settles who is on camera; a scene settles
  * where they are, which is otherwise re-invented by the model on every clip.
- * Each row holds the views it has been drawn from so far, so a location that
- * loses one viewpoint is still usable with the ones that landed.
+ * Like a talent, it is held as one sheet of panels rather than a set of
+ * separate photographs.
  */
 export const ugcScenes = pgTable(
   "ugc_scenes",
@@ -216,8 +215,9 @@ export const ugcScenes = pgTable(
       .$type<string[]>()
       .notNull()
       .default([]),
-    views: jsonb("views").$type<SceneView[]>().notNull().default([]),
-    // Expanded location prompt every view is drawn from.
+    /** The multi-panel reference sheet, once it has been drawn. */
+    sheetUrl: text("sheetUrl"),
+    // Expanded location prompt the sheet is drawn from.
     prompt: text("prompt"),
     status: ugcSceneStatusEnum("status").notNull().default("generating"),
     archived: boolean("archived").notNull().default(false),

@@ -1,12 +1,7 @@
 import { CLIP_SPEC, DEFAULT_VIDEO_SETTINGS } from "./constants";
-import type {
-  SceneAngle,
-  TalentAngle,
-  VideoAspectRatio,
-  VideoMode,
-} from "./constants";
+import type { VideoAspectRatio, VideoMode } from "./constants";
 import { TEMPLATE_BRIEFS } from "./templates";
-import type { ProductFacts, ReferenceView, ScriptBeat } from "./types";
+import type { ProductFacts, ScriptBeat } from "./types";
 import type { ScriptTemplate } from "./constants";
 import type { ClipStorage } from "./storage";
 
@@ -49,26 +44,22 @@ export function renderSubjectFor(input: {
 }
 
 /**
- * How much of a subject reaches one request.
- *
- * Views are stored in the order they are drawn, which is also their order of
- * importance, so the first two are the ones worth sending. More would only
- * crowd out the rest of the reference set, which the provider caps anyway.
- */
-export function referenceViewUrls(
-  subject: { views: ReferenceView[] } | null | undefined,
-  limit = 2,
-): string[] {
-  return (subject?.views ?? []).slice(0, limit).map((view) => view.imageUrl);
-}
-
-/**
  * What the attached photographs are for. A listing photo is a studio backdrop
  * with props and printed marketing text, and a model handed it without this
  * line rebuilds that scene instead of the one the script asked for.
  */
 const EVIDENCE_ONLY =
   "Any attached product photo is evidence of the product's true colour, finish, proportions, and label text only. Do not reproduce its background, surface, props, packaging shots, or any text printed into the photo.";
+
+/**
+ * What an attached reference sheet is for.
+ *
+ * A talent and a scene arrive as one image divided into panels. Without this
+ * line a model reads that grid as the composition it was asked for and draws
+ * the panels, the gutters, and the plain studio ground into the clip.
+ */
+const SHEET_NOT_A_LAYOUT =
+  "Any attached reference sheet is a grid of panels showing one person or one place from several angles. Use it only to match appearance, materials, and light. Never reproduce its panel grid, its gutters, its plain studio ground, or its layout: the generated image is a single continuous photograph.";
 
 function frameDescription(aspectRatio: VideoAspectRatio): string {
   return `${aspectRatio === "9:16" ? "Portrait" : "Landscape"} ${aspectRatio}`;
@@ -81,7 +72,7 @@ function frameDescription(aspectRatio: VideoAspectRatio): string {
  */
 function settingLine(subject: RenderSubject): string {
   return subject.scenePrompt
-    ? `Setting — compose this frame inside the location described here, matching the attached location reference images for layout, materials, and light:\n${subject.scenePrompt}`
+    ? `Setting — compose this frame inside the location described here, matching the attached location reference sheet for layout, materials, and light:\n${subject.scenePrompt}`
     : `Setting: an ordinary home or street scene that reads as ${subject.market}.`;
 }
 
@@ -106,9 +97,10 @@ export function buildCoverPrompt(
       ? `This frame only: ${firstBeat.shot}. ${firstBeat.action}. Camera: ${firstBeat.camera ?? "natural handheld phone framing"}.`
       : "",
     subject.talentPrompt
-      ? `Performer: ${subject.talentPrompt}. Match the supplied reference image.`
+      ? `Performer: ${subject.talentPrompt}. Match the supplied reference sheet.`
       : "Product-led frame with hands only, no recognisable face.",
     settingLine(subject),
+    SHEET_NOT_A_LAYOUT,
     EVIDENCE_ONLY,
     "No added on-screen text, subtitles, interface overlays, or watermarks. Preserve authentic branding and label text on the product itself.",
   ]
@@ -138,11 +130,12 @@ export function buildFramePrompt(
     `Action: ${beat.action}`,
     `Camera: ${beat.camera ?? "natural handheld phone framing"}`,
     subject.talentPrompt
-      ? `Performer: ${subject.talentPrompt}. Match the supplied reference image exactly.`
+      ? `Performer: ${subject.talentPrompt}. Match the supplied reference sheet exactly.`
       : "Product-led frame with hands only, no recognisable face.",
     // The production direction already carries a location of its own, so it is
     // only restated when a scene was chosen and has to win.
     productionPrompt && !subject.scenePrompt ? "" : settingLine(subject),
+    SHEET_NOT_A_LAYOUT,
     EVIDENCE_ONLY,
     "No added on-screen text, subtitles, interface overlays, or watermarks. Preserve authentic branding and label text on the product itself.",
   ]
@@ -209,6 +202,7 @@ export function buildVideoPrompt(
       ? `The clip stays in this one place from first frame to last: ${fitCharacters(subject.scenePrompt, SUBJECT_PROMPT_LIMIT)}`
       : "",
     "The reference images begin with the approved key frames for this clip: match their performer, product, wardrobe, location, and lighting exactly.",
+    SHEET_NOT_A_LAYOUT,
     EVIDENCE_ONLY,
     "Beats:",
     "The approved beat list below overrides any conflicting timing, action, camera, or dialogue wording inside the production direction.",
@@ -322,84 +316,93 @@ export async function archiveSubtitleTrack(input: {
 }
 
 /**
- * How each viewpoint of a scene is framed. The three answer different
- * questions about the same place: where it is, where a person stands in it,
- * and what a product is set down on.
+ * What every reference sheet has in common.
+ *
+ * A sheet is one image divided into panels, not a collage and not a scene: the
+ * panels share one subject, one light, and one plain ground, and nothing is
+ * written on them. Printed labels would be reproduced by the models that are
+ * later handed this sheet, which is how caption text ends up baked into a
+ * finished clip.
  */
-const SCENE_VIEW_FRAMING: Record<SceneAngle, string> = {
-  establishing:
-    "Wide establishing shot of the whole space from its natural entrance, camera at chest height, taking in the floor, the far wall, and the main light source so the layout reads at a glance.",
-  eye_level:
-    "Eye-level shot from where a person would stand and talk in this place, camera at about 1.6 metres, framed on the part of the space that would be behind them, at a natural conversational distance.",
-  detail:
-    "Close shot of the surface a small object would be set down on in this place, camera low and near, shallow depth of field, showing the material and the everyday objects immediately around it.",
-};
+const SHEET_RULES = [
+  "Draw this as one single image divided into clean rectangular panels of equal size, edge to edge, with thin even gutters and no overlap between panels.",
+  "Every panel shows the same subject under the same lighting against the same plain neutral ground. Nothing changes between panels except what each panel is specified to show.",
+  "No text, no letters, no numbers, no labels, no captions, no watermark, no logo, and no arrows anywhere in the image.",
+  "Photorealistic throughout. No illustration, no sketch lines, no collage edges, no drop shadows between panels.",
+];
 
 /**
- * One viewpoint of a location.
- *
- * The location prompt is reused verbatim so the place cannot drift, and the
- * framing is restated after it because framing is the one thing being
- * overridden — the location prompt describes a viewpoint of its own. Views
- * after the first take the earlier ones as references, which is what makes
- * three photographs read as one room rather than three rooms.
+ * The panels of a talent sheet. One photograph settles a face and nothing
+ * else: it cannot say how a garment falls on this person, what their head
+ * looks like turned, or how their hands and hair read up close. Four panels in
+ * one square image answer all four questions at once, and because they are
+ * drawn together the person cannot drift between them.
  */
-export function buildSceneViewPrompt(
-  locationPrompt: string,
-  angle: SceneAngle,
+const TALENT_SHEET_PANELS = [
+  "Top left: head-and-shoulders portrait, face square to camera, eyes to camera, neutral expression.",
+  "Top right: the same head and shoulders turned about forty-five degrees away from camera, eyes to camera, so the structure of the face reads from the side as well as the front.",
+  "Bottom left: the whole figure from head to feet, both shoes fully visible, standing relaxed with weight on one leg and arms at the sides, face to camera, the complete outfit in frame.",
+  "Bottom right: close detail of the cut and texture of the hair and of the hands, with any jewellery or accessory this person wears, near enough to read skin texture and fabric weave.",
+];
+
+/**
+ * The panels of a scene sheet. A location is not one photograph: the wide
+ * shot settles the space, the eye-level shot settles where a person stands in
+ * it, and the detail shot settles the surface a product is set down on.
+ */
+const SCENE_SHEET_PANELS = [
+  "Top half, spanning the full width: wide establishing shot of the whole space from its natural entrance, camera at chest height, taking in the floor, the far wall, and the main light source so the layout reads at a glance.",
+  "Bottom left: eye-level shot from where a person would stand and talk in this place, camera at about 1.6 metres, framed on the part of the space that would be behind them.",
+  "Bottom right: close shot of the surface a small object would be set down on here, camera low and near, showing the material and the everyday objects immediately around it.",
+];
+
+/**
+ * One talent reference sheet.
+ *
+ * The identity prompt is reused verbatim so the face and wardrobe cannot
+ * drift, and the panel layout is stated after it because framing is the one
+ * thing being overridden — the identity prompt describes a single viewpoint of
+ * its own.
+ */
+export function buildTalentSheetPrompt(
+  identityPrompt: string,
   hasReference: boolean,
 ): string {
   return [
-    "Photograph of the place described below, as it is, with nobody in it.",
-    `Location to reproduce:\n${locationPrompt}`,
-    `This framing overrides every viewpoint, camera height, and crop named above: ${SCENE_VIEW_FRAMING[angle]}`,
+    "A photographic character reference sheet of one adult person, laid out as a two-by-two grid of four panels in a square image.",
+    `Identity, wardrobe, and appearance to reproduce in every panel:\n${identityPrompt}`,
+    "This layout overrides every crop, camera height, and viewpoint named above:",
+    ...TALENT_SHEET_PANELS,
     hasReference
-      ? "The attached images are other photographs of this same place. The layout, materials, fittings, colours, light direction, and time of day must match them exactly; only the viewpoint changes."
+      ? "The attached image shows this same person. Facial identity, facial proportions, complexion, eyes, hair, and the colour, cut, and length of every garment must match it exactly."
       : "",
-    "No people, no hands, no pets, no products, no packages, no logos, and no branded objects anywhere in the frame.",
-    "Natural light consistent with the description. No text overlay, no watermark, no fisheye distortion, no impossible architecture.",
+    ...SHEET_RULES,
+    "Both hands empty in every panel. No products, props, packages, devices, bags, or branded objects anywhere in the image.",
+    "Even neutral studio light, the subject sharp and unobstructed. No beauty filter, no plastic skin, no anatomical errors.",
   ]
     .filter(Boolean)
     .join("\n");
 }
 
 /**
- * How each viewpoint of a talent is framed. The portrait is not here: it is
- * the identity prompt itself, which already describes its own viewpoint and
- * crop, and overriding those would throw away the phone-camera framing that
- * makes the person read as real. Every later view overrides it deliberately.
+ * One scene reference sheet, built the same way: the location prompt verbatim,
+ * then the layout that overrides the viewpoint it described.
  */
-const TALENT_VIEW_FRAMING: Record<Exclude<TalentAngle, "portrait">, string> = {
-  full_body:
-    "Photograph the whole figure from head to feet, both shoes fully visible, with clear space above the head and below the feet. Place the camera at chest height and far enough back that the entire body fits without distortion. Natural relaxed standing pose, weight on one leg, arms at the sides, face to camera.",
-  three_quarter:
-    "Waist-up photograph with the head and shoulders turned about forty-five degrees away from the camera, eyes to camera. Camera at eye height at a natural conversational distance, so the structure of the face reads from the side as well as the front.",
-  detail:
-    "Close photograph of the details that identify this person: the cut and texture of their hair, their hands, and any jewellery or accessory they wear. Camera near, shallow depth of field, even light, skin texture and fabric weave clearly visible. The face may be partly out of frame.",
-};
-
-/**
- * One viewpoint of a talent.
- *
- * The identity prompt is reused verbatim so the face and wardrobe cannot
- * drift, and the framing is restated after it because framing is the one thing
- * being overridden. Views after the first take the earlier ones as references,
- * which is what keeps four photographs on one person.
- */
-export function buildTalentViewPrompt(
-  identityPrompt: string,
-  angle: Exclude<TalentAngle, "portrait">,
+export function buildSceneSheetPrompt(
+  locationPrompt: string,
   hasReference: boolean,
 ): string {
   return [
-    "Photograph of the person described below.",
-    `Identity, wardrobe, and setting to reproduce:\n${identityPrompt}`,
-    `This framing overrides every crop, camera height, and viewpoint named above: ${TALENT_VIEW_FRAMING[angle]}`,
+    "A photographic location reference sheet of one place, laid out as three panels in a square image: one wide panel across the top half, two panels side by side below it.",
+    `Location to reproduce in every panel:\n${locationPrompt}`,
+    "This layout overrides every viewpoint, camera height, and crop named above:",
+    ...SCENE_SHEET_PANELS,
     hasReference
-      ? "The attached images are other photographs of this same person. Facial identity, facial proportions, complexion, eyes, hair, and the colour, cut, and length of every garment must match them exactly; only the viewpoint changes."
+      ? "The attached images show this same place. The layout, materials, fittings, colours, light direction, and time of day must match them exactly; only the viewpoint changes between panels."
       : "",
-    "Both hands empty. No products, props, packages, devices, bags, logos, or branded objects anywhere in the frame.",
-    "Plain uncluttered setting, even light, the subject sharp and unobstructed. No text overlay, no watermark, no beauty filter, no anatomical errors.",
+    ...SHEET_RULES,
+    "No people, no hands, no pets, no products, no packages, and no branded objects anywhere in the image.",
+    "Natural light consistent with the description. No fisheye distortion, no HDR halo, no impossible architecture.",
   ]
     .filter(Boolean)
     .join("\n");

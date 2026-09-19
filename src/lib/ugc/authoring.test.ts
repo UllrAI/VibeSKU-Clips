@@ -151,7 +151,8 @@ describe("composeTalentImagePrompt", () => {
       messages: { content: { type: string; text?: string }[] }[];
     };
     const content = request.messages[0]!.content;
-    expect(request.system).toContain("camera type");
+    // The identity describes the person; the sheet decides how they are shot.
+    expect(request.system).toContain("Do not specify a camera");
     expect(request.system).toContain("facial identity");
     expect(request.system).toContain("reusable identity reference");
     expect(request.system).toContain("both hands visibly empty");

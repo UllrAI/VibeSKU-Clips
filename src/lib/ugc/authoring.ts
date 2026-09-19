@@ -35,7 +35,13 @@ export interface ComposeTalentImagePromptInput {
   referenceImageUrls: string[];
 }
 
-/** Turns a short operator brief into one complete, shootable portrait prompt. */
+/**
+ * Turns a short operator brief into one complete description of a person.
+ *
+ * This is the identity, not a photograph of it: the reference sheet fixes the
+ * viewpoints, so a camera angle or a crop written in here would only be
+ * something the sheet has to override.
+ */
 export async function composeTalentImagePrompt(
   input: ComposeTalentImagePromptInput,
 ): Promise<string> {
@@ -43,16 +49,17 @@ export async function composeTalentImagePrompt(
     model: getAuthoringModel(),
     schema: talentImagePromptSchema,
     system: [
-      "You write one production-ready prompt for a photorealistic adult talent reference image.",
-      "This image is a reusable identity reference, never a product scene or an advertisement. Show only the person and an ordinary unobtrusive environment.",
+      "You describe one photorealistic adult person for a reusable identity reference sheet.",
+      "This is an identity reference, never a product scene or an advertisement. Only the person is described; they will be drawn against a plain neutral ground.",
       "Preserve every explicit fact in the operator brief. Expand missing photographic detail coherently without changing the requested identity, clothing, setting, or mood.",
       "The person must not hold, touch, present, point to, look at, or interact with any product, package, device, prop, tool, container, food, drink, bag, or branded object. Keep both hands visibly empty and relaxed, or place them naturally outside the crop.",
       "If the operator brief or a reference image mentions or shows an object, use it only as context for the person's identity and omit the object completely from the generated scene. Never invent a generic substitute such as 'a small digital product'.",
       "Write in the same language as the operator brief.",
-      "Describe camera type, selfie or photographer viewpoint, camera height and angle, crop, facial structure, complexion, eyes, lips, hair, complete modest outfit, accessories, pose, setting, background depth, light direction, colour temperature, expression, attitude, skin texture, and phone-camera realism.",
+      "Describe the person rather than a photograph of them: age, build and height, facial structure, complexion, eyes, lips, the colour, cut, and texture of the hair, a complete modest outfit with its colours and materials, footwear, accessories, bearing, expression, attitude, and skin texture.",
+      "Do not specify a camera, a viewpoint, a camera height, a crop, or a pose. The reference sheet fixes all of those, and anything written here would only have to be overridden.",
       "Finish with positive identity and wardrobe locks plus concise negative constraints. The subject must be an adult. Explicitly include empty hands and no products, props, packages, devices, logos, or branded objects. Also exclude swimwear, exposed midriff, sexualised pose, text overlay, watermark, beauty filter, plastic skin, and anatomical errors.",
       input.referenceImageUrls.length
-        ? "Reference images are attached. State that facial identity, facial proportions, complexion, eyes, and hair must match the reference exactly; use the operator brief for intentional wardrobe or setting changes. Do not reproduce any item held by the person in a reference image."
+        ? "Reference images are attached. State that facial identity, facial proportions, complexion, eyes, and hair must match the reference exactly; use the operator brief for intentional wardrobe changes. Do not reproduce any item held by the person in a reference image."
         : "No reference image is attached. Define one coherent fictional adult identity from the operator brief.",
       "Return only the final image prompt in `prompt`, with no explanation or markdown.",
       "Before returning, audit the prompt sentence by sentence and remove every product interaction, held item, display gesture, and branded object. Identity and appearance are the only subject matter.",
@@ -109,13 +116,14 @@ export async function composeSceneImagePrompt(
     model: getAuthoringModel(),
     schema: sceneImagePromptSchema,
     system: [
-      "You write one production-ready prompt for a photorealistic location reference image.",
-      "This image is a reusable set reference: an empty place, photographed as it is. It is never an advertisement and never a scene with a story happening in it.",
+      "You describe one photorealistic place for a reusable location reference sheet.",
+      "This is a set reference: an empty place, described as it is. It is never an advertisement and never a scene with a story happening in it.",
       "No people, no hands, no pets, and no product, package, device, or branded object anywhere in the frame. The place must stay recognisable and usable on its own.",
       "Preserve every explicit fact in the operator brief. Expand missing detail coherently without changing the requested location, period, style, or mood.",
       "Write in the same language as the operator brief.",
       "Describe the type of place, the architecture and layout, wall, floor and surface materials, furniture and fittings, the everyday objects that belong there, what is visible through any window, the depth of the space, the direction and quality of the light, the time of day, the weather where it applies, the colour temperature, and the palette.",
-      "Fix the details that must not drift between photographs of this place: the layout, the materials, the light direction, and the time of day.",
+      "Fix the details that must not drift between viewpoints of this place: the layout, the materials, the light direction, and the time of day.",
+      "Do not specify a camera, a viewpoint, a camera height, or a crop. The reference sheet fixes those.",
       "Finish with concise negative constraints: no people, no products, no logos, no text overlay, no watermark, no fisheye distortion, no HDR halo, no impossible architecture.",
       input.referenceImageUrls.length
         ? "Reference images are attached. State that the layout, materials, fittings, and light of the place must match the references exactly; use the operator brief for intentional changes. Omit any person or product visible in a reference image."
