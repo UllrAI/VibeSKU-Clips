@@ -15,6 +15,14 @@
 
 ## 数据库
 
+### 同一批迁移里不能直接使用刚加入的 PostgreSQL 枚举值
+
+**现象**：本地 PostgreSQL 18 和已有数据库迁移正常，但 CI 的 PostgreSQL 16 从空库执行完整迁移历史时，在引用早期迁移新增的枚举值处报 `unsafe use of new value`（`55P04`）。
+
+**原因**：Drizzle 会把所有尚未应用的迁移放进同一事务。PostgreSQL 16 要求 `ALTER TYPE ... ADD VALUE` 先提交，后续语句才能把该值作为枚举字面量使用；已有数据库分批应用过历史迁移，因此不会触发，本地较新的 PostgreSQL 行为也可能不同。
+
+**正确做法**：必须兼容从空库一次性执行全部历史。只用于筛选旧数据时，把枚举列显式转成文本再比较，例如 `"status"::text IN ('review', 'needs_input')`；需要写入新值时则拆成可在独立发布后执行的迁移。用 CI 相同的 PostgreSQL 主版本验证全量迁移。
+
 ### JSONB 取值参与字符串拼接时必须显式加括号
 
 **现象**：迁移里写 `'Previous audience: ' || "brief"->>'audience'`，数据本身是合法 JSONB，却报 `invalid input syntax for type json`，并指出 `Token "Previous" is invalid`。

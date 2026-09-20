@@ -40,7 +40,7 @@ WHERE "facts" IS NOT NULL;--> statement-breakpoint
 
 UPDATE "ugc_products"
 SET "status" = 'ready'
-WHERE "status" IN ('review', 'needs_input')
+WHERE "status"::text IN ('review', 'needs_input')
   AND "facts" IS NOT NULL
   AND nullif("facts"->>'overview', '') IS NOT NULL
   AND jsonb_array_length("images") > 0;
