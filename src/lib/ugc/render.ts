@@ -92,6 +92,41 @@ export function videoProductBudget(
 }
 
 /**
+ * The complete reference set handed to the video provider.
+ *
+ * An accepted storyboard already combines the product, performer, place, and
+ * lighting into the exact images the clip should follow. Adding their source
+ * photos again gives the provider competing visual instructions, so a
+ * storyboard video receives only its frames. A one-take video has only its
+ * drawn opening frame and still needs the source evidence beside it.
+ */
+export function videoReferenceUrls(input: {
+  videoMode: VideoMode;
+  frameUrls: Array<string | null>;
+  product: {
+    images: string[];
+    facts: Pick<ProductFacts, "keyImages"> | null;
+  };
+  talentSheetUrl: string | null | undefined;
+}): string[] {
+  const frames = input.frameUrls.filter((url): url is string => Boolean(url));
+  if (input.videoMode === "storyboard") {
+    return frames.slice(0, PRISM_MEDIA.maxVideoReferences);
+  }
+
+  return [
+    ...frames,
+    ...productReferenceUrls(
+      input.product,
+      videoProductBudget(frames.length, Boolean(input.talentSheetUrl)),
+    ),
+    input.talentSheetUrl,
+  ]
+    .filter((url): url is string => Boolean(url))
+    .slice(0, PRISM_MEDIA.maxVideoReferences);
+}
+
+/**
  * What an attached reference sheet is for.
  *
  * A talent and a scene arrive as one image divided into panels. Without this

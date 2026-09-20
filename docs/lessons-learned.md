@@ -103,6 +103,14 @@
 
 ## 后台任务
 
+### 分镜编辑校验不能套用短文本字段上限
+
+**现象**：直接重画分镜正常，但只要打开分镜、修改内容再重画，就提示检查填写内容。原分镜看起来也没有异常。
+
+**原因**：分镜记录保存的是完整图片 prompt，包含制作指导、人物、场景和画面规则，本来就可能超过 2000 字符。未修改时客户端省略 prompt 参数，正好绕过校验；修改一个字后会把完整 prompt 传回，撞上按普通输入框设置的 2000 字符上限。
+
+**正确做法**：编辑完整生成 prompt 的 action 和输入框必须使用图片 provider 的真实上限，不能按人工简短描述设限。当前统一使用 Prism 的 32000 字符限制。
+
 ### Worker 里不能 import `server-only`,也不能 import `@/env`
 
 **现象**:UGC 渲染 handler 在 Next 里跑得好好的,进了独立 Worker 进程直接崩:要么是 `server-only` 抛出的 "This module cannot be imported from a Client Component",要么是 `@/env` 因为缺少 `NEXT_PUBLIC_*` 之类的变量校验失败。
@@ -152,6 +160,14 @@
 ---
 
 ## Next.js
+
+### 开发环境的 Server Function 日志会打印完整参数
+
+**现象**：调用 `regenerateWorkFrame` 后，开发终端把几千到几万字符的图片 prompt 全部打印出来，请求日志被一条 action 淹没。
+
+**原因**：Next.js 16 默认开启 `logging.serverFunctions`，每次调用都会记录函数名、全部参数和耗时；这个配置只有整体开关，没有按函数或参数脱敏的能力。
+
+**正确做法**：当 Server Function 参数包含长 prompt 或其他不适合进入终端的内容时，在 `next.config.ts` 设置 `logging.serverFunctions: false`，业务进度继续使用不含 prompt 的结构化任务日志。
 
 ### 配 `deploymentId` 会削弱 Next 自带的 skew 检测
 

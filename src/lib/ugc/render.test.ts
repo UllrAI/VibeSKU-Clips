@@ -12,6 +12,7 @@ import {
   productReferenceUrls,
   renderSubjectFor,
   videoProductBudget,
+  videoReferenceUrls,
 } from "./render";
 import type { ScriptBeat } from "./types";
 
@@ -557,5 +558,33 @@ describe("video reference budget", () => {
     expect(videoProductBudget(PRISM_MEDIA.maxVideoReferences + 2, true)).toBe(
       0,
     );
+  });
+
+  it("sends only accepted frames for a storyboard video", () => {
+    expect(
+      videoReferenceUrls({
+        videoMode: "storyboard",
+        frameUrls: ["frame-1.jpg", null, "frame-2.jpg"],
+        product: {
+          images: ["product-1.jpg", "product-2.jpg"],
+          facts: { keyImages: [1] },
+        },
+        talentSheetUrl: "talent.jpg",
+      }),
+    ).toEqual(["frame-1.jpg", "frame-2.jpg"]);
+  });
+
+  it("keeps source evidence for a one-take video", () => {
+    expect(
+      videoReferenceUrls({
+        videoMode: "one_take",
+        frameUrls: ["cover.jpg"],
+        product: {
+          images: ["product-1.jpg", "product-2.jpg"],
+          facts: { keyImages: [1] },
+        },
+        talentSheetUrl: "talent.jpg",
+      }),
+    ).toEqual(["cover.jpg", "product-2.jpg", "product-1.jpg", "talent.jpg"]);
   });
 });

@@ -28,6 +28,7 @@ import {
   VIDEO_MODES,
   VIDEO_RESOLUTIONS,
 } from "./constants";
+import { framePromptSchema } from "./frame-prompt";
 import { isActiveVideoConfiguration } from "./media/video-provider";
 import { talentScopeKey, workScopeKey } from "./scope";
 import { enqueueWorkScript } from "./work-script-queue";
@@ -559,8 +560,6 @@ export async function startWorkStoryboard(
   revalidatePath(`/dashboard/works/${workId}`);
   return { ok: true, id: workId };
 }
-
-const framePromptSchema = z.string().trim().min(1).max(2000);
 
 /** Redraws one frame, optionally from reworded direction. */
 export async function regenerateWorkFrame(

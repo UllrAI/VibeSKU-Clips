@@ -160,4 +160,6 @@ export const PRISM_MEDIA = {
   maxVideoReferences: 9,
   /** minimax-h3 refuses a longer prompt outright, with an HTTP 422. */
   maxVideoPromptCharacters: 10_000,
+  /** Prism image generation refuses prompts beyond this size. */
+  maxImagePromptCharacters: 32_000,
 } as const;

@@ -24,7 +24,7 @@ import {
   startWorkVideo,
 } from "@/lib/ugc/work-actions";
 import type { WorkFrameRow } from "@/lib/ugc/works";
-import type { VideoAspectRatio } from "@/lib/ugc/constants";
+import { PRISM_MEDIA, type VideoAspectRatio } from "@/lib/ugc/constants";
 import { cn } from "@/lib/utils";
 import { StepCard } from "./step-card";
 
@@ -195,6 +195,7 @@ export function StoryboardStep({
               id="work-frame-prompt"
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
+              maxLength={PRISM_MEDIA.maxImagePromptCharacters}
               className="field-sizing-fixed h-[50vh] resize-none overflow-y-auto"
             />
           </div>

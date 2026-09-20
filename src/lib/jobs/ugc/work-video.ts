@@ -37,9 +37,9 @@ import {
   buildSubtitleTrack,
   buildVideoPrompt,
   productReferenceUrls,
-  videoProductBudget,
   renderSubjectFor,
   type RenderSubject,
+  videoReferenceUrls,
 } from "@/lib/ugc/render";
 import {
   createClipStorage,
@@ -230,10 +230,9 @@ async function ensureCoverFrame(input: {
 /**
  * Renders the selected workflow into the finished clip.
  *
- * The frames go to the video model as a reference set alongside the product
- * and talent shots — H3 reads them together rather than treating one as a
- * strict first frame, which is what holds the face and the object steady for
- * the full fifteen seconds. The result lands in `ugc_clips`, where the work
+ * A storyboard's accepted frames are the complete visual reference set. A
+ * one-take work has only one drawn opening frame, so its product and talent
+ * evidence travel beside it. The result lands in `ugc_clips`, where the work
  * list can preview and download it directly.
  */
 export const workVideoJob = defineJob(
@@ -347,18 +346,12 @@ export const workVideoJob = defineJob(
       const references = await resolveReferenceUrls(
         db,
         work.userId,
-        [
-          // The approved key frames come first: they are this clip. The
-          // product follows, ahead of the performer sheet, because its colour
-          // and label text are what a viewer checks against the listing --
-          // but only as far as the nine references reach.
-          ...frames.map((frame) => frame.imageUrl),
-          ...productReferenceUrls(
-            product,
-            videoProductBudget(frames.length, Boolean(talent?.sheetUrl)),
-          ),
-          talent?.sheetUrl,
-        ].filter((url): url is string => Boolean(url)),
+        videoReferenceUrls({
+          videoMode: work.videoMode,
+          frameUrls: frames.map((frame) => frame.imageUrl),
+          product,
+          talentSheetUrl: talent?.sheetUrl,
+        }),
       );
       const providerTaskId = await submitVideo({
         model: videoModel,

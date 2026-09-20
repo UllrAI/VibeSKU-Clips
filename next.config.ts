@@ -89,6 +89,10 @@ const nextConfig: NextConfig = {
   // the worker has not already logged, so they are dropped. Development only:
   // this has no effect on a production build.
   logging: {
+    // Next's development Server Function log includes every argument. Frame
+    // redraws pass a long image prompt, so keep those request bodies out of the
+    // terminal while retaining the worker's structured task progress logs.
+    serverFunctions: false,
     incomingRequests: {
       ignore: [/^\/api\/ugc\/works\/[^/]+\/state$/],
     },

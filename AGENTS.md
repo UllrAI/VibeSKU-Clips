@@ -192,10 +192,12 @@ Rules that are easy to break:
   frame is shown, so the operator's choice is the model's input. The product
   read marks which ones show the product rather than a scene it appears in
   (`facts.keyImages`), and `productReferenceUrls` puts those first. Video is
-  the tight one: the provider takes nine references in total and a storyboard
-  work spends up to six on its own key frames, so `videoProductBudget` reserves
-  the performer sheet and gives the product what is left. Exceeding nine is not
-  reported — the tail is dropped silently.
+  the tight one: the provider takes nine references in total. A storyboard
+  video sends only its accepted key frames, because each frame already combines
+  the product, performer, scene, and lighting; their source images would compete
+  with that reviewed result. A one-take video sends its opening frame, reserves
+  the performer sheet, and gives the remaining slots to product evidence.
+  Exceeding nine is not reported — the tail is dropped silently.
 - **A format is its shot vocabulary.** `TEMPLATE_BRIEFS[...].shots` reaches the
   writing model and is what separates a thing held in the hand from a thing
   worn on the body. A new format without it frames like every other one.
