@@ -2,19 +2,17 @@ import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 import { loginAs } from "./helpers/auth";
 
-test("imports a product URL and opens the editable review page", async ({
+test("creates a product from a URL with the shared product fields", async ({
   page,
 }) => {
   await loginAs(page, "user");
   await page.goto("/dashboard/products");
 
   await page.getByRole("button", { name: "Add product" }).click();
-  await expect(page.getByRole("tab", { name: "Enter manually" })).toBeVisible();
-  await page.getByRole("tab", { name: "Import from URL" }).click();
   await page
-    .getByLabel("Product page URL")
+    .getByLabel("Reference link")
     .fill("https://example.com/products/ceramic-pour-over-kettle");
-  await page.getByRole("button", { name: "Import and review" }).click();
+  await page.getByRole("button", { name: "Save and read" }).click();
 
   await expect(page).toHaveURL(/\/dashboard\/products\/[0-9a-f-]{36}$/);
   await expect(
@@ -25,16 +23,9 @@ test("imports a product URL and opens the editable review page", async ({
       name: "https://example.com/products/ceramic-pour-over-kettle",
     }),
   ).toBeVisible();
-
-  await page.getByRole("button", { name: "Edit material" }).click();
-  await page.getByLabel("Product name").fill("Edited ceramic kettle");
-  await page.getByRole("button", { name: "Save" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Edited ceramic kettle" }),
-  ).toBeVisible();
 });
 
-test("keeps extracted facts pending until the operator confirms them", async ({
+test("makes parsed facts available without a separate confirmation", async ({
   page,
 }) => {
   await loginAs(page, "user");
@@ -45,17 +36,15 @@ test("keeps extracted facts pending until the operator confirms them", async ({
       insert into ugc_products ("userId", name, images, facts, status)
       values (
         'e2e-user',
-        'Imported review product',
-        '[]'::jsonb,
+        'Imported ready product',
+        ${JSON.stringify(["https://example.com/product.jpg"])}::jsonb,
         ${JSON.stringify({
-          summary: "A product imported from a public product page.",
-          appearance: "Matte white package.",
-          specs: ["250 ml"],
-          sellingPoints: ["Compact package"],
-          scenarios: ["Daily use"],
+          overview:
+            "A product imported from a public product page in a matte white 250 ml package.",
+          highlights: ["Compact package", "Daily use"],
           sources: ["product page"],
         })}::jsonb,
-        'review'
+        'ready'
       )
       returning id
     `;
@@ -65,19 +54,13 @@ test("keeps extracted facts pending until the operator confirms them", async ({
   }
 
   await page.goto(`/dashboard/products/${productId}`);
-  await expect(page.getByText("Needs review", { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: "Make a clip from this" }),
-  ).toBeHidden();
-
-  await page.getByRole("button", { name: "Looks right" }).click();
   await expect(page.getByText("Ready", { exact: true })).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Make a clip from this" }),
   ).toBeVisible();
 });
 
-test("keeps editing, reanalysis, and URL import as separate operations", async ({
+test("keeps ready facts usable while changed material is queued for parsing", async ({
   page,
 }) => {
   await loginAs(page, "user");
@@ -96,11 +79,8 @@ test("keeps editing, reanalysis, and URL import as separate operations", async (
         'https://example.com/products/operation-boundaries',
         ${JSON.stringify([removedImageUrl, keptImageUrl])}::jsonb,
         ${JSON.stringify({
-          summary: "A saved product.",
-          appearance: "A saved product image.",
-          specs: [],
-          sellingPoints: ["Saved material"],
-          scenarios: [],
+          overview: "A saved product with a saved product image.",
+          highlights: ["Saved material"],
           sources: ["product page"],
         })}::jsonb,
         'ready'
@@ -118,32 +98,10 @@ test("keeps editing, reanalysis, and URL import as separate operations", async (
       .first()
       .click();
     await editDialog.getByRole("button", { name: "Save" }).click();
-    await expect(page.getByText("Needs review", { exact: true })).toBeVisible();
-
-    await page.getByRole("button", { name: "Import again" }).click();
-    const importDialog = page.getByRole("dialog");
+    await expect(page.getByText("Ready", { exact: true })).toBeVisible();
     await expect(
-      importDialog.getByText(/page images you removed may return/i),
+      page.getByRole("link", { name: "Make a clip from this" }),
     ).toBeVisible();
-    await importDialog.getByRole("button", { name: "Cancel" }).click();
-
-    await page.getByRole("button", { name: "Read again" }).click();
-    const analysisDialog = page.getByRole("dialog");
-    await expect(
-      analysisDialog.getByText(/No images will be added or restored/i),
-    ).toBeVisible();
-    await expect(analysisDialog.getByText("Product images")).toBeHidden();
-    await analysisDialog
-      .getByLabel("Feedback or added context")
-      .fill("Keep the saved material unchanged.");
-    await analysisDialog.getByRole("button", { name: "Read again" }).click();
-
-    // The dialog closes only after reviseProductAnalysis has returned ok, and
-    // that action awaits createBackgroundTask before returning — so waiting for
-    // it to go is what guarantees the task_runs row below already exists.
-    // Querying straight after the click raced the server action and read an
-    // empty result (`run` undefined) every time.
-    await expect(analysisDialog).toBeHidden();
 
     const [run] = await sql`
       select input
@@ -154,7 +112,6 @@ test("keeps editing, reanalysis, and URL import as separate operations", async (
       limit 1
     `;
     expect(run.input.importMaterial).toBeUndefined();
-    expect(run.input.feedback).toBe("Keep the saved material unchanged.");
 
     const [saved] = await sql`
       select images

@@ -3,10 +3,10 @@
 import { useLiveState } from "@/hooks/use-live-state";
 import type { ProductState } from "@/lib/ugc/queries";
 
-/** Reading is live until facts land, the reader gives up, or nobody takes it. */
+/** A first read and a refresh both stay live until their task settles. */
 function isProductLive(state: ProductState): boolean {
   if (state.run.failed || state.run.stalled) return false;
-  return state.status === "draft" || state.status === "analyzing";
+  return ["queued", "running", "waiting"].includes(state.run.status);
 }
 
 /** Keeps the product page current while its material is being read. */

@@ -36,7 +36,7 @@ const beats: ScriptBeat[] = [
 
 const subject = {
   productName: "Cordless hand vacuum",
-  appearance: "A white handheld vacuum with a clear dust cup.",
+  productDescription: "A white handheld vacuum with a clear dust cup.",
   market: "US",
   locale: "en",
   template: "spokesperson" as const,
@@ -291,7 +291,7 @@ describe("a chosen scene", () => {
     expect(built.scenePrompt).toBe(location);
     // An empty expanded prompt falls through to what the operator typed.
     expect(built.talentPrompt).toBe("Mia");
-    expect(built.appearance).toBe("");
+    expect(built.productDescription).toBe("");
   });
 });
 

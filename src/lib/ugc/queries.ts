@@ -76,6 +76,8 @@ export async function getProductState(
       String(Boolean(row.facts)),
       String(run.failed),
       String(run.stalled),
+      run.status,
+      JSON.stringify(run.progress),
       row.updatedAt.toISOString(),
     ].join("|"),
   };

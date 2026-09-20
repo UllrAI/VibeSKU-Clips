@@ -15,13 +15,11 @@ describe("analyzeProduct", () => {
     const { analyzeProduct } = await import("./authoring");
     mockGenerateObject.mockResolvedValueOnce({
       object: {
-        summary: "summary",
-        appearance: "appearance",
-        specs: [],
-        sellingPoints: ["point"],
-        scenarios: [],
+        overview: "summary",
+        highlights: ["point"],
         sources: [],
-        missing: [],
+        warnings: [],
+        keyImages: [],
       },
     });
     const images = Array.from(
@@ -31,16 +29,12 @@ describe("analyzeProduct", () => {
 
     await analyzeProduct({
       name: "Night mask",
-      variant: "70 ml",
-      market: "US",
+      info: "70 ml night mask",
       imageUrls: images,
       feedback: "The second image is the back label.",
       previousFacts: {
-        summary: "old summary",
-        appearance: "old appearance",
-        specs: [],
-        sellingPoints: ["old point"],
-        scenarios: [],
+        overview: "old summary",
+        highlights: ["old point"],
         sources: ["uploaded image 1"],
       },
     });
@@ -53,7 +47,7 @@ describe("analyzeProduct", () => {
     expect(content.filter((part) => part.type === "text").at(-1)?.text).toBe(
       "Product reference image 8 of 8",
     );
-    expect(content[0]!.text).toContain("Variant: 70 ml");
+    expect(content[0]!.text).toContain("70 ml night mask");
     expect(content[0]!.text).toContain("Previous analysis to revise");
     expect(content[0]!.text).toContain("The second image is the back label.");
   });
@@ -99,11 +93,8 @@ describe("composeScript", () => {
     const result = await composeScript({
       productName: "Night mask",
       facts: {
-        summary: "A sleeping mask",
-        appearance: "Blue jar",
-        specs: ["70 ml"],
-        sellingPoints: ["Hydrating"],
-        scenarios: ["Bedtime"],
+        overview: "A sleeping mask in a blue 70 ml jar",
+        highlights: ["Hydrating", "For bedtime use"],
         sources: ["uploaded images"],
       },
       template: "spokesperson",

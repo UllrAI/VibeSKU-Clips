@@ -337,6 +337,20 @@
       "when": 1789831062420,
       "tag": "0047_lonely_chameleon",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1789838436790,
+      "tag": "0048_cooing_martin_li",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1789838456379,
+      "tag": "0049_strong_calypso",
+      "breakpoints": true
     }
   ]
 }

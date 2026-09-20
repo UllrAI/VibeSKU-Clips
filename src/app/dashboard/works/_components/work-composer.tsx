@@ -19,7 +19,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -40,7 +39,7 @@ import {
   selectableScenes,
   selectableTalents,
 } from "@/components/ugc/cast-fields";
-import { ImageField } from "@/components/ugc/image-field";
+import { ProductFields } from "@/components/ugc/product-fields";
 import {
   LOCALE_OPTIONS,
   MARKET_OPTIONS,
@@ -59,8 +58,12 @@ import type {
   VideoModelOption,
   VideoResolution,
 } from "@/lib/ugc/constants";
-import { createProduct, createProductFromUrl } from "@/lib/ugc/actions";
-import { MAX_PRODUCT_IMAGES } from "@/lib/ugc/constants";
+import { createProduct } from "@/lib/ugc/actions";
+import {
+  canCreateProduct,
+  EMPTY_PRODUCT_INPUT,
+  type ProductInput,
+} from "@/lib/ugc/product-input";
 import type { ProductRow, SceneRow, TalentRow } from "@/lib/ugc/queries";
 import { createWork } from "@/lib/ugc/work-actions";
 
@@ -91,14 +94,9 @@ export function WorkComposer({
   const [source, setSource] = useState<"library" | "new">(
     products.length > 0 ? "library" : "new",
   );
-  const [newProductMode, setNewProductMode] = useState<"manual" | "url">(
-    "manual",
-  );
   const [productId, setProductId] = useState(initialProductId ?? "");
-  const [name, setName] = useState("");
-  const [sourceUrl, setSourceUrl] = useState("");
-  const [variant, setVariant] = useState("");
-  const [images, setImages] = useState<string[]>([]);
+  const [newProduct, setNewProduct] =
+    useState<ProductInput>(EMPTY_PRODUCT_INPUT);
   const [creativeDirection, setCreativeDirection] = useState("");
   const [talentId, setTalentId] = useState(NO_TALENT);
   const [sceneId, setSceneId] = useState(NO_SCENE);
@@ -114,31 +112,14 @@ export function WorkComposer({
   const availableTalents = selectableTalents(talents);
   const availableScenes = selectableScenes(scenes);
   const ready =
-    source === "library"
-      ? Boolean(productId)
-      : newProductMode === "url"
-        ? sourceUrl.trim().length > 0
-        : name.trim().length > 0 &&
-          (sourceUrl.trim().length > 0 || images.length > 0);
+    source === "library" ? Boolean(productId) : canCreateProduct(newProduct);
 
   const start = () =>
     startTransition(async () => {
       let id = productId;
 
       if (source === "new") {
-        const created =
-          newProductMode === "url"
-            ? await createProductFromUrl({
-                sourceUrl: sourceUrl.trim(),
-                market,
-              })
-            : await createProduct({
-                name: name.trim(),
-                sourceUrl: sourceUrl.trim(),
-                variant: variant.trim(),
-                market,
-                images,
-              });
+        const created = await createProduct(newProduct);
         if (!created.ok || !created.id) {
           toast.error(t(actionMessageKey(created.code)));
           return;
@@ -235,7 +216,7 @@ export function WorkComposer({
                     <StatusBadge kind="product" status={chosen.status} />
                   </div>
                   <p className="text-muted-foreground line-clamp-2 text-xs">
-                    {chosen.facts?.summary ??
+                    {chosen.facts?.overview ??
                       chosen.issue ??
                       t("ugc_work_product_reading")}
                   </p>
@@ -245,81 +226,11 @@ export function WorkComposer({
           </TabsContent>
 
           <TabsContent value="new" className="mt-4 space-y-4">
-            <Tabs
-              value={newProductMode}
-              onValueChange={(value) =>
-                setNewProductMode(value as "manual" | "url")
-              }
-            >
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="manual">
-                  {t("ugc_product_create_manual_tab")}
-                </TabsTrigger>
-                <TabsTrigger value="url">
-                  {t("ugc_product_create_url_tab")}
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="manual" className="mt-4 space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="work-new-name">
-                      {t("ugc_product_name")}
-                    </Label>
-                    <Input
-                      id="work-new-name"
-                      value={name}
-                      onChange={(event) => setName(event.target.value)}
-                      placeholder={t("ugc_product_name_placeholder")}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="work-new-source">
-                      {t("ugc_product_source_url")}
-                    </Label>
-                    <Input
-                      id="work-new-source"
-                      type="url"
-                      inputMode="url"
-                      value={sourceUrl}
-                      onChange={(event) => setSourceUrl(event.target.value)}
-                      placeholder="https://"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="work-new-variant">
-                      {t("ugc_product_variant")}
-                    </Label>
-                    <Input
-                      id="work-new-variant"
-                      value={variant}
-                      onChange={(event) => setVariant(event.target.value)}
-                    />
-                  </div>
-                </div>
-                <ImageField
-                  value={images}
-                  onChange={setImages}
-                  maxFiles={MAX_PRODUCT_IMAGES}
-                  label={t("ugc_product_images")}
-                />
-              </TabsContent>
-              <TabsContent value="url" className="mt-4 space-y-2">
-                <Label htmlFor="work-new-import-url">
-                  {t("ugc_product_import_url")}
-                </Label>
-                <Input
-                  id="work-new-import-url"
-                  type="url"
-                  inputMode="url"
-                  value={sourceUrl}
-                  onChange={(event) => setSourceUrl(event.target.value)}
-                  placeholder="https://"
-                />
-                <p className="text-muted-foreground text-xs">
-                  {t("ugc_product_import_url_hint")}
-                </p>
-              </TabsContent>
-            </Tabs>
+            <ProductFields
+              idPrefix="work-new-product"
+              value={newProduct}
+              onChange={setNewProduct}
+            />
             <p className="text-muted-foreground text-xs">
               {t("ugc_work_new_product_hint")}
             </p>

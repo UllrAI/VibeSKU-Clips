@@ -128,14 +128,14 @@ pnpm stripe:sync-products
 
 Six durable jobs are registered in `src/lib/jobs/catalog.ts`:
 
-| Job                   | Handler                               | What it does                                                                                |
-| --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Imports source links through Firecrawl, extracts facts, then waits for review or more input |
-| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief into one identity, then photographs it from each angle in turn       |
-| `ugc.scene.generate`  | `src/lib/jobs/ugc/scene-generate.ts`  | Expands a scene brief into one place and draws its multi-panel reference sheet              |
-| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it  |
-| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, in order, each one shown the frame before it           |
-| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model          |
+| Job                   | Handler                               | What it does                                                                               |
+| --------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `ugc.product.ingest`  | `src/lib/jobs/ugc/product-ingest.ts`  | Imports source links through Firecrawl and extracts concise, immediately usable facts      |
+| `ugc.talent.generate` | `src/lib/jobs/ugc/talent-generate.ts` | Expands a talent brief into one identity, then photographs it from each angle in turn      |
+| `ugc.scene.generate`  | `src/lib/jobs/ugc/scene-generate.ts`  | Expands a scene brief into one place and draws its multi-panel reference sheet             |
+| `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it |
+| `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, in order, each one shown the frame before it          |
+| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model         |
 
 A **work** (`ugc_works`) runs one clip through `product -> script -> video` by
 default. Storyboard-guided works add a reviewed `storyboard` step before video.
@@ -147,10 +147,13 @@ from `task_runs` (`src/lib/ugc/run-state.ts`) and never spins indefinitely.
 The work composer asks for the product, talent, scene, format, generation mode, language and market in
 one card, and creates the product in place when it does not exist yet. Creating
 a work therefore starts the script immediately when the product has already
-been read; a product still being read stops the work on step one, where its
-extracted facts are confirmed before anything is spent on them. Those facts are
-editable on the product's own page (`/dashboard/products/[productId]`), and
-saving them is what marks the product `ready`.
+been read. A product still being read waits on step one, then starts only the
+script automatically when the product becomes usable; the script still stops
+for review, and storyboard or video generation still requires explicit
+confirmation. Extracted facts are usable as soon as parsing succeeds and remain
+editable on the product's own page (`/dashboard/products/[productId]`). Parsing
+warnings are advisory; only unusable base material such as a missing product
+image blocks the product.
 
 Rules that are easy to break:
 

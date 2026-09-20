@@ -156,12 +156,14 @@ export async function getWork(workId: string): Promise<WorkDetail | null> {
  */
 function productStepState(
   product: Pick<ProductRow, "status" | "facts"> | null,
-): "empty" | "reading" | "needs_input" | "review" | "ready" {
+): "empty" | "reading" | "needs_input" | "ready" {
   if (!product) return "empty";
   if (product.status === "needs_input" || product.status === "failed") {
     return "needs_input";
   }
-  if (product.status === "review" && product.facts) return "review";
+  // `review` is retained only as a rolling-upgrade database value. Parsed
+  // facts are usable immediately in the current flow.
+  if (product.status === "review" && product.facts) return "ready";
   if (product.status === "ready" && product.facts) return "ready";
   return "reading";
 }

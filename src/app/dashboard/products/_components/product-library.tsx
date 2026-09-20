@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { SearchInput } from "@/components/ui/search-input";
 import { StatusBadge } from "@/components/ugc/status-badge";
-import { marketKey } from "@/components/ugc/labels";
 import { useTranslation } from "@/lib/i18n/translation/client";
 import type { ProductRow } from "@/lib/ugc/queries";
 import { ProductForm } from "./product-form";
@@ -23,7 +22,7 @@ export function ProductLibrary({ products }: { products: ProductRow[] }) {
   const [formOpen, setFormOpen] = useState(false);
 
   const visible = products.filter((product) =>
-    `${product.name} ${product.variant ?? ""}`
+    `${product.name} ${product.info} ${product.facts?.overview ?? ""}`
       .toLowerCase()
       .includes(query.trim().toLowerCase()),
   );
@@ -84,15 +83,10 @@ export function ProductLibrary({ products }: { products: ProductRow[] }) {
                     <StatusBadge kind="product" status={product.status} />
                   </div>
                   <p className="text-muted-foreground truncate text-sm">
-                    {[
-                      product.variant,
-                      product.market ? t(marketKey(product.market)) : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ") || t("ugc_common_not_set")}
+                    {product.info || t("ugc_common_not_set")}
                   </p>
                   <p className="text-muted-foreground line-clamp-2 text-sm">
-                    {product.issue ?? product.facts?.summary ?? ""}
+                    {product.issue ?? product.facts?.overview ?? ""}
                   </p>
                 </div>
               </Link>

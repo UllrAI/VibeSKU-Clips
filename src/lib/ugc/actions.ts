@@ -8,68 +8,22 @@ import { db } from "@/database";
 import { ugcProducts, ugcScenes, ugcTalents } from "@/database/ugc";
 import { requireAuth } from "@/lib/auth/permissions";
 import { productIngestJob } from "@/lib/jobs/ugc/product-ingest";
-import { MAX_PRODUCT_IMAGES } from "@/lib/ugc/constants";
 import { sceneGenerateJob } from "@/lib/jobs/ugc/scene-generate";
 import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
 import { serverJobQueue } from "@/lib/jobs/server";
-import { fileKeyFromUrl } from "@/lib/uploads/url";
 import { createBackgroundTask } from "@/lib/tasks/service";
+import {
+  canCreateProduct,
+  imageReferenceSchema,
+  productInputSchema,
+  type ProductInput,
+} from "./product-input";
 import { productNameFromUrl } from "./product-name";
 import { productScopeKey, sceneScopeKey, talentScopeKey } from "./scope";
 import type { ActionResult } from "./types";
 
-const briefSchema = z.object({
-  audience: z.string().trim().max(400).optional(),
-  sellingPoints: z.array(z.string().trim().min(1).max(200)).max(10).optional(),
-  tone: z.string().trim().max(200).optional(),
-  scenes: z.string().trim().max(400).optional(),
-  bannedPhrases: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
-  providedScript: z.string().trim().max(30_000).optional(),
-});
-
-const imageReferenceSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(2000)
-  .refine((value) => {
-    if (fileKeyFromUrl(value)) return true;
-    try {
-      return new URL(value).protocol === "https:";
-    } catch {
-      return false;
-    }
-  });
-
-const productSchema = z.object({
-  name: z.string().trim().min(1).max(200),
-  sourceUrl: z.string().trim().url().max(2000).optional().or(z.literal("")),
-  variant: z.string().trim().max(200).optional(),
-  market: z.string().trim().max(16).optional(),
-  images: z.array(imageReferenceSchema).max(MAX_PRODUCT_IMAGES),
-  brief: briefSchema.optional(),
-});
-
 function emptyToNull(value: string | undefined): string | null {
   return value && value.length > 0 ? value : null;
-}
-
-function normalizeBrief(
-  brief: z.infer<typeof briefSchema> | undefined,
-): z.infer<typeof briefSchema> | null {
-  if (!brief) return null;
-  const normalized: z.infer<typeof briefSchema> = {};
-  if (brief.audience) normalized.audience = brief.audience;
-  if (brief.sellingPoints?.length) {
-    normalized.sellingPoints = brief.sellingPoints;
-  }
-  if (brief.tone) normalized.tone = brief.tone;
-  if (brief.scenes) normalized.scenes = brief.scenes;
-  if (brief.bannedPhrases?.length) {
-    normalized.bannedPhrases = brief.bannedPhrases;
-  }
-  if (brief.providedScript) normalized.providedScript = brief.providedScript;
-  return Object.keys(normalized).length > 0 ? normalized : null;
 }
 
 async function enqueueProductAnalysis(
@@ -92,82 +46,55 @@ async function enqueueProductAnalysis(
 
   await db
     .update(ugcProducts)
-    .set({ status: "analyzing", issue: null })
+    .set({
+      status:
+        product.status === "ready" && product.facts ? "ready" : "analyzing",
+      issue: null,
+    })
     .where(eq(ugcProducts.id, product.id));
 }
 
 export async function createProduct(
-  input: z.infer<typeof productSchema>,
+  input: ProductInput,
 ): Promise<ActionResult> {
   const user = await requireAuth();
-  const parsed = productSchema.safeParse(input);
+  const parsed = productInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "invalid_input" };
-  if (!parsed.data.sourceUrl && parsed.data.images.length === 0) {
+  if (!canCreateProduct(parsed.data)) {
     return { ok: false, code: "product_needs_link_or_image" };
   }
 
+  const sourceUrl = emptyToNull(parsed.data.sourceUrl);
+  const name =
+    parsed.data.name || productNameFromUrl(sourceUrl ?? "", "Imported product");
+
   const [product] = await db
     .insert(ugcProducts)
     .values({
       userId: user.id,
-      name: parsed.data.name,
-      sourceUrl: emptyToNull(parsed.data.sourceUrl),
-      variant: emptyToNull(parsed.data.variant),
-      market: emptyToNull(parsed.data.market),
+      name,
+      sourceUrl,
+      info: parsed.data.info,
       images: parsed.data.images,
-      brief: normalizeBrief(parsed.data.brief),
       status: "draft",
     })
     .returning();
 
-  await enqueueProductAnalysis(product);
-  revalidatePath("/dashboard/products");
-  return { ok: true, id: product.id };
-}
-
-const productUrlImportSchema = z.object({
-  sourceUrl: z
-    .url()
-    .max(2000)
-    .refine((value) => new URL(value).protocol === "https:"),
-  market: z.string().trim().max(16).optional(),
-  brief: briefSchema.optional(),
-});
-
-/** Creates a provisional record immediately; the Worker replaces its URL slug
- * with Firecrawl's product title and imports product-specific images. */
-export async function createProductFromUrl(
-  input: z.infer<typeof productUrlImportSchema>,
-): Promise<ActionResult> {
-  const user = await requireAuth();
-  const parsed = productUrlImportSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, code: "invalid_input" };
-
-  const [product] = await db
-    .insert(ugcProducts)
-    .values({
-      userId: user.id,
-      name: productNameFromUrl(parsed.data.sourceUrl, "Imported product"),
-      sourceUrl: parsed.data.sourceUrl,
-      market: emptyToNull(parsed.data.market),
-      images: [],
-      brief: normalizeBrief(parsed.data.brief),
-      status: "draft",
-    })
-    .returning();
-
-  await enqueueProductAnalysis(product, { mode: "import" });
+  await enqueueProductAnalysis(product, {
+    mode: sourceUrl ? "import" : "analyze",
+  });
   revalidatePath("/dashboard/products");
   return { ok: true, id: product.id };
 }
 
 export async function updateProduct(
   productId: string,
-  input: z.infer<typeof productSchema>,
+  input: ProductInput,
 ): Promise<ActionResult> {
   const user = await requireAuth();
-  const parsed = productSchema.safeParse(input);
+  const parsed = productInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false, code: "invalid_input" };
+  if (!parsed.data.name) return { ok: false, code: "invalid_input" };
   if (!parsed.data.sourceUrl && parsed.data.images.length === 0) {
     return { ok: false, code: "product_needs_link_or_image" };
   }
@@ -181,37 +108,36 @@ export async function updateProduct(
   const nextMaterial = {
     name: parsed.data.name,
     sourceUrl: emptyToNull(parsed.data.sourceUrl),
-    variant: emptyToNull(parsed.data.variant),
-    market: emptyToNull(parsed.data.market),
+    info: parsed.data.info,
     images: parsed.data.images,
-    brief: normalizeBrief(parsed.data.brief),
   };
   const currentMaterial = {
     name: product.name,
     sourceUrl: product.sourceUrl,
-    variant: product.variant,
-    market: product.market,
+    info: product.info,
     images: product.images,
-    brief: normalizeBrief(product.brief ?? undefined),
   };
   const materialChanged = !isDeepStrictEqual(currentMaterial, nextMaterial);
-  const factsNeedReview =
-    materialChanged && Boolean(product.facts) && product.status !== "analyzing";
 
-  const updated = await db
+  const [updated] = await db
     .update(ugcProducts)
     .set({
       ...nextMaterial,
-      // Existing facts no longer count as approved once their source material
-      // changes. The operator can review them as-is or explicitly reanalyse.
-      status: factsNeedReview ? "review" : product.status,
-      issue: factsNeedReview ? null : product.issue,
+      issue: materialChanged ? null : product.issue,
       updatedAt: new Date(),
     })
     .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)))
     .returning();
 
-  if (updated.length === 0) return { ok: false, code: "not_found" };
+  if (!updated) return { ok: false, code: "not_found" };
+  if (materialChanged) {
+    await enqueueProductAnalysis(updated, {
+      mode:
+        updated.sourceUrl && updated.sourceUrl !== product.sourceUrl
+          ? "import"
+          : "analyze",
+    });
+  }
   revalidatePath("/dashboard/products");
   revalidatePath(`/dashboard/products/${productId}`);
   return { ok: true, id: productId };
@@ -272,17 +198,12 @@ export async function reimportProductMaterial(
 }
 
 const factsSchema = z.object({
-  summary: z.string().trim().min(1).max(1000),
-  appearance: z.string().trim().min(1).max(1000),
-  specs: z.array(z.string().trim().min(1).max(200)).max(12),
-  sellingPoints: z.array(z.string().trim().min(1).max(200)).min(1).max(8),
-  scenarios: z.array(z.string().trim().min(1).max(200)).max(6),
+  overview: z.string().trim().min(1).max(2000),
+  highlights: z.array(z.string().trim().min(1).max(300)).max(10),
 });
 
 /**
- * Accepts what the reader understood, with the operator's corrections. A
- * person who has checked the facts is a better authority than the extraction,
- * so saving them also clears the product for production.
+ * Saves an operator correction to the facts that are already usable.
  */
 export async function saveProductFacts(
   productId: string,
@@ -293,7 +214,7 @@ export async function saveProductFacts(
   if (!parsed.success) return { ok: false, code: "invalid_input" };
 
   const [product] = await db
-    .select({ facts: ugcProducts.facts })
+    .select({ facts: ugcProducts.facts, images: ugcProducts.images })
     .from(ugcProducts)
     .where(and(eq(ugcProducts.id, productId), eq(ugcProducts.userId, user.id)));
   if (!product) return { ok: false, code: "not_found" };
@@ -305,10 +226,11 @@ export async function saveProductFacts(
         ...parsed.data,
         // Provenance and image selection are the reader's, not the editor's:
         // keep what it recorded.
-        sources: product.facts?.sources ?? [],
+        sources: product.facts?.sources ?? ["operator"],
         keyImages: product.facts?.keyImages,
+        warnings: product.facts?.warnings,
       },
-      status: "ready",
+      status: product.images.length > 0 ? "ready" : "needs_input",
       issue: null,
       updatedAt: new Date(),
     })

@@ -8,22 +8,14 @@ import {
   type ScriptTemplate,
   type VideoAspectRatio,
 } from "./constants";
-import type {
-  ProductBrief,
-  ProductFacts,
-  ScriptDraft,
-  ScriptTemplateBrief,
-} from "./types";
+import type { ProductFacts, ScriptDraft, ScriptTemplateBrief } from "./types";
 import { TEMPLATE_BRIEFS } from "./templates";
 
 const factsSchema = z.object({
-  summary: z.string().min(1),
-  appearance: z.string().min(1),
-  specs: z.array(z.string()).max(12),
-  sellingPoints: z.array(z.string()).min(1).max(8),
-  scenarios: z.array(z.string()).max(6),
+  overview: z.string().min(1),
+  highlights: z.array(z.string()).max(10),
   sources: z.array(z.string()).max(16),
-  missing: z.array(z.string()).max(6),
+  warnings: z.array(z.string()).max(6),
   keyImages: z.array(z.number().int().min(0)).max(MAX_PRODUCT_IMAGES),
 });
 
@@ -198,19 +190,15 @@ const scriptSchema = z
 
 export interface AnalyzeProductInput {
   name: string;
-  variant?: string | null;
+  info?: string | null;
   sourceText?: string;
   imageUrls: string[];
-  brief?: ProductBrief | null;
-  market?: string | null;
   previousFacts?: ProductFacts | null;
   feedback?: string | null;
 }
 
 /**
- * Turns operator-supplied material into recorded product facts. Anything the
- * material does not support is listed under `missing` so the product can be
- * paused for a top-up instead of being invented by the script step.
+ * Turns operator-supplied material into concise, reusable product facts.
  */
 export async function analyzeProduct(
   input: AnalyzeProductInput,
@@ -222,8 +210,10 @@ export async function analyzeProduct(
       "You extract product facts for short-form commerce video production.",
       "Only record what the supplied material supports. Never infer a price, a certification, a health claim, or a comparison.",
       "Do not record prices, discounts, availability, inventory, or storefront state; they are not part of this product record.",
-      "When prior analysis is supplied, revise it rather than merely repeating it. Operator feedback is a requested correction or clarification; apply it wherever the supplied material supports it and call out unresolved conflicts under `missing`.",
-      "List anything a 15-second product video would need but the material does not provide under `missing`.",
+      "`overview` is one concise paragraph that identifies the product and its visible, verifiable characteristics.",
+      "`highlights` contains only useful, supported facts for later script writing. Combine duplicates and omit empty categories rather than inventing completeness.",
+      "When prior analysis is supplied, revise it rather than merely repeating it. Operator feedback is a requested correction or clarification; apply it wherever the supplied material supports it and record unresolved conflicts or useful limitations under `warnings`.",
+      "Warnings are advisory. Missing optional details are not errors and must not prevent the product from being used.",
       "`sources` names where each group of facts came from, for example 'product page' or 'uploaded image 2'.",
       "`keyImages` lists the supplied images that show the product itself most clearly, best first, by their 1-based number minus one. Prefer a clean view of the whole product and a close view of its material or finish. Leave out any image that is mostly a person, a styled lifestyle scene, packaging, a size chart, or text, because a later model is given these as evidence of what the product looks like and will rebuild whatever else is in them. Return an empty list when no image is supplied.",
       "Write every field in the language of the supplied material.",
@@ -236,21 +226,8 @@ export async function analyzeProduct(
             type: "text" as const,
             text: [
               `Product name: ${input.name}`,
-              input.variant ? `Variant: ${input.variant}` : "",
-              input.market ? `Target market: ${input.market}` : "",
-              input.brief?.audience ? `Audience: ${input.brief.audience}` : "",
-              input.brief?.sellingPoints?.length
-                ? `Operator selling points: ${input.brief.sellingPoints.join("; ")}`
-                : "",
-              input.brief?.bannedPhrases?.length
-                ? `Do not use: ${input.brief.bannedPhrases.join("; ")}`
-                : "",
-              input.brief?.tone ? `Creative tone: ${input.brief.tone}` : "",
-              input.brief?.scenes
-                ? `Requested scenes: ${input.brief.scenes}`
-                : "",
-              input.brief?.providedScript
-                ? `Operator script or production direction:\n${input.brief.providedScript}`
+              input.info
+                ? `Operator product information:\n${input.info.slice(0, 12_000)}`
                 : "",
               input.previousFacts
                 ? `Previous analysis to revise:\n${JSON.stringify(input.previousFacts)}`
@@ -286,8 +263,7 @@ export async function analyzeProduct(
 
 export interface ComposeScriptInput {
   facts: ProductFacts;
-  brief?: ProductBrief | null;
-  /** Direction for this clip only, separate from the reusable product brief. */
+  /** Direction for this clip only, separate from reusable product facts. */
   creativeDirection?: string | null;
   template: ScriptTemplate;
   locale: string;
@@ -318,27 +294,15 @@ export async function composeScript(
   const sceneImages = input.sceneImageUrls ?? [];
   const brief_ = [
     `Product: ${input.productName}`,
-    `Summary: ${input.facts.summary}`,
-    `Appearance: ${input.facts.appearance}`,
-    `Selling points: ${input.facts.sellingPoints.join("; ")}`,
-    input.facts.specs.length ? `Specs: ${input.facts.specs.join("; ")}` : "",
-    input.facts.scenarios.length
-      ? `Scenarios: ${input.facts.scenarios.join("; ")}`
+    `Overview: ${input.facts.overview}`,
+    input.facts.highlights.length
+      ? `Highlights: ${input.facts.highlights.join("; ")}`
       : "",
     input.talentNote
       ? `Performer: ${input.talentNote}`
       : "Performer: none. Keep the video product-led with hands only and no recognisable face.",
     input.sceneNote
       ? `Location, already chosen and photographed — every beat happens here:\n${input.sceneNote}`
-      : "",
-    input.brief?.audience ? `Audience: ${input.brief.audience}` : "",
-    input.brief?.tone ? `Tone: ${input.brief.tone}` : "",
-    input.brief?.scenes ? `Requested scenes: ${input.brief.scenes}` : "",
-    input.brief?.bannedPhrases?.length
-      ? `Banned expressions: ${input.brief.bannedPhrases.join("; ")}`
-      : "",
-    input.brief?.providedScript
-      ? `Product-level creative notes (honour every explicit constraint and keep quoted dialogue verbatim):\n${input.brief.providedScript}`
       : "",
     input.creativeDirection
       ? `Direction for this clip (highest-priority creative instruction; honour every explicit constraint and keep quoted dialogue verbatim):\n${input.creativeDirection}`

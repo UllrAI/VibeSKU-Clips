@@ -71,18 +71,15 @@ test("reviews a written script and sends it to the storyboard", async ({
   let workId: string;
   try {
     const [product] = await sql`
-      insert into ugc_products ("userId", name, market, images, facts, status)
+      insert into ugc_products ("userId", name, images, facts, status)
       values (
         'e2e-user',
         'Playwright serum',
-        'US',
         ${sql.json(["https://example.com/serum.png"])},
         ${sql.json({
-          summary: "A 30ml serum in a frosted glass bottle.",
-          appearance: "Frosted glass, matte black dropper.",
-          specs: ["30ml"],
-          sellingPoints: ["Lightweight", "Fragrance free"],
-          scenarios: ["Morning routine"],
+          overview:
+            "A 30ml serum in a frosted glass bottle with a matte black dropper.",
+          highlights: ["Lightweight", "Fragrance free", "Morning routine"],
           sources: ["operator brief"],
         })},
         'ready'
@@ -176,11 +173,8 @@ test("keeps a finished work complete while its script and video version are revi
         'Versioned serum',
         '[]'::jsonb,
         ${JSON.stringify({
-          summary: "A finished serum fixture.",
-          appearance: "Amber bottle.",
-          specs: [],
-          sellingPoints: ["Lightweight"],
-          scenarios: ["Morning routine"],
+          overview: "A finished serum fixture in an amber bottle.",
+          highlights: ["Lightweight", "Morning routine"],
           sources: ["fixture"],
         })}::jsonb,
         'ready'

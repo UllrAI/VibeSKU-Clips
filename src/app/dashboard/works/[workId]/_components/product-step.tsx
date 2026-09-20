@@ -55,10 +55,9 @@ import type { WorkDetail } from "@/lib/ugc/works";
 import { StepCard } from "./step-card";
 
 /**
- * The first step is a confirmation, not a form: the composer already asked
- * what this clip sells and who presents it. What is worth a person's time
- * here is what the system understood from the material, because that is what
- * the script will be written from — and it is still free to change.
+ * The first step shows what the system understood from the material while a
+ * newly created product is read. Composer-created works continue to script as
+ * soon as the product is usable; manually reconfigured works can start here.
  */
 export function ProductStep({
   detail,
@@ -73,7 +72,7 @@ export function ProductStep({
   products: ProductRow[];
   talents: TalentRow[];
   scenes: SceneRow[];
-  productState: "empty" | "reading" | "needs_input" | "review" | "ready";
+  productState: "empty" | "reading" | "needs_input" | "ready";
   modelOptions: readonly VideoModelOption[];
   onRefresh: () => void;
 }) {
@@ -158,9 +157,7 @@ export function ProductStep({
       action={
         <Button
           onClick={confirm}
-          disabled={
-            pending || !productId || !["review", "ready"].includes(productState)
-          }
+          disabled={pending || !productId || productState !== "ready"}
         >
           {pending && (
             <Loader2
@@ -198,23 +195,17 @@ export function ProductStep({
         <dl className="space-y-3 text-sm">
           <div>
             <dt className="text-muted-foreground text-xs">
-              {t("ugc_work_facts_summary")}
+              {t("ugc_product_facts_overview")}
             </dt>
-            <dd>{product.facts.summary}</dd>
+            <dd>{product.facts.overview}</dd>
           </div>
-          <div>
-            <dt className="text-muted-foreground text-xs">
-              {t("ugc_work_facts_appearance")}
-            </dt>
-            <dd>{product.facts.appearance}</dd>
-          </div>
-          {product.facts.sellingPoints.length > 0 && (
+          {product.facts.highlights.length > 0 && (
             <div>
               <dt className="text-muted-foreground text-xs">
-                {t("ugc_brief_selling_points")}
+                {t("ugc_product_facts_highlights")}
               </dt>
               <dd className="flex flex-wrap gap-1.5 pt-1">
-                {product.facts.sellingPoints.map((point) => (
+                {product.facts.highlights.map((point) => (
                   <Badge
                     key={point}
                     variant="secondary"

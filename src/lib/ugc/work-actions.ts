@@ -17,7 +17,6 @@ import {
 import { taskRuns } from "@/database/schema";
 import { requireAuth } from "@/lib/auth/permissions";
 import { talentGenerateJob } from "@/lib/jobs/ugc/talent-generate";
-import { workScriptJob } from "@/lib/jobs/ugc/work-script";
 import { workStoryboardJob } from "@/lib/jobs/ugc/work-storyboard";
 import { workVideoJob } from "@/lib/jobs/ugc/work-video";
 import { serverJobQueue } from "@/lib/jobs/server";
@@ -31,6 +30,7 @@ import {
 } from "./constants";
 import { isActiveVideoConfiguration } from "./media/video-provider";
 import { talentScopeKey, workScopeKey } from "./scope";
+import { enqueueWorkScript } from "./work-script-queue";
 import type { ActionResult } from "./types";
 
 const setupSchema = z
@@ -167,25 +167,13 @@ async function hasActiveTask(
  * script step are the same request from here down, so they share this.
  */
 async function enqueueScript(workId: string, userId: string): Promise<void> {
-  const { taskRun } = await createBackgroundTask({
+  await enqueueWorkScript({
     db,
     queue: serverJobQueue,
-    definition: workScriptJob,
-    scopeKey: workScopeKey(userId, workId),
-    payload: { workId, userId },
+    workId,
+    userId,
     idempotencyKey: `${workId}:script:${Date.now()}`,
   });
-
-  await db
-    .update(ugcWorks)
-    .set({
-      step: "script",
-      stepStatus: "running",
-      scriptId: null,
-      taskRunId: taskRun.id,
-      updatedAt: new Date(),
-    })
-    .where(eq(ugcWorks.id, workId));
 }
 
 /**
@@ -193,9 +181,9 @@ async function enqueueScript(workId: string, userId: string): Promise<void> {
  * needs is answered here, so a work is never created in a state where the
  * operator has to be told to go and fetch something.
  *
- * A product that has already been read goes straight to writing; one still
- * being read stops on the product step, where its facts can be checked before
- * anything is spent on them.
+ * A product that has already been read goes straight to writing. A product
+ * still being read continues to the script automatically when it becomes
+ * usable, then stops for script review like every other work.
  */
 export async function createWork(
   input: z.infer<typeof setupSchema>,
@@ -240,11 +228,33 @@ export async function createWork(
       videoModel: parsed.data.videoModel,
       aspectRatio: parsed.data.aspectRatio,
       resolution: parsed.data.resolution,
+      autoStartScript: true,
     })
     .returning();
 
-  if (product.facts && product.status === "ready") {
-    await enqueueScript(work.id, user.id);
+  // Re-read after insertion. A newly created product can finish parsing
+  // between createProduct and createWork; once the work exists, either this
+  // branch or the ingest job can safely pick it up.
+  const [currentProduct] = await db
+    .select({ facts: ugcProducts.facts, status: ugcProducts.status })
+    .from(ugcProducts)
+    .where(
+      and(
+        eq(ugcProducts.id, parsed.data.productId),
+        eq(ugcProducts.userId, user.id),
+      ),
+    );
+  if (
+    currentProduct?.facts &&
+    (currentProduct.status === "ready" || currentProduct.status === "review")
+  ) {
+    await enqueueWorkScript({
+      db,
+      queue: serverJobQueue,
+      workId: work.id,
+      userId: user.id,
+      idempotencyKey: `${work.id}:script:product-ready`,
+    });
   }
 
   revalidatePath("/dashboard/works");
@@ -304,6 +314,7 @@ export async function setWorkSetup(
       videoModel: parsed.data.videoModel,
       aspectRatio: parsed.data.aspectRatio,
       resolution: parsed.data.resolution,
+      autoStartScript: false,
       step: "product",
       stepStatus: "idle",
       updatedAt: new Date(),
@@ -315,8 +326,7 @@ export async function setWorkSetup(
 }
 
 /**
- * Accepts the product and asks for a script. This is the first step that
- * spends anything, so it only ever runs from an explicit confirmation.
+ * Starts a script for a work that was saved without auto-start enabled.
  */
 export async function startWorkScript(workId: string): Promise<ActionResult> {
   const user = await requireAuth();
@@ -338,20 +348,17 @@ export async function startWorkScript(workId: string): Promise<ActionResult> {
     return { ok: false, code: "product_not_read" };
   }
 
-  if (product.status === "review") {
-    await db
-      .update(ugcProducts)
-      .set({ status: "ready", issue: null, updatedAt: new Date() })
-      .where(
-        and(
-          eq(ugcProducts.id, work.productId),
-          eq(ugcProducts.userId, user.id),
-          eq(ugcProducts.status, "review"),
-        ),
-      );
+  if (work.autoStartScript) {
+    await enqueueWorkScript({
+      db,
+      queue: serverJobQueue,
+      workId: work.id,
+      userId: user.id,
+      idempotencyKey: `${work.id}:script:product-ready`,
+    });
+  } else {
+    await enqueueScript(work.id, user.id);
   }
-
-  await enqueueScript(work.id, user.id);
 
   revalidatePath(`/dashboard/works/${workId}`);
   return { ok: true, id: workId };

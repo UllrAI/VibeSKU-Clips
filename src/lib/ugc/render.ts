@@ -7,7 +7,7 @@ import type { ClipStorage } from "./storage";
 
 export interface RenderSubject {
   productName: string;
-  appearance: string;
+  productDescription: string;
   market: string;
   locale: string;
   template: ScriptTemplate;
@@ -34,7 +34,7 @@ export function renderSubjectFor(input: {
 }): RenderSubject {
   return {
     productName: input.product.name,
-    appearance: input.product.facts?.appearance ?? "",
+    productDescription: input.product.facts?.overview ?? "",
     market: input.work.market,
     locale: input.work.locale,
     template: input.work.template,
@@ -186,7 +186,7 @@ export function buildCoverPrompt(
     productionPrompt
       ? `Whole-clip visual direction only — use this for identity, setting, light, texture, and camera character, never for additional actions or shots in this image. The opening-frame assignment above overrides it:\n${productionPrompt.slice(0, 20_000)}`
       : "",
-    `Product: ${subject.productName}. ${subject.appearance}`,
+    `Product: ${subject.productName}. ${subject.productDescription}`,
     subject.talentPrompt
       ? `Performer: ${fitCharacters(subject.talentPrompt, FRAME_SUBJECT_LIMIT)}. Take the face, build, hair, and wardrobe from the attached reference sheet; take the pose, the eye line, and the light from this frame.`
       : "Product-led frame with hands only, no recognisable face.",
@@ -223,7 +223,7 @@ export function buildFramePrompt(
     productionPrompt
       ? `Whole-clip visual direction only — use this for identity, setting, light, texture, and camera character, never for additional actions, poses, or shots in this image:\n${productionPrompt.slice(0, 20_000)}`
       : "",
-    `Product: ${subject.productName}. ${subject.appearance}`,
+    `Product: ${subject.productName}. ${subject.productDescription}`,
     subject.talentPrompt
       ? `Performer: ${fitCharacters(subject.talentPrompt, FRAME_SUBJECT_LIMIT)}. Take the face, build, hair, and wardrobe from the attached reference sheet; take the pose, the eye line, and the light from this frame.`
       : "Product-led frame with hands only, no recognisable face.",
@@ -311,7 +311,7 @@ export function buildVideoPrompt(
       ? "Film this as one continuous take with no cuts, transitions, or scene changes. Use natural camera movement to connect every beat."
       : "Use the supplied storyboard images as the visual reference for each beat.",
     `Delivery: ${brief.voice} Spoken in ${subject.locale} for the ${subject.market} market.`,
-    `Product: ${subject.productName}. ${subject.appearance}`,
+    `Product: ${subject.productName}. ${subject.productDescription}`,
   ];
   const instructions = [
     subject.talentPrompt

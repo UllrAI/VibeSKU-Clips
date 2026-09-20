@@ -14,7 +14,6 @@ import {
 import { users } from "./schema";
 import type {
   ClipQualityReport,
-  ProductBrief,
   ProductFacts,
   ScriptBeat,
 } from "@/lib/ugc/types";
@@ -22,6 +21,7 @@ import type {
 export const ugcProductStatusEnum = pgEnum("ugc_product_status", [
   "draft",
   "analyzing",
+  // Kept for rows written during rolling upgrades; current parsing goes ready.
   "review",
   "ready",
   "needs_input",
@@ -61,8 +61,9 @@ export const ugcScriptStatusEnum = pgEnum("ugc_script_status", [
 ]);
 
 /**
- * A work walks these steps in order and stops on each one for a person. The
- * step is where it is; `ugcWorkStepStatusEnum` is what that step is doing.
+ * A work walks these steps in order. Product parsing may continue directly to
+ * a script; media-producing steps stop for a person. The step is where it is;
+ * `ugcWorkStepStatusEnum` is what that step is doing.
  */
 export const ugcWorkStepEnum = pgEnum("ugc_work_step", [
   "product",
@@ -136,12 +137,8 @@ export const ugcProducts = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     sourceUrl: text("sourceUrl"),
-    // Variant of the product shown in this work; publishing links stay outside
-    // the product model.
-    variant: text("variant"),
-    market: text("market"),
+    info: text("info").notNull().default(""),
     images: jsonb("images").$type<string[]>().notNull().default([]),
-    brief: jsonb("brief").$type<ProductBrief | null>(),
     facts: jsonb("facts").$type<ProductFacts | null>(),
     status: ugcProductStatusEnum("status").notNull().default("draft"),
     issue: text("issue"),
@@ -367,9 +364,9 @@ export const ugcUsageEvents = pgTable(
 );
 
 /**
- * One clip produced step by step, with a person confirming each step before
- * the next one spends anything. A work reuses the product, script and clip
- * tables rather than keeping a private copy of any of them.
+ * One clip produced step by step. Creating it authorises the product read and
+ * script draft; every media-producing step waits for confirmation. A work
+ * reuses the product, script and clip tables rather than keeping private copies.
  */
 export const ugcWorks = pgTable(
   "ugc_works",
@@ -397,6 +394,8 @@ export const ugcWorks = pgTable(
       .default("spokesperson"),
     /** Per-work direction for the writer; product facts remain reusable. */
     creativeDirection: text("creativeDirection"),
+    /** The operator asked for a script while this product was still reading. */
+    autoStartScript: boolean("autoStartScript").notNull().default(false),
     videoMode: ugcVideoModeEnum("videoMode").notNull().default("one_take"),
     videoModel: ugcVideoModelEnum("videoModel").notNull().default("h3"),
     aspectRatio: ugcVideoAspectRatioEnum("aspectRatio")

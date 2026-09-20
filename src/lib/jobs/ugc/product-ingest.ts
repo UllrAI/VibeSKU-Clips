@@ -12,6 +12,7 @@ import {
 import { authoringModelLog } from "@/lib/ugc/model";
 import { productNameFromUrl } from "@/lib/ugc/product-name";
 import { recordUsage } from "@/lib/ugc/usage";
+import { startWorksWaitingForProduct } from "@/lib/ugc/work-script-queue";
 import { UnreadableSourceError } from "@/lib/ugc/source-fetch";
 import {
   ReferenceMediaUnavailableError,
@@ -34,7 +35,7 @@ function stillHasProvisionalMaterial(product: Product): boolean {
   return (
     product.name ===
       productNameFromUrl(product.sourceUrl, "Imported product") &&
-    !product.variant &&
+    !product.info &&
     product.images.length === 0
   );
 }
@@ -56,15 +57,25 @@ function mergeImportedImages(existing: string[], imported: string[]): string[] {
 
 async function stopProduct(
   context: JobHandlerContext,
-  productId: string,
+  product: Product,
   status: "needs_input" | "failed",
   issue: string,
 ): Promise<void> {
+  const keepsExistingFacts = product.status === "ready" && product.facts;
+  const nextStatus = keepsExistingFacts ? "ready" : status;
   await context.db
     .update(ugcProducts)
-    .set({ status, issue, updatedAt: new Date() })
-    .where(eq(ugcProducts.id, productId));
-  context.log("product_ingest_stopped", { productId, status, issue });
+    .set({
+      status: nextStatus,
+      issue: keepsExistingFacts ? null : issue,
+      updatedAt: new Date(),
+    })
+    .where(eq(ugcProducts.id, product.id));
+  context.log("product_ingest_stopped", {
+    productId: product.id,
+    status: nextStatus,
+    issue,
+  });
 }
 
 /**
@@ -83,9 +94,6 @@ async function applyImportedMaterial(
     .update(ugcProducts)
     .set({
       name: provisional ? (imported.name ?? product.name) : product.name,
-      variant: provisional
-        ? (imported.variant ?? product.variant)
-        : product.variant,
       images,
       updatedAt: new Date(),
     })
@@ -141,7 +149,12 @@ export const productIngestJob = defineJob(
 
     const [analyzingProduct] = await context.db
       .update(ugcProducts)
-      .set({ status: "analyzing", issue: null, updatedAt: new Date() })
+      .set({
+        status:
+          product.status === "ready" && product.facts ? "ready" : "analyzing",
+        issue: null,
+        updatedAt: new Date(),
+      })
       .where(eq(ugcProducts.id, product.id))
       .returning();
     let materialProduct = analyzingProduct ?? product;
@@ -184,7 +197,6 @@ export const productIngestJob = defineJob(
           }
         } catch (error) {
           if (
-            payload.importMaterial ||
             !(
               error instanceof UnreadableSourceError ||
               error instanceof FirecrawlError
@@ -218,26 +230,29 @@ export const productIngestJob = defineJob(
       });
       const facts = await analyzeProduct({
         name: materialProduct.name,
-        variant: materialProduct.variant,
+        info: materialProduct.info,
         sourceText,
         imageUrls,
-        brief: materialProduct.brief,
-        market: materialProduct.market,
         previousFacts: materialProduct.facts,
         feedback: payload.feedback,
       });
 
-      const missing = facts.missing ?? [];
-      const nextStatus = missing.length > 0 ? "needs_input" : "review";
-      await context.db
+      const hasProductImage = materialProduct.images.length > 0;
+      const nextStatus = hasProductImage ? "ready" : "needs_input";
+      const [savedProduct] = await context.db
         .update(ugcProducts)
         .set({
           facts,
+          info:
+            materialProduct.info ||
+            [facts.overview, ...facts.highlights].join("\n"),
           status: nextStatus,
-          issue: missing.length > 0 ? missing.join("; ") : null,
+          issue: null,
           updatedAt: new Date(),
         })
-        .where(eq(ugcProducts.id, product.id));
+        .where(eq(ugcProducts.id, product.id))
+        .returning();
+      materialProduct = savedProduct ?? materialProduct;
 
       await recordUsage(context.db, {
         userId: product.userId,
@@ -250,17 +265,35 @@ export const productIngestJob = defineJob(
         productId: product.id,
         status: nextStatus,
         imagesRead: imageUrls.length,
-        missing,
+        warnings: facts.warnings ?? [],
         ...authoringModelLog(),
         elapsedMs: Date.now() - startedAt,
       });
+      if (nextStatus === "ready") {
+        await startWorksWaitingForProduct(
+          context.db,
+          product.id,
+          product.userId,
+        );
+      }
       return { status: nextStatus };
     } catch (error) {
       if (error instanceof UnreadableSourceError) {
         // An unreadable link pauses this product only. The operator can add
-        // images or a brief and run it again from the product step.
-        await stopProduct(context, product.id, "needs_input", error.message);
-        return { status: "needs_input", reason: error.message };
+        // images or product information and run it again.
+        await stopProduct(
+          context,
+          materialProduct,
+          "needs_input",
+          error.message,
+        );
+        return {
+          status:
+            materialProduct.status === "ready" && materialProduct.facts
+              ? "ready"
+              : "needs_input",
+          reason: error.message,
+        };
       }
       if (error instanceof FirecrawlError) {
         // Analysis may read the reference page for evidence, but it must stay
@@ -271,7 +304,7 @@ export const productIngestJob = defineJob(
         if (!error.retryable) {
           await stopProduct(
             context,
-            product.id,
+            materialProduct,
             "failed",
             "The product page import service could not read this link.",
           );
@@ -280,7 +313,7 @@ export const productIngestJob = defineJob(
         if (context.attempt > RETRY_LIMIT) {
           await stopProduct(
             context,
-            product.id,
+            materialProduct,
             "failed",
             "The product page import service was unavailable after retrying.",
           );
@@ -288,13 +321,24 @@ export const productIngestJob = defineJob(
         throw new RetryableJobError(failureCode, error.message);
       }
       if (error instanceof ReferenceMediaUnavailableError) {
-        await stopProduct(context, product.id, "needs_input", error.message);
-        return { status: "needs_input", reason: error.message };
+        await stopProduct(
+          context,
+          materialProduct,
+          "needs_input",
+          error.message,
+        );
+        return {
+          status:
+            materialProduct.status === "ready" && materialProduct.facts
+              ? "ready"
+              : "needs_input",
+          reason: error.message,
+        };
       }
       if (error instanceof StorageUnavailableError) {
         await stopProduct(
           context,
-          product.id,
+          materialProduct,
           "failed",
           "Product images could not be read because storage is unavailable.",
         );
@@ -303,7 +347,7 @@ export const productIngestJob = defineJob(
       if (context.attempt > RETRY_LIMIT) {
         await stopProduct(
           context,
-          product.id,
+          materialProduct,
           "failed",
           "Product analysis failed after retrying.",
         );

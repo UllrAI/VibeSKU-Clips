@@ -1,23 +1,12 @@
-export interface ProductBrief {
-  audience?: string;
-  sellingPoints?: string[];
-  tone?: string;
-  scenes?: string;
-  bannedPhrases?: string[];
-  /** Operator-supplied script or production direction for the writer to honour. */
-  providedScript?: string;
-}
-
 export interface ProductFacts {
-  summary: string;
-  appearance: string;
-  specs: string[];
-  sellingPoints: string[];
-  scenarios: string[];
+  /** Concise factual description of what the product is and looks like. */
+  overview: string;
+  /** Supported facts worth using in a short script. */
+  highlights: string[];
   /** Where each fact came from, so the product analysis stays traceable. */
   sources: string[];
-  /** Set when the source material is incomplete or self-contradictory. */
-  missing?: string[];
+  /** Useful additions that do not stop the product being used. */
+  warnings?: string[];
   /**
    * Indices into the product's own images, best first: the ones that show the
    * product rather than a scene it happens to appear in. Absent on products

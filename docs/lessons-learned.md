@@ -15,6 +15,14 @@
 
 ## 数据库
 
+### JSONB 取值参与字符串拼接时必须显式加括号
+
+**现象**：迁移里写 `'Previous audience: ' || "brief"->>'audience'`，数据本身是合法 JSONB，却报 `invalid input syntax for type json`，并指出 `Token "Previous" is invalid`。
+
+**原因**：PostgreSQL 会先结合 `||` 与左侧文本、JSONB，尝试把 `'Previous audience: '` 当成 JSON 再做 JSONB 拼接，而不是先执行预期的 `->>` 文本取值。报错看起来像脏数据，实际是运算符结合顺序。
+
+**正确做法**：JSONB 取值和字符串拼接同时出现时写成 `'Previous audience: ' || ("brief"->>'audience')`，不要依赖运算符优先级。迁移至少用一行包含该字段的真实 JSONB 形状执行验证。
+
 ### 数据库 schema 再导出必须保持完整
 
 **现象**:在 `src/database/schema.ts` 加了一张表之后,`pnpm type-check` 在**完全无关**的 `src/lib/billing/stripe/webhook.ts` 报错,信息是 `Property 'xxx' is missing in type 'ExtractTablesWithRelations<...>'`,长达数十行且不指向真正的问题点。

@@ -164,7 +164,9 @@ step is active, what it produced, and what happens if they say yes.
   moves on. The primary action sits in the same place on every step so it never
   has to be hunted for.
 - Nothing expensive runs without a confirmation, and each step shows its output
-  before asking for one. Generation is preceded by the words that produced it.
+  before asking for one. Creating a work explicitly authorises product parsing
+  and one script draft; the script is then shown before any frame or video is
+  generated.
 - Going back is always offered, and going back never destroys the step's work
   until the operator asks for it again.
 - A step that is working says what it is working on and roughly how long that
@@ -172,10 +174,12 @@ step is active, what it produced, and what happens if they say yes.
   in the rail, and offers to run again — it never spins forever.
 - Cheap changes come before expensive ones. Words are edited before the render;
   when storyboard guidance is selected, frames are reviewed between them.
-- What a machine understood is shown before it is used, in the same shape the
-  operator can edit. Extracted product facts are a draft with an author, not a
-  verdict: reading them, correcting them, and saving them is one gesture, and
-  saving is what clears the object for production.
+- What a machine understood stays visible in the same shape the operator can
+  edit. Extracted product facts become usable when parsing succeeds; editing is
+  a correction, not an unlock step. Parsing warnings inform later work without
+  blocking it, while unusable base material still stops clearly. A work waiting
+  on a new product may continue automatically only as far as its script draft;
+  frames and video always wait for confirmation.
 
 ### Work list
 

@@ -42,7 +42,6 @@ import {
   isProductImportFailure,
   jobFailureKey,
 } from "@/components/ugc/action-message";
-import { marketKey } from "@/components/ugc/labels";
 import { StatusBadge } from "@/components/ugc/status-badge";
 import { useProductState } from "@/hooks/use-product-state";
 import { useTranslation } from "@/lib/i18n/translation/client";
@@ -58,8 +57,8 @@ import { ProductForm } from "../../_components/product-form";
 /**
  * A product is material plus what the system understood from it. Both halves
  * are on one screen because the second is only trustworthy next to the first:
- * the operator reads the extraction against the images that produced it, fixes
- * what is wrong, and saves — which is also what clears the product to be used.
+ * the operator reads the extraction against the images that produced it and
+ * can correct it without a separate unlock step.
  */
 export function ProductWorkbench({
   product,
@@ -78,7 +77,11 @@ export function ProductWorkbench({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const reading = state.status === "analyzing" || state.status === "draft";
+  const taskActive = ["queued", "running", "waiting"].includes(
+    state.run.status,
+  );
+  const reading = !product.facts && taskActive;
+  const updating = Boolean(product.facts) && taskActive;
   const readFailed = state.run.failed;
   const stalled = state.run.stalled;
   const activeReading = reading && !readFailed && !stalled;
@@ -185,13 +188,10 @@ export function ProductWorkbench({
           )}
 
           <dl className="space-y-2 text-sm">
-            <Detail label={t("ugc_product_variant")}>
-              {product.variant || t("ugc_common_not_set")}
-            </Detail>
-            <Detail label={t("ugc_product_market")}>
-              {product.market
-                ? t(marketKey(product.market))
-                : t("ugc_common_not_set")}
+            <Detail label={t("ugc_product_info")}>
+              <span className="whitespace-pre-wrap">
+                {product.info || t("ugc_common_not_set")}
+              </span>
             </Detail>
             <Detail label={t("ugc_product_source_url")}>
               {product.sourceUrl ? (
@@ -218,7 +218,7 @@ export function ProductWorkbench({
           <Button
             variant="outline"
             size="sm"
-            disabled={pending}
+            disabled={pending || taskActive}
             onClick={() => setEditingMaterial(true)}
           >
             <SquarePen />
@@ -228,7 +228,7 @@ export function ProductWorkbench({
             <Button
               variant="ghost"
               size="sm"
-              disabled={pending || activeReading}
+              disabled={pending || taskActive}
               onClick={() => setConfirmingReimport(true)}
             >
               <Download />
@@ -296,12 +296,24 @@ export function ProductWorkbench({
               </AlertDescription>
             </Alert>
           )}
-          {state.status === "needs_input" && state.issue && (
+          {state.status === "needs_input" && (
             <Alert>
               <TriangleAlert />
               <AlertTitle>{t("ugc_product_needs_input_title")}</AlertTitle>
-              <AlertDescription>{state.issue}</AlertDescription>
+              <AlertDescription>
+                {state.issue ?? t("ugc_product_needs_image_hint")}
+              </AlertDescription>
             </Alert>
+          )}
+
+          {updating && (
+            <p className="text-muted-foreground flex items-center gap-2 text-sm">
+              <Loader2
+                className="size-4 animate-spin motion-reduce:animate-none"
+                aria-hidden
+              />
+              {t("ugc_product_updating_title")}
+            </p>
           )}
 
           {activeReading ? (
@@ -311,7 +323,6 @@ export function ProductWorkbench({
               key={product.updatedAt.toISOString()}
               productId={product.id}
               facts={product.facts}
-              cleared={state.status === "ready"}
               onSaved={() => router.refresh()}
             />
           ) : (
@@ -325,7 +336,7 @@ export function ProductWorkbench({
           <Button
             variant="outline"
             size="sm"
-            disabled={pending || activeReading}
+            disabled={pending || taskActive}
             onClick={() => setRevisingAnalysis(true)}
           >
             <RefreshCw />
@@ -503,47 +514,31 @@ function toLines(value: string): string[] {
 }
 
 /**
- * The extraction, in editable form. Saving is an act of approval, not a
- * formality: the operator's wording is what every script downstream is
- * written from.
+ * The concise extraction, in editable form. Saving changes what later scripts
+ * use, but the extraction is already usable when it first lands.
  */
 function FactsEditor({
   productId,
   facts,
-  cleared,
   onSaved,
 }: {
   productId: string;
   facts: NonNullable<ProductRow["facts"]>;
-  /** The product is already usable, so saving is no longer the page's point. */
-  cleared: boolean;
   onSaved: () => void;
 }) {
   const { t } = useTranslation();
   const [pending, startTransition] = useTransition();
-  const [summary, setSummary] = useState(facts.summary);
-  const [appearance, setAppearance] = useState(facts.appearance);
-  const [sellingPoints, setSellingPoints] = useState(
-    facts.sellingPoints.join("\n"),
-  );
-  const [specs, setSpecs] = useState(facts.specs.join("\n"));
-  const [scenarios, setScenarios] = useState(facts.scenarios.join("\n"));
+  const [overview, setOverview] = useState(facts.overview);
+  const [highlights, setHighlights] = useState(facts.highlights.join("\n"));
 
   const dirty =
-    summary !== facts.summary ||
-    appearance !== facts.appearance ||
-    sellingPoints !== facts.sellingPoints.join("\n") ||
-    specs !== facts.specs.join("\n") ||
-    scenarios !== facts.scenarios.join("\n");
+    overview !== facts.overview || highlights !== facts.highlights.join("\n");
 
   const save = () =>
     startTransition(async () => {
       const result = await saveProductFacts(productId, {
-        summary: summary.trim(),
-        appearance: appearance.trim(),
-        sellingPoints: toLines(sellingPoints),
-        specs: toLines(specs),
-        scenarios: toLines(scenarios),
+        overview: overview.trim(),
+        highlights: toLines(highlights),
       });
       if (!result.ok) {
         toast.error(t(actionMessageKey(result.code)));
@@ -553,59 +548,45 @@ function FactsEditor({
       onSaved();
     });
 
-  const complete =
-    summary.trim().length > 0 &&
-    appearance.trim().length > 0 &&
-    toLines(sellingPoints).length > 0;
+  const complete = overview.trim().length > 0;
 
   return (
     <form
       className="space-y-4"
       onSubmit={(event) => {
         event.preventDefault();
-        if (complete) save();
+        if (complete && dirty) save();
       }}
     >
       <Field
-        id="facts-summary"
-        label={t("ugc_work_facts_summary")}
-        value={summary}
-        onChange={setSummary}
-        rows={2}
+        id="facts-overview"
+        label={t("ugc_product_facts_overview")}
+        value={overview}
+        onChange={setOverview}
+        rows={4}
       />
       <Field
-        id="facts-appearance"
-        label={t("ugc_work_facts_appearance")}
-        value={appearance}
-        onChange={setAppearance}
-        rows={2}
-      />
-      <Field
-        id="facts-selling-points"
-        label={t("ugc_brief_selling_points")}
+        id="facts-highlights"
+        label={t("ugc_product_facts_highlights")}
         hint={t("ugc_brief_one_per_line")}
-        value={sellingPoints}
-        onChange={setSellingPoints}
-        rows={3}
+        value={highlights}
+        onChange={setHighlights}
+        rows={5}
       />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          id="facts-specs"
-          label={t("ugc_product_facts_specs")}
-          hint={t("ugc_brief_one_per_line")}
-          value={specs}
-          onChange={setSpecs}
-          rows={3}
-        />
-        <Field
-          id="facts-scenarios"
-          label={t("ugc_product_facts_scenarios")}
-          hint={t("ugc_brief_one_per_line")}
-          value={scenarios}
-          onChange={setScenarios}
-          rows={3}
-        />
-      </div>
+
+      {(facts.warnings?.length ?? 0) > 0 && (
+        <Alert>
+          <TriangleAlert />
+          <AlertTitle>{t("ugc_product_warnings_title")}</AlertTitle>
+          <AlertDescription>
+            <ul className="list-disc space-y-1 pl-4">
+              {facts.warnings?.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {facts.sources.length > 0 && (
         <p className="text-muted-foreground text-xs">
@@ -614,11 +595,7 @@ function FactsEditor({
       )}
 
       <div className="flex items-center gap-3">
-        <Button
-          type="submit"
-          variant={dirty || !cleared ? "default" : "outline"}
-          disabled={pending || !complete}
-        >
+        <Button type="submit" disabled={pending || !complete || !dirty}>
           {pending ? (
             <Loader2
               className="animate-spin motion-reduce:animate-none"
@@ -627,7 +604,7 @@ function FactsEditor({
           ) : (
             <Save aria-hidden />
           )}
-          {t(dirty ? "ugc_product_facts_save" : "ugc_product_facts_confirm")}
+          {t("ugc_product_facts_save")}
         </Button>
         {dirty && (
           <span className="text-muted-foreground text-xs">
