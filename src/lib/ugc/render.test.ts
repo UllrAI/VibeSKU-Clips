@@ -41,7 +41,7 @@ const subject = {
   market: "US",
   locale: "en",
   template: "spokesperson" as const,
-  talentPrompt: "A woman in her thirties in a bright living room",
+  hasTalent: true,
   scenePrompt: null,
 };
 
@@ -49,38 +49,44 @@ describe("render prompts", () => {
   it("anchors the opening frame on the talent reference", () => {
     const prompt = buildCoverPrompt(subject, beats[0]);
 
-    expect(prompt).toContain("from the attached reference sheet");
+    expect(prompt).toContain("from the attached talent sheet");
     expect(prompt).toContain("Cordless hand vacuum");
     expect(prompt).toContain("on-screen text");
   });
 
   it("falls back to a product-led frame when no talent is chosen", () => {
-    const prompt = buildCoverPrompt(
-      { ...subject, talentPrompt: null },
-      beats[0],
-    );
+    const prompt = buildCoverPrompt({ ...subject, hasTalent: false }, beats[0]);
 
     expect(prompt).toContain("no recognisable face");
   });
 
   it("makes one beat the frame assignment instead of asking for the whole script", () => {
-    const direction =
-      "OVERVIEW: casual phone clip\nTIMELINE: later the creator cleans the cushion";
+    const direction = [
+      "TALENT: a performer in a red coat",
+      "LOCATION: a rooftop at dusk",
+      "STYLE: casual phone footage with restrained contrast",
+    ].join("\n");
     const prompt = buildFramePrompt(subject, beats[0], 0, direction);
 
     expect(prompt).toContain("CURRENT-FRAME ASSIGNMENT");
     expect(prompt).toContain("depict only 0.0-3.5s");
     expect(prompt).toContain("picks up the vacuum");
     expect(prompt).toContain("Do not combine, preview, foreshadow");
-    expect(prompt).toContain("Whole-clip visual direction only");
+    expect(prompt).toContain("Supporting production direction");
+    expect(prompt).toContain("casual phone footage");
+    expect(prompt).not.toContain("red coat");
+    expect(prompt).not.toContain("rooftop at dusk");
     expect(prompt.indexOf("CURRENT-FRAME ASSIGNMENT")).toBeLessThan(
-      prompt.indexOf("Whole-clip visual direction only"),
+      prompt.indexOf("Supporting production direction"),
     );
   });
 
   it("makes a requested garment back view override a front-facing reference", () => {
     const prompt = buildFramePrompt(
-      { ...subject, template: "apparel" },
+      {
+        ...subject,
+        template: "apparel",
+      },
       {
         ...beats[1]!,
         shot: "full-length rear view",
@@ -95,13 +101,30 @@ describe("render prompts", () => {
       "never turn the torso or garment back toward camera",
     );
     expect(prompt).toContain("turns fully away");
+    expect(prompt).not.toContain("red leather jacket");
+    expect(prompt).toContain("Ignore every garment, outfit, shoe");
+  });
+
+  it("locks a garment video to the outfit already drawn in its frames", () => {
+    const prompt = buildVideoPrompt(
+      {
+        ...subject,
+        template: "apparel",
+      },
+      beats,
+      { videoMode: "storyboard", aspectRatio: "9:16" },
+      PRISM_MEDIA.maxVideoPromptCharacters,
+    );
+
+    expect(prompt).not.toContain("red leather jacket");
+    expect(prompt).toContain("This product is a garment");
+    expect(prompt).toContain("Never replace it, merge it with another outfit");
   });
 
   it("passes every beat to the video model with its timing", () => {
     const prompt = buildVideoPrompt(
       subject,
       beats,
-      "LOCATION: lived-in sitting room\nLIGHTING: window light",
       { videoMode: "storyboard", aspectRatio: "9:16" },
       PRISM_MEDIA.maxVideoPromptCharacters,
     );
@@ -109,15 +132,39 @@ describe("render prompts", () => {
     expect(prompt).toContain("0.0-3.5s");
     expect(prompt).toContain("3.5-15.0s");
     expect(prompt).toContain("small autofocus correction");
-    expect(prompt).toContain("LOCATION: lived-in sitting room");
     expect(prompt).toContain("No burned-in captions");
+  });
+
+  it("keeps asset-generation descriptions out of the video prompt", () => {
+    const prompt = buildVideoPrompt(
+      {
+        ...subject,
+        scenePrompt: "A detailed marble showroom",
+      },
+      beats,
+      { videoMode: "storyboard", aspectRatio: "9:16" },
+      PRISM_MEDIA.maxVideoPromptCharacters,
+      [
+        "TALENT: red leather jacket and black boots",
+        "LOCATION: detailed marble showroom",
+        "PERFORMANCE: relaxed walk with natural weight shifts",
+        "AUDIO: quiet room tone under the exact dialogue",
+      ].join("\n"),
+    );
+
+    expect(prompt).not.toContain("red leather jacket");
+    expect(prompt).not.toContain("marble showroom");
+    expect(prompt).not.toContain(subject.productDescription);
+    expect(prompt).toContain("relaxed walk with natural weight shifts");
+    expect(prompt).toContain("quiet room tone");
+    expect(prompt).toContain("sole visual authority");
+    expect(prompt).toContain("only for motion, timing");
   });
 
   it("directs one-take video to avoid cuts and scene changes", () => {
     const prompt = buildVideoPrompt(
       subject,
       beats,
-      null,
       { videoMode: "one_take", aspectRatio: "16:9" },
       PRISM_MEDIA.maxVideoPromptCharacters,
     );
@@ -127,7 +174,7 @@ describe("render prompts", () => {
     expect(prompt).toContain("landscape 16:9");
   });
 
-  it("keeps the prompt inside the provider's cap by shortening the direction", () => {
+  it("keeps the prompt inside the provider's cap by shortening product context", () => {
     const settings = {
       videoMode: "one_take" as const,
       aspectRatio: "9:16" as const,
@@ -135,13 +182,20 @@ describe("render prompts", () => {
     // The beats and the closing rules are the contract and never give way, so
     // the budget is measured from what they already occupy.
     const floor = Array.from(
-      buildVideoPrompt(subject, beats, null, settings, 0),
+      buildVideoPrompt(
+        { ...subject, productDescription: "" },
+        beats,
+        settings,
+        0,
+      ),
     ).length;
     const limit = floor + 200;
     const prompt = buildVideoPrompt(
-      subject,
+      {
+        ...subject,
+        productDescription: "A detailed product description. ".repeat(400),
+      },
       beats,
-      "LOCATION: lived-in sitting room. ".repeat(400),
       settings,
       limit,
     );
@@ -149,22 +203,21 @@ describe("render prompts", () => {
     // The cap is counted in code points, which is what the provider counts.
     expect(Array.from(prompt).length).toBeLessThanOrEqual(limit);
     expect(Array.from(prompt).length).toBeGreaterThan(floor);
-    expect(prompt).toContain("LOCATION: lived-in sitting room");
-    // The instructions that matter survive; the direction is what gives way.
+    expect(prompt).toContain("A detailed product description");
+    // The instructions that matter survive; product context gives way.
     expect(prompt).toContain("0.0-3.5s");
     expect(prompt).toContain("No burned-in captions");
   });
 
-  it("omits the direction entirely when the beats alone fill the budget", () => {
+  it("omits the product summary when the motion contract fills the budget", () => {
     const prompt = buildVideoPrompt(
-      subject,
+      { ...subject, productDescription: "A detailed product description" },
       beats,
-      "LOCATION: lived-in sitting room",
       { videoMode: "one_take", aspectRatio: "9:16" },
       0,
     );
 
-    expect(prompt).not.toContain("Follow this approved production direction");
+    expect(prompt).not.toContain("A detailed product description");
     expect(prompt).toContain("No burned-in captions");
   });
 });
@@ -173,13 +226,12 @@ describe("reference images", () => {
   const prompt = buildVideoPrompt(
     subject,
     beats,
-    null,
     { videoMode: "one_take", aspectRatio: "9:16" },
     PRISM_MEDIA.maxVideoPromptCharacters,
   );
 
-  it("names the key frames as the thing to match", () => {
-    expect(prompt).toContain("approved key frames");
+  it("names the opening frame as the primary visual authority", () => {
+    expect(prompt).toContain("drawn opening frame");
   });
 
   it("says a listing photo is evidence, not a scene to rebuild", () => {
@@ -203,7 +255,6 @@ describe("reference images", () => {
       buildVideoPrompt(
         subject,
         beats,
-        null,
         { videoMode: "one_take", aspectRatio: "9:16" },
         PRISM_MEDIA.maxVideoPromptCharacters,
       ),
@@ -237,39 +288,39 @@ describe("a chosen scene", () => {
     expect(prompt).toContain(location);
   });
 
-  it("leaves the market fallback in place when no scene was chosen", () => {
+  it("uses the market fallback when no scene was chosen", () => {
     expect(buildFramePrompt(subject, beats[0], 0)).toContain(
       "ordinary home or street scene",
     );
-    expect(
-      buildFramePrompt(subject, beats[0], 0, "LOCATION: a rooftop"),
-    ).not.toContain("ordinary home or street scene");
+    const legacyPrompt = buildFramePrompt(
+      subject,
+      beats[0],
+      0,
+      "LOCATION: a rooftop",
+    );
+    expect(legacyPrompt).toContain("ordinary home or street scene");
+    expect(legacyPrompt).not.toContain("a rooftop");
   });
 
-  it("holds the clip in one place for the whole video", () => {
+  it("lets the drawn frame own the location in the video prompt", () => {
     const prompt = buildVideoPrompt(
       staged,
       beats,
-      null,
       { videoMode: "one_take", aspectRatio: "9:16" },
       PRISM_MEDIA.maxVideoPromptCharacters,
     );
 
-    expect(prompt).toContain("stays in this one place");
-    expect(prompt).toContain(location);
+    expect(prompt).not.toContain(location);
+    expect(prompt).toContain("location, lighting, and colour grade");
   });
 
-  it("cuts long subject prompts so the beats keep their room", () => {
-    // Identity and location prompts are written for an image model and run to
-    // thousands of characters; the beat list is what must survive the cap.
+  it("does not repeat long asset prompts beside the key frames", () => {
     const prompt = buildVideoPrompt(
       {
         ...staged,
-        talentPrompt: "T".repeat(8000),
         scenePrompt: "S".repeat(8000),
       },
       beats,
-      null,
       { videoMode: "one_take", aspectRatio: "9:16" },
       PRISM_MEDIA.maxVideoPromptCharacters,
     );
@@ -277,22 +328,28 @@ describe("a chosen scene", () => {
     expect(Array.from(prompt).length).toBeLessThanOrEqual(
       PRISM_MEDIA.maxVideoPromptCharacters,
     );
+    expect(prompt).not.toContain("SSSS");
     expect(prompt).toContain("0.0-3.5s");
     expect(prompt).toContain("No burned-in captions");
   });
 
-  it("describes the talent and the scene by their expanded prompts", () => {
+  it("does not carry reusable talent prose into frame generation", () => {
     const built = renderSubjectFor({
       product: { name: "Cordless hand vacuum", facts: null },
       work: { market: "US", locale: "en", template: "spokesperson" },
-      talent: { prompt: "", description: "", name: "Mia" },
+      talent: {
+        prompt: "Mia wearing a red coat on a rooftop",
+        description: "creator",
+        name: "Mia",
+      },
       scene: { prompt: location, description: "kitchen", name: "Kitchen" },
     });
 
     expect(built.scenePrompt).toBe(location);
-    // An empty expanded prompt falls through to what the operator typed.
-    expect(built.talentPrompt).toBe("Mia");
+    expect(built.hasTalent).toBe(true);
     expect(built.productDescription).toBe("");
+    expect(buildFramePrompt(built, beats[0], 0)).not.toContain("red coat");
+    expect(buildFramePrompt(built, beats[0], 0)).not.toContain("rooftop");
   });
 });
 
@@ -351,9 +408,11 @@ describe("reference sheets", () => {
   it("matches an uploaded reference only when one was attached", () => {
     expect(buildSceneSheetPrompt(location, true)).toContain("same place");
     expect(buildSceneSheetPrompt(location, false)).not.toContain("same place");
-    expect(buildTalentSheetPrompt(identity, true)).toContain("same person");
+    expect(buildTalentSheetPrompt(identity, true)).toContain(
+      "attached image shows this same person",
+    );
     expect(buildTalentSheetPrompt(identity, false)).not.toContain(
-      "same person",
+      "attached image shows this same person",
     );
   });
 });
@@ -388,7 +447,9 @@ describe("one photograph, not an arrangement", () => {
     // frame along with the face, which is half of why frames read as pasted.
     const prompt = buildFramePrompt(staged, beats[0], 0);
 
-    expect(prompt).toContain("take the pose, the eye line, and the light");
+    expect(prompt).toContain(
+      "Take the pose, eye line, action, and light only from this frame",
+    );
     expect(prompt).not.toContain("Match the supplied reference sheet exactly");
   });
 
@@ -402,7 +463,6 @@ describe("one photograph, not an arrangement", () => {
     const prompt = buildVideoPrompt(
       staged,
       beats,
-      null,
       { videoMode: "one_take", aspectRatio: "9:16" },
       PRISM_MEDIA.maxVideoPromptCharacters,
     );
@@ -417,7 +477,6 @@ describe("one photograph, not an arrangement", () => {
     const prompt = buildFramePrompt(
       {
         ...staged,
-        talentPrompt: "T".repeat(20_000),
         scenePrompt: "S".repeat(20_000),
       },
       beats[0],
@@ -538,7 +597,7 @@ describe("product reference photos", () => {
 });
 
 describe("video reference budget", () => {
-  it("keeps a storyboard clip within the references the provider accepts", () => {
+  it("keeps a reference set within the provider limit", () => {
     const frames = 6;
     const budget = videoProductBudget(frames, true);
 
@@ -564,6 +623,7 @@ describe("video reference budget", () => {
     expect(
       videoReferenceUrls({
         videoMode: "storyboard",
+        template: "apparel",
         frameUrls: ["frame-1.jpg", null, "frame-2.jpg"],
         product: {
           images: ["product-1.jpg", "product-2.jpg"],
@@ -578,6 +638,7 @@ describe("video reference budget", () => {
     expect(
       videoReferenceUrls({
         videoMode: "one_take",
+        template: "spokesperson",
         frameUrls: ["cover.jpg"],
         product: {
           images: ["product-1.jpg", "product-2.jpg"],
@@ -586,5 +647,20 @@ describe("video reference budget", () => {
         talentSheetUrl: "talent.jpg",
       }),
     ).toEqual(["cover.jpg", "product-2.jpg", "product-1.jpg", "talent.jpg"]);
+  });
+
+  it("does not send a reusable talent outfit with a one-take garment", () => {
+    expect(
+      videoReferenceUrls({
+        videoMode: "one_take",
+        template: "apparel",
+        frameUrls: ["cover.jpg"],
+        product: {
+          images: ["garment-front.jpg", "garment-back.jpg"],
+          facts: { keyImages: [0, 1] },
+        },
+        talentSheetUrl: "talent-in-another-outfit.jpg",
+      }),
+    ).toEqual(["cover.jpg", "garment-front.jpg", "garment-back.jpg"]);
   });
 });

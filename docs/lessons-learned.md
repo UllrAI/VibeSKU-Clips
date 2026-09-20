@@ -321,7 +321,15 @@ Drizzle 配置过序列化器的底层 sql 连接中，直接用 `tx.json(array)
 
 **原因**：`buildVideoPrompt` 把全局制作指导按 `slice(0, 24_000)` 原样塞进提示，而 Prism 适配器不做任何长度控制。**最初的结论“在适配层裁剪”是错的**——提示词末尾是分镜表和“不要加字幕/水印”的规则，截尾砍掉的正好是最该保留的指令，而且是静默发生的，比 422 更糟。
 
-**正确做法**：按预算组装。分镜表与收尾规则先占满，全局制作指导拿剩下的空间（`buildVideoPrompt` 的 `maxCharacters`），上限由 `videoPromptLimit()` 从当前 provider 取——Prism 的 minimax-h3 是 10000，lk888 是 4096。provider 按字符数（code point）计，不是 UTF-16 单元，所以要用 `Array.from().length` 而不是 `.length`。适配层的 `fitPrompt` 只作为最后一道兜底，不承担业务判断。
+**正确做法**：按预算组装。节拍表与收尾规则先占满，可裁剪的运动/声音补充指导和商品摘要拿剩下的空间（`buildVideoPrompt` 的 `maxCharacters`），上限由 `videoPromptLimit()` 从当前 provider 取——Prism 的 minimax-h3 是 10000，lk888 是 4096。provider 按字符数（code point）计，不是 UTF-16 单元，所以要用 `Array.from().length` 而不是 `.length`。适配层的 `fitPrompt` 只作为最后一道兜底，不承担业务判断。
+
+### 视频提示词不能再复述生成关键帧时的外观提示
+
+**现象**：分镜已经确认了人物和商品服装，生成视频时衣服仍会换色、叠穿，或混入模特设定图里的旧外套；服装商品最明显。
+
+**原因**：视频请求一边传关键帧，一边又把完整 `talentPrompt`、`scenePrompt` 和 `productionPrompt` 塞进文字提示。关键帧说“现在长这样”，旧文字却说“最初设定长这样”，模型同时收到两套外观真相。服装模式还把穿着另一套衣服的模特 sheet 再传一次，冲突更直接。
+
+**正确做法**：先按职责拆开信息源，再由统一边界筛选，而不是在最终 prompt 上追加几句“不要换衣服”。商品资料只定义商品，talent sheet 只定义身份与默认造型，scene sheet 只定义地点；`productionPrompt` 收窄为 PERFORMANCE、PHYSICS、CAMERA CHARACTER、STYLE、AUDIO、OUTPUT SETTINGS 六类制作方向，旧版的人物、商品、场景、光线等段落在 `prompt-policy.ts` 被统一拦截。封面帧/分镜负责人物、商品、全套衣着、场景、光线与色调；视频提示只写动作、时序、机位运动、对白和声音，分镜模式连商品摘要也不复述。服装模式只从 talent sheet 取身份和体型，商品资料定义所售服装，逐拍动作/明确创意方向定义其余搭配；服装模式的一镜到底提交视频时也不再附带 talent sheet。
 
 ### 丢掉 provider 的原话，就只能靠猜
 

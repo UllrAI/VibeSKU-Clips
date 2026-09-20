@@ -348,6 +348,7 @@ export const workVideoJob = defineJob(
         work.userId,
         videoReferenceUrls({
           videoMode: work.videoMode,
+          template: work.template,
           frameUrls: frames.map((frame) => frame.imageUrl),
           product,
           talentSheetUrl: talent?.sheetUrl,
@@ -358,9 +359,9 @@ export const workVideoJob = defineJob(
         prompt: buildVideoPrompt(
           subject,
           beats,
-          script.productionPrompt,
           { videoMode: work.videoMode, aspectRatio: work.aspectRatio },
           videoPromptLimit(),
+          script.productionPrompt,
         ),
         referenceUrls: references,
         durationSeconds: CLIP_SPEC.durationSeconds,

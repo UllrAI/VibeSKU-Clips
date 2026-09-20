@@ -60,8 +60,14 @@ describe("composeScript", () => {
       object: {
         title: "Bedtime routine",
         hook: "Last step.",
-        productionPrompt:
-          "OVERVIEW: close phone vlog\nTALENT: reference talent",
+        productionDirection: {
+          performance: "Underplayed delivery",
+          physics: "Natural hand contact",
+          cameraCharacter: "Small handheld corrections",
+          style: "Casual phone footage",
+          audio: "Quiet room tone",
+          outputSettings: "Portrait 9:16, 15 seconds",
+        },
         beats: [
           {
             start: 0,
@@ -118,7 +124,12 @@ describe("composeScript", () => {
     expect(request.system).toContain("exact spoken dialogue");
     expect(request.system).toContain("portrait");
     expect(request.system).toContain("9:16");
-    expect(request.system).toContain("Do not repeat the beat list");
+    expect(request.system).toContain(
+      "PERFORMANCE, PHYSICS, CAMERA CHARACTER, STYLE, AUDIO, OUTPUT SETTINGS",
+    );
+    expect(request.system).toContain(
+      "No `productionDirection` field may describe or rename the performer",
+    );
     expect(request.system).toContain("visibly different in action");
     expect(request.system).toContain("unsent voice note");
     expect(request.system).toContain("one narrow creative angle");
@@ -131,7 +142,83 @@ describe("composeScript", () => {
     expect(content[0]!.text).toContain(
       "open on the practical question this demo answers",
     );
+    expect(result.productionPrompt).toContain(
+      "PERFORMANCE: Underplayed delivery",
+    );
+    expect(result.productionPrompt).toContain(
+      "OUTPUT SETTINGS: Portrait 9:16, 15 seconds",
+    );
+    expect(result.productionPrompt).not.toContain("TALENT:");
     expect(result.voiceover).toBe("Last step. Then sleep.");
+  });
+
+  it("treats a garment talent's existing outfit as identity evidence only", async () => {
+    const { composeScript } = await import("./authoring");
+    mockGenerateObject.mockResolvedValueOnce({
+      object: {
+        title: "Fit check",
+        hook: "Here is the fit.",
+        productionDirection: {
+          performance: "Relaxed fit check",
+          physics: "Natural fabric movement",
+          cameraCharacter: "Steady handheld phone",
+          style: "Natural phone capture",
+          audio: "Quiet room tone",
+          outputSettings: "Portrait 9:16, 15 seconds",
+        },
+        beats: [
+          {
+            start: 0,
+            end: 7,
+            shot: "full-length front view",
+            action: "wears the product garment",
+            camera: "steady phone framing",
+            voiceover: "Here is the front.",
+          },
+          {
+            start: 7,
+            end: 15,
+            shot: "full-length rear view",
+            action: "turns to show the back",
+            camera: "small handheld correction",
+            voiceover: "And the back.",
+          },
+        ],
+        captions: [],
+        publishCaption: "Fit check",
+        disclosure: "AI-generated content.",
+      },
+    });
+
+    await composeScript({
+      productName: "Linen overshirt",
+      facts: {
+        overview: "A beige linen overshirt",
+        highlights: [],
+        sources: ["uploaded images"],
+      },
+      template: "apparel",
+      locale: "en",
+      market: "US",
+      aspectRatio: "9:16",
+      talentImageUrl: "https://example.com/talent.jpg",
+      talentNote: "A creator wearing a red jacket and black boots",
+    });
+
+    const request = mockGenerateObject.mock.calls[0]![0] as {
+      system: string;
+      messages: { content: { type: string; text?: string }[] }[];
+    };
+    expect(request.system).toContain(
+      "talent reference supplies identity and body build only",
+    );
+    expect(request.system).toContain(
+      "product is the garment the performer wears",
+    );
+    expect(request.messages[0]!.content[0]!.text).toContain(
+      "Performer identity reference only",
+    );
+    expect(request.messages[0]!.content[0]!.text).not.toContain("red jacket");
   });
 });
 
@@ -161,6 +248,10 @@ describe("composeTalentImagePrompt", () => {
     expect(request.system).toContain("Do not specify a camera");
     expect(request.system).toContain("facial identity");
     expect(request.system).toContain("reusable identity reference");
+    expect(request.system).toContain("replaceable default styling");
+    expect(request.system).toContain(
+      "Omit any location, scene, camera, or product context",
+    );
     expect(request.system).toContain("both hands visibly empty");
     expect(request.system).toContain("small digital product");
     expect(request.system).toContain(
@@ -170,5 +261,36 @@ describe("composeTalentImagePrompt", () => {
     expect(content[0]!.text).toContain("Mia");
     expect(content[0]!.text).toContain("Mediterranean cafe");
     expect(result).toContain("iPhone selfie");
+  });
+});
+
+describe("composeSceneImagePrompt", () => {
+  it("keeps a reusable scene separate from people, products, and shots", async () => {
+    const { composeSceneImagePrompt } = await import("./authoring");
+    mockGenerateObject.mockResolvedValueOnce({
+      object: { prompt: "A lived-in pale oak kitchen in afternoon light." },
+    });
+
+    await composeSceneImagePrompt({
+      name: "Kitchen",
+      description: "Small city kitchen with pale oak counters",
+      referenceImageUrls: ["https://example.com/kitchen.jpg"],
+    });
+
+    const request = mockGenerateObject.mock.calls[0]![0] as {
+      system: string;
+      messages: { content: { type: string; text?: string }[] }[];
+    };
+    expect(request.system).toContain("empty place");
+    expect(request.system).toContain(
+      "No people, no hands, no pets, and no product",
+    );
+    expect(request.system).toContain("Do not specify a camera");
+    expect(request.system).toContain(
+      "Omit any person or product visible in a reference image",
+    );
+    expect(
+      request.messages[0]!.content.filter((part) => part.type === "file"),
+    ).toHaveLength(1);
   });
 });

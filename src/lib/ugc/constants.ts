@@ -52,6 +52,16 @@ export const SCRIPT_TEMPLATES = [
 ] as const;
 export type ScriptTemplate = (typeof SCRIPT_TEMPLATES)[number];
 
+export const GARMENT_SCRIPT_TEMPLATES = [
+  "apparel",
+  "styling",
+  "fit_check",
+] as const satisfies readonly ScriptTemplate[];
+
+export function isGarmentTemplate(template: ScriptTemplate): boolean {
+  return GARMENT_SCRIPT_TEMPLATES.some((candidate) => candidate === template);
+}
+
 /** Whether the operator reviews generated key frames before video rendering. */
 export const VIDEO_MODES = ["one_take", "storyboard"] as const;
 export type VideoMode = (typeof VIDEO_MODES)[number];

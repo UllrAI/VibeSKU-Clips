@@ -135,7 +135,7 @@ Six durable jobs are registered in `src/lib/jobs/catalog.ts`:
 | `ugc.scene.generate`  | `src/lib/jobs/ugc/scene-generate.ts`  | Expands a scene brief into one place and draws its multi-panel reference sheet             |
 | `ugc.work.script`     | `src/lib/jobs/ugc/work-script.ts`     | Writes one script from the product and talent images, then waits for a person to accept it |
 | `ugc.work.storyboard` | `src/lib/jobs/ugc/work-storyboard.ts` | Draws one key frame per script beat, in order, each one shown the frame before it          |
-| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Sends the script, product, talent, and optional accepted frames to the video model         |
+| `ugc.work.video`      | `src/lib/jobs/ugc/work-video.ts`      | Animates accepted frames from the approved beat timing and dialogue                        |
 
 A **work** (`ugc_works`) runs one clip through `product -> script -> video` by
 default. Storyboard-guided works add a reviewed `storyboard` step before video.
@@ -195,9 +195,11 @@ Rules that are easy to break:
   the tight one: the provider takes nine references in total. A storyboard
   video sends only its accepted key frames, because each frame already combines
   the product, performer, scene, and lighting; their source images would compete
-  with that reviewed result. A one-take video sends its opening frame, reserves
-  the performer sheet, and gives the remaining slots to product evidence.
-  Exceeding nine is not reported — the tail is dropped silently.
+  with that reviewed result. A one-take video sends its opening frame and gives
+  the remaining slots to product evidence. It also reserves the performer sheet
+  unless the product is a garment: a reusable talent's outfit is conflicting
+  evidence when the product itself is what the performer wears. Exceeding nine
+  is not reported — the tail is dropped silently.
 - **A format is its shot vocabulary.** `TEMPLATE_BRIEFS[...].shots` reaches the
   writing model and is what separates a thing held in the hand from a thing
   worn on the body. A new format without it frames like every other one.
@@ -219,6 +221,27 @@ Rules that are easy to break:
   relit by the room rather than by their sheet, shadow where things touch, one
   eye level and one focal length, one grade and one grain, and a composed frame
   rather than a laid-out one. The video prompt carries the short form of it.
+- **Frames own appearance; the video prompt owns time.** Every video already
+  has a drawn opening frame or an accepted storyboard. The video prompt must
+  not repeat the talent or scene prompts used to draw those images: doing so
+  reintroduces the reusable talent's clothes and other stale visual details
+  after the operator has settled the frame. It carries only format, motion,
+  timing, camera movement, dialogue, sound, and explicit locks. An accepted
+  storyboard is the sole visual authority and its video prompt does not repeat
+  even the product summary; a one-take opening frame is primary, with product
+  photos subordinate evidence for the sold object and a talent sheet
+  subordinate evidence for identity.
+  `src/lib/ugc/prompt-policy.ts` is the boundary for editable production
+  direction: frames may receive PERFORMANCE, PHYSICS, CAMERA CHARACTER, and
+  STYLE; video may receive PERFORMANCE, PHYSICS, CAMERA CHARACTER, AUDIO, and
+  OUTPUT SETTINGS. Legacy appearance sections and unknown sections do not pass.
+- **A garment replaces the reusable talent's wardrobe.** For `apparel`,
+  `styling`, and `fit_check`, a talent sheet supplies face, hair, complexion,
+  age, and body build only. Its garments, shoes, and accessories must not govern
+  the work's production direction, drawn frames, video prompt, or video
+  reference set. Product evidence decides the sold garment; the relevant beat
+  or explicit creative direction decides any supporting layers, shoes, and
+  accessories; the work's key frames settle the complete outfit.
 - **A sheet is reference, not composition.** Every prompt that attaches one
   says so (`SHEET_NOT_A_LAYOUT` in `src/lib/ugc/render.ts`). Without that line
   a model reads the panel grid as the composition it was asked for and draws

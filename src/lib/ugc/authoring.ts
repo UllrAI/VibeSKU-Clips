@@ -4,11 +4,16 @@ import { getAuthoringModel } from "./model";
 import {
   CLIP_SPEC,
   MAX_PRODUCT_IMAGES,
+  isGarmentTemplate,
   voiceoverBudgetFor,
   type ScriptTemplate,
   type VideoAspectRatio,
 } from "./constants";
 import type { ProductFacts, ScriptDraft, ScriptTemplateBrief } from "./types";
+import {
+  PRODUCTION_DIRECTION_SECTIONS,
+  formatProductionDirection,
+} from "./prompt-policy";
 import { TEMPLATE_BRIEFS } from "./templates";
 
 const factsSchema = z.object({
@@ -45,13 +50,14 @@ export async function composeTalentImagePrompt(
     system: [
       "You describe one photorealistic adult person for a reusable identity reference sheet.",
       "This is an identity reference, never a product scene or an advertisement. Only the person is described; they will be drawn against a plain neutral ground.",
-      "Preserve every explicit fact in the operator brief. Expand missing photographic detail coherently without changing the requested identity, clothing, setting, or mood.",
+      "Preserve every explicit identity and styling fact in the operator brief. Expand missing detail coherently without changing the requested person or intentional default styling. Omit any location, scene, camera, or product context from the final identity prompt.",
       "The person must not hold, touch, present, point to, look at, or interact with any product, package, device, prop, tool, container, food, drink, bag, or branded object. Keep both hands visibly empty and relaxed, or place them naturally outside the crop.",
       "If the operator brief or a reference image mentions or shows an object, use it only as context for the person's identity and omit the object completely from the generated scene. Never invent a generic substitute such as 'a small digital product'.",
       "Write in the same language as the operator brief.",
-      "Describe the person rather than a photograph of them: age, build and height, facial structure, complexion, eyes, lips, the colour, cut, and texture of the hair, a complete modest outfit with its colours and materials, footwear, accessories, bearing, expression, attitude, and skin texture.",
+      "Describe the person rather than a photograph of them: age, build and height, facial structure, complexion, eyes, lips, the colour, cut, and texture of the hair, bearing, expression, attitude, and skin texture. Also define one complete modest default outfit with its colours and materials, footwear, and accessories so the reusable sheet can be drawn consistently.",
+      "Treat that outfit as replaceable default styling, not part of the person's identity. A later work may replace it when the product itself is clothing. Keep identity details and wardrobe details clearly separable, and never imply that the default outfit must be preserved in every future clip.",
       "Do not specify a camera, a viewpoint, a camera height, a crop, or a pose. The reference sheet fixes all of those, and anything written here would only have to be overridden.",
-      "Finish with positive identity and wardrobe locks plus concise negative constraints. The subject must be an adult. Explicitly include empty hands and no products, props, packages, devices, logos, or branded objects. Also exclude swimwear, exposed midriff, sexualised pose, text overlay, watermark, beauty filter, plastic skin, and anatomical errors.",
+      "Finish with positive identity locks, default-wardrobe consistency for this reference sheet, and concise negative constraints. The subject must be an adult. Explicitly include empty hands and no products, props, packages, devices, logos, or branded objects. Also exclude swimwear, exposed midriff, sexualised pose, text overlay, watermark, beauty filter, plastic skin, and anatomical errors.",
       input.referenceImageUrls.length
         ? "Reference images are attached. State that facial identity, facial proportions, complexion, eyes, and hair must match the reference exactly; use the operator brief for intentional wardrobe changes. Do not reproduce any item held by the person in a reference image."
         : "No reference image is attached. Define one coherent fictional adult identity from the operator brief.",
@@ -163,11 +169,20 @@ function timingsCoverClip(beats: { start: number; end: number }[]): boolean {
   );
 }
 
+const productionDirectionSchema = z.object({
+  performance: z.string().min(1).max(4000),
+  physics: z.string().min(1).max(4000),
+  cameraCharacter: z.string().min(1).max(4000),
+  style: z.string().min(1).max(4000),
+  audio: z.string().min(1).max(4000),
+  outputSettings: z.string().min(1).max(4000),
+});
+
 const scriptSchema = z
   .object({
     title: z.string().min(1),
     hook: z.string().min(1),
-    productionPrompt: z.string().min(1).max(30_000),
+    productionDirection: productionDirectionSchema,
     beats: z
       .array(
         z.object({
@@ -292,6 +307,7 @@ export async function composeScript(
 
   const productImages = input.productImageUrls ?? [];
   const sceneImages = input.sceneImageUrls ?? [];
+  const garmentFormat = isGarmentTemplate(input.template);
   const brief_ = [
     `Product: ${input.productName}`,
     `Overview: ${input.facts.overview}`,
@@ -299,7 +315,11 @@ export async function composeScript(
       ? `Highlights: ${input.facts.highlights.join("; ")}`
       : "",
     input.talentNote
-      ? `Performer: ${input.talentNote}`
+      ? garmentFormat
+        ? input.talentImageUrl
+          ? "Performer identity reference only: use the attached talent image for the person's face, hair, age, complexion, and body build. Ignore every garment, shoe, and accessory in it because the product garment replaces that reusable wardrobe."
+          : `Performer identity reference only — keep the person's face, hair, age, complexion, and build, but ignore every garment, shoe, and accessory described here because the product garment replaces that reusable wardrobe:\n${input.talentNote}`
+        : `Performer: ${input.talentNote}`
       : "Performer: none. Keep the video product-led with hands only and no recognisable face.",
     input.sceneNote
       ? `Location, already chosen and photographed — every beat happens here:\n${input.sceneNote}`
@@ -336,12 +356,14 @@ export async function composeScript(
       "Keep the template structure invisible: the speaker must not sound as if they are stepping through hook, problem, solution, and CTA. End on a plain verdict, best-fit use, caveat, or visible result; only include a sales CTA when the operator explicitly supplied one.",
       "The result must feel like a real person filming themselves, not a polished advert. Use concrete micro-behaviour, natural pauses, imperfect phone-camera movement, focus changes, material physics, and ambient sound appropriate to the scene.",
       "Do not invent personal experience, purchase history, popularity, review counts, long-term results, or a customer testimonial. UGC authenticity comes from the creator's filming and speech patterns, not from made-up proof.",
-      "Keep one coherent performer identity, product appearance, wardrobe, location, lighting condition, and time of day from first frame to last. Product packaging, colours, proportions, finish, texture, and any supported label text must remain accurate and legible when shown.",
-      "The `productionPrompt` must be a complete standalone visual and performance direction with clearly labelled sections: OVERVIEW, TALENT, PRODUCT, LOCATION, LIGHTING, FRAMING, PERFORMANCE, VOICE, REALISM, PHYSICS, CAMERA CHARACTER, STYLE, AUDIO, OUTPUT SETTINGS, POSITIVE LOCKS, and NEGATIVE CONSTRAINTS. Do not repeat the beat list, timestamps, shot list, actions, or dialogue inside it; those belong only in `beats` so one storyboard frame cannot accidentally depict the whole script.",
+      "Keep one coherent performer identity, sold-product appearance, complete wardrobe, location, lighting condition, and time of day from first frame to last. Product packaging, colours, proportions, finish, texture, and any supported label text must remain accurate and legible when shown.",
+      "Visual authority is intentionally separated: product facts and product images alone define the sold product; the talent reference defines the person's identity and, only when the product is not clothing, their default wardrobe; the location reference defines the place; each beat defines the visible action, composition, and any work-specific supporting wardrobe. Never let one source redefine another source's subject.",
+      `The \`productionDirection\` object is a concise production direction with these six fields, serialized downstream under ${PRODUCTION_DIRECTION_SECTIONS.join(", ")}. Write its values in ${input.locale}. \`performance\` covers general acting rhythm and micro-behaviour without adding an action; \`physics\` covers natural movement and contact; \`cameraCharacter\` covers handheld and focus behaviour without specifying a shot; \`style\` covers capture texture and grade; \`audio\` covers ambient sound and vocal delivery without repeating dialogue; \`outputSettings\` records only ${input.aspectRatio}, ${CLIP_SPEC.durationSeconds} seconds, and practical delivery constraints.`,
+      "No `productionDirection` field may describe or rename the performer, face, body, clothing, footwear, accessories, sold product, packaging, brand, location, furniture, lighting setup, individual shot, pose, action, timestamp, or dialogue. Those facts belong only to the source records and `beats`.",
       "Each beat must say exactly what is visible in `action`, how it is framed in `shot`, how the phone/camera moves and focuses in `camera`, and the exact spoken dialogue in `voiceover`. Use three to five beats unless the supplied direction explicitly needs another count.",
       "Make adjacent beats visibly different in action and composition. Change at least two of shot size, camera viewpoint, performer orientation, body pose, or product interaction between neighbouring beats; never fill a storyboard with repeated front-facing poses.",
-      ["apparel", "styling", "fit_check"].includes(input.template)
-        ? "This is a garment format. Across the beats, show the garment from the front, from a side or three-quarter angle, and from the back, plus one useful material or fit detail. Include an explicit turn or walk that makes the back visible; do not keep the performer facing camera throughout."
+      garmentFormat
+        ? "This is a garment format. The talent reference supplies identity and body build only: ignore and never name, preserve, layer, or recreate its clothing, shoes, or accessories. The sold product is the garment the performer wears, and the product facts and images are the sole authority for that garment's colour, material, cut, length, fastenings, details, and fit. Put any necessary companion layer, trousers, skirt, shoes, or accessories in the relevant beat action, using the operator's creative direction when supplied and otherwise choosing a simple neutral complement. Across the beats, show the same complete work-specific outfit and sold garment from the front, from a side or three-quarter angle, and from the back, plus one useful material or fit detail. Include an explicit turn or walk that makes the back visible; do not keep the performer facing camera throughout."
         : "",
       "Captions must be short enough to sit clear of the platform buttons and the product card, and must never describe a tappable shopping element.",
       "`disclosure` is a single sentence stating that the clip is AI-generated content, written in the same language.",
@@ -394,8 +416,10 @@ export async function composeScript(
     ],
   });
 
+  const { productionDirection, ...script } = object;
   return {
-    ...object,
+    ...script,
+    productionPrompt: formatProductionDirection(productionDirection),
     voiceover: object.beats
       .map((beat) => beat.voiceover.trim())
       .filter(Boolean)

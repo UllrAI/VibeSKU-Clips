@@ -29,7 +29,7 @@ export interface ScriptBeat {
 export interface ScriptDraft {
   title: string;
   hook: string;
-  /** Complete director-level prompt shared by storyboard and video generation. */
+  /** Appearance-free performance, camera, style, audio, and output direction. */
   productionPrompt: string;
   beats: ScriptBeat[];
   voiceover: string;

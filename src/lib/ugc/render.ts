@@ -1,5 +1,15 @@
-import { CLIP_SPEC, DEFAULT_VIDEO_SETTINGS, PRISM_MEDIA } from "./constants";
+import {
+  CLIP_SPEC,
+  DEFAULT_VIDEO_SETTINGS,
+  PRISM_MEDIA,
+  isGarmentTemplate,
+} from "./constants";
 import type { VideoAspectRatio, VideoMode } from "./constants";
+import {
+  FRAME_DIRECTION_SECTIONS,
+  VIDEO_DIRECTION_SECTIONS,
+  selectProductionDirection,
+} from "./prompt-policy";
 import { TEMPLATE_BRIEFS } from "./templates";
 import type { ProductFacts, ScriptBeat } from "./types";
 import type { ScriptTemplate } from "./constants";
@@ -11,13 +21,15 @@ export interface RenderSubject {
   market: string;
   locale: string;
   template: ScriptTemplate;
-  talentPrompt: string | null;
+  hasTalent: boolean;
   /** The place this clip is filmed in, when the operator picked one. */
   scenePrompt: string | null;
 }
 
-/** A talent and a scene are both described the same way: by their expanded
- * prompt, falling back to whatever the operator actually typed. */
+/** A scene is described by its expanded prompt, falling back to whatever the
+ * operator actually typed. Talent prose stops at the reference-sheet boundary:
+ * downstream generations use the sheet itself and cannot revive stale clothes
+ * or locations from its authoring prompt. */
 function describedBy(
   record: { prompt: string | null; description: string; name: string } | null,
 ): string | null {
@@ -38,7 +50,7 @@ export function renderSubjectFor(input: {
     market: input.work.market,
     locale: input.work.locale,
     template: input.work.template,
-    talentPrompt: describedBy(input.talent ?? null),
+    hasTalent: Boolean(input.talent),
     scenePrompt: describedBy(input.scene ?? null),
   };
 }
@@ -75,13 +87,12 @@ export function productReferenceUrls(
 /**
  * How many product photos a video can still carry.
  *
- * A drawn frame simply takes all of them. A video cannot: the provider
- * accepts nine references in total, and a storyboard work spends up to six of
- * those on the key frames the clip is actually made of. The performer sheet
- * is set aside first, because a clip that loses the face is not a retake away
- * from being right, and the product fills whatever is left. Passing more than
- * nine is not an error the provider reports — it silently drops the tail,
- * which is exactly where the sheet would sit.
+ * A drawn frame simply takes all product photos. A one-take video cannot: the
+ * provider accepts nine references in total, including its opening frame and
+ * optional performer sheet. The sheet is set aside first, because a clip that
+ * loses the face is not a retake away from being right, and the product fills
+ * whatever remains. Passing more than nine is not an error the provider
+ * reports — it silently drops the tail, exactly where the sheet would sit.
  */
 export function videoProductBudget(
   frameCount: number,
@@ -102,6 +113,7 @@ export function videoProductBudget(
  */
 export function videoReferenceUrls(input: {
   videoMode: VideoMode;
+  template: ScriptTemplate;
   frameUrls: Array<string | null>;
   product: {
     images: string[];
@@ -114,13 +126,20 @@ export function videoReferenceUrls(input: {
     return frames.slice(0, PRISM_MEDIA.maxVideoReferences);
   }
 
+  // A talent sheet establishes identity by showing a reusable outfit. For a
+  // garment product that outfit is explicitly not the wardrobe of this clip;
+  // the opening frame already carries the correct person and product together.
+  const talentSheetUrl = isGarmentTemplate(input.template)
+    ? null
+    : input.talentSheetUrl;
+
   return [
     ...frames,
     ...productReferenceUrls(
       input.product,
-      videoProductBudget(frames.length, Boolean(input.talentSheetUrl)),
+      videoProductBudget(frames.length, Boolean(talentSheetUrl)),
     ),
-    input.talentSheetUrl,
+    talentSheetUrl,
   ]
     .filter((url): url is string => Boolean(url))
     .slice(0, PRISM_MEDIA.maxVideoReferences);
@@ -134,33 +153,38 @@ export function videoReferenceUrls(input: {
  * the panels, the gutters, and the plain studio ground into the clip.
  */
 const SHEET_NOT_A_LAYOUT =
-  "Any attached reference sheet is a grid of panels showing one person or one place from several angles. Use it only to match appearance, materials, and light. Never reproduce its panel grid, its gutters, its plain studio ground, or its layout: the generated image is a single continuous photograph.";
+  "Any attached reference sheet is a grid of panels showing one person or one place from several angles. Read it only as multiple views of that one reference subject, and use only the attributes explicitly assigned to that subject elsewhere in this prompt. Never reproduce its panel grid, gutters, plain studio ground, or layout: the generated image is a single continuous photograph.";
 
 function frameDescription(aspectRatio: VideoAspectRatio): string {
   return `${aspectRatio === "9:16" ? "Portrait" : "Landscape"} ${aspectRatio}`;
 }
 
-const GARMENT_TEMPLATES = new Set<ScriptTemplate>([
-  "apparel",
-  "styling",
-  "fit_check",
-]);
-
 function garmentOrientationRule(template: ScriptTemplate): string {
-  return GARMENT_TEMPLATES.has(template)
+  return isGarmentTemplate(template)
     ? "Garment orientation is literal. When the assignment says back, rear, turn away, side, or three-quarter, show that view clearly; never turn the torso or garment back toward camera just to keep the performer's face visible."
     : "";
+}
+
+function performerLine(subject: RenderSubject): string {
+  if (!subject.hasTalent) {
+    return "Product-led frame with hands only, no recognisable face.";
+  }
+  if (isGarmentTemplate(subject.template)) {
+    return "Performer: use the attached talent sheet only for the same face, facial proportions, complexion, hair, age, and body build. Ignore every garment, outfit, shoe, and accessory on that reusable identity sheet. The product garment and the styling established for this work replace them completely; never layer, merge, or restore the talent sheet's wardrobe.";
+  }
+  return "Performer: take the face, facial proportions, complexion, hair, age, body build, and default wardrobe from the attached talent sheet. Take the pose, eye line, action, and light only from this frame assignment and location.";
 }
 
 /**
  * How much of a subject prompt goes into one frame request.
  *
- * Identity and location prompts are written by a model against a 12,000
- * character schema, and a frame also carries the production direction. Three
- * unbounded fields in one request can pass Prism's own 32,000 ceiling, which
- * it refuses outright rather than trimming.
+ * Location prompts are written by a model against a 12,000-character schema,
+ * and a frame also carries product facts and production direction. Bounding
+ * the reusable location keeps the complete request below Prism's own 32,000
+ * ceiling, which it refuses outright rather than trimming.
  */
 const FRAME_SUBJECT_LIMIT = 4000;
+const FRAME_DIRECTION_LIMIT = 6000;
 
 /**
  * Where the clip is filmed. A chosen scene is an operator decision and the
@@ -188,7 +212,7 @@ function settingLine(subject: RenderSubject): string {
  */
 const ONE_PHOTOGRAPH = [
   "This is a single photograph made by one camera in one exposure. The performer, the product, and the location are lit by the same sources at the same colour temperature, with the same contrast and the same exposure.",
-  "The reference sheets fix identity, wardrobe, materials, and the layout of the place — never the lighting. Relight the performer and the product for this location: the direction, hardness, and colour of the light come from the room they are standing in, and every shadow in the frame falls away from that light the same way.",
+  "Each reference sheet fixes only the attributes assigned to it above. The Performer and Product instructions decide what is worn and shown; the talent sheet's neutral studio light never travels into this frame. Relight the performer and the product for this location: the direction, hardness, and colour of the light come from the room they are standing in, and every shadow in the frame falls away from that light the same way.",
   "Things touch the world they are in. Feet and furniture meet the floor with shadow gathering under them, a held product is gripped with the fingers wrapping around its form and pressing into it, and anything resting on a surface darkens where it meets that surface and picks up a soft reflection in it. Nothing floats, and no edge looks cut out.",
   "One lens throughout: the performer, the product, and the room share a single eye level, a single vanishing point, and the perspective of one focal length. Depth falls off continuously from the focal plane, rather than a sharp subject sitting on a blurred backdrop.",
   "The same air in front of everything: one colour grade, one level of grain, the same softness and falloff toward the frame edges, and bounced light carrying colour from nearby surfaces onto skin, clothing, and the product.",
@@ -206,6 +230,11 @@ export function buildCoverPrompt(
   productionPrompt?: string | null,
   aspectRatio: VideoAspectRatio = DEFAULT_VIDEO_SETTINGS.aspectRatio,
 ): string {
+  const productionDirection = fitCharacters(
+    selectProductionDirection(productionPrompt, FRAME_DIRECTION_SECTIONS),
+    FRAME_DIRECTION_LIMIT,
+  );
+
   return [
     `${frameDescription(aspectRatio)} opening frame for a user-generated product video.`,
     firstBeat
@@ -214,17 +243,16 @@ export function buildCoverPrompt(
           `Shot: ${firstBeat.shot}`,
           `Visible action at this exact moment: ${firstBeat.action}`,
           `Camera: ${firstBeat.camera ?? "natural handheld phone framing"}`,
+          "This assignment owns the moment, action, pose, framing, and camera only. It cannot redefine the sold product, performer identity, or chosen location established below.",
           "Do not preview, combine, or foreshadow any later action from the clip.",
         ].join("\n")
       : "",
     garmentOrientationRule(subject.template),
-    productionPrompt
-      ? `Whole-clip visual direction only — use this for identity, setting, light, texture, and camera character, never for additional actions or shots in this image. The opening-frame assignment above overrides it:\n${productionPrompt.slice(0, 20_000)}`
+    productionDirection
+      ? `Supporting production direction — it may shape performance, physical behaviour, camera character, and photographic style only. It cannot redefine the performer, wardrobe, product, location, or the visible action assigned above:\n${productionDirection}`
       : "",
     `Product: ${subject.productName}. ${subject.productDescription}`,
-    subject.talentPrompt
-      ? `Performer: ${fitCharacters(subject.talentPrompt, FRAME_SUBJECT_LIMIT)}. Take the face, build, hair, and wardrobe from the attached reference sheet; take the pose, the eye line, and the light from this frame.`
-      : "Product-led frame with hands only, no recognisable face.",
+    performerLine(subject),
     settingLine(subject),
     SHEET_NOT_A_LAYOUT,
     EVIDENCE_ONLY,
@@ -247,24 +275,25 @@ export function buildFramePrompt(
   productionPrompt?: string | null,
   aspectRatio: VideoAspectRatio = DEFAULT_VIDEO_SETTINGS.aspectRatio,
 ): string {
+  const productionDirection = fitCharacters(
+    selectProductionDirection(productionPrompt, FRAME_DIRECTION_SECTIONS),
+    FRAME_DIRECTION_LIMIT,
+  );
+
   return [
     `${frameDescription(aspectRatio)} key frame ${position + 1} of a user-generated product video.`,
-    `CURRENT-FRAME ASSIGNMENT — depict only ${beat.start.toFixed(1)}-${beat.end.toFixed(1)}s of the script. This assignment has priority over every reference image and every whole-clip direction below.`,
+    `CURRENT-FRAME ASSIGNMENT — depict only ${beat.start.toFixed(1)}-${beat.end.toFixed(1)}s of the script. It owns the moment, action, pose, framing, and camera, but cannot redefine the sold product, performer identity, or chosen location established below.`,
     `Shot: ${beat.shot}`,
     `Visible action at this exact moment: ${beat.action}`,
     `Camera: ${beat.camera ?? "natural handheld phone framing"}`,
     "Render one frozen moment from this assignment only. Do not combine, preview, foreshadow, repeat, or summarise any other beat from the script.",
     garmentOrientationRule(subject.template),
-    productionPrompt
-      ? `Whole-clip visual direction only — use this for identity, setting, light, texture, and camera character, never for additional actions, poses, or shots in this image:\n${productionPrompt.slice(0, 20_000)}`
+    productionDirection
+      ? `Supporting production direction — it may shape performance, physical behaviour, camera character, and photographic style only. It cannot redefine the performer, wardrobe, product, location, or the visible action assigned above:\n${productionDirection}`
       : "",
     `Product: ${subject.productName}. ${subject.productDescription}`,
-    subject.talentPrompt
-      ? `Performer: ${fitCharacters(subject.talentPrompt, FRAME_SUBJECT_LIMIT)}. Take the face, build, hair, and wardrobe from the attached reference sheet; take the pose, the eye line, and the light from this frame.`
-      : "Product-led frame with hands only, no recognisable face.",
-    // The production direction already carries a location of its own, so it is
-    // only restated when a scene was chosen and has to win.
-    productionPrompt && !subject.scenePrompt ? "" : settingLine(subject),
+    performerLine(subject),
+    settingLine(subject),
     SHEET_NOT_A_LAYOUT,
     EVIDENCE_ONLY,
     ...ONE_PHOTOGRAPH,
@@ -297,16 +326,6 @@ export const CONTINUES_FROM_PREVIOUS = [
   "Never redraw the previous frame, never repeat its composition, and never place it inside this image.",
 ].join("\n");
 
-const DIRECTION_PREFIX = "Follow this approved production direction exactly:\n";
-
-/**
- * Identity and location prompts are written for an image model and run to
- * thousands of characters each. The video prompt has a hard provider cap, and
- * the beat list is what must survive it, so these two are cut to the length
- * that still describes a person and a place.
- */
-const SUBJECT_PROMPT_LIMIT = 1200;
-
 /** Providers count characters, not UTF-16 units, so cut on code points. */
 function fitCharacters(text: string, limit: number): string {
   const characters = Array.from(text);
@@ -322,21 +341,21 @@ function characterCount(lines: string[]): number {
 /**
  * The whole clip as one provider request, built to the provider's own cap.
  *
- * The beat list is the contract — what happens when, and what is said word for
- * word — and the closing line is what keeps captions and fake shopping UI out
- * of the frame. The production direction is context around both, so it is the
- * part that gives way when the prompt runs long. Truncating the assembled text
- * instead would drop exactly the instructions that matter, and do it silently.
+ * Drawn frames own appearance; this prompt owns motion, timing, dialogue, and
+ * sound. Repeating the talent or production prompts here would reintroduce the
+ * reusable talent's outfit after the frames have already settled the wardrobe.
+ * The beat list and closing rules are the contract, so extracted motion context
+ * and the product summary give way when a provider has a smaller prompt budget.
  */
 export function buildVideoPrompt(
   subject: RenderSubject,
   beats: ScriptBeat[],
-  productionPrompt: string | null | undefined,
   settings: {
     videoMode: VideoMode;
     aspectRatio: VideoAspectRatio;
   },
   maxCharacters: number,
+  productionPrompt?: string | null,
 ): string {
   const brief = TEMPLATE_BRIEFS[subject.template];
   const opening = [
@@ -346,21 +365,20 @@ export function buildVideoPrompt(
       ? "Film this as one continuous take with no cuts, transitions, or scene changes. Use natural camera movement to connect every beat."
       : "Use the supplied storyboard images as the visual reference for each beat.",
     `Delivery: ${brief.voice} Spoken in ${subject.locale} for the ${subject.market} market.`,
-    `Product: ${subject.productName}. ${subject.productDescription}`,
   ];
   const instructions = [
-    subject.talentPrompt
-      ? `Keep the performer identical to the first frame: ${fitCharacters(subject.talentPrompt, SUBJECT_PROMPT_LIMIT)}`
-      : "Keep the product identical to the first frame.",
-    subject.scenePrompt
-      ? `The clip stays in this one place from first frame to last: ${fitCharacters(subject.scenePrompt, SUBJECT_PROMPT_LIMIT)}`
+    settings.videoMode === "storyboard"
+      ? "The accepted storyboard images are the sole visual authority for the performer, product, complete wardrobe, location, lighting, and colour grade. Preserve those exact appearances from first frame to last. Do not infer or restore visual details from any earlier talent, scene, or production description."
+      : "The drawn opening frame is the primary visual authority for the performer, complete wardrobe, location, lighting, and colour grade. Preserve those exact appearances from first frame to last. Attached product photos may clarify only the sold product's true details, and an attached talent sheet may clarify only facial identity and body build; neither may replace the opening frame's wardrobe, setting, composition, or light.",
+    "Use the written instructions below only for motion, timing, camera movement, dialogue, and sound. If any written clothing or appearance detail conflicts with a key frame, ignore the prose and follow the image.",
+    isGarmentTemplate(subject.template)
+      ? "This product is a garment. Keep the exact sold garment and complete outfit shown in the key frames unchanged through every shot: the same colour, material, cut, fit, length, fastenings, layers, shoes, and accessories. Never replace it, merge it with another outfit, or bring back clothing from a reusable talent reference."
       : "",
-    "The reference images begin with the approved key frames for this clip: match their performer, product, wardrobe, location, and lighting exactly.",
-    SHEET_NOT_A_LAYOUT,
-    EVIDENCE_ONLY,
+    garmentOrientationRule(subject.template),
+    settings.videoMode === "one_take" ? SHEET_NOT_A_LAYOUT : "",
+    settings.videoMode === "one_take" ? EVIDENCE_ONLY : "",
     "Everything in shot was filmed at once: one light, one lens, shadow gathering where things touch, and no element that reads as pasted over the others.",
     "Beats:",
-    "The approved beat list below overrides any conflicting timing, action, camera, or dialogue wording inside the production direction.",
     ...beats.map(
       (beat) =>
         `${beat.start.toFixed(1)}-${beat.end.toFixed(1)}s | shot: ${beat.shot} | visual: ${beat.action} | camera: ${beat.camera ?? "natural handheld phone movement"} | exact dialogue: ${beat.voiceover || "none"}`,
@@ -368,16 +386,42 @@ export function buildVideoPrompt(
     "No burned-in captions, no on-screen buttons, no fake shopping widgets, no watermark. Authentic product packaging and brand text must remain unchanged.",
   ];
 
-  const room =
+  const productPrefix =
+    settings.videoMode === "one_take" ? `Product: ${subject.productName}.` : "";
+  const directionPrefix = "Additional motion and sound direction:";
+  const fixedLines = [...opening, productPrefix, ...instructions].filter(
+    Boolean,
+  );
+  const motionBudget =
     maxCharacters -
-    characterCount([...opening, ...instructions]) -
-    Array.from(DIRECTION_PREFIX).length -
+    characterCount(fixedLines) -
+    Array.from(directionPrefix).length -
     2;
-  const direction = fitCharacters(productionPrompt ?? "", room);
+  const motionDirection = fitCharacters(
+    selectProductionDirection(productionPrompt, VIDEO_DIRECTION_SECTIONS),
+    motionBudget,
+  );
+  const directionLine = motionDirection
+    ? `${directionPrefix}\n${motionDirection}`
+    : "";
+  const productBudget =
+    maxCharacters -
+    characterCount(
+      [...opening, directionLine, productPrefix, ...instructions].filter(
+        Boolean,
+      ),
+    ) -
+    1;
+  const productDescription = productPrefix
+    ? fitCharacters(subject.productDescription, productBudget)
+    : "";
 
   return [
     ...opening,
-    direction ? `${DIRECTION_PREFIX}${direction}` : "",
+    directionLine,
+    productPrefix && productDescription
+      ? `${productPrefix} ${productDescription}`
+      : productPrefix,
     ...instructions,
   ]
     .filter(Boolean)
@@ -514,10 +558,10 @@ const SCENE_SHEET_PANELS = [
 /**
  * One talent reference sheet.
  *
- * The identity prompt is reused verbatim so the face and wardrobe cannot
- * drift, and the panel layout is stated after it because framing is the one
- * thing being overridden — the identity prompt describes a single viewpoint of
- * its own.
+ * The identity prompt is reused verbatim so the face and default wardrobe
+ * cannot drift inside this sheet. The wardrobe is deliberately named as a
+ * sheet default: downstream garment works may replace it without changing the
+ * person.
  */
 export function buildTalentSheetPrompt(
   identityPrompt: string,
@@ -525,11 +569,12 @@ export function buildTalentSheetPrompt(
 ): string {
   return [
     "A photographic character reference sheet of one adult person, laid out as a two-by-two grid of four panels in a square image.",
-    `Identity, wardrobe, and appearance to reproduce in every panel:\n${identityPrompt}`,
+    `Identity, appearance, and default reference-sheet wardrobe to reproduce in every panel:\n${identityPrompt}`,
+    "The wardrobe is default styling for this reusable sheet, not an immutable part of the person's identity. Keep identity and wardrobe visually separable so a later clothing-product work can replace the outfit while preserving the same person.",
     "This layout overrides every crop, camera height, and viewpoint named above:",
     ...TALENT_SHEET_PANELS,
     hasReference
-      ? "The attached image shows this same person. Facial identity, facial proportions, complexion, eyes, hair, and the colour, cut, and length of every garment must match it exactly."
+      ? "The attached image shows this same person. Facial identity, facial proportions, complexion, eyes, hair, age, and body build must match it exactly. Use the written identity prompt for the default wardrobe; do not copy a held object, branded item, or incidental outfit from the image unless the written prompt explicitly asks for it."
       : "",
     ...SHEET_RULES,
     "Both hands empty in every panel. No products, props, packages, devices, bags, or branded objects anywhere in the image.",
