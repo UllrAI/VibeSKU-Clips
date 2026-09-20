@@ -342,7 +342,9 @@ export function DoneStep({
           </div>
 
           <p className="text-muted-foreground text-xs tabular-nums">
-            {new Date(selectedClip.createdAt).toLocaleString(locale)}
+            {new Date(selectedClip.createdAt).toLocaleString(locale, {
+              timeZone: "UTC",
+            })}
           </p>
 
           <ul className="space-y-1.5 text-sm">

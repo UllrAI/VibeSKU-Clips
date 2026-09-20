@@ -218,7 +218,9 @@ export function WorkList({ works }: { works: WorkSummary[] }) {
                             total: steps.length,
                           })}
                           {" · "}
-                          {new Date(work.updatedAt).toLocaleDateString(locale)}
+                          {new Date(work.updatedAt).toLocaleDateString(locale, {
+                            timeZone: "UTC",
+                          })}
                         </p>
                       </div>
 
