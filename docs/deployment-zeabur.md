@@ -210,9 +210,10 @@ it manually. Publish production changes only through `release/vX.Y.Z` tags.
 IP header documented by Zeabur. Override it only when another trusted ingress
 uses a different supported header.
 
-Migrations are a release step, not an application startup hook. This prevents
-multiple replicas from racing on schema changes. The Web service must start
-only after the migration command succeeds.
+The production release workflow applies migrations before promotion. The Worker
+also applies committed migrations at boot under a PostgreSQL advisory lock,
+which serializes concurrent replicas and makes repeat boots safe. Web never
+migrates. A failed migration stops the release or Worker that attempted it.
 
 ## Deployment skew
 
@@ -273,11 +274,12 @@ platform stop window above `WORKER_GRACEFUL_TIMEOUT_MS` (30 seconds by default).
 The Worker is a required always-on service whenever durable tasks are enabled,
 but its health is intentionally independent from Web readiness.
 
-Run `pnpm db:migrate` before starting either service. It applies committed
-Drizzle migrations, installs/upgrades the separate `pgboss` schema, and creates
-the declared workload queues. Web and Worker runtime connections disable schema
-migration, so their database roles do not need DDL permission. Drizzle is
-restricted to the `public` schema and does not manage pg-boss objects.
+`pnpm db:migrate` and Worker boot use the same migration function. It applies
+committed Drizzle migrations, installs/upgrades the separate `pgboss` schema,
+and creates the declared workload queues. The Worker role needs migration
+permissions; the Web role does not need DDL permission. The runtime image ships
+`src/database/migrations` so the Worker can read the SQL. Drizzle is restricted
+to the `public` schema and does not manage pg-boss objects.
 
 For connection capacity, budget the application pool plus the pg-boss pool for
 every replica. A Worker with `DB_POOL_SIZE=5` and `JOB_DB_POOL_SIZE=3` consumes

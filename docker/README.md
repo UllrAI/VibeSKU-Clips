@@ -67,7 +67,7 @@ This directory contains the Docker configuration for running VibeSKU Clips in co
 
 ### postgres
 
-- **Port**: 5432
+- **Port**: 5432, bound to `127.0.0.1` on the host
 - **Database**: `vibesku_clips`
 - **Credentials**: postgres/postgres (development only)
 - **Persistence**: Docker volume `postgres_data`
@@ -106,7 +106,9 @@ This directory contains the Docker configuration for running VibeSKU Clips in co
 
 For production deployment:
 
-1. **Security**: Change all default passwords and secrets
+1. **Security**: The Compose database URLs contain development credentials.
+   Replace the password and every matching service URL for production, and keep
+   the database port private.
 2. **Environment**: Use production environment variables
 3. **Volumes**: Configure persistent storage appropriately
 4. **Network**: Use proper network configuration
@@ -116,9 +118,9 @@ For production deployment:
    AI media finalization, abandoned uploads, and requested file deletions.
    For existing public buckets, follow the cutover in
    [architecture notes](../docs/architecture.md).
-8. **Upload protocol rollout**: Set `UPLOAD_LEGACY_COMPLETION_SINCE` and
-   `UPLOAD_LEGACY_COMPLETION_UNTIL` only for the bounded v1-to-v2 rollout
-   window, then remove both after the cutoff
+8. **Worker integrations**: Configure `FIRECRAWL_API_KEY` for product URL
+   imports and an explicit `PRISM_API_BASE_URL` matching your credentials. The
+   development Compose example defaults to Prism staging.
 9. **Trusted proxy**: Keep the default loopback-only application port binding
    or place the container on a private network behind a reverse proxy. The
    proxy must overwrite `RATE_LIMIT_IP_HEADER`; exposing port 3000 publicly
