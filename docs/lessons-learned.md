@@ -203,6 +203,14 @@
 
 ## 工具链
 
+### `ubuntu-latest` 会跑到锁定的 Playwright 尚未支持的系统上
+
+**现象**：应用检查、单测和任务集成都通过，CI 却在安装 Chromium 时失败：`Playwright does not support chromium on ubuntu26.04-x64`。
+
+**原因**：`ubuntu-latest` 已指向 Ubuntu 26.04，而 lockfile 中的 Playwright 1.60.0 只提供较早系统的浏览器和依赖安装支持。
+
+**正确做法**：把现有 Linux runner 固定到该 Playwright 版本支持的 Ubuntu 24.04；升级系统前先检查锁定浏览器版本的支持范围，再跑完整 E2E。
+
 ### zsh 脚本变量不要命名为 `status` 或 `path`
 
 **现象**：部署检查脚本给循环变量取名 `path` 后，后续的 `curl`、`node`、`npx`、`git` 全部报 `command not found`；给状态变量取名 `status` 则直接报 `read-only variable`。
