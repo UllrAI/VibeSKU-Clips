@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -93,8 +94,11 @@ describe("UserManagementTable action failures", () => {
     );
 
     await openEditDialog();
-    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    });
 
+    expect(mockUpdateUser).toHaveBeenCalledTimes(1);
     expect(await screen.findByText("boundary")).toBeInTheDocument();
     expect(toast.success).not.toHaveBeenCalled();
     expect(toast.error).not.toHaveBeenCalled();
@@ -106,7 +110,9 @@ describe("UserManagementTable action failures", () => {
     } as unknown as Awaited<ReturnType<typeof updateUserAction>>);
 
     await openEditDialog();
-    fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /save changes/i }));
+    });
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledTimes(1);

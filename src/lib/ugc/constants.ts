@@ -52,7 +52,7 @@ export const SCRIPT_TEMPLATES = [
 ] as const;
 export type ScriptTemplate = (typeof SCRIPT_TEMPLATES)[number];
 
-export const GARMENT_SCRIPT_TEMPLATES = [
+const GARMENT_SCRIPT_TEMPLATES = [
   "apparel",
   "styling",
   "fit_check",
