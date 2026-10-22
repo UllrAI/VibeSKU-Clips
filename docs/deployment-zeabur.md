@@ -11,6 +11,13 @@ that file in place: the multi-stage image serves only the prepared Next.js
 standalone output instead of shipping the build toolchain and development
 dependencies in the Web runtime.
 
+Both build and runtime stages pin the official Node.js 22.23.4 Alpine image by
+digest, including the October 21, 2026 security fixes. Update both pins together
+for subsequent security releases. Rebuild each service and replace its running
+container; restarting an existing image does not update Node.js. After deploying,
+check `node -p process.version` inside every Web and Worker service, including
+any separate Render worker.
+
 The runtime entrypoint also drops to the unprivileged `nextjs` user when a
 hosting security context starts the container as root. Verify PID 1 after
 deployment instead of assuming the Dockerfile `USER` directive was preserved.
